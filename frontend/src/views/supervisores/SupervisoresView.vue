@@ -1,0 +1,225 @@
+<template>
+  <div class="space-y-6">
+    <div class="flex items-center justify-between">
+      <h1 class="text-2xl font-bold text-gray-800">Supervisores por Area</h1>
+      <button @click="abrirModal"
+        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium">
+        + Asignar Supervisor
+      </button>
+    </div>
+
+    <!-- Tabla -->
+    <div class="bg-white rounded-xl shadow overflow-hidden">
+      <table class="w-full text-sm">
+        <thead class="bg-gray-50 border-b">
+          <tr>
+            <th class="text-left px-4 py-3 text-gray-600 font-medium">Area / Departamento</th>
+            <th class="text-left px-4 py-3 text-gray-600 font-medium">Supervisor Asignado</th>
+            <th class="text-left px-4 py-3 text-gray-600 font-medium">Depto del Supervisor</th>
+            <th class="text-left px-4 py-3 text-gray-600 font-medium">Fecha Registro</th>
+            <th class="text-left px-4 py-3 text-gray-600 font-medium">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-if="cargando">
+            <td colspan="5" class="text-center py-8 text-gray-400">Cargando...</td>
+          </tr>
+          <tr v-else-if="supervisores.length === 0">
+            <td colspan="5" class="text-center py-8 text-gray-400">No hay supervisores asignados</td>
+          </tr>
+          <tr v-for="s in supervisores" :key="s.id" class="border-b hover:bg-gray-50">
+            <td class="px-4 py-3 font-medium">{{ s.departamento?.nombre_depto }}</td>
+            <td class="px-4 py-3 font-medium text-blue-700">
+              {{ s.supervisor?.apellido_emp }}, {{ s.supervisor?.nombre_emp }}
+            </td>
+            <td class="px-4 py-3 text-gray-500">
+              {{ s.supervisor?.departamento?.nombre_depto }}
+            </td>
+            <td class="px-4 py-3 text-gray-500">{{ s.fecha_registro?.substring(0,10) }}</td>
+            <td class="px-4 py-3">
+              <div class="flex gap-2">
+                <button @click="editar(s)"
+                  class="text-blue-600 hover:underline text-xs font-medium">Editar</button>
+                <button @click="eliminar(s.id)"
+                  class="text-red-500 hover:underline text-xs font-medium">Eliminar</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Modal -->
+    <div v-if="modal" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-lg space-y-4">
+        <h2 class="text-lg font-semibold text-gray-700">
+          {{ form.editando ? "Editar Supervisor" : "Asignar Supervisor a Area" }}
+        </h2>
+
+        <!-- Departamento -->
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Area / Departamento *</label>
+          <select v-model="form.id_depto" required :disabled="form.editando"
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">Seleccionar area...</option>
+            <option v-for="d in departamentos" :key="d.id_depto" :value="d.id_depto">
+              {{ d.nombre_depto }}
+            </option>
+          </select>
+        </div>
+
+        <!-- Supervisor -->
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Supervisor *</label>
+          <input v-model="buscarSup" type="text" placeholder="Buscar por nombre o cedula..."
+            @input="filtrarEmpleados"
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <div v-if="resultadosSup.length" class="border rounded-lg mt-1 max-h-48 overflow-y-auto shadow-md">
+            <div v-for="e in resultadosSup" :key="e.id_emp"
+              @click="seleccionarSupervisor(e)"
+              class="px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b last:border-0">
+              <span class="font-medium">{{ e.apellido_emp }}, {{ e.nombre_emp }}</span>
+              <span class="text-gray-400 ml-2 text-xs">{{ e.departamento?.nombre_depto }}</span>
+            </div>
+          </div>
+          <p v-if="form.id_supervisor" class="text-xs text-green-600 mt-1 font-medium">
+            Seleccionado: {{ form.nombreSupervisor }}
+          </p>
+        </div>
+
+        <div v-if="error" class="text-red-600 text-sm bg-red-50 rounded p-2">{{ error }}</div>
+
+        <div class="flex justify-end gap-3 pt-2">
+          <button @click="modal = false"
+            class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">
+            Cancelar
+          </button>
+          <button @click="guardar" :disabled="guardando"
+            class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-50">
+            {{ guardando ? "Guardando..." : "Guardar" }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted } from "vue"
+import api from "@/services/api"
+
+const supervisores   = ref([])
+const departamentos  = ref([])
+const todosEmpleados = ref([])
+const cargando       = ref(false)
+const modal          = ref(false)
+const guardando      = ref(false)
+const error          = ref("")
+const buscarSup      = ref("")
+const resultadosSup  = ref([])
+
+const form = ref({
+  editando: false, id: null,
+  id_depto: "", id_supervisor: "", nombreSupervisor: ""
+})
+
+const cargar = async () => {
+  cargando.value = true
+  try {
+    const { data } = await api.get("/supervisores")
+    supervisores.value = data
+  } catch (e) {
+    console.error(e)
+  } finally {
+    cargando.value = false
+  }
+}
+
+const abrirModal = async () => {
+  error.value = ""
+  form.value = { editando: false, id: null, id_depto: "", id_supervisor: "", nombreSupervisor: "" }
+  buscarSup.value = ""
+  resultadosSup.value = []
+
+  if (departamentos.value.length === 0) {
+    const { data } = await api.get("/departamentos")
+    departamentos.value = data
+  }
+  if (todosEmpleados.value.length === 0) {
+    const { data } = await api.get("/empleados?per_page=500")
+    todosEmpleados.value = data.data
+  }
+  modal.value = true
+}
+
+const editar = async (s) => {
+  error.value = ""
+  if (departamentos.value.length === 0) {
+    const { data } = await api.get("/departamentos")
+    departamentos.value = data
+  }
+  if (todosEmpleados.value.length === 0) {
+    const { data } = await api.get("/empleados?per_page=500")
+    todosEmpleados.value = data.data
+  }
+  form.value = {
+    editando: true, id: s.id,
+    id_depto: s.id_depto,
+    id_supervisor: s.id_supervisor,
+    nombreSupervisor: s.supervisor?.apellido_emp + ", " + s.supervisor?.nombre_emp
+  }
+  buscarSup.value = ""
+  resultadosSup.value = []
+  modal.value = true
+}
+
+const filtrarEmpleados = () => {
+  const b = buscarSup.value.toLowerCase()
+  if (!b || b.length < 2) { resultadosSup.value = []; return }
+  resultadosSup.value = todosEmpleados.value.filter(e =>
+    e.nombre_emp?.toLowerCase().includes(b) ||
+    e.apellido_emp?.toLowerCase().includes(b) ||
+    e.identificacion?.includes(b)
+  ).slice(0, 8)
+}
+
+const seleccionarSupervisor = (e) => {
+  form.value.id_supervisor    = e.id_emp
+  form.value.nombreSupervisor = e.apellido_emp + ", " + e.nombre_emp
+  buscarSup.value = ""
+  resultadosSup.value = []
+}
+
+const guardar = async () => {
+  if (!form.value.id_depto || !form.value.id_supervisor) {
+    error.value = "Debes seleccionar area y supervisor"
+    return
+  }
+  guardando.value = true
+  error.value = ""
+  try {
+    await api.post("/supervisores", {
+      id_depto:      form.value.id_depto,
+      id_supervisor: form.value.id_supervisor,
+    })
+    modal.value = false
+    cargar()
+  } catch (e) {
+    error.value = e.response?.data?.message || "Error al guardar"
+  } finally {
+    guardando.value = false
+  }
+}
+
+const eliminar = async (id) => {
+  if (!confirm("Eliminar el supervisor de esta area?")) return
+  try {
+    await api.delete("/supervisores/" + id)
+    cargar()
+  } catch (e) {
+    alert("Error al eliminar")
+  }
+}
+
+onMounted(cargar)
+</script>
