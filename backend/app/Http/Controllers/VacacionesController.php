@@ -119,7 +119,7 @@ class VacacionesController extends Controller
 
         // Verificar saldo disponible
         $cabecera = CabeceraVacacion::where("id_emp", $emp->id_emp)->first();
-        if (!$cabecera || $cabecera->Dias_x_tomar_normal <= 0) {
+        if (!$cabecera || $cabecera->dias_x_tomar_normal <= 0) {
             return response()->json(["message" => "No tienes días de vacaciones disponibles"], 422);
         }
 
