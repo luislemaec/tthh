@@ -8,6 +8,7 @@ use App\Http\Controllers\OpcionController;
 use App\Http\Controllers\AsistenciaController;
 use App\Http\Controllers\PermisosController;
 use App\Http\Controllers\SupervisorController;
+use App\Http\Controllers\VacacionesController;
 use App\Http\Controllers\ImportacionController;
 use Illuminate\Support\Facades\Route;
 
@@ -105,4 +106,13 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::patch("/permisos/{id}/aprobar", [PermisosController::class, "aprobar"]);
     Route::patch("/permisos/{id}/negar",   [PermisosController::class, "negar"]);
     Route::delete("/permisos/{id}",          [PermisosController::class, "destroy"]);
+
+    // Vacaciones
+    Route::get("/vacaciones/mi-rol",            [VacacionesController::class, "miRol"]);
+    Route::get("/vacaciones/mi-saldo",          [VacacionesController::class, "miSaldo"]);
+    Route::get("/vacaciones",                   [VacacionesController::class, "index"]);
+    Route::post("/vacaciones",                  [VacacionesController::class, "store"]);
+    Route::patch("/vacaciones/{id}/aprobar",    [VacacionesController::class, "aprobar"]);
+    Route::patch("/vacaciones/{id}/negar",      [VacacionesController::class, "negar"]);
+    Route::delete("/vacaciones/{id}",           [VacacionesController::class, "destroy"]);
 });
