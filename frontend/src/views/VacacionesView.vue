@@ -111,7 +111,7 @@
             <td class="px-4 py-3 text-gray-600">{{ v.fecha_inicial?.substring(0, 10) }}</td>
             <td class="px-4 py-3 text-gray-600">{{ v.fecha_final?.substring(0, 10) }}</td>
             <td class="px-4 py-3 text-center">
-              <span v-if="v.todoDia === 'SI'" class="text-green-600">✓</span>
+              <span v-if="v.todo_dia === 'SI'" class="text-green-600">✓</span>
               <span v-else class="text-gray-400">—</span>
             </td>
             <td class="px-4 py-3">
@@ -157,7 +157,7 @@
         <h2 class="text-lg font-semibold text-gray-700">Solicitar Vacaciones</h2>
         <div class="space-y-4">
           <div class="flex items-center gap-2">
-            <input v-model="formNuevo.todoDia" type="checkbox" id="todo_dia_vac"
+            <input v-model="formNuevo.todo_dia" type="checkbox" id="todo_dia_vac"
               true-value="SI" false-value="NO" class="rounded" />
             <label for="todo_dia_vac" class="text-sm text-gray-600">Todo el día</label>
           </div>
@@ -173,7 +173,7 @@
                 class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
           </div>
-          <div v-if="formNuevo.todoDia !== 'SI'" class="grid grid-cols-2 gap-3">
+          <div v-if="formNuevo.todo_dia !== 'SI'" class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Hora Desde *</label>
               <input v-model="formNuevo.hora_desde" type="time"
@@ -234,7 +234,7 @@
           </div>
           <div>
             <dt class="text-gray-500">Todo el día</dt>
-            <dd class="font-medium">{{ seleccionado?.todoDia }}</dd>
+            <dd class="font-medium">{{ seleccionado?.todo_dia }}</dd>
           </div>
           <div>
             <dt class="text-gray-500">Estado</dt>
@@ -314,7 +314,7 @@ const filtros = ref({ estado: "", fecha_desde: "", fecha_hasta: "" })
 const formNuevo = ref({
   fecha_inicial: "", fecha_final: "",
   hora_desde: "08:00", hora_hasta: "17:00",
-  todoDia: "SI", observaciones: "",
+  todo_dia: "SI", observaciones: "",
 })
 
 const esSupervisorOAdmin = computed(() =>
@@ -363,7 +363,7 @@ const abrirModalNuevo = () => {
   formNuevo.value = {
     fecha_inicial: "", fecha_final: "",
     hora_desde: "08:00", hora_hasta: "17:00",
-    todoDia: "SI", observaciones: "",
+    todo_dia: "SI", observaciones: "",
   }
   modalNuevo.value = true
 }

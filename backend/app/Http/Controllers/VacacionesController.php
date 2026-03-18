@@ -144,7 +144,7 @@ class VacacionesController extends Controller
             "hora_desde"     => $request->fecha_inicial . " " . $request->hora_desde . ":00",
             "hora_hasta"     => $request->fecha_final   . " " . $request->hora_hasta . ":00",
             "observaciones"  => $request->observaciones,
-            "todoDia"        => $request->todoDia ?? "SI",
+            "todo_dia"       => $request->todo_dia ?? "SI",
             "estado_permiso" => "PENDIENTE",
             "ip"             => $request->ip(),
         ]);
