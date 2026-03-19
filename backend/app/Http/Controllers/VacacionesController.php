@@ -3,14 +3,40 @@ namespace App\Http\Controllers;
 
 use App\Models\Vacacion;
 use App\Models\CabeceraVacacion;
+use App\Models\Configuracion;
 use App\Models\DetalleVacacion;
 use App\Models\Empleado;
 use App\Models\Supervisor;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class VacacionesController extends Controller
 {
+    private function calcularSaldoDisponible(Empleado $emp, CabeceraVacacion $cabecera): array
+    {
+        $tasas = [
+            "LOSEP"              => 2.50,
+            "CODIGO DEL TRABAJO" => 1.15,
+        ];
+        $tasa = $tasas[trim($emp->tipo_contrato)] ?? 0;
+
+        $fechaCorteConfig = Configuracion::find("FECHA_CORTE_VACACIONES");
+        $fechaCorte       = $fechaCorteConfig ? Carbon::parse($fechaCorteConfig->valor) : Carbon::today();
+
+        $diasAcumulados = round(Carbon::today()->diffInDays($fechaCorte) / 30 * $tasa, 2);
+        $saldoInicial   = (float) ($cabecera->dias_adicionales  ?? 0);
+        $tomados        = (float) ($cabecera->total_dias_tomados ?? 0);
+        $disponibles    = round($saldoInicial + $diasAcumulados - $tomados, 2);
+
+        return [
+            "saldo_inicial"   => $saldoInicial,
+            "acumulado_a_hoy" => $diasAcumulados,
+            "tomados"         => $tomados,
+            "dias_disponibles"=> max(0, $disponibles),
+        ];
+    }
+
     private function esSupervisor($id_emp)
     {
         return Supervisor::where("id_supervisor", $id_emp)->exists();
@@ -47,16 +73,20 @@ class VacacionesController extends Controller
     // Saldo de vacaciones del empleado autenticado
     public function miSaldo(Request $request)
     {
-        $emp = $request->user();
-
+        $emp      = $request->user();
         $cabecera = CabeceraVacacion::where("id_emp", $emp->id_emp)->first();
         $detalle  = DetalleVacacion::where("id_emp", $emp->id_emp)
             ->orderBy("numero_periodo", "desc")
             ->get();
 
+        $saldoCalculado = $cabecera
+            ? $this->calcularSaldoDisponible($emp, $cabecera)
+            : ["saldo_inicial" => 0, "acumulado_a_hoy" => 0, "tomados" => 0, "dias_disponibles" => 0];
+
         return response()->json([
-            "cabecera" => $cabecera,
-            "detalle"  => $detalle,
+            "cabecera"       => $cabecera,
+            "detalle"        => $detalle,
+            "saldo_calculado"=> $saldoCalculado,
         ]);
     }
 
@@ -107,7 +137,7 @@ class VacacionesController extends Controller
             "fecha_final"    => "required|date|after_or_equal:fecha_inicial",
             "hora_desde"     => "required|string",
             "hora_hasta"     => "required|string",
-            "todoDia"        => "nullable|string",
+            "todo_dia"       => "nullable|string",
             "observaciones"  => "nullable|string|max:250",
         ]);
 
@@ -119,8 +149,19 @@ class VacacionesController extends Controller
 
         // Verificar saldo disponible
         $cabecera = CabeceraVacacion::where("id_emp", $emp->id_emp)->first();
-        if (!$cabecera || $cabecera->dias_x_tomar_normal <= 0) {
+        $saldo    = $cabecera ? $this->calcularSaldoDisponible($emp, $cabecera) : null;
+
+        if (!$saldo || $saldo["dias_disponibles"] <= 0) {
             return response()->json(["message" => "No tienes días de vacaciones disponibles"], 422);
+        }
+
+        $diasSolicitados = Carbon::parse($request->fecha_inicial)
+            ->diffInDays(Carbon::parse($request->fecha_final)) + 1;
+
+        if ($diasSolicitados > $saldo["dias_disponibles"]) {
+            return response()->json([
+                "message" => "No tienes suficientes días disponibles. Disponibles: {$saldo['dias_disponibles']}, solicitados: {$diasSolicitados}"
+            ], 422);
         }
 
         // Verificar que no tenga vacaciones en las mismas fechas
@@ -172,6 +213,17 @@ class VacacionesController extends Controller
         }
 
         $vacacion->update(["estado_permiso" => "APROBADO"]);
+
+        // Descontar días del saldo
+        $dias     = Carbon::parse($vacacion->fecha_inicial)
+            ->diffInDays(Carbon::parse($vacacion->fecha_final)) + 1;
+        $cabecera = CabeceraVacacion::where("id_emp", $vacacion->id_emp)->first();
+        if ($cabecera) {
+            $cabecera->dias_x_tomar_normal  = max(0, (float)($cabecera->dias_x_tomar_normal  ?? 0) - $dias);
+            $cabecera->total_dias_tomados   = (float)($cabecera->total_dias_tomados ?? 0) + $dias;
+            $cabecera->total_tomados        = (float)($cabecera->total_tomados      ?? 0) + $dias;
+            $cabecera->save();
+        }
 
         return response()->json(["message" => "Vacación aprobada correctamente", "vacacion" => $vacacion->load("empleado")]);
     }

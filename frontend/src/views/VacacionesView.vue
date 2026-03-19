@@ -9,7 +9,7 @@
     </div>
 
     <!-- Saldo -->
-    <div v-if="saldo.cabecera" class="bg-white rounded-xl shadow p-4 space-y-3">
+    <div v-if="saldo.saldo_calculado" class="bg-white rounded-xl shadow p-4 space-y-3">
       <div class="flex items-center justify-between">
         <h2 class="text-sm font-semibold text-gray-700">Saldo de Vacaciones</h2>
         <button @click="mostrarDetalleSaldo = !mostrarDetalleSaldo"
@@ -19,16 +19,20 @@
       </div>
       <div class="flex gap-6">
         <div class="text-center">
-          <p class="text-3xl font-bold text-blue-600">{{ saldo.cabecera.dias_x_tomar_normal ?? 0 }}</p>
+          <p class="text-3xl font-bold text-blue-600">{{ saldo.saldo_calculado.dias_disponibles ?? 0 }}</p>
           <p class="text-xs text-gray-500 mt-1">Días disponibles</p>
         </div>
         <div class="text-center">
-          <p class="text-3xl font-bold text-gray-400">{{ saldo.cabecera.total_tomados ?? 0 }}</p>
+          <p class="text-3xl font-bold text-gray-400">{{ saldo.saldo_calculado.tomados ?? 0 }}</p>
           <p class="text-xs text-gray-500 mt-1">Días tomados</p>
         </div>
         <div class="text-center">
-          <p class="text-3xl font-bold text-gray-700">{{ saldo.cabecera.dias_totales ?? 0 }}</p>
-          <p class="text-xs text-gray-500 mt-1">Días totales</p>
+          <p class="text-xl font-semibold text-gray-500">{{ saldo.saldo_calculado.saldo_inicial ?? 0 }}</p>
+          <p class="text-xs text-gray-500 mt-1">Saldo inicial (Excel)</p>
+        </div>
+        <div class="text-center">
+          <p class="text-xl font-semibold text-green-600">+{{ saldo.saldo_calculado.acumulado_a_hoy ?? 0 }}</p>
+          <p class="text-xs text-gray-500 mt-1">Acumulado a hoy</p>
         </div>
       </div>
 
