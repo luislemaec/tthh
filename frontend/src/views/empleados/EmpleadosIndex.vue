@@ -28,6 +28,20 @@
         <option value="activo">Activo</option>
         <option value="inactivo">Inactivo</option>
       </select>
+      <select v-model="filtro.tipo_contrato" @change="cargarEmpleados"
+        class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <option value="">Todos los contratos</option>
+        <option value="LOSEP">LOSEP</option>
+        <option value="CODIGO DEL TRABAJO">CÓDIGO DEL TRABAJO</option>
+      </select>
+      <select v-model="filtro.modalidad_laboral" @change="cargarEmpleados"
+        class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <option value="">Todas las modalidades</option>
+        <option value="Nombramiento Definitivo">Nombramiento Definitivo</option>
+        <option value="Nombramiento Provisional">Nombramiento Provisional</option>
+        <option value="Contrato Ocasional">Contrato Ocasional</option>
+        <option value="Comisión de Servicios">Comisión de Servicios</option>
+      </select>
     </div>
 
     <!-- Tabla -->
@@ -105,7 +119,7 @@ const total        = ref(0)
 const pagina       = ref(1)
 const porPagina    = 10
 
-const filtro = ref({ buscar: '', departamento: '', estado: '' })
+const filtro = ref({ buscar: '', departamento: '', estado: '', tipo_contrato: '', modalidad_laboral: '' })
 
 const cargarEmpleados = async () => {
   cargando.value = true
@@ -114,9 +128,11 @@ const cargarEmpleados = async () => {
       params: {
         page:            pagina.value,
         per_page:        porPagina,
-        buscar:          filtro.value.buscar,
-        departamento_id: filtro.value.departamento,
-        estado:          filtro.value.estado,
+        buscar:            filtro.value.buscar,
+        departamento_id:   filtro.value.departamento,
+        estado:            filtro.value.estado,
+        tipo_contrato:     filtro.value.tipo_contrato,
+        modalidad_laboral: filtro.value.modalidad_laboral,
       }
     })
     empleados.value = data.data

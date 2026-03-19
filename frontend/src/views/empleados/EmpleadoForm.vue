@@ -69,8 +69,23 @@
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Tipo de Contrato</label>
-            <input v-model="form.tipo_contrato" type="text"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <select v-model="form.tipo_contrato"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">Seleccionar...</option>
+              <option value="LOSEP">LOSEP</option>
+              <option value="CODIGO DEL TRABAJO">CÓDIGO DEL TRABAJO</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Modalidad Laboral</label>
+            <select v-model="form.modalidad_laboral"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">Seleccionar...</option>
+              <option value="Nombramiento Definitivo">Nombramiento Definitivo</option>
+              <option value="Nombramiento Provisional">Nombramiento Provisional</option>
+              <option value="Contrato Ocasional">Contrato Ocasional</option>
+              <option value="Comisión de Servicios">Comisión de Servicios</option>
+            </select>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Estado</label>
@@ -152,8 +167,9 @@ const form = ref({
   direccion:      "",
   departamento_id: null,
   cargo_empleado: "",
-  tipo_contrato:  "",
-  estado:         "ACTIVO",
+  tipo_contrato:     "",
+  modalidad_laboral: "",
+  estado:            "ACTIVO",
   fecha_ingreso:  "",
   fecha_salida:   "",
   salario:        "",
@@ -177,8 +193,9 @@ const guardar = async () => {
       fecha_salida:   form.value.fecha_salida || null,
       sueldo:         form.value.salario,
       nivel:          form.value.nivel,
-      tipo_contrato: form.value.tipo_contrato,
-      email:          form.value.email,
+      tipo_contrato:     form.value.tipo_contrato,
+      modalidad_laboral: form.value.modalidad_laboral,
+      email:             form.value.email,
     }
 
     if (esEdicion.value) {
@@ -217,8 +234,9 @@ onMounted(async () => {
     form.value.nivel           = data.nivel || ""
     form.value.telefono        = data.telefono || ""
     form.value.direccion       = data.calle_y_numero || ""
-    form.value.tipo_contrato = data.tipo_contrato?.trim() || ""
-    form.value.email           = data.emails?.[0]?.mail || ""
+    form.value.tipo_contrato     = data.tipo_contrato?.trim()     || ""
+    form.value.modalidad_laboral = data.modalidad_laboral?.trim() || ""
+    form.value.email             = data.emails?.[0]?.mail         || ""
   }
 })
 </script>
