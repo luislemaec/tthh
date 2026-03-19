@@ -262,6 +262,10 @@ class VacacionesController extends Controller
     // Eliminar vacación
     public function destroy(Request $request, $id)
     {
+        $request->validate([
+            "observacion_negacion" => "required|string|max:120",
+        ]);
+
         $vacacion   = Vacacion::findOrFail($id);
         $supervisor = $request->user();
 
@@ -274,7 +278,14 @@ class VacacionesController extends Controller
             return response()->json(["message" => "No eres supervisor de este empleado"], 403);
         }
 
-        $vacacion->update(["estado_permiso" => "ELIMINADO"]);
+        if ($vacacion->estado_permiso !== "PENDIENTE") {
+            return response()->json(["message" => "La solicitud no está en estado PENDIENTE"], 422);
+        }
+
+        $vacacion->update([
+            "estado_permiso"       => "ELIMINADO",
+            "observacion_negacion" => $request->observacion_negacion,
+        ]);
 
         return response()->json(["message" => "Vacación eliminada correctamente"]);
     }

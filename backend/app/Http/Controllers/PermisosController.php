@@ -248,25 +248,30 @@ class PermisosController extends Controller
     // Eliminar permiso (solo supervisor del empleado)
     public function destroy(Request $request, $id)
     {
+        $request->validate([
+            "observacion_negacion" => "required|string|max:120",
+        ]);
+
         $permiso    = Permiso::findOrFail($id);
         $supervisor = $request->user();
 
-        // No puede eliminarse a si mismo
         if ($permiso->id_emp === $supervisor->id_emp) {
-            return response()->json([
-                "message" => "No puedes eliminar tu propio permiso"
-            ], 403);
+            return response()->json(["message" => "No puedes eliminar tu propio permiso"], 403);
         }
 
-        // Verificar que es supervisor del empleado
         $empleados = $this->empleadosDeSupervisor($supervisor->id_emp);
-        if (!$empleados->contains($permiso->id_emp)) {
-            return response()->json([
-                "message" => "No eres supervisor de este empleado"
-            ], 403);
+        if (!$this->esAdminOTH($supervisor->id_emp) && !$empleados->contains($permiso->id_emp)) {
+            return response()->json(["message" => "No eres supervisor de este empleado"], 403);
         }
 
-        $permiso->update(["estado_permiso" => "ELIMINADO"]);
+        if ($permiso->estado_permiso !== "PENDIENTE") {
+            return response()->json(["message" => "El permiso no está en estado PENDIENTE"], 422);
+        }
+
+        $permiso->update([
+            "estado_permiso"       => "ELIMINADO",
+            "observacion_negacion" => $request->observacion_negacion,
+        ]);
 
         return response()->json(["message" => "Permiso eliminado correctamente"]);
     }

@@ -133,7 +133,7 @@
                     class="text-green-600 hover:underline text-xs font-medium">Aprobar</button>
                   <button @click="abrirModalNegar(v)"
                     class="text-red-500 hover:underline text-xs font-medium">Negar</button>
-                  <button @click="eliminar(v.secuencial_clave)"
+                  <button @click="abrirModalEliminar(v)"
                     class="text-gray-500 hover:underline text-xs font-medium">Eliminar</button>
                 </template>
               </div>
@@ -254,13 +254,36 @@
             <dd class="font-medium">{{ seleccionado?.observaciones || "—" }}</dd>
           </div>
           <div v-if="seleccionado?.observacion_negacion" class="col-span-2">
-            <dt class="text-gray-500">Motivo negación</dt>
+            <dt class="text-gray-500">
+              {{ seleccionado?.estado_permiso === 'ELIMINADO' ? 'Motivo de eliminación' : 'Motivo de negación' }}
+            </dt>
             <dd class="font-medium text-red-600">{{ seleccionado?.observacion_negacion }}</dd>
           </div>
         </dl>
         <div class="flex justify-end pt-2">
           <button @click="modalVer = false"
             class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cerrar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Eliminar -->
+    <div v-if="modalEliminar" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md space-y-4">
+        <h2 class="text-lg font-semibold text-gray-700">Eliminar Solicitud</h2>
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Motivo de eliminación <span class="text-red-500">*</span></label>
+          <textarea v-model="motivoEliminacion" rows="3" maxlength="120"
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+          <p v-if="errorEliminar" class="text-red-500 text-xs mt-1">{{ errorEliminar }}</p>
+        </div>
+        <div class="flex justify-end gap-3">
+          <button @click="modalEliminar = false"
+            class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
+          <button @click="confirmarEliminar"
+            class="px-4 py-2 rounded-lg bg-gray-600 text-white text-sm hover:bg-gray-700">
+            Confirmar Eliminación
+          </button>
         </div>
       </div>
     </div>
@@ -308,10 +331,13 @@ const mostrarDetalleSaldo = ref(false)
 
 const modalNuevo     = ref(false)
 const modalVer       = ref(false)
-const modalNegar     = ref(false)
-const seleccionado   = ref(null)
-const motivoNegacion = ref("")
-const errorNuevo     = ref("")
+const modalNegar          = ref(false)
+const modalEliminar       = ref(false)
+const seleccionado        = ref(null)
+const motivoNegacion      = ref("")
+const motivoEliminacion   = ref("")
+const errorEliminar       = ref("")
+const errorNuevo          = ref("")
 
 const filtros = ref({ estado: "", fecha_desde: "", fecha_hasta: "" })
 
@@ -424,10 +450,23 @@ const confirmarNegar = async () => {
   }
 }
 
-const eliminar = async (id) => {
-  if (!confirm("¿Eliminar esta solicitud?")) return
+const abrirModalEliminar = (v) => {
+  seleccionado.value      = v
+  motivoEliminacion.value = ""
+  errorEliminar.value     = ""
+  modalEliminar.value     = true
+}
+
+const confirmarEliminar = async () => {
+  if (!motivoEliminacion.value.trim()) {
+    errorEliminar.value = "El motivo de eliminación es obligatorio"
+    return
+  }
   try {
-    await api.delete("/vacaciones/" + id)
+    await api.delete("/vacaciones/" + seleccionado.value.secuencial_clave, {
+      data: { observacion_negacion: motivoEliminacion.value }
+    })
+    modalEliminar.value = false
     cargar()
   } catch (e) {
     alert(e.response?.data?.message || "Error al eliminar")
