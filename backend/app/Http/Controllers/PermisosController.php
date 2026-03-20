@@ -114,6 +114,13 @@ class PermisosController extends Controller
                 "message" => "El usuario administrador no puede solicitar permisos"
             ], 403);
         }
+
+        if (strtoupper($emp->estado) !== "ACTIVO") {
+            return response()->json([
+                "message" => "Solo empleados activos pueden solicitar permisos"
+            ], 403);
+        }
+
         $razon = Razon::findOrFail($request->sec_permiso);
 
         // Verificar que no tenga un permiso en las mismas fechas

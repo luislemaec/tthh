@@ -73,7 +73,17 @@ class VacacionesController extends Controller
     // Saldo de vacaciones del empleado autenticado
     public function miSaldo(Request $request)
     {
-        $emp      = $request->user();
+        $emp = $request->user();
+
+        if (strtoupper($emp->estado) !== "ACTIVO") {
+            return response()->json([
+                "cabecera"        => null,
+                "detalle"         => [],
+                "saldo_calculado" => ["saldo_inicial" => 0, "acumulado_a_hoy" => 0, "tomados" => 0, "dias_disponibles" => 0],
+                "inactivo"        => true,
+            ]);
+        }
+
         $cabecera = CabeceraVacacion::where("id_emp", $emp->id_emp)->first();
         $detalle  = DetalleVacacion::where("id_emp", $emp->id_emp)
             ->orderBy("numero_periodo", "desc")
@@ -145,6 +155,10 @@ class VacacionesController extends Controller
 
         if ($emp->id_depto == 999) {
             return response()->json(["message" => "El usuario administrador no puede solicitar vacaciones"], 403);
+        }
+
+        if (strtoupper($emp->estado) !== "ACTIVO") {
+            return response()->json(["message" => "Solo empleados activos pueden solicitar vacaciones"], 403);
         }
 
         // Verificar saldo disponible

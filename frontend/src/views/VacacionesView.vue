@@ -2,10 +2,15 @@
   <div class="space-y-6">
     <div class="flex items-center justify-between">
       <h1 class="text-2xl font-bold text-gray-800">Vacaciones</h1>
-      <button @click="abrirModalNuevo"
+      <button v-if="!saldo.inactivo" @click="abrirModalNuevo"
         class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium">
         + Solicitar Vacaciones
       </button>
+    </div>
+
+    <!-- Empleado inactivo -->
+    <div v-if="saldo.inactivo" class="bg-yellow-50 border border-yellow-300 rounded-xl p-4 text-yellow-800 text-sm">
+      Tu cuenta está inactiva. No puedes consultar saldo ni solicitar vacaciones.
     </div>
 
     <!-- Saldo -->
