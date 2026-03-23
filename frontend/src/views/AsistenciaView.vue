@@ -72,55 +72,32 @@
           <thead class="bg-gray-50 border-b">
             <tr>
               <th class="text-left px-3 py-3 text-gray-600 font-medium">Fecha</th>
-              <th class="text-center px-3 py-3 text-gray-600 font-medium">Estado</th>
-              <th class="text-center px-3 py-3 text-gray-600 font-medium">Entrada</th>
-              <th class="text-center px-3 py-3 text-gray-600 font-medium">Atraso entrada</th>
-              <th class="text-center px-3 py-3 text-gray-600 font-medium">Salida lunch</th>
-              <th class="text-center px-3 py-3 text-gray-600 font-medium">Ret. lunch</th>
-              <th class="text-center px-3 py-3 text-gray-600 font-medium">Salida</th>
-              <th class="text-center px-3 py-3 text-gray-600 font-medium">Sal. anticipada</th>
-              <th class="text-center px-3 py-3 text-gray-600 font-medium">H. trabajadas</th>
-              <th class="text-center px-3 py-3 text-gray-600 font-medium">H. a descontar</th>
+              <th class="text-left px-3 py-3 text-gray-600 font-medium">Concepto</th>
+              <th class="text-center px-3 py-3 text-gray-600 font-medium">Hora</th>
+              <th class="text-center px-3 py-3 text-gray-600 font-medium">Atraso</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="cargandoHistorial">
-              <td colspan="10" class="text-center py-8 text-gray-400">Cargando...</td>
+              <td colspan="4" class="text-center py-8 text-gray-400">Cargando...</td>
             </tr>
             <tr v-else-if="historial.length === 0">
-              <td colspan="10" class="text-center py-8 text-gray-400">No hay registros en este período</td>
+              <td colspan="4" class="text-center py-8 text-gray-400">No hay registros en este período</td>
             </tr>
-            <tr v-for="r in historial" :key="r.fecha"
-              :class="['border-b hover:bg-gray-50', r.falta === 'S' ? 'bg-red-50' : '']">
-              <td class="px-3 py-2 font-medium whitespace-nowrap">{{ formatFecha(r.fecha) }}</td>
-              <td class="px-3 py-2 text-center">
-                <span :class="r.falta === 'S'
-                  ? 'bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-xs font-medium'
-                  : 'bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-medium'">
-                  {{ r.falta === 'S' ? 'FALTA' : 'OK' }}
+            <tr v-for="(r, i) in historial" :key="i"
+              class="border-b hover:bg-gray-50">
+              <td class="px-3 py-2 font-medium whitespace-nowrap">{{ r.fecha }}</td>
+              <td class="px-3 py-2">
+                <span :class="colorConcepto(r.concepto)"
+                  class="px-2 py-0.5 rounded-full text-xs font-medium">
+                  {{ r.concepto }}
                 </span>
               </td>
-              <td class="px-3 py-2 text-center font-mono text-gray-700">
-                {{ r.hora_real_entrada ?? '—' }}
-                <span v-if="r.hora_turno_entrada" class="block text-xs text-gray-400">prog: {{ decimalAHora(r.hora_turno_entrada) }}</span>
-              </td>
+              <td class="px-3 py-2 text-center font-mono text-gray-700">{{ r.hora }}</td>
               <td class="px-3 py-2 text-center">
-                <span v-if="r.atraso_entrada > 0" class="text-amber-700 font-medium">{{ minATexto(r.atraso_entrada) }}</span>
-                <span v-else class="text-gray-300">—</span>
-              </td>
-              <td class="px-3 py-2 text-center font-mono text-gray-700">{{ r.hora_real_sal_lunch ?? '—' }}</td>
-              <td class="px-3 py-2 text-center">
-                <span v-if="r.atraso_lunch > 0" class="text-amber-700 font-medium">{{ minATexto(r.atraso_lunch) }}</span>
-                <span v-else class="text-gray-300">—</span>
-              </td>
-              <td class="px-3 py-2 text-center font-mono text-gray-700">{{ r.hora_real_sal ?? '—' }}</td>
-              <td class="px-3 py-2 text-center">
-                <span v-if="r.atraso_salida > 0" class="text-blue-700 font-medium">{{ minATexto(r.atraso_salida) }}</span>
-                <span v-else class="text-gray-300">—</span>
-              </td>
-              <td class="px-3 py-2 text-center font-mono text-gray-700">{{ decimalAHora(r.horas_totales) }}</td>
-              <td class="px-3 py-2 text-center">
-                <span v-if="r.horas_decto > 0" class="text-red-700 font-medium">{{ minATexto(Math.round(r.horas_decto * 60)) }}</span>
+                <span v-if="r.atraso > 0" class="text-red-700 font-medium">
+                  {{ minATexto(r.atraso) }}
+                </span>
                 <span v-else class="text-gray-300">—</span>
               </td>
             </tr>
@@ -215,13 +192,6 @@ const histTipo          = ref("todos")
 const histFechaDesde    = ref(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().substring(0, 10))
 const histFechaHasta    = ref(new Date().toISOString().substring(0, 10))
 
-const decimalAHora = (val) => {
-  if (val == null) return "—"
-  const h = Math.floor(val)
-  const m = Math.round((val - h) * 60)
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
-}
-
 const minATexto = (min) => {
   if (!min || min === 0) return "—"
   const h = Math.floor(min / 60)
@@ -229,11 +199,6 @@ const minATexto = (min) => {
   if (h > 0 && m > 0) return `${h}h ${m}min`
   if (h > 0) return `${h}h`
   return `${m}min`
-}
-
-const formatFecha = (fecha) => {
-  if (!fecha) return "—"
-  return fecha.toString().substring(0, 10)
 }
 
 const cargarHistorial = async () => {

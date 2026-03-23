@@ -174,62 +174,44 @@ class AsistenciaController extends Controller
         $hasta = $request->get("fecha_hasta", now()->toDateString());
         $tipo  = $request->get("tipo", "todos"); // todos | atrasos
 
-        // Días con marcaciones reales agrupados por fecha
-        $dias = DB::table("dbo.sg_control_persona as s")
-            ->where("s.nro_documento", $emp->id_emp)
-            ->whereBetween(DB::raw("DATE(s.fecha_hora)"), [$desde, $hasta])
-            ->selectRaw("DATE(s.fecha_hora) as dia")
-            ->groupByRaw("DATE(s.fecha_hora)")
-            ->pluck("dia");
+        // Marcaciones individuales del empleado en el rango
+        $marcaciones = DB::table("dbo.sg_control_persona")
+            ->where("nro_documento", $emp->id_emp)
+            ->whereBetween(DB::raw("DATE(fecha_hora)"), [$desde, $hasta])
+            ->orderBy("fecha_hora")
+            ->get(["concepto", "fecha_hora"]);
 
-        // Para cada día obtenemos marcaciones + cuadre si existe
+        // Cuadres en el rango (para atrasos)
+        $cuadres = DB::table("dbo.d2_cuadre_marcacion")
+            ->where("id_emp", $emp->id_emp)
+            ->whereBetween(DB::raw("DATE(fecha)"), [$desde, $hasta])
+            ->get()
+            ->keyBy(fn($c) => substr($c->fecha, 0, 10));
+
+        // Mapa de atraso por concepto
+        $atrasosPorConcepto = [
+            "ENTRADA"           => "atraso_entrada",
+            "ENTRADA DEL LUNCH" => "atraso_lunch",
+            "SALIDA"            => "atraso_salida",
+        ];
+
         $resultado = [];
-        foreach ($dias as $dia) {
-            $marcaciones = DB::table("dbo.sg_control_persona")
-                ->where("nro_documento", $emp->id_emp)
-                ->whereDate("fecha_hora", $dia)
-                ->orderBy("fecha_hora")
-                ->get(["concepto", "fecha_hora"]);
+        foreach ($marcaciones as $m) {
+            $dia    = substr($m->fecha_hora, 0, 10);
+            $cuadre = $cuadres[$dia] ?? null;
+            $campoAtraso = $atrasosPorConcepto[$m->concepto] ?? null;
+            $atraso = ($cuadre && $campoAtraso) ? ($cuadre->$campoAtraso ?? 0) : 0;
 
-            $entrada  = $marcaciones->firstWhere("concepto", "ENTRADA");
-            $salLunch = $marcaciones->firstWhere("concepto", "SALIDA AL LUNCH");
-            $entLunch = $marcaciones->firstWhere("concepto", "ENTRADA DEL LUNCH");
-            $salida   = $marcaciones->firstWhere("concepto", "SALIDA");
-
-            // Cuadre procesado si existe
-            $cuadre = DB::table("dbo.d2_cuadre_marcacion")
-                ->where("id_emp", $emp->id_emp)
-                ->whereDate("fecha", $dia)
-                ->first();
+            if ($tipo === "atrasos" && $atraso === 0) continue;
 
             $resultado[] = [
-                "fecha"              => $dia,
-                "falta"              => "N",
-                "hora_real_entrada"  => $entrada  ? substr($entrada->fecha_hora,  11, 5) : null,
-                "hora_real_sal_lunch"=> $salLunch ? substr($salLunch->fecha_hora, 11, 5) : null,
-                "hora_real_ent_lunch"=> $entLunch ? substr($entLunch->fecha_hora, 11, 5) : null,
-                "hora_real_sal"      => $salida   ? substr($salida->fecha_hora,   11, 5) : null,
-                "hora_turno_entrada" => $cuadre->hora_turno_entrada  ?? null,
-                "hora_turno_sal_lunch"=> $cuadre->hora_turno_sal_lunch ?? null,
-                "hora_turno_ent_lunch"=> $cuadre->hora_turno_ent_lunch ?? null,
-                "hora_turno_sal"     => $cuadre->hora_turno_sal      ?? null,
-                "atraso_entrada"     => $cuadre->atraso_entrada  ?? 0,
-                "atraso_lunch"       => $cuadre->atraso_lunch    ?? 0,
-                "atraso_salida"      => $cuadre->atraso_salida   ?? 0,
-                "horas_totales"      => $cuadre->horas_totales   ?? null,
-                "horas_decto"        => $cuadre->horas_decto     ?? 0,
+                "fecha"    => $dia,
+                "concepto" => $m->concepto,
+                "hora"     => substr($m->fecha_hora, 11, 5),
+                "atraso"   => $atraso,
             ];
         }
 
-        if ($tipo === "atrasos") {
-            $resultado = array_values(array_filter($resultado, function ($r) {
-                return $r["atraso_entrada"] > 0
-                    || $r["atraso_lunch"]   > 0
-                    || $r["atraso_salida"]  > 0
-                    || $r["falta"]          === "S";
-            }));
-        }
-
-        return response()->json($resultado);
+        return response()->json(array_values($resultado));
     }
 }
