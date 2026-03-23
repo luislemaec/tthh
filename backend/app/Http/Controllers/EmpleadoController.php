@@ -91,6 +91,7 @@ class EmpleadoController extends Controller
             "telefono"         => $request->telefono,
             "calle_y_numero"   => $request->calle_y_numero,
             "modalidad_laboral"=> $request->modalidad_laboral,
+            "id_jornada"       => $request->id_jornada,
         ]);
 	$emp->password = bcrypt($request->identificacion);
 	$emp->save();
@@ -140,6 +141,7 @@ class EmpleadoController extends Controller
             "telefono"         => $request->telefono          ?? $emp->telefono,
             "calle_y_numero"   => $request->calle_y_numero    ?? $emp->calle_y_numero,
             "modalidad_laboral"=> $request->modalidad_laboral ?? $emp->modalidad_laboral,
+            "id_jornada"       => $request->id_jornada        ?? $emp->id_jornada,
         ]);
 
         // Actualizar email

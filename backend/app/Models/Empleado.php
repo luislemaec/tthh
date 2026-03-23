@@ -18,7 +18,7 @@ class Empleado extends Authenticatable
 
     protected $fillable = [
         "id_emp", "identificacion", "nombre_emp", "apellido_emp",
-        "id_depto", "estado", "tipo_contrato", "jornada_id",
+        "id_depto", "estado", "tipo_contrato", "jornada_id", "id_jornada",
         "fecha_ingreso", "fecha_salida", "ubicacion", "sueldo",
         "nivel", "cargo_empleado", "telefono", "calle_y_numero",
         "campo_supervisor", "modalidad_laboral",
@@ -44,7 +44,7 @@ class Empleado extends Authenticatable
 
     public function jornada()
     {
-        return $this->belongsTo(Jornada::class, "jornada_id", "id_jornada");
+        return $this->belongsTo(Jornada::class, "id_jornada", "id_jornada");
     }
 
     public function getAuthPassword()

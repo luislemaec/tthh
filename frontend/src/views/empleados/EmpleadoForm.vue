@@ -88,6 +88,16 @@
             </select>
           </div>
           <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Jornada Laboral</label>
+            <select v-model="form.id_jornada"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">Seleccionar...</option>
+              <option v-for="j in jornadas" :key="j.id_jornada" :value="j.id_jornada">
+                {{ j.descripcion }} ({{ j.normal }}h)
+              </option>
+            </select>
+          </div>
+          <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Estado</label>
             <select v-model="form.estado"
               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -157,6 +167,7 @@ const esEdicion     = computed(() => !!route.params.id)
 const guardando     = ref(false)
 const error         = ref("")
 const departamentos = ref([])
+const jornadas      = ref([])
 
 const form = ref({
   nombres:        "",
@@ -169,6 +180,7 @@ const form = ref({
   cargo_empleado: "",
   tipo_contrato:     "",
   modalidad_laboral: "",
+  id_jornada:        "",
   estado:            "ACTIVO",
   fecha_ingreso:  "",
   fecha_salida:   "",
@@ -195,6 +207,7 @@ const guardar = async () => {
       nivel:          form.value.nivel,
       tipo_contrato:     form.value.tipo_contrato,
       modalidad_laboral: form.value.modalidad_laboral,
+      id_jornada:        form.value.id_jornada || null,
       email:             form.value.email,
     }
 
@@ -219,6 +232,8 @@ const guardar = async () => {
 onMounted(async () => {
   const { data: deps } = await api.get("/departamentos")
   departamentos.value = deps
+  const { data: jors } = await api.get("/admin/jornadas")
+  jornadas.value = jors
 
   if (esEdicion.value) {
     const { data } = await api.get("/empleados/" + route.params.id)
@@ -236,6 +251,7 @@ onMounted(async () => {
     form.value.direccion       = data.calle_y_numero || ""
     form.value.tipo_contrato     = data.tipo_contrato?.trim()     || ""
     form.value.modalidad_laboral = data.modalidad_laboral?.trim() || ""
+    form.value.id_jornada        = data.id_jornada                || ""
     form.value.email             = data.emails?.[0]?.mail         || ""
   }
 })
