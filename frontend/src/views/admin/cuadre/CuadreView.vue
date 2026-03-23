@@ -137,11 +137,11 @@
                 <span v-else class="text-gray-300">—</span>
               </td>
               <td class="px-3 py-2 text-center font-mono text-gray-700">
-                {{ r.horas_totales != null ? Number(r.horas_totales).toFixed(2) + 'h' : '—' }}
+                {{ r.horas_totales != null ? decimalAHora(r.horas_totales) : '—' }}
               </td>
               <td class="px-3 py-2 text-center">
                 <span v-if="r.horas_decto > 0" class="text-red-700 font-medium">
-                  {{ Number(r.horas_decto).toFixed(2) }}h
+                  {{ minutosATexto(Math.round(r.horas_decto * 60)) }}
                 </span>
                 <span v-else class="text-gray-300">—</span>
               </td>
@@ -188,8 +188,8 @@ function minutosATexto(min) {
 const totalFaltas     = computed(() => registros.value.filter(r => r.falta === 'S').length)
 const totalConAtraso  = computed(() => registros.value.filter(r => r.atraso_entrada > 0 || r.atraso_lunch > 0 || r.atraso_salida > 0).length)
 const totalHorasDecto = computed(() => {
-  const total = registros.value.reduce((acc, r) => acc + Number(r.horas_decto || 0), 0)
-  return total.toFixed(2) + 'h'
+  const totalMin = registros.value.reduce((acc, r) => acc + Math.round(Number(r.horas_decto || 0) * 60), 0)
+  return minutosATexto(totalMin) || '0min'
 })
 
 // ── Cargar datos ──────────────────────────────────────────────────────────────
