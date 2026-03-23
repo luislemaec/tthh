@@ -31,6 +31,7 @@ const routes = [
       { path: 'admin/jornadas', name: 'AdminJornadas', component: () => import('@/views/admin/jornadas/JornadasView.vue') },
       { path: 'admin/calendario', name: 'AdminCalendario', component: () => import('@/views/admin/calendario/CalendarioView.vue') },
       { path: 'admin/configuracion', name: 'AdminConfiguracion', component: () => import('@/views/admin/configuracion/ConfiguracionView.vue') },
+      { path: 'admin/cuadre', name: 'AdminCuadre', component: () => import('@/views/admin/cuadre/CuadreView.vue') },
       { path: 'supervisores', name: 'Supervisores', component: () => import('@/views/supervisores/SupervisoresView.vue') },
     ],
   },
