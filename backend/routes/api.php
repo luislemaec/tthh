@@ -1,6 +1,7 @@
 <?php
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\RolController;
+use App\Http\Controllers\CuadreController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EmpleadoController;
 use App\Http\Controllers\JornadaController;
@@ -106,6 +107,10 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::patch("/permisos/{id}/aprobar", [PermisosController::class, "aprobar"]);
     Route::patch("/permisos/{id}/negar",   [PermisosController::class, "negar"]);
     Route::delete("/permisos/{id}",          [PermisosController::class, "destroy"]);
+
+    // Cuadre de marcaciones
+    Route::post("/cuadre/procesar",  [CuadreController::class, "procesar"]);
+    Route::get("/cuadre/listado",    [CuadreController::class, "listado"]);
 
     // Vacaciones
     Route::get("/vacaciones/mi-rol",            [VacacionesController::class, "miRol"]);
