@@ -50,6 +50,85 @@
       </div>
     </div>
 
+    <!-- Historial personal de marcaciones -->
+    <div class="bg-white rounded-xl shadow p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-bold text-gray-800">Mis Marcaciones</h2>
+        <div class="flex flex-wrap gap-2 items-center">
+          <input v-model="histFechaDesde" type="date" @change="cargarHistorial"
+            class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <input v-model="histFechaHasta" type="date" @change="cargarHistorial"
+            class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <select v-model="histTipo" @change="cargarHistorial"
+            class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="todos">Todos</option>
+            <option value="atrasos">Solo atrasos / faltas</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50 border-b">
+            <tr>
+              <th class="text-left px-3 py-3 text-gray-600 font-medium">Fecha</th>
+              <th class="text-center px-3 py-3 text-gray-600 font-medium">Estado</th>
+              <th class="text-center px-3 py-3 text-gray-600 font-medium">Entrada</th>
+              <th class="text-center px-3 py-3 text-gray-600 font-medium">Atraso entrada</th>
+              <th class="text-center px-3 py-3 text-gray-600 font-medium">Salida lunch</th>
+              <th class="text-center px-3 py-3 text-gray-600 font-medium">Ret. lunch</th>
+              <th class="text-center px-3 py-3 text-gray-600 font-medium">Salida</th>
+              <th class="text-center px-3 py-3 text-gray-600 font-medium">Sal. anticipada</th>
+              <th class="text-center px-3 py-3 text-gray-600 font-medium">H. trabajadas</th>
+              <th class="text-center px-3 py-3 text-gray-600 font-medium">H. a descontar</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="cargandoHistorial">
+              <td colspan="10" class="text-center py-8 text-gray-400">Cargando...</td>
+            </tr>
+            <tr v-else-if="historial.length === 0">
+              <td colspan="10" class="text-center py-8 text-gray-400">No hay registros en este período</td>
+            </tr>
+            <tr v-for="r in historial" :key="r.fecha"
+              :class="['border-b hover:bg-gray-50', r.falta === 'S' ? 'bg-red-50' : '']">
+              <td class="px-3 py-2 font-medium whitespace-nowrap">{{ formatFecha(r.fecha) }}</td>
+              <td class="px-3 py-2 text-center">
+                <span :class="r.falta === 'S'
+                  ? 'bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-xs font-medium'
+                  : 'bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-medium'">
+                  {{ r.falta === 'S' ? 'FALTA' : 'OK' }}
+                </span>
+              </td>
+              <td class="px-3 py-2 text-center font-mono text-gray-700">
+                {{ decimalAHora(r.hora_real_entrada) }}
+                <span class="block text-xs text-gray-400">prog: {{ decimalAHora(r.hora_turno_entrada) }}</span>
+              </td>
+              <td class="px-3 py-2 text-center">
+                <span v-if="r.atraso_entrada > 0" class="text-amber-700 font-medium">{{ minATexto(r.atraso_entrada) }}</span>
+                <span v-else class="text-gray-300">—</span>
+              </td>
+              <td class="px-3 py-2 text-center font-mono text-gray-700">{{ decimalAHora(r.hora_real_sal_lunch) }}</td>
+              <td class="px-3 py-2 text-center">
+                <span v-if="r.atraso_lunch > 0" class="text-amber-700 font-medium">{{ minATexto(r.atraso_lunch) }}</span>
+                <span v-else class="text-gray-300">—</span>
+              </td>
+              <td class="px-3 py-2 text-center font-mono text-gray-700">{{ decimalAHora(r.hora_real_sal) }}</td>
+              <td class="px-3 py-2 text-center">
+                <span v-if="r.atraso_salida > 0" class="text-blue-700 font-medium">{{ minATexto(r.atraso_salida) }}</span>
+                <span v-else class="text-gray-300">—</span>
+              </td>
+              <td class="px-3 py-2 text-center font-mono text-gray-700">{{ decimalAHora(r.horas_totales) }}</td>
+              <td class="px-3 py-2 text-center">
+                <span v-if="r.horas_decto > 0" class="text-red-700 font-medium">{{ minATexto(Math.round(r.horas_decto * 60)) }}</span>
+                <span v-else class="text-gray-300">—</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- Panel administrador: listado del dia -->
     <div v-if="esAdmin" class="bg-white rounded-xl shadow p-6">
       <div class="flex items-center justify-between mb-4">
@@ -128,6 +207,52 @@ const filtroFecha  = ref(new Date().toISOString().substring(0, 10))
 const filtroBuscar = ref("")
 const horaActual   = ref("")
 const fechaHoy     = ref("")
+
+// Historial personal
+const historial         = ref([])
+const cargandoHistorial = ref(false)
+const histTipo          = ref("todos")
+const histFechaDesde    = ref(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().substring(0, 10))
+const histFechaHasta    = ref(new Date().toISOString().substring(0, 10))
+
+const decimalAHora = (val) => {
+  if (val == null) return "—"
+  const h = Math.floor(val)
+  const m = Math.round((val - h) * 60)
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
+}
+
+const minATexto = (min) => {
+  if (!min || min === 0) return "—"
+  const h = Math.floor(min / 60)
+  const m = min % 60
+  if (h > 0 && m > 0) return `${h}h ${m}min`
+  if (h > 0) return `${h}h`
+  return `${m}min`
+}
+
+const formatFecha = (fecha) => {
+  if (!fecha) return "—"
+  return fecha.toString().substring(0, 10)
+}
+
+const cargarHistorial = async () => {
+  cargandoHistorial.value = true
+  try {
+    const { data } = await api.get("/asistencia/mi-reporte", {
+      params: {
+        fecha_desde: histFechaDesde.value,
+        fecha_hasta: histFechaHasta.value,
+        tipo: histTipo.value,
+      }
+    })
+    historial.value = data
+  } catch (e) {
+    historial.value = []
+  } finally {
+    cargandoHistorial.value = false
+  }
+}
 
 let intervalo = null
 
@@ -235,6 +360,7 @@ onMounted(async () => {
   actualizarHora()
   intervalo = setInterval(actualizarHora, 1000)
   await cargarEstado()
+  await cargarHistorial()
   if (esAdmin.value) await cargarListado()
 })
 

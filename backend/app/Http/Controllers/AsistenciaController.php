@@ -164,4 +164,39 @@ class AsistenciaController extends Controller
 
         return response()->json($query->get());
     }
+
+    // Historial personal del empleado autenticado (desde d2_cuadre_marcacion)
+    public function miReporte(Request $request)
+    {
+        $emp = $request->user();
+
+        $desde = $request->get("fecha_desde", now()->startOfMonth()->toDateString());
+        $hasta = $request->get("fecha_hasta", now()->toDateString());
+        $tipo  = $request->get("tipo", "todos"); // todos | atrasos
+
+        $query = DB::table("dbo.d2_cuadre_marcacion")
+            ->where("id_emp", $emp->id_emp)
+            ->whereBetween(DB::raw("DATE(fecha)"), [$desde, $hasta])
+            ->select(
+                "fecha",
+                "falta",
+                "hora_turno_entrada", "hora_real_entrada", "atraso_entrada",
+                "hora_turno_sal_lunch", "hora_real_sal_lunch",
+                "hora_turno_ent_lunch", "hora_real_ent_lunch", "atraso_lunch",
+                "hora_turno_sal", "hora_real_sal", "atraso_salida",
+                "horas_totales", "horas_decto"
+            )
+            ->orderBy("fecha");
+
+        if ($tipo === "atrasos") {
+            $query->where(function ($q) {
+                $q->where("atraso_entrada", ">", 0)
+                  ->orWhere("atraso_lunch",  ">", 0)
+                  ->orWhere("atraso_salida", ">", 0)
+                  ->orWhere("falta", "S");
+            });
+        }
+
+        return response()->json($query->get());
+    }
 }

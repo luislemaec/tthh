@@ -87,10 +87,11 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::get("/supervisores/empleado/{id_emp}",        [SupervisorController::class, "supervisorDeEmpleado"]);
 
     // Asistencia
-    Route::get("/asistencia/mi-estado",  [AsistenciaController::class, "miEstado"]);
-    Route::post("/asistencia/marcar",    [AsistenciaController::class, "marcar"]);
-    Route::get("/asistencia/listado",    [AsistenciaController::class, "listado"]);
-    Route::get("/asistencia/reporte",    [AsistenciaController::class, "reporte"]);
+    Route::get("/asistencia/mi-estado",   [AsistenciaController::class, "miEstado"]);
+    Route::post("/asistencia/marcar",     [AsistenciaController::class, "marcar"]);
+    Route::get("/asistencia/listado",     [AsistenciaController::class, "listado"]);
+    Route::get("/asistencia/reporte",     [AsistenciaController::class, "reporte"]);
+    Route::get("/asistencia/mi-reporte",  [AsistenciaController::class, "miReporte"]);
 
     // Importacion
     Route::get("/importacion/plantilla",  [ImportacionController::class, "plantilla"]);
