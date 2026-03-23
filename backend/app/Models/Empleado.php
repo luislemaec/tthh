@@ -42,6 +42,11 @@ class Empleado extends Authenticatable
                      ->where("estado", "ACTIVO");
     }
 
+    public function jornada()
+    {
+        return $this->belongsTo(Jornada::class, "jornada_id", "id_jornada");
+    }
+
     public function getAuthPassword()
     {
         return $this->password;

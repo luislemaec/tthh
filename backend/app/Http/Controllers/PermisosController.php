@@ -5,6 +5,8 @@ use App\Models\Permiso;
 use App\Models\Razon;
 use App\Models\Empleado;
 use App\Models\Supervisor;
+use App\Models\CabeceraVacacion;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -202,6 +204,45 @@ class PermisosController extends Controller
             "estado_permiso" => "APROBADO",
             "usuario"        => $supervisor->id_emp,
         ]);
+
+        // Calcular días a descontar según jornada del empleado
+        $empleado     = Empleado::with("jornada")->find($permiso->id_emp);
+        $horasJornada = $empleado?->jornada ? (float) $empleado->jornada->normal : 8.0;
+
+        if ($permiso->todo_dia === "SI") {
+            $diasDescuento = Carbon::parse($permiso->fecha_desde)
+                ->diffInDays(Carbon::parse($permiso->fecha_hasta)) + 1;
+        } else {
+            $horas         = Carbon::parse($permiso->hora_desde)
+                ->diffInMinutes(Carbon::parse($permiso->hora_hasta)) / 60;
+            $diasDescuento = round($horas / $horasJornada, 4);
+        }
+
+        // Si es descontable → reducir saldo de vacaciones
+        if ($permiso->descontable === "SI") {
+            $cabecera = CabeceraVacacion::where("id_emp", $permiso->id_emp)->first();
+            if ($cabecera) {
+                $cabecera->dias_x_tomar_normal = max(0, (float)($cabecera->dias_x_tomar_normal ?? 0) - $diasDescuento);
+                $cabecera->total_dias_tomados  = round((float)($cabecera->total_dias_tomados  ?? 0) + $diasDescuento, 4);
+                $cabecera->save();
+            }
+        }
+
+        // Actualizar d2_cuadre_marcacion por cada día del permiso
+        $campo       = $permiso->descontable === "SI" ? "horas_decto" : "horaspermiso_pag";
+        $diasRango   = $permiso->todo_dia === "SI" ? $diasDescuento : 1;
+        $diasXDia    = $permiso->todo_dia === "SI" ? 1 : $diasDescuento;
+        $fechaActual = Carbon::parse($permiso->fecha_desde);
+
+        for ($i = 0; $i < $diasRango; $i++) {
+            DB::table("dbo.d2_cuadre_marcacion")
+                ->where("id_emp", $permiso->id_emp)
+                ->whereDate("fecha", $fechaActual->toDateString())
+                ->update([
+                    $campo => DB::raw("COALESCE($campo, 0) + $diasXDia"),
+                ]);
+            $fechaActual->addDay();
+        }
 
         return response()->json([
             "message" => "Permiso aprobado correctamente",
