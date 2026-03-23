@@ -101,19 +101,19 @@
                 </span>
               </td>
               <td class="px-3 py-2 text-center font-mono text-gray-700">
-                {{ decimalAHora(r.hora_real_entrada) }}
-                <span class="block text-xs text-gray-400">prog: {{ decimalAHora(r.hora_turno_entrada) }}</span>
+                {{ r.hora_real_entrada ?? '—' }}
+                <span v-if="r.hora_turno_entrada" class="block text-xs text-gray-400">prog: {{ decimalAHora(r.hora_turno_entrada) }}</span>
               </td>
               <td class="px-3 py-2 text-center">
                 <span v-if="r.atraso_entrada > 0" class="text-amber-700 font-medium">{{ minATexto(r.atraso_entrada) }}</span>
                 <span v-else class="text-gray-300">—</span>
               </td>
-              <td class="px-3 py-2 text-center font-mono text-gray-700">{{ decimalAHora(r.hora_real_sal_lunch) }}</td>
+              <td class="px-3 py-2 text-center font-mono text-gray-700">{{ r.hora_real_sal_lunch ?? '—' }}</td>
               <td class="px-3 py-2 text-center">
                 <span v-if="r.atraso_lunch > 0" class="text-amber-700 font-medium">{{ minATexto(r.atraso_lunch) }}</span>
                 <span v-else class="text-gray-300">—</span>
               </td>
-              <td class="px-3 py-2 text-center font-mono text-gray-700">{{ decimalAHora(r.hora_real_sal) }}</td>
+              <td class="px-3 py-2 text-center font-mono text-gray-700">{{ r.hora_real_sal ?? '—' }}</td>
               <td class="px-3 py-2 text-center">
                 <span v-if="r.atraso_salida > 0" class="text-blue-700 font-medium">{{ minATexto(r.atraso_salida) }}</span>
                 <span v-else class="text-gray-300">—</span>
