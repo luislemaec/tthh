@@ -202,7 +202,7 @@ class AsistenciaController extends Controller
             $campoAtraso = $atrasosPorConcepto[$m->concepto] ?? null;
             $atraso = ($cuadre && $campoAtraso) ? ($cuadre->$campoAtraso ?? 0) : 0;
 
-            if ($tipo === "atrasos" && $atraso === 0) continue;
+            if ($tipo === "atrasos" && $atraso <= 0) continue;
 
             $resultado[] = [
                 "fecha"    => $dia,
