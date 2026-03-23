@@ -338,14 +338,24 @@ public function estadistica(Request $request)
         'fecha_hasta' => 'required|date',
     ]);
 
-    $datos = DB::table('dbo.d2_permiso as p')
+    $emp        = $request->user();
+    $esAdmin    = $this->esAdminOTH($emp->id_emp);
+
+    $query = DB::table('dbo.d2_permiso as p')
         ->join('dbo.ad_empleado as sup', 'p.usuario', '=', 'sup.id_emp')
         ->join('dbo.ad_empleado as emp', 'p.id_emp', '=', 'emp.id_emp')
         ->whereBetween('p.fecha_desde', [$request->fecha_desde, $request->fecha_hasta])
         ->whereIn('p.estado_permiso', ['APROBADO', 'NEGADO', 'ELIMINADO'])
         ->where('p.terminal', '!=', '0.0.0.0')
-        ->where('p.observaciones', '!=', 'MIGRACION')
-        ->select(
+        ->where('p.observaciones', '!=', 'MIGRACION');
+
+    // Supervisor solo ve los empleados de su departamento
+    if (!$esAdmin) {
+        $empleadosPropios = $this->empleadosDeSupervisor($emp->id_emp);
+        $query->whereIn('p.id_emp', $empleadosPropios);
+    }
+
+    $datos = $query->select(
             'sup.id_emp as id_supervisor',
             DB::raw("sup.apellido_emp || ' ' || sup.nombre_emp as nombre_supervisor"),
             'p.estado_permiso',
