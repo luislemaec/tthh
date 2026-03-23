@@ -24,7 +24,7 @@ class VacacionesController extends Controller
         $fechaCorteConfig = Configuracion::find("FECHA_CORTE_VACACIONES");
         $fechaCorte       = $fechaCorteConfig ? Carbon::parse($fechaCorteConfig->valor) : Carbon::today();
 
-        $diasAcumulados = round(Carbon::today()->diffInDays($fechaCorte) / 30 * $tasa, 2);
+        $diasAcumulados = round(max(0, $fechaCorte->diffInDays(Carbon::today())) / 30 * $tasa, 2);
         $saldoInicial   = (float) ($cabecera->dias_adicionales  ?? 0);
         $tomados        = (float) ($cabecera->total_dias_tomados ?? 0);
         $disponibles    = round($saldoInicial + $diasAcumulados - $tomados, 2);
