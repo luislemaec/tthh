@@ -33,7 +33,15 @@ class ReportesController extends Controller
                 'c.atraso_entrada',
                 'c.atraso_lunch',
                 'c.atraso_salida',
-                'c.horas_decto'
+                'c.horas_decto',
+                // Minutos justificados por permisos aprobados en esa fecha
+                DB::raw("COALESCE((
+                    SELECT SUM(EXTRACT(EPOCH FROM (p.hora_hasta::timestamp - p.hora_desde::timestamp)) / 60)
+                    FROM dbo.d2_permiso p
+                    WHERE p.id_emp = c.id_emp
+                      AND DATE(p.fecha_desde) = DATE(c.fecha)
+                      AND p.estado_permiso = 'APROBADO'
+                ), 0) as minutos_justificados")
             );
 
         if ($request->filled('id_emp')) {
@@ -43,9 +51,23 @@ class ReportesController extends Controller
             $query->where('e.id_depto', $request->id_depto);
         }
 
-        return response()->json(
-            $query->orderBy('c.fecha')->orderByRaw('e.apellido_emp')->get()
-        );
+        $datos = $query->orderBy('c.fecha')->orderByRaw('e.apellido_emp')->get();
+
+        // Filtrar según justificación
+        $resultado = $datos->map(function ($r) {
+            $atrasoTotal = $r->atraso_entrada + $r->atraso_lunch + $r->atraso_salida;
+            $justificado = (float) $r->minutos_justificados;
+
+            if ($justificado >= $atrasoTotal) {
+                return null; // Totalmente justificado → no aparece
+            }
+
+            $r->justificacion = $justificado > 0 ? 'PARCIAL' : 'NINGUNA';
+            $r->minutos_pendientes = max(0, $atrasoTotal - $justificado);
+            return $r;
+        })->filter()->values();
+
+        return response()->json($resultado);
     }
 
     // Reporte 2: Marcaciones faltantes (al menos una de las 4 sin registrar)

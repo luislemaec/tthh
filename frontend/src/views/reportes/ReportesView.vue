@@ -71,14 +71,15 @@
               <th class="text-center px-4 py-3 text-amber-600 font-medium">Atr. Lunch</th>
               <th class="text-center px-4 py-3 text-blue-600 font-medium">Sal. Anticipada</th>
               <th class="text-center px-4 py-3 text-red-600 font-medium">H. a Descontar</th>
+              <th class="text-center px-4 py-3 text-gray-600 font-medium">Justificación</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="cargando">
-              <td colspan="9" class="text-center py-10 text-gray-400">Cargando...</td>
+              <td colspan="10" class="text-center py-10 text-gray-400">Cargando...</td>
             </tr>
             <tr v-else-if="datos.length === 0">
-              <td colspan="9" class="text-center py-10 text-gray-400">Sin resultados para el período seleccionado</td>
+              <td colspan="10" class="text-center py-10 text-gray-400">Sin resultados para el período seleccionado</td>
             </tr>
             <tr v-for="(r, i) in datos" :key="i" class="border-b hover:bg-gray-50">
               <td class="px-4 py-3 font-mono text-xs whitespace-nowrap">{{ r.fecha?.substring(0, 10) }}</td>
@@ -101,6 +102,16 @@
               <td class="px-4 py-3 text-center">
                 <span v-if="r.horas_decto > 0" class="text-red-700 font-medium">{{ minATexto(Math.round(r.horas_decto * 60)) }}</span>
                 <span v-else class="text-gray-300">—</span>
+              </td>
+              <td class="px-4 py-3 text-center">
+                <span v-if="r.justificacion === 'PARCIAL'"
+                  class="bg-orange-100 text-orange-700 px-2 py-0.5 rounded text-xs font-medium"
+                  :title="'Pendiente: ' + minATexto(r.minutos_pendientes)">
+                  Parcial ({{ minATexto(r.minutos_pendientes) }} pend.)
+                </span>
+                <span v-else class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-medium">
+                  Sin justificar
+                </span>
               </td>
             </tr>
           </tbody>
