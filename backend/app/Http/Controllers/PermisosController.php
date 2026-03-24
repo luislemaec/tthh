@@ -125,17 +125,30 @@ class PermisosController extends Controller
 
         $razon = Razon::findOrFail($request->sec_permiso);
 
-        // Verificar que no tenga un permiso en las mismas fechas
-        $existe = Permiso::where("id_emp", $emp->id_emp)
-            ->where("estado_permiso", "!=", "NEGADO")
+        // Verificar que no tenga un permiso con fechas/horas que se crucen
+        $queryExiste = Permiso::where("id_emp", $emp->id_emp)
+            ->whereNotIn("estado_permiso", ["NEGADO", "ELIMINADO"])
             ->where(function($q) use ($request) {
                 $q->whereBetween("fecha_desde", [$request->fecha_desde, $request->fecha_hasta])
                   ->orWhereBetween("fecha_hasta", [$request->fecha_desde, $request->fecha_hasta]);
-            })->exists();
+            });
 
-        if ($existe) {
+        // Si el nuevo permiso NO es todo el día, solo bloquear si hay cruce de horas
+        if ($request->todo_dia !== "SI") {
+            $horaDesdeNuevo = $request->fecha_desde . " " . $request->hora_desde . ":00";
+            $horaHastaNuevo = $request->fecha_hasta . " " . $request->hora_hasta . ":00";
+            $queryExiste->where(function($q) use ($horaDesdeNuevo, $horaHastaNuevo) {
+                $q->where("todo_dia", "SI")
+                  ->orWhere(function($q2) use ($horaDesdeNuevo, $horaHastaNuevo) {
+                      $q2->where("hora_desde", "<", $horaHastaNuevo)
+                         ->where("hora_hasta", ">", $horaDesdeNuevo);
+                  });
+            });
+        }
+
+        if ($queryExiste->exists()) {
             return response()->json([
-                "message" => "Ya tienes un permiso registrado en esas fechas"
+                "message" => "Ya tienes un permiso registrado en ese horario"
             ], 422);
         }
 
