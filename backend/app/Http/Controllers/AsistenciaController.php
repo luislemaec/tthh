@@ -172,7 +172,7 @@ class AsistenciaController extends Controller
 
         $desde = $request->get("fecha_desde", now()->startOfMonth()->toDateString());
         $hasta = $request->get("fecha_hasta", now()->toDateString());
-        $tipo  = $request->get("tipo", "todos"); // todos | atrasos
+        $tipo  = $request->get("tipo", "todos"); // todos | justificados | injustificados
 
         // Marcaciones individuales del empleado en el rango
         $marcaciones = DB::table("dbo.sg_control_persona")
@@ -188,6 +188,16 @@ class AsistenciaController extends Controller
             ->get()
             ->keyBy(fn($c) => substr($c->fecha, 0, 10));
 
+        // Minutos de permisos aprobados por día
+        $permisos = DB::table("dbo.d2_permiso")
+            ->where("id_emp", $emp->id_emp)
+            ->where("estado_permiso", "APROBADO")
+            ->whereBetween(DB::raw("DATE(fecha_desde)"), [$desde, $hasta])
+            ->selectRaw("DATE(fecha_desde) as dia, SUM(EXTRACT(EPOCH FROM (hora_hasta::timestamp - hora_desde::timestamp)) / 60) as minutos")
+            ->groupByRaw("DATE(fecha_desde)")
+            ->get()
+            ->keyBy("dia");
+
         // Mapa de atraso por concepto
         $atrasosPorConcepto = [
             "ENTRADA"           => "atraso_entrada",
@@ -197,18 +207,25 @@ class AsistenciaController extends Controller
 
         $resultado = [];
         foreach ($marcaciones as $m) {
-            $dia    = substr($m->fecha_hora, 0, 10);
-            $cuadre = $cuadres[$dia] ?? null;
+            $dia         = substr($m->fecha_hora, 0, 10);
+            $cuadre      = $cuadres[$dia] ?? null;
             $campoAtraso = $atrasosPorConcepto[$m->concepto] ?? null;
-            $atraso = ($cuadre && $campoAtraso) ? ($cuadre->$campoAtraso ?? 0) : 0;
+            $atraso      = ($cuadre && $campoAtraso) ? (int)($cuadre->$campoAtraso ?? 0) : 0;
 
-            if ($tipo === "atrasos" && $atraso <= 0) continue;
+            // Minutos justificados ese día
+            $minJustificados = isset($permisos[$dia]) ? (float)$permisos[$dia]->minutos : 0;
+            $tieneJustificacion = $minJustificados > 0;
+
+            // Aplicar filtro
+            if ($tipo === "justificados" && ($atraso <= 0 || !$tieneJustificacion)) continue;
+            if ($tipo === "injustificados" && ($atraso <= 0 || $tieneJustificacion)) continue;
 
             $resultado[] = [
-                "fecha"    => $dia,
-                "concepto" => $m->concepto,
-                "hora"     => substr($m->fecha_hora, 11, 5),
-                "atraso"   => $atraso,
+                "fecha"         => $dia,
+                "concepto"      => $m->concepto,
+                "hora"          => substr($m->fecha_hora, 11, 5),
+                "atraso"        => $atraso,
+                "justificado"   => $atraso > 0 ? ($tieneJustificacion ? ($minJustificados >= $atraso ? "TOTAL" : "PARCIAL") : "NO") : null,
             ];
         }
 

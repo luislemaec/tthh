@@ -62,7 +62,8 @@
           <select v-model="histTipo" @change="cargarHistorial"
             class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value="todos">Todos</option>
-            <option value="atrasos">Solo atrasos / faltas</option>
+            <option value="justificados">Atrasos justificados</option>
+            <option value="injustificados">Atrasos injustificados</option>
           </select>
         </div>
       </div>
@@ -75,6 +76,7 @@
               <th class="text-left px-3 py-3 text-gray-600 font-medium">Concepto</th>
               <th class="text-center px-3 py-3 text-gray-600 font-medium">Hora</th>
               <th class="text-center px-3 py-3 text-gray-600 font-medium">Atraso</th>
+              <th class="text-center px-3 py-3 text-gray-600 font-medium">Justificación</th>
             </tr>
           </thead>
           <tbody>
@@ -98,6 +100,12 @@
                 <span v-if="r.atraso > 0" class="text-red-700 font-medium">
                   {{ minATexto(r.atraso) }}
                 </span>
+                <span v-else class="text-gray-300">—</span>
+              </td>
+              <td class="px-3 py-2 text-center">
+                <span v-if="r.justificado === 'TOTAL'" class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs">Justificado</span>
+                <span v-else-if="r.justificado === 'PARCIAL'" class="bg-orange-100 text-orange-700 px-2 py-0.5 rounded text-xs">Parcial</span>
+                <span v-else-if="r.justificado === 'NO'" class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs">Sin justificar</span>
                 <span v-else class="text-gray-300">—</span>
               </td>
             </tr>
