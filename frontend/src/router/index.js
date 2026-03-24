@@ -33,6 +33,7 @@ const routes = [
       { path: 'admin/configuracion', name: 'AdminConfiguracion', component: () => import('@/views/admin/configuracion/ConfiguracionView.vue') },
       { path: 'admin/cuadre', name: 'AdminCuadre', component: () => import('@/views/admin/cuadre/CuadreView.vue') },
       { path: 'supervisores', name: 'Supervisores', component: () => import('@/views/supervisores/SupervisoresView.vue') },
+      { path: 'reportes', name: 'Reportes', component: () => import('@/views/reportes/ReportesView.vue') },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: '/' },

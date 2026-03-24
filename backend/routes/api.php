@@ -1,5 +1,6 @@
 <?php
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ReportesController;
 use App\Http\Controllers\RolController;
 use App\Http\Controllers\CuadreController;
 use App\Http\Controllers\DashboardController;
@@ -112,6 +113,10 @@ Route::middleware("auth:sanctum")->group(function () {
     // Cuadre de marcaciones
     Route::post("/cuadre/procesar",  [CuadreController::class, "procesar"]);
     Route::get("/cuadre/listado",    [CuadreController::class, "listado"]);
+
+    // Reportes
+    Route::get("/reportes/atrasos",               [ReportesController::class, "atrasos"]);
+    Route::get("/reportes/marcaciones-faltantes", [ReportesController::class, "marcacionesFaltantes"]);
 
     // Vacaciones
     Route::get("/vacaciones/mi-rol",            [VacacionesController::class, "miRol"]);
