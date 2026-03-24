@@ -72,15 +72,10 @@ class ProcesarCuadre extends Command
 
             // Atrasos en minutos
             $atrasoEntrada = $rEntrada  !== null ? max(0, round(($rEntrada  - $tEntrada)  * 60)) : 0;
-            // Opción A: si salió al lunch después de la hora programada de regreso,
-            // se le permite 30 min desde su salida real
-            if ($rEntLunch !== null) {
-                if ($rSalLunch !== null && $rSalLunch > $tEntLunch) {
-                    $limiteRegreso = $rSalLunch + (30 / 60);
-                    $atrasoLunch   = max(0, round(($rEntLunch - $limiteRegreso) * 60));
-                } else {
-                    $atrasoLunch   = max(0, round(($rEntLunch - $tEntLunch) * 60));
-                }
+            // Lunch = 30 minutos desde que timbró salida al lunch (sin importar la hora)
+            if ($rEntLunch !== null && $rSalLunch !== null) {
+                $limiteRegreso = $rSalLunch + (30 / 60);
+                $atrasoLunch   = max(0, round(($rEntLunch - $limiteRegreso) * 60));
             } else {
                 $atrasoLunch = 0;
             }
