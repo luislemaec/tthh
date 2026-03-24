@@ -16,7 +16,7 @@ class ReportesController extends Controller
 
         $query = DB::table('dbo.d2_cuadre_marcacion as c')
             ->join('dbo.ad_empleado as e', 'e.id_emp', '=', 'c.id_emp')
-            ->join('dbo.ad_depto as d', 'd.id_depto', '=', 'e.id_depto')
+            ->join('dbo.ad_departamento as d', 'd.id_depto', '=', 'e.id_depto')
             ->whereBetween(DB::raw('DATE(c.fecha)'), [$request->fecha_desde, $request->fecha_hasta])
             ->where(function ($q) {
                 $q->where('c.atraso_entrada', '>', 0)
@@ -58,7 +58,7 @@ class ReportesController extends Controller
 
         $query = DB::table('dbo.sg_control_persona as s')
             ->join('dbo.ad_empleado as e', 'e.id_emp', '=', 's.nro_documento')
-            ->join('dbo.ad_depto as d', 'd.id_depto', '=', 'e.id_depto')
+            ->join('dbo.ad_departamento as d', 'd.id_depto', '=', 'e.id_depto')
             ->whereBetween(DB::raw('DATE(s.fecha_hora)'), [$request->fecha_desde, $request->fecha_hasta])
             ->where('e.estado', 'ACTIVO')
             ->selectRaw("
