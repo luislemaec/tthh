@@ -9,7 +9,7 @@
           Cargar Parametros Base
         </button>
         <button @click="abrirModal()"
-          class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium">
+          class="bg-[#0b5447] text-white px-4 py-2 rounded-lg hover:bg-[#00372e] text-sm font-medium">
           + Nuevo Parametro
         </button>
       </div>
@@ -32,7 +32,7 @@
           <tr v-else-if="configuraciones.length === 0">
             <td colspan="3" class="text-center py-8 text-gray-400">
               No hay parametros registrados.
-              <button @click="cargarParametrosBase" class="text-blue-600 hover:underline ml-2">
+              <button @click="cargarParametrosBase" class="text-[#0b5447] hover:underline ml-2">
                 Cargar parametros base
               </button>
             </td>
@@ -40,13 +40,13 @@
           <tr v-for="c in configuraciones" :key="c.concepto" class="border-b hover:bg-gray-50">
             <td class="px-6 py-3 font-medium text-gray-800">{{ c.concepto }}</td>
             <td class="px-6 py-3">
-              <span class="bg-blue-50 text-blue-700 px-3 py-1 rounded-lg text-xs font-medium">
+              <span class="bg-blue-50 text-[#0b5447] px-3 py-1 rounded-lg text-xs font-medium">
                 {{ c.valor }}
               </span>
             </td>
             <td class="px-6 py-3 flex gap-3">
               <button @click="abrirModal(c)"
-                class="text-blue-600 hover:underline text-xs font-medium">
+                class="text-[#0b5447] hover:underline text-xs font-medium">
                 Editar
               </button>
               <button @click="eliminar(c.concepto)"
@@ -69,7 +69,7 @@
           <label class="block text-sm font-medium text-gray-600 mb-1">Concepto *</label>
           <input v-model="form.concepto" type="text" maxlength="120"
             placeholder="Ej: tolerancia_entrada"
-            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]"
             :disabled="form.editando" required />
           <p class="text-xs text-gray-400 mt-1">Nombre unico del parametro</p>
         </div>
@@ -77,7 +77,7 @@
           <label class="block text-sm font-medium text-gray-600 mb-1">Valor *</label>
           <input v-model="form.valor" type="text" maxlength="150"
             placeholder="Ej: 5"
-            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]"
             required />
         </div>
         <div v-if="error" class="text-red-600 text-sm bg-red-50 rounded p-2">{{ error }}</div>
@@ -87,7 +87,7 @@
             Cancelar
           </button>
           <button @click="guardar" :disabled="guardando"
-            class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-50">
+            class="px-4 py-2 rounded-lg bg-[#0b5447] text-white text-sm hover:bg-[#00372e] disabled:opacity-50">
             {{ guardando ? "Guardando..." : "Guardar" }}
           </button>
         </div>

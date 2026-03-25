@@ -2,18 +2,16 @@
 <!-- src/views/LoginView.vue -->
 <!-- ============================================================ -->
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-blue-900 to-blue-700 flex items-center justify-center p-4">
+  <div class="min-h-screen flex items-center justify-center p-4"
+       style="background: linear-gradient(135deg, #00372e 0%, #0b5447 50%, #579186 100%);">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
 
       <!-- Logo / Institución -->
       <div class="text-center mb-8">
-        <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
-          <svg class="w-8 h-8 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857
-                 M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857
-                 m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
-          </svg>
+        <div class="inline-flex items-center justify-center w-24 h-24 rounded-full mb-4"
+             style="background-color: #0b5447;">
+          <img src="@/assets/LOGOS-CONSEJOBLANCOH.png" alt="CORDICOM"
+               class="w-20 h-20 object-contain" />
         </div>
         <h1 class="text-2xl font-bold text-gray-800">CONSEJO DE COMUNICACIÓN</h1>
         <p class="text-gray-500 text-sm mt-1">Sistema de Talento Humano</p>
@@ -30,7 +28,7 @@
             type="text"
             placeholder="Ingrese su cédula"
             class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2
-                   focus:ring-blue-500 focus:border-transparent outline-none transition"
+                   focus:ring-[#579186] focus:border-transparent outline-none transition"
             :disabled="loading"
             required
           />
@@ -44,7 +42,7 @@
               :type="showPass ? 'text' : 'password'"
               placeholder="Ingrese su contraseña"
               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2
-                     focus:ring-blue-500 focus:border-transparent outline-none transition pr-12"
+                     focus:ring-[#579186] focus:border-transparent outline-none transition pr-12"
               :disabled="loading"
               required
             />
@@ -78,9 +76,9 @@
         <button
           type="submit"
           :disabled="loading"
-          class="w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3 rounded-lg
-                 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex
-                 items-center justify-center gap-2">
+          class="w-full text-white font-semibold py-3 rounded-lg transition duration-200
+                 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2
+                 bg-[#0b5447] hover:bg-[#00372e]">
           <svg v-if="loading" class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
             <path class="opacity-75" fill="currentColor"

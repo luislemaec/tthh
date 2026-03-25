@@ -3,7 +3,7 @@
     <div class="flex items-center justify-between">
       <h1 class="text-2xl font-bold text-gray-800">Turnos</h1>
       <button @click="abrirModal()"
-        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium">
+        class="bg-[#0b5447] text-white px-4 py-2 rounded-lg hover:bg-[#00372e] text-sm font-medium">
         + Nuevo Turno
       </button>
     </div>
@@ -29,7 +29,7 @@
               Horarios
             </button>
             <button @click="abrirModal(t)"
-              class="bg-blue-100 text-blue-700 px-3 py-1 rounded-lg text-xs font-medium hover:bg-blue-200">
+              class="bg-blue-100 text-[#0b5447] px-3 py-1 rounded-lg text-xs font-medium hover:bg-blue-200">
               Editar
             </button>
             <button @click="eliminar(t.id_turno)"
@@ -66,18 +66,18 @@
         <div>
           <label class="block text-sm font-medium text-gray-600 mb-1">Descripcion *</label>
           <input v-model="form.descripcion" type="text" placeholder="Ej: TURNO MANANA"
-            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Horas Normales</label>
             <input v-model="form.horas_normales" type="number" min="1" max="24"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Color</label>
             <select v-model="form.color"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
               <option value="#3b82f6">Azul</option>
               <option value="#10b981">Verde</option>
               <option value="#f59e0b">Amarillo</option>
@@ -92,7 +92,7 @@
           <button @click="modal = false"
             class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
           <button @click="guardar" :disabled="guardando"
-            class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-50">
+            class="px-4 py-2 rounded-lg bg-[#0b5447] text-white text-sm hover:bg-[#00372e] disabled:opacity-50">
             {{ guardando ? "Guardando..." : "Guardar" }}
           </button>
         </div>
@@ -111,7 +111,7 @@
             <div>
               <label class="block text-xs font-medium text-gray-500 mb-1">Concepto</label>
               <select v-model="h.concepto"
-                class="w-full border rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                class="w-full border rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
                 <option value="ENTRADA">ENTRADA</option>
                 <option value="SALIDA AL LUNCH">SALIDA AL LUNCH</option>
                 <option value="ENTRADA DEL LUNCH">ENTRADA DEL LUNCH</option>
@@ -122,7 +122,7 @@
             <div>
               <label class="block text-xs font-medium text-gray-500 mb-1">Hora</label>
               <input v-model="h.hora" type="time"
-                class="w-full border rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                class="w-full border rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
             </div>
             <div class="flex items-end pb-1">
               <button @click="quitarHorario(idx)"

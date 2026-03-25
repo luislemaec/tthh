@@ -3,7 +3,7 @@
     <div class="flex items-center justify-between">
       <h1 class="text-2xl font-bold text-gray-800">Razones de Permiso</h1>
       <button @click="abrirModal()"
-        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium">
+        class="bg-[#0b5447] text-white px-4 py-2 rounded-lg hover:bg-[#00372e] text-sm font-medium">
         + Nueva Razón
       </button>
     </div>
@@ -54,13 +54,13 @@
         <div>
           <label class="block text-sm font-medium text-gray-600 mb-1">Descripción *</label>
           <input v-model="form.descripcion" type="text" placeholder="Ej: ENFERMEDAD"
-            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Tipo de Razón</label>
             <select v-model="form.tipo_razon"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
               <option value="">Seleccionar...</option>
               <option value="PERMISO">PERMISO</option>
               <option value="VACACION">VACACION</option>
@@ -71,7 +71,7 @@
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">¿Descontable? *</label>
             <select v-model="form.descontable"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
               <option value="SI">SI</option>
               <option value="NO">NO</option>
             </select>
@@ -81,19 +81,19 @@
           <label class="block text-sm font-medium text-gray-600 mb-1">Leyenda de Justificacion</label>
           <input v-model="form.leyenda_justificacion" type="text" maxlength="250"
            placeholder="Ej: CERTIFICADO MEDICO"
-           class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+           class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-600 mb-1">Nomenclatura</label>
           <input v-model="form.nomenclatura" type="text" placeholder="Ej: ENF"
-            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
         </div>
         <div v-if="error" class="text-red-600 text-sm bg-red-50 rounded p-2">{{ error }}</div>
         <div class="flex justify-end gap-3 pt-2">
           <button @click="modal = false"
             class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
           <button @click="guardar" :disabled="guardando"
-            class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-50">
+            class="px-4 py-2 rounded-lg bg-[#0b5447] text-white text-sm hover:bg-[#00372e] disabled:opacity-50">
             {{ guardando ? 'Guardando...' : 'Guardar' }}
           </button>
         </div>

@@ -3,7 +3,7 @@
     <div class="flex items-center justify-between">
       <h1 class="text-2xl font-bold text-gray-800">Departamentos</h1>
       <button @click="abrirModal()"
-        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium">
+        class="bg-[#0b5447] text-white px-4 py-2 rounded-lg hover:bg-[#00372e] text-sm font-medium">
         + Nuevo Departamento
       </button>
     </div>
@@ -51,13 +51,13 @@
         <div>
           <label class="block text-sm font-medium text-gray-600 mb-1">Nombre *</label>
           <input v-model="form.nombre_depto" type="text" placeholder="Ej: RECURSOS HUMANOS"
-            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
         </div>
 
         <div>
           <label class="block text-sm font-medium text-gray-600 mb-1">Centro de Costo</label>
           <input v-model="form.centro_de_costo" type="text" placeholder="Ej: RRH"
-            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
         </div>
 
         <div v-if="error" class="text-red-600 text-sm bg-red-50 rounded p-2">{{ error }}</div>
@@ -66,7 +66,7 @@
           <button @click="modal = false"
             class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
           <button @click="guardar" :disabled="guardando"
-            class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-50">
+            class="px-4 py-2 rounded-lg bg-[#0b5447] text-white text-sm hover:bg-[#00372e] disabled:opacity-50">
             {{ guardando ? 'Guardando...' : 'Guardar' }}
           </button>
         </div>

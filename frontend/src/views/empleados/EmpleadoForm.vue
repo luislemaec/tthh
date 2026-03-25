@@ -18,32 +18,32 @@
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Nombres *</label>
             <input v-model="form.nombres" type="text" required
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Apellidos *</label>
             <input v-model="form.apellidos" type="text" required
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Cedula *</label>
             <input v-model="form.cedula" type="text" required maxlength="10"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Telefono</label>
             <input v-model="form.telefono" type="text"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
           <div class="sm:col-span-2">
             <label class="block text-sm font-medium text-gray-600 mb-1">Email</label>
             <input v-model="form.email" type="email"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
           <div class="sm:col-span-2">
             <label class="block text-sm font-medium text-gray-600 mb-1">Direccion</label>
             <input v-model="form.direccion" type="text"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
         </div>
       </div>
@@ -55,7 +55,7 @@
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Departamento *</label>
             <select v-model="form.departamento_id" required
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
               <option value="">Seleccionar...</option>
               <option v-for="d in departamentos" :key="d.id_depto" :value="d.id_depto">
                 {{ d.nombre_depto }}
@@ -65,12 +65,12 @@
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Cargo</label>
             <input v-model="form.cargo_empleado" type="text" placeholder="Ej: Analista de Sistemas"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Tipo de Contrato</label>
             <select v-model="form.tipo_contrato"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
               <option value="">Seleccionar...</option>
               <option value="LOSEP">LOSEP</option>
               <option value="CODIGO DEL TRABAJO">CÓDIGO DEL TRABAJO</option>
@@ -79,7 +79,7 @@
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Modalidad Laboral</label>
             <select v-model="form.modalidad_laboral"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
               <option value="">Seleccionar...</option>
               <option value="Nombramiento Definitivo">Nombramiento Definitivo</option>
               <option value="Nombramiento Provisional">Nombramiento Provisional</option>
@@ -90,7 +90,7 @@
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Jornada Laboral</label>
             <select v-model="form.id_jornada"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
               <option value="">Seleccionar...</option>
               <option v-for="j in jornadas" :key="j.id_jornada" :value="j.id_jornada">
                 {{ j.descripcion }} ({{ j.normal }}h)
@@ -100,7 +100,7 @@
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Estado</label>
             <select v-model="form.estado"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
               <option value="ACTIVO">Activo</option>
               <option value="INACTIVO">Inactivo</option>
             </select>
@@ -115,22 +115,22 @@
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Fecha de Ingreso *</label>
             <input v-model="form.fecha_ingreso" type="date" required
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
           <div v-if="form.estado === 'INACTIVO'">
            <label class="block text-sm font-medium text-gray-600 mb-1">Fecha de Salida *</label>
             <input v-model="form.fecha_salida" type="date"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Salario Base</label>
             <input v-model="form.salario" type="number" step="0.01" min="0"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Nivel</label>
             <input v-model="form.nivel" type="number" min="1"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
         </div>
       </div>
@@ -147,7 +147,7 @@
           Cancelar
         </router-link>
         <button type="submit" :disabled="guardando"
-          class="px-5 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+          class="px-5 py-2 rounded-lg bg-[#0b5447] text-white text-sm font-medium hover:bg-[#00372e] disabled:opacity-50">
           {{ guardando ? "Guardando..." : (esEdicion ? "Actualizar" : "Crear Empleado") }}
         </button>
       </div>

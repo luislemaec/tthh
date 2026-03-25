@@ -56,11 +56,11 @@
         <h2 class="text-lg font-bold text-gray-800">Mis Marcaciones</h2>
         <div class="flex flex-wrap gap-2 items-center">
           <input v-model="histFechaDesde" type="date" @change="cargarHistorial"
-            class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           <input v-model="histFechaHasta" type="date" @change="cargarHistorial"
-            class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           <select v-model="histTipo" @change="cargarHistorial"
-            class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
             <option value="todos">Todos</option>
             <option value="justificados">Atrasos justificados</option>
             <option value="injustificados">Atrasos injustificados</option>
@@ -121,10 +121,10 @@
         <div class="flex gap-2">
           <input v-model="filtroFecha" type="date"
             @change="cargarListado"
-            class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           <input v-model="filtroBuscar" type="text" placeholder="Buscar empleado..."
             @input="cargarListado"
-            class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
         </div>
       </div>
 
@@ -160,7 +160,7 @@
               </td>
               <td class="px-4 py-3 font-mono text-xs">{{ formatHora(m.fecha_hora) }}</td>
               <td class="px-4 py-3">
-                <span :class="m.tipo_marcacion === 'WEB' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'"
+                <span :class="m.tipo_marcacion === 'WEB' ? 'bg-blue-100 text-[#0b5447]' : 'bg-purple-100 text-purple-700'"
                   class="px-2 py-1 rounded-full text-xs font-medium">
                   {{ m.tipo_marcacion || "BIO" }}
                 </span>
@@ -248,7 +248,7 @@ const botones = computed(() => [
     concepto: "ENTRADA DEL LUNCH",
     label: "Regreso de Lunch",
     icono: "🔄",
-    color: "bg-blue-500 text-white",
+    color: "bg-[#579186] text-white",
     disponible: estado.value.siguiente === "ENTRADA DEL LUNCH",
   },
   {
@@ -273,7 +273,7 @@ const colorConcepto = (concepto) => {
   const colores = {
     "ENTRADA":           "bg-green-100 text-green-700",
     "SALIDA AL LUNCH":   "bg-yellow-100 text-yellow-700",
-    "ENTRADA DEL LUNCH": "bg-blue-100 text-blue-700",
+    "ENTRADA DEL LUNCH": "bg-blue-100 text-[#0b5447]",
     "SALIDA":            "bg-red-100 text-red-700",
   }
   return colores[concepto] || "bg-gray-100 text-gray-700"

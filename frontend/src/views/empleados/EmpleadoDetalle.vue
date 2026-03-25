@@ -16,7 +16,7 @@
     <template v-else>
       <!-- Encabezado -->
       <div class="bg-white rounded-xl shadow p-6 flex items-center gap-6">
-        <div class="bg-blue-100 rounded-full w-16 h-16 flex items-center justify-center text-2xl font-bold text-blue-700">
+        <div class="bg-blue-100 rounded-full w-16 h-16 flex items-center justify-center text-2xl font-bold text-[#0b5447]">
           {{ iniciales }}
         </div>
         <div>
@@ -65,7 +65,7 @@
           </div>
           <div class="flex flex-wrap gap-2">
             <div v-for="r in rolesAsignados" :key="r.id_rol"
-              class="flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm">
+              class="flex items-center gap-2 bg-blue-50 text-[#0b5447] px-3 py-1 rounded-full text-sm">
               <span>{{ r.rol?.descripcion }}</span>
               <button @click="quitarRol(r.id_rol)"
                 class="text-blue-400 hover:text-red-500 font-bold text-xs">✕</button>
@@ -76,14 +76,14 @@
         <!-- Asignar nuevo rol -->
         <div class="flex gap-2">
           <select v-model="rolSeleccionado"
-            class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
             <option value="">Seleccionar rol...</option>
             <option v-for="r in rolesDisponibles" :key="r.id" :value="r.id">
               {{ r.descripcion }}
             </option>
           </select>
           <button @click="asignarRol" :disabled="!rolSeleccionado || asignando"
-            class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50">
+            class="bg-[#0b5447] text-white px-4 py-2 rounded-lg text-sm hover:bg-[#00372e] disabled:opacity-50">
             {{ asignando ? "Asignando..." : "Asignar Rol" }}
           </button>
         </div>

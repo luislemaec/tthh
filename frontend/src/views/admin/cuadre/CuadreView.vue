@@ -23,12 +23,12 @@
       <div class="flex flex-col gap-1">
         <label class="text-xs text-gray-500 font-medium">Fecha</label>
         <input v-model="filtros.fecha" type="date" @change="cargar"
-          class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
       </div>
       <div class="flex flex-col gap-1">
         <label class="text-xs text-gray-500 font-medium">Departamento</label>
         <select v-model="filtros.departamento_id" @change="cargar"
-          class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
           <option value="">Todos</option>
           <option v-for="d in departamentos" :key="d.id_depto" :value="d.id_depto">
             {{ d.nombre_depto }}
@@ -39,10 +39,10 @@
         <label class="text-xs text-gray-500 font-medium">Buscar</label>
         <input v-model="filtros.buscar" type="text" placeholder="Nombre o cédula..."
           @keyup.enter="cargar"
-          class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-48" />
+          class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186] w-48" />
       </div>
       <button @click="cargar"
-        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium">
+        class="bg-[#0b5447] text-white px-4 py-2 rounded-lg hover:bg-[#00372e] text-sm font-medium">
         Buscar
       </button>
       <button @click="limpiarFiltros"
@@ -66,7 +66,7 @@
         <p class="text-xs text-gray-500 mt-1">Con atraso</p>
       </div>
       <div class="bg-white rounded-xl shadow p-4 text-center">
-        <p class="text-2xl font-bold text-blue-600">{{ totalHorasDecto }}</p>
+        <p class="text-2xl font-bold text-[#0b5447]">{{ totalHorasDecto }}</p>
         <p class="text-xs text-gray-500 mt-1">Horas a descontar</p>
       </div>
     </div>
@@ -131,7 +131,7 @@
                 <span v-else class="text-gray-300">—</span>
               </td>
               <td class="px-3 py-2 text-center">
-                <span v-if="r.atraso_salida > 0" class="text-blue-700 font-medium">
+                <span v-if="r.atraso_salida > 0" class="text-[#0b5447] font-medium">
                   {{ minutosATexto(r.atraso_salida) }}
                 </span>
                 <span v-else class="text-gray-300">—</span>

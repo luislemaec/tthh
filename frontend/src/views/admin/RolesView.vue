@@ -6,7 +6,7 @@
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-2xl font-bold text-gray-800">Gestión de Roles</h1>
       <button @click="abrirModalNuevo"
-        class="bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-800 transition text-sm">
+        class="bg-[#00372e] text-white px-4 py-2 rounded-lg hover:bg-blue-800 transition text-sm">
         + Nuevo Rol
       </button>
     </div>
@@ -34,7 +34,7 @@
             </td>
             <td class="px-6 py-3 flex gap-2">
               <button @click="editarRol(rol)"
-                class="text-blue-600 hover:text-blue-800 text-xs font-medium">Editar</button>
+                class="text-[#0b5447] hover:text-blue-800 text-xs font-medium">Editar</button>
               <button @click="gestionarOpciones(rol)"
                 class="text-purple-600 hover:text-purple-800 text-xs font-medium">Opciones</button>
               <button @click="desactivarRol(rol.id)"
@@ -57,14 +57,14 @@
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
             <input v-model="modal.form.descripcion" type="text" maxlength="20"
-              class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+              class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#579186] outline-none"
               required />
           </div>
           <div class="flex justify-end gap-3 pt-2">
             <button type="button" @click="modal.show = false"
               class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancelar</button>
             <button type="submit"
-              class="bg-blue-700 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-800">
+              class="bg-[#00372e] text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-800">
               Guardar
             </button>
           </div>
@@ -87,7 +87,7 @@
               class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 cursor-pointer">
               <input type="checkbox" :value="op.id"
                 v-model="modalOpciones.seleccionadas"
-                class="rounded text-blue-700" />
+                class="rounded text-[#0b5447]" />
               <span class="text-sm">{{ op.descripcion }}</span>
               <span class="text-xs text-gray-400 ml-auto">{{ op.url }}</span>
             </label>
@@ -98,7 +98,7 @@
           <button @click="modalOpciones.show = false"
             class="px-4 py-2 text-sm text-gray-600">Cancelar</button>
           <button @click="guardarOpciones"
-            class="bg-blue-700 text-white px-4 py-2 rounded-lg text-sm">
+            class="bg-[#00372e] text-white px-4 py-2 rounded-lg text-sm">
             Guardar permisos
           </button>
         </div>

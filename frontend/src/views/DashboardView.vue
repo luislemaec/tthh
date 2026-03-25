@@ -6,7 +6,7 @@
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <div class="bg-white rounded-xl shadow p-6 flex items-center gap-4">
         <div class="bg-blue-100 p-3 rounded-full">
-          <svg class="w-6 h-6 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-6 h-6 text-[#0b5447]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
           </svg>
@@ -79,7 +79,7 @@
             <td class="px-6 py-3 w-48">
               <div class="flex items-center gap-2">
                 <div class="flex-1 bg-gray-200 rounded-full h-2">
-                  <div class="bg-blue-600 h-2 rounded-full"
+                  <div class="bg-[#0b5447] h-2 rounded-full"
                     :style="{ width: (dep.total / stats.total_activos * 100) + '%' }">
                   </div>
                 </div>

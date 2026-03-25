@@ -3,7 +3,7 @@
     <div class="flex items-center justify-between">
       <h1 class="text-2xl font-bold text-gray-800">Vacaciones</h1>
       <button v-if="!saldo.inactivo" @click="abrirModalNuevo"
-        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium">
+        class="bg-[#0b5447] text-white px-4 py-2 rounded-lg hover:bg-[#00372e] text-sm font-medium">
         + Solicitar Vacaciones
       </button>
     </div>
@@ -18,13 +18,13 @@
       <div class="flex items-center justify-between">
         <h2 class="text-sm font-semibold text-gray-700">Saldo de Vacaciones</h2>
         <button @click="mostrarDetalleSaldo = !mostrarDetalleSaldo"
-          class="text-xs text-blue-600 hover:underline">
+          class="text-xs text-[#0b5447] hover:underline">
           {{ mostrarDetalleSaldo ? "Ocultar detalle" : "Ver detalle por período" }}
         </button>
       </div>
       <div class="flex gap-6">
         <div class="text-center">
-          <p class="text-3xl font-bold text-blue-600">{{ saldo.saldo_calculado.dias_disponibles ?? 0 }}</p>
+          <p class="text-3xl font-bold text-[#0b5447]">{{ saldo.saldo_calculado.dias_disponibles ?? 0 }}</p>
           <p class="text-xs text-gray-500 mt-1">Días disponibles</p>
         </div>
         <div class="text-center">
@@ -58,7 +58,7 @@
               <td class="px-3 py-2 font-medium">{{ d.periodo }}</td>
               <td class="px-3 py-2 text-right">{{ d.dias_por_tomar }}</td>
               <td class="px-3 py-2 text-right">{{ d.tomados_normal ?? 0 }}</td>
-              <td class="px-3 py-2 text-right font-semibold text-blue-600">{{ d.disponible_normal ?? 0 }}</td>
+              <td class="px-3 py-2 text-right font-semibold text-[#0b5447]">{{ d.disponible_normal ?? 0 }}</td>
               <td class="px-3 py-2 text-right">{{ d.acumulado }}</td>
             </tr>
           </tbody>
@@ -76,7 +76,7 @@
     <!-- Filtros -->
     <div class="bg-white rounded-xl shadow p-4 flex flex-wrap gap-3">
       <select v-model="filtros.estado" @change="cargar"
-        class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
         <option value="">Todos los estados</option>
         <option value="PENDIENTE">Pendiente</option>
         <option value="APROBADO">Aprobado</option>
@@ -84,9 +84,9 @@
         <option value="ELIMINADO">Eliminado</option>
       </select>
       <input v-model="filtros.fecha_desde" type="date" @change="cargar"
-        class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
       <input v-model="filtros.fecha_hasta" type="date" @change="cargar"
-        class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
       <button @click="limpiarFiltros"
         class="border rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-50">
         Limpiar
@@ -132,7 +132,7 @@
             <td class="px-4 py-3">
               <div class="flex gap-2">
                 <button @click="verVacacion(v)"
-                  class="text-blue-600 hover:underline text-xs font-medium">Ver</button>
+                  class="text-[#0b5447] hover:underline text-xs font-medium">Ver</button>
                 <template v-if="esSupervisorOAdmin && v.estado_permiso === 'PENDIENTE' && v.empleado?.id_emp !== auth.empleado?.id_emp">
                   <button @click="aprobar(v.secuencial_clave)"
                     class="text-green-600 hover:underline text-xs font-medium">Aprobar</button>
@@ -174,37 +174,37 @@
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Fecha Inicio *</label>
               <input v-model="formNuevo.fecha_inicial" type="date"
-                class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Fecha Fin *</label>
               <input v-model="formNuevo.fecha_final" type="date"
-                class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
             </div>
           </div>
           <div v-if="formNuevo.todo_dia !== 'SI'" class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Hora Desde *</label>
               <input v-model="formNuevo.hora_desde" type="time"
-                class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Hora Hasta *</label>
               <input v-model="formNuevo.hora_hasta" type="time"
-                class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
             </div>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Observaciones</label>
             <textarea v-model="formNuevo.observaciones" rows="3" maxlength="250"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]"></textarea>
           </div>
           <div v-if="errorNuevo" class="text-red-600 text-sm bg-red-50 rounded p-2">{{ errorNuevo }}</div>
           <div class="flex justify-end gap-3 pt-2">
             <button @click="modalNuevo = false"
               class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
             <button @click="guardar" :disabled="guardando"
-              class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-50">
+              class="px-4 py-2 rounded-lg bg-[#0b5447] text-white text-sm hover:bg-[#00372e] disabled:opacity-50">
               {{ guardando ? "Enviando..." : "Solicitar" }}
             </button>
           </div>
@@ -279,7 +279,7 @@
         <div>
           <label class="block text-sm font-medium text-gray-600 mb-1">Motivo de eliminación <span class="text-red-500">*</span></label>
           <textarea v-model="motivoEliminacion" rows="3" maxlength="120"
-            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]"></textarea>
           <p v-if="errorEliminar" class="text-red-500 text-xs mt-1">{{ errorEliminar }}</p>
         </div>
         <div class="flex justify-end gap-3">
@@ -300,7 +300,7 @@
         <div>
           <label class="block text-sm font-medium text-gray-600 mb-1">Motivo de negación</label>
           <textarea v-model="motivoNegacion" rows="3" maxlength="120"
-            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]"></textarea>
         </div>
         <div class="flex justify-end gap-3">
           <button @click="modalNegar = false"

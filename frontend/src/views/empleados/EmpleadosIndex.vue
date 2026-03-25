@@ -3,7 +3,7 @@
     <div class="flex items-center justify-between">
       <h1 class="text-2xl font-bold text-gray-800">Empleados</h1>
       <router-link to="/empleados/crear"
-        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium">
+        class="bg-[#0b5447] text-white px-4 py-2 rounded-lg hover:bg-[#00372e] text-sm font-medium">
         + Nuevo Empleado
       </router-link>
       <router-link to="/empleados/importar"
@@ -15,27 +15,27 @@
     <!-- Filtros -->
     <div class="bg-white rounded-xl shadow p-4 flex flex-wrap gap-3">
       <input v-model="filtro.buscar" type="text" placeholder="Buscar por nombre o cédula..."
-        class="border rounded-lg px-3 py-2 text-sm flex-1 min-w-[200px] focus:outline-none focus:ring-2 focus:ring-blue-500"
+        class="border rounded-lg px-3 py-2 text-sm flex-1 min-w-[200px] focus:outline-none focus:ring-2 focus:ring-[#579186]"
         @input="cargarEmpleados" />
       <select v-model="filtro.departamento" @change="cargarEmpleados"
-        class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
         <option value="">Todos los departamentos</option>
         <option v-for="d in departamentos" :key="d.id_depto" :value="d.id_depto">{{ d.nombre_depto }}</option>
       </select>
       <select v-model="filtro.estado" @change="cargarEmpleados"
-        class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
         <option value="">Todos los estados</option>
         <option value="activo">Activo</option>
         <option value="inactivo">Inactivo</option>
       </select>
       <select v-model="filtro.tipo_contrato" @change="cargarEmpleados"
-        class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
         <option value="">Todos los contratos</option>
         <option value="LOSEP">LOSEP</option>
         <option value="CODIGO DEL TRABAJO">CÓDIGO DEL TRABAJO</option>
       </select>
       <select v-model="filtro.modalidad_laboral" @change="cargarEmpleados"
-        class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
         <option value="">Todas las modalidades</option>
         <option value="Nombramiento Definitivo">Nombramiento Definitivo</option>
         <option value="Nombramiento Provisional">Nombramiento Provisional</option>
@@ -82,7 +82,7 @@
             <td class="px-6 py-3">
               <div class="flex gap-2">
                 <router-link :to="`/empleados/${emp.id_emp}`"
-                  class="text-blue-600 hover:underline text-xs">Ver</router-link>
+                  class="text-[#0b5447] hover:underline text-xs">Ver</router-link>
                 <router-link :to="`/empleados/${emp.id_emp}/editar`"
                   class="text-yellow-600 hover:underline text-xs">Editar</router-link>
                 <button @click="eliminar(emp.id_emp)"
