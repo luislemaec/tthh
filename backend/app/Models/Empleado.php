@@ -18,10 +18,10 @@ class Empleado extends Authenticatable
 
     protected $fillable = [
         "id_emp", "identificacion", "nombre_emp", "apellido_emp",
-        "id_depto", "estado", "tipo_contrato", "jornada_id",
+        "id_depto", "estado", "tipo_contrato", "jornada_id", "id_jornada",
         "fecha_ingreso", "fecha_salida", "ubicacion", "sueldo",
         "nivel", "cargo_empleado", "telefono", "calle_y_numero",
-        "campo_supervisor",
+        "campo_supervisor", "modalidad_laboral",
     ];
 
     protected $hidden = ["password", "clave"];
@@ -40,6 +40,11 @@ class Empleado extends Authenticatable
     {
         return $this->hasMany(EmpleadoMail::class, "id_emp", "id_emp")
                      ->where("estado", "ACTIVO");
+    }
+
+    public function jornada()
+    {
+        return $this->belongsTo(Jornada::class, "id_jornada", "id_jornada");
     }
 
     public function getAuthPassword()

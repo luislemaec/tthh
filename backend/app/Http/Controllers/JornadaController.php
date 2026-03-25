@@ -17,9 +17,13 @@ class JornadaController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            "id_jornada"  => "required|integer|unique:dbo.d2_jornada,id_jornada",
+            "id_jornada"  => "required|integer",
             "descripcion" => "required|string|max:50",
         ]);
+
+        if (Jornada::find($request->id_jornada)) {
+            return response()->json(["errors" => ["id_jornada" => ["Ya existe una jornada con ese ID"]]], 422);
+        }
 
         $jornada = Jornada::create($request->all());
         return response()->json($jornada, 201);

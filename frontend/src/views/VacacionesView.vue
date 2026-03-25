@@ -2,14 +2,19 @@
   <div class="space-y-6">
     <div class="flex items-center justify-between">
       <h1 class="text-2xl font-bold text-gray-800">Vacaciones</h1>
-      <button @click="abrirModalNuevo"
+      <button v-if="!saldo.inactivo" @click="abrirModalNuevo"
         class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium">
         + Solicitar Vacaciones
       </button>
     </div>
 
+    <!-- Empleado inactivo -->
+    <div v-if="saldo.inactivo" class="bg-yellow-50 border border-yellow-300 rounded-xl p-4 text-yellow-800 text-sm">
+      Tu cuenta está inactiva. No puedes consultar saldo ni solicitar vacaciones.
+    </div>
+
     <!-- Saldo -->
-    <div v-if="saldo.cabecera" class="bg-white rounded-xl shadow p-4 space-y-3">
+    <div v-if="saldo.saldo_calculado" class="bg-white rounded-xl shadow p-4 space-y-3">
       <div class="flex items-center justify-between">
         <h2 class="text-sm font-semibold text-gray-700">Saldo de Vacaciones</h2>
         <button @click="mostrarDetalleSaldo = !mostrarDetalleSaldo"
@@ -19,16 +24,20 @@
       </div>
       <div class="flex gap-6">
         <div class="text-center">
-          <p class="text-3xl font-bold text-blue-600">{{ saldo.cabecera.Dias_x_tomar_normal ?? 0 }}</p>
+          <p class="text-3xl font-bold text-blue-600">{{ saldo.saldo_calculado.dias_disponibles ?? 0 }}</p>
           <p class="text-xs text-gray-500 mt-1">Días disponibles</p>
         </div>
         <div class="text-center">
-          <p class="text-3xl font-bold text-gray-400">{{ saldo.cabecera.TotalTomados ?? 0 }}</p>
+          <p class="text-3xl font-bold text-gray-400">{{ saldo.saldo_calculado.tomados ?? 0 }}</p>
           <p class="text-xs text-gray-500 mt-1">Días tomados</p>
         </div>
         <div class="text-center">
-          <p class="text-3xl font-bold text-gray-700">{{ saldo.cabecera.Dias_totales ?? 0 }}</p>
-          <p class="text-xs text-gray-500 mt-1">Días totales</p>
+          <p class="text-xl font-semibold text-gray-500">{{ saldo.saldo_calculado.saldo_inicial ?? 0 }}</p>
+          <p class="text-xs text-gray-500 mt-1">Saldo inicial (Excel)</p>
+        </div>
+        <div class="text-center">
+          <p class="text-xl font-semibold text-green-600">+{{ saldo.saldo_calculado.acumulado_a_hoy ?? 0 }}</p>
+          <p class="text-xs text-gray-500 mt-1">Acumulado a hoy</p>
         </div>
       </div>
 
@@ -111,7 +120,7 @@
             <td class="px-4 py-3 text-gray-600">{{ v.fecha_inicial?.substring(0, 10) }}</td>
             <td class="px-4 py-3 text-gray-600">{{ v.fecha_final?.substring(0, 10) }}</td>
             <td class="px-4 py-3 text-center">
-              <span v-if="v.todoDia === 'SI'" class="text-green-600">✓</span>
+              <span v-if="v.todo_dia === 'SI'" class="text-green-600">✓</span>
               <span v-else class="text-gray-400">—</span>
             </td>
             <td class="px-4 py-3">
@@ -129,7 +138,7 @@
                     class="text-green-600 hover:underline text-xs font-medium">Aprobar</button>
                   <button @click="abrirModalNegar(v)"
                     class="text-red-500 hover:underline text-xs font-medium">Negar</button>
-                  <button @click="eliminar(v.secuencial_clave)"
+                  <button @click="abrirModalEliminar(v)"
                     class="text-gray-500 hover:underline text-xs font-medium">Eliminar</button>
                 </template>
               </div>
@@ -157,7 +166,7 @@
         <h2 class="text-lg font-semibold text-gray-700">Solicitar Vacaciones</h2>
         <div class="space-y-4">
           <div class="flex items-center gap-2">
-            <input v-model="formNuevo.todoDia" type="checkbox" id="todo_dia_vac"
+            <input v-model="formNuevo.todo_dia" type="checkbox" id="todo_dia_vac"
               true-value="SI" false-value="NO" class="rounded" />
             <label for="todo_dia_vac" class="text-sm text-gray-600">Todo el día</label>
           </div>
@@ -173,7 +182,7 @@
                 class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
           </div>
-          <div v-if="formNuevo.todoDia !== 'SI'" class="grid grid-cols-2 gap-3">
+          <div v-if="formNuevo.todo_dia !== 'SI'" class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Hora Desde *</label>
               <input v-model="formNuevo.hora_desde" type="time"
@@ -234,7 +243,7 @@
           </div>
           <div>
             <dt class="text-gray-500">Todo el día</dt>
-            <dd class="font-medium">{{ seleccionado?.todoDia }}</dd>
+            <dd class="font-medium">{{ seleccionado?.todo_dia }}</dd>
           </div>
           <div>
             <dt class="text-gray-500">Estado</dt>
@@ -250,13 +259,36 @@
             <dd class="font-medium">{{ seleccionado?.observaciones || "—" }}</dd>
           </div>
           <div v-if="seleccionado?.observacion_negacion" class="col-span-2">
-            <dt class="text-gray-500">Motivo negación</dt>
+            <dt class="text-gray-500">
+              {{ seleccionado?.estado_permiso === 'ELIMINADO' ? 'Motivo de eliminación' : 'Motivo de negación' }}
+            </dt>
             <dd class="font-medium text-red-600">{{ seleccionado?.observacion_negacion }}</dd>
           </div>
         </dl>
         <div class="flex justify-end pt-2">
           <button @click="modalVer = false"
             class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cerrar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Eliminar -->
+    <div v-if="modalEliminar" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md space-y-4">
+        <h2 class="text-lg font-semibold text-gray-700">Eliminar Solicitud</h2>
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Motivo de eliminación <span class="text-red-500">*</span></label>
+          <textarea v-model="motivoEliminacion" rows="3" maxlength="120"
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+          <p v-if="errorEliminar" class="text-red-500 text-xs mt-1">{{ errorEliminar }}</p>
+        </div>
+        <div class="flex justify-end gap-3">
+          <button @click="modalEliminar = false"
+            class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
+          <button @click="confirmarEliminar"
+            class="px-4 py-2 rounded-lg bg-gray-600 text-white text-sm hover:bg-gray-700">
+            Confirmar Eliminación
+          </button>
         </div>
       </div>
     </div>
@@ -304,17 +336,20 @@ const mostrarDetalleSaldo = ref(false)
 
 const modalNuevo     = ref(false)
 const modalVer       = ref(false)
-const modalNegar     = ref(false)
-const seleccionado   = ref(null)
-const motivoNegacion = ref("")
-const errorNuevo     = ref("")
+const modalNegar          = ref(false)
+const modalEliminar       = ref(false)
+const seleccionado        = ref(null)
+const motivoNegacion      = ref("")
+const motivoEliminacion   = ref("")
+const errorEliminar       = ref("")
+const errorNuevo          = ref("")
 
 const filtros = ref({ estado: "", fecha_desde: "", fecha_hasta: "" })
 
 const formNuevo = ref({
   fecha_inicial: "", fecha_final: "",
   hora_desde: "08:00", hora_hasta: "17:00",
-  todoDia: "SI", observaciones: "",
+  todo_dia: "SI", observaciones: "",
 })
 
 const esSupervisorOAdmin = computed(() =>
@@ -363,7 +398,7 @@ const abrirModalNuevo = () => {
   formNuevo.value = {
     fecha_inicial: "", fecha_final: "",
     hora_desde: "08:00", hora_hasta: "17:00",
-    todoDia: "SI", observaciones: "",
+    todo_dia: "SI", observaciones: "",
   }
   modalNuevo.value = true
 }
@@ -420,10 +455,23 @@ const confirmarNegar = async () => {
   }
 }
 
-const eliminar = async (id) => {
-  if (!confirm("¿Eliminar esta solicitud?")) return
+const abrirModalEliminar = (v) => {
+  seleccionado.value      = v
+  motivoEliminacion.value = ""
+  errorEliminar.value     = ""
+  modalEliminar.value     = true
+}
+
+const confirmarEliminar = async () => {
+  if (!motivoEliminacion.value.trim()) {
+    errorEliminar.value = "El motivo de eliminación es obligatorio"
+    return
+  }
   try {
-    await api.delete("/vacaciones/" + id)
+    await api.delete("/vacaciones/" + seleccionado.value.secuencial_clave, {
+      data: { observacion_negacion: motivoEliminacion.value }
+    })
+    modalEliminar.value = false
     cargar()
   } catch (e) {
     alert(e.response?.data?.message || "Error al eliminar")

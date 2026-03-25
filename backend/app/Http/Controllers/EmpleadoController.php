@@ -30,6 +30,14 @@ class EmpleadoController extends Controller
             $query->where("estado", strtoupper($request->estado));
         }
 
+        if ($request->filled("tipo_contrato")) {
+            $query->where("tipo_contrato", $request->tipo_contrato);
+        }
+
+        if ($request->filled("modalidad_laboral")) {
+            $query->where("modalidad_laboral", $request->modalidad_laboral);
+        }
+
         $perPage = $request->get("per_page", 10);
         $data    = $query->orderBy("apellido_emp")->orderBy("nombre_emp")
                          ->paginate($perPage);
@@ -79,9 +87,11 @@ class EmpleadoController extends Controller
             "sueldo"         => $request->sueldo,
             "nivel"          => $request->nivel,
             "ubicacion"      => $request->ubicacion,
-            "cargo_empleado" => $request->cargo_empleado,
-            "telefono"       => $request->telefono,
-            "calle_y_numero" => $request->calle_y_numero,
+            "cargo_empleado"   => $request->cargo_empleado,
+            "telefono"         => $request->telefono,
+            "calle_y_numero"   => $request->calle_y_numero,
+            "modalidad_laboral"=> $request->modalidad_laboral,
+            "id_jornada"       => $request->id_jornada,
         ]);
 	$emp->password = bcrypt($request->identificacion);
 	$emp->save();
@@ -127,9 +137,11 @@ class EmpleadoController extends Controller
             "sueldo"         => $request->sueldo          ?? $emp->sueldo,
             "nivel"          => $request->nivel           ?? $emp->nivel,
             "ubicacion"      => $request->ubicacion       ?? $emp->ubicacion,
-            "cargo_empleado" => $request->cargo_empleado  ?? $emp->cargo_empleado,
-            "telefono"       => $request->telefono        ?? $emp->telefono,
-            "calle_y_numero" => $request->calle_y_numero  ?? $emp->calle_y_numero,
+            "cargo_empleado"   => $request->cargo_empleado   ?? $emp->cargo_empleado,
+            "telefono"         => $request->telefono          ?? $emp->telefono,
+            "calle_y_numero"   => $request->calle_y_numero    ?? $emp->calle_y_numero,
+            "modalidad_laboral"=> $request->modalidad_laboral ?? $emp->modalidad_laboral,
+            "id_jornada"       => $request->id_jornada        ?? $emp->id_jornada,
         ]);
 
         // Actualizar email

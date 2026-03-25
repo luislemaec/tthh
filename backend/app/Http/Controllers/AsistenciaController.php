@@ -164,4 +164,71 @@ class AsistenciaController extends Controller
 
         return response()->json($query->get());
     }
+
+    // Historial personal del empleado autenticado
+    public function miReporte(Request $request)
+    {
+        $emp = $request->user();
+
+        $desde = $request->get("fecha_desde", now()->startOfMonth()->toDateString());
+        $hasta = $request->get("fecha_hasta", now()->toDateString());
+        $tipo  = $request->get("tipo", "todos"); // todos | justificados | injustificados
+
+        // Marcaciones individuales del empleado en el rango
+        $marcaciones = DB::table("dbo.sg_control_persona")
+            ->where("nro_documento", $emp->id_emp)
+            ->whereBetween(DB::raw("DATE(fecha_hora)"), [$desde, $hasta])
+            ->orderBy("fecha_hora")
+            ->get(["concepto", "fecha_hora"]);
+
+        // Cuadres en el rango (para atrasos)
+        $cuadres = DB::table("dbo.d2_cuadre_marcacion")
+            ->where("id_emp", $emp->id_emp)
+            ->whereBetween(DB::raw("DATE(fecha)"), [$desde, $hasta])
+            ->get()
+            ->keyBy(fn($c) => substr($c->fecha, 0, 10));
+
+        // Minutos de permisos aprobados por día
+        $permisos = DB::table("dbo.d2_permiso")
+            ->where("id_emp", $emp->id_emp)
+            ->where("estado_permiso", "APROBADO")
+            ->whereBetween(DB::raw("DATE(fecha_desde)"), [$desde, $hasta])
+            ->selectRaw("DATE(fecha_desde) as dia, SUM(EXTRACT(EPOCH FROM (hora_hasta::timestamp - hora_desde::timestamp)) / 60) as minutos")
+            ->groupByRaw("DATE(fecha_desde)")
+            ->get()
+            ->keyBy("dia");
+
+        // Mapa de atraso por concepto
+        $atrasosPorConcepto = [
+            "ENTRADA"           => "atraso_entrada",
+            "ENTRADA DEL LUNCH" => "atraso_lunch",
+            "SALIDA"            => "atraso_salida",
+        ];
+
+        $resultado = [];
+        foreach ($marcaciones as $m) {
+            $dia         = substr($m->fecha_hora, 0, 10);
+            $cuadre      = $cuadres[$dia] ?? null;
+            $campoAtraso = $atrasosPorConcepto[$m->concepto] ?? null;
+            $atraso      = ($cuadre && $campoAtraso) ? (int)($cuadre->$campoAtraso ?? 0) : 0;
+
+            // Minutos justificados ese día
+            $minJustificados = isset($permisos[$dia]) ? (float)$permisos[$dia]->minutos : 0;
+            $tieneJustificacion = $minJustificados > 0;
+
+            // Aplicar filtro
+            if ($tipo === "justificados" && ($atraso <= 0 || !$tieneJustificacion)) continue;
+            if ($tipo === "injustificados" && ($atraso <= 0 || $tieneJustificacion)) continue;
+
+            $resultado[] = [
+                "fecha"         => $dia,
+                "concepto"      => $m->concepto,
+                "hora"          => substr($m->fecha_hora, 11, 5),
+                "atraso"        => $atraso,
+                "justificado"   => $atraso > 0 ? ($tieneJustificacion ? ($minJustificados >= $atraso ? "TOTAL" : "PARCIAL") : "NO") : null,
+            ];
+        }
+
+        return response()->json(array_values($resultado));
+    }
 }

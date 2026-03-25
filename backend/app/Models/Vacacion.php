@@ -20,7 +20,7 @@ class Vacacion extends Model
         "hora_desde",
         "hora_hasta",
         "observaciones",
-        "todoDia",
+        "todo_dia",
         "estado_permiso",
         "observacion_negacion",
         "ip",

@@ -13,7 +13,7 @@
         <div class="w-8 h-8 bg-white rounded-lg flex items-center justify-center flex-shrink-0">
           <span class="text-blue-900 font-bold text-xs">TH</span>
         </div>
-        <span v-show="sidebarOpen" class="font-bold text-sm truncate">CONSEJO - RRHH</span>
+        <span v-show="sidebarOpen" class="font-bold text-sm truncate">TALENTO HUMANO</span>
       </div>
 
       <!-- Menú dinámico por categoría -->

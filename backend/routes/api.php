@@ -1,6 +1,8 @@
 <?php
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ReportesController;
 use App\Http\Controllers\RolController;
+use App\Http\Controllers\CuadreController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EmpleadoController;
 use App\Http\Controllers\JornadaController;
@@ -86,10 +88,11 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::get("/supervisores/empleado/{id_emp}",        [SupervisorController::class, "supervisorDeEmpleado"]);
 
     // Asistencia
-    Route::get("/asistencia/mi-estado",  [AsistenciaController::class, "miEstado"]);
-    Route::post("/asistencia/marcar",    [AsistenciaController::class, "marcar"]);
-    Route::get("/asistencia/listado",    [AsistenciaController::class, "listado"]);
-    Route::get("/asistencia/reporte",    [AsistenciaController::class, "reporte"]);
+    Route::get("/asistencia/mi-estado",   [AsistenciaController::class, "miEstado"]);
+    Route::post("/asistencia/marcar",     [AsistenciaController::class, "marcar"]);
+    Route::get("/asistencia/listado",     [AsistenciaController::class, "listado"]);
+    Route::get("/asistencia/reporte",     [AsistenciaController::class, "reporte"]);
+    Route::get("/asistencia/mi-reporte",  [AsistenciaController::class, "miReporte"]);
 
     // Importacion
     Route::get("/importacion/plantilla",  [ImportacionController::class, "plantilla"]);
@@ -106,6 +109,14 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::patch("/permisos/{id}/aprobar", [PermisosController::class, "aprobar"]);
     Route::patch("/permisos/{id}/negar",   [PermisosController::class, "negar"]);
     Route::delete("/permisos/{id}",          [PermisosController::class, "destroy"]);
+
+    // Cuadre de marcaciones
+    Route::post("/cuadre/procesar",  [CuadreController::class, "procesar"]);
+    Route::get("/cuadre/listado",    [CuadreController::class, "listado"]);
+
+    // Reportes
+    Route::get("/reportes/atrasos",               [ReportesController::class, "atrasos"]);
+    Route::get("/reportes/marcaciones-faltantes", [ReportesController::class, "marcacionesFaltantes"]);
 
     // Vacaciones
     Route::get("/vacaciones/mi-rol",            [VacacionesController::class, "miRol"]);

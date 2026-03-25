@@ -5,6 +5,8 @@ use App\Models\Permiso;
 use App\Models\Razon;
 use App\Models\Empleado;
 use App\Models\Supervisor;
+use App\Models\CabeceraVacacion;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -114,19 +116,39 @@ class PermisosController extends Controller
                 "message" => "El usuario administrador no puede solicitar permisos"
             ], 403);
         }
+
+        if (strtoupper($emp->estado) !== "ACTIVO") {
+            return response()->json([
+                "message" => "Solo empleados activos pueden solicitar permisos"
+            ], 403);
+        }
+
         $razon = Razon::findOrFail($request->sec_permiso);
 
-        // Verificar que no tenga un permiso en las mismas fechas
-        $existe = Permiso::where("id_emp", $emp->id_emp)
-            ->where("estado_permiso", "!=", "NEGADO")
+        // Verificar que no tenga un permiso con fechas/horas que se crucen
+        $queryExiste = Permiso::where("id_emp", $emp->id_emp)
+            ->whereNotIn("estado_permiso", ["NEGADO", "ELIMINADO"])
             ->where(function($q) use ($request) {
                 $q->whereBetween("fecha_desde", [$request->fecha_desde, $request->fecha_hasta])
                   ->orWhereBetween("fecha_hasta", [$request->fecha_desde, $request->fecha_hasta]);
-            })->exists();
+            });
 
-        if ($existe) {
+        // Si el nuevo permiso NO es todo el día, solo bloquear si hay cruce de horas
+        if ($request->todo_dia !== "SI") {
+            $horaDesdeNuevo = $request->fecha_desde . " " . $request->hora_desde . ":00";
+            $horaHastaNuevo = $request->fecha_hasta . " " . $request->hora_hasta . ":00";
+            $queryExiste->where(function($q) use ($horaDesdeNuevo, $horaHastaNuevo) {
+                $q->where("todo_dia", "SI")
+                  ->orWhere(function($q2) use ($horaDesdeNuevo, $horaHastaNuevo) {
+                      $q2->where("hora_desde", "<", $horaHastaNuevo)
+                         ->where("hora_hasta", ">", $horaDesdeNuevo);
+                  });
+            });
+        }
+
+        if ($queryExiste->exists()) {
             return response()->json([
-                "message" => "Ya tienes un permiso registrado en esas fechas"
+                "message" => "Ya tienes un permiso registrado en ese horario"
             ], 422);
         }
 
@@ -196,6 +218,45 @@ class PermisosController extends Controller
             "usuario"        => $supervisor->id_emp,
         ]);
 
+        // Calcular días a descontar según jornada del empleado
+        $empleado     = Empleado::with("jornada")->find($permiso->id_emp);
+        $horasJornada = $empleado?->jornada ? (float) $empleado->jornada->normal : 8.0;
+
+        if ($permiso->todo_dia === "SI") {
+            $diasDescuento = Carbon::parse($permiso->fecha_desde)
+                ->diffInDays(Carbon::parse($permiso->fecha_hasta)) + 1;
+        } else {
+            $horas         = Carbon::parse($permiso->hora_desde)
+                ->diffInMinutes(Carbon::parse($permiso->hora_hasta)) / 60;
+            $diasDescuento = round($horas / $horasJornada, 4);
+        }
+
+        // Si es descontable → reducir saldo de vacaciones
+        if ($permiso->descontable === "SI") {
+            $cabecera = CabeceraVacacion::where("id_emp", $permiso->id_emp)->first();
+            if ($cabecera) {
+                $cabecera->dias_x_tomar_normal = max(0, (float)($cabecera->dias_x_tomar_normal ?? 0) - $diasDescuento);
+                $cabecera->total_dias_tomados  = round((float)($cabecera->total_dias_tomados  ?? 0) + $diasDescuento, 4);
+                $cabecera->save();
+            }
+        }
+
+        // Actualizar d2_cuadre_marcacion por cada día del permiso
+        $campo       = $permiso->descontable === "SI" ? "horas_decto" : "horaspermiso_pag";
+        $diasRango   = $permiso->todo_dia === "SI" ? $diasDescuento : 1;
+        $diasXDia    = $permiso->todo_dia === "SI" ? 1 : $diasDescuento;
+        $fechaActual = Carbon::parse($permiso->fecha_desde);
+
+        for ($i = 0; $i < $diasRango; $i++) {
+            DB::table("dbo.d2_cuadre_marcacion")
+                ->where("id_emp", $permiso->id_emp)
+                ->whereDate("fecha", $fechaActual->toDateString())
+                ->update([
+                    $campo => DB::raw("COALESCE($campo, 0) + $diasXDia"),
+                ]);
+            $fechaActual->addDay();
+        }
+
         return response()->json([
             "message" => "Permiso aprobado correctamente",
             "permiso" => $permiso->load(["empleado", "razonPermiso"]),
@@ -248,25 +309,30 @@ class PermisosController extends Controller
     // Eliminar permiso (solo supervisor del empleado)
     public function destroy(Request $request, $id)
     {
+        $request->validate([
+            "observacion_negacion" => "required|string|max:120",
+        ]);
+
         $permiso    = Permiso::findOrFail($id);
         $supervisor = $request->user();
 
-        // No puede eliminarse a si mismo
         if ($permiso->id_emp === $supervisor->id_emp) {
-            return response()->json([
-                "message" => "No puedes eliminar tu propio permiso"
-            ], 403);
+            return response()->json(["message" => "No puedes eliminar tu propio permiso"], 403);
         }
 
-        // Verificar que es supervisor del empleado
         $empleados = $this->empleadosDeSupervisor($supervisor->id_emp);
-        if (!$empleados->contains($permiso->id_emp)) {
-            return response()->json([
-                "message" => "No eres supervisor de este empleado"
-            ], 403);
+        if (!$this->esAdminOTH($supervisor->id_emp) && !$empleados->contains($permiso->id_emp)) {
+            return response()->json(["message" => "No eres supervisor de este empleado"], 403);
         }
 
-        $permiso->update(["estado_permiso" => "ELIMINADO"]);
+        if ($permiso->estado_permiso !== "PENDIENTE") {
+            return response()->json(["message" => "El permiso no está en estado PENDIENTE"], 422);
+        }
+
+        $permiso->update([
+            "estado_permiso"       => "ELIMINADO",
+            "observacion_negacion" => $request->observacion_negacion,
+        ]);
 
         return response()->json(["message" => "Permiso eliminado correctamente"]);
     }
@@ -285,14 +351,24 @@ public function estadistica(Request $request)
         'fecha_hasta' => 'required|date',
     ]);
 
-    $datos = DB::table('dbo.d2_permiso as p')
+    $emp        = $request->user();
+    $esAdmin    = $this->esAdminOTH($emp->id_emp);
+
+    $query = DB::table('dbo.d2_permiso as p')
         ->join('dbo.ad_empleado as sup', 'p.usuario', '=', 'sup.id_emp')
         ->join('dbo.ad_empleado as emp', 'p.id_emp', '=', 'emp.id_emp')
         ->whereBetween('p.fecha_desde', [$request->fecha_desde, $request->fecha_hasta])
         ->whereIn('p.estado_permiso', ['APROBADO', 'NEGADO', 'ELIMINADO'])
         ->where('p.terminal', '!=', '0.0.0.0')
-        ->where('p.observaciones', '!=', 'MIGRACION')
-        ->select(
+        ->where('p.observaciones', '!=', 'MIGRACION');
+
+    // Supervisor solo ve los empleados de su departamento
+    if (!$esAdmin) {
+        $empleadosPropios = $this->empleadosDeSupervisor($emp->id_emp);
+        $query->whereIn('p.id_emp', $empleadosPropios);
+    }
+
+    $datos = $query->select(
             'sup.id_emp as id_supervisor',
             DB::raw("sup.apellido_emp || ' ' || sup.nombre_emp as nombre_supervisor"),
             'p.estado_permiso',

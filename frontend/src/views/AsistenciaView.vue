@@ -50,6 +50,70 @@
       </div>
     </div>
 
+    <!-- Historial personal de marcaciones -->
+    <div class="bg-white rounded-xl shadow p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-bold text-gray-800">Mis Marcaciones</h2>
+        <div class="flex flex-wrap gap-2 items-center">
+          <input v-model="histFechaDesde" type="date" @change="cargarHistorial"
+            class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <input v-model="histFechaHasta" type="date" @change="cargarHistorial"
+            class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <select v-model="histTipo" @change="cargarHistorial"
+            class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="todos">Todos</option>
+            <option value="justificados">Atrasos justificados</option>
+            <option value="injustificados">Atrasos injustificados</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50 border-b">
+            <tr>
+              <th class="text-left px-3 py-3 text-gray-600 font-medium">Fecha</th>
+              <th class="text-left px-3 py-3 text-gray-600 font-medium">Concepto</th>
+              <th class="text-center px-3 py-3 text-gray-600 font-medium">Hora</th>
+              <th class="text-center px-3 py-3 text-gray-600 font-medium">Atraso</th>
+              <th class="text-center px-3 py-3 text-gray-600 font-medium">Justificación</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="cargandoHistorial">
+              <td colspan="4" class="text-center py-8 text-gray-400">Cargando...</td>
+            </tr>
+            <tr v-else-if="historial.length === 0">
+              <td colspan="4" class="text-center py-8 text-gray-400">No hay registros en este período</td>
+            </tr>
+            <tr v-for="(r, i) in historial" :key="i"
+              class="border-b hover:bg-gray-50">
+              <td class="px-3 py-2 font-medium whitespace-nowrap">{{ r.fecha }}</td>
+              <td class="px-3 py-2">
+                <span :class="colorConcepto(r.concepto)"
+                  class="px-2 py-0.5 rounded-full text-xs font-medium">
+                  {{ r.concepto }}
+                </span>
+              </td>
+              <td class="px-3 py-2 text-center font-mono text-gray-700">{{ r.hora }}</td>
+              <td class="px-3 py-2 text-center">
+                <span v-if="r.atraso > 0" class="text-red-700 font-medium">
+                  {{ minATexto(r.atraso) }}
+                </span>
+                <span v-else class="text-gray-300">—</span>
+              </td>
+              <td class="px-3 py-2 text-center">
+                <span v-if="r.justificado === 'TOTAL'" class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs">Justificado</span>
+                <span v-else-if="r.justificado === 'PARCIAL'" class="bg-orange-100 text-orange-700 px-2 py-0.5 rounded text-xs">Parcial</span>
+                <span v-else-if="r.justificado === 'NO'" class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs">Sin justificar</span>
+                <span v-else class="text-gray-300">—</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- Panel administrador: listado del dia -->
     <div v-if="esAdmin" class="bg-white rounded-xl shadow p-6">
       <div class="flex items-center justify-between mb-4">
@@ -128,6 +192,40 @@ const filtroFecha  = ref(new Date().toISOString().substring(0, 10))
 const filtroBuscar = ref("")
 const horaActual   = ref("")
 const fechaHoy     = ref("")
+
+// Historial personal
+const historial         = ref([])
+const cargandoHistorial = ref(false)
+const histTipo          = ref("todos")
+const histFechaDesde    = ref(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().substring(0, 10))
+const histFechaHasta    = ref(new Date().toISOString().substring(0, 10))
+
+const minATexto = (min) => {
+  if (!min || min === 0) return "—"
+  const h = Math.floor(min / 60)
+  const m = min % 60
+  if (h > 0 && m > 0) return `${h}h ${m}min`
+  if (h > 0) return `${h}h`
+  return `${m}min`
+}
+
+const cargarHistorial = async () => {
+  cargandoHistorial.value = true
+  try {
+    const { data } = await api.get("/asistencia/mi-reporte", {
+      params: {
+        fecha_desde: histFechaDesde.value,
+        fecha_hasta: histFechaHasta.value,
+        tipo: histTipo.value,
+      }
+    })
+    historial.value = data
+  } catch (e) {
+    historial.value = []
+  } finally {
+    cargandoHistorial.value = false
+  }
+}
 
 let intervalo = null
 
@@ -235,6 +333,7 @@ onMounted(async () => {
   actualizarHora()
   intervalo = setInterval(actualizarHora, 1000)
   await cargarEstado()
+  await cargarHistorial()
   if (esAdmin.value) await cargarListado()
 })
 
