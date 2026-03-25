@@ -148,6 +148,6 @@ class ProcesarCuadre extends Command
     private function toDecimalHours(string $fechaHora): float
     {
         $dt = Carbon::parse($fechaHora);
-        return round($dt->hour + $dt->minute / 60 + $dt->second / 3600, 4);
+        return round($dt->hour + $dt->minute / 60, 4); // Trunca segundos
     }
 }
