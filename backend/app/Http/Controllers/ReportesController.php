@@ -45,7 +45,12 @@ class ReportesController extends Controller
             );
 
         if ($request->filled('id_emp')) {
-            $query->where('c.id_emp', $request->id_emp);
+            $buscar = $request->id_emp;
+            $query->where(function($q) use ($buscar) {
+                $q->where('e.identificacion', 'ilike', "%$buscar%")
+                  ->orWhere('e.apellido_emp',  'ilike', "%$buscar%")
+                  ->orWhere('e.nombre_emp',    'ilike', "%$buscar%");
+            });
         }
         if ($request->filled('id_depto')) {
             $query->where('e.id_depto', $request->id_depto);
@@ -102,7 +107,12 @@ class ReportesController extends Controller
             ");
 
         if ($request->filled('id_emp')) {
-            $query->where('e.id_emp', $request->id_emp);
+            $buscar = $request->id_emp;
+            $query->where(function($q) use ($buscar) {
+                $q->where('e.identificacion', 'ilike', "%$buscar%")
+                  ->orWhere('e.apellido_emp',  'ilike', "%$buscar%")
+                  ->orWhere('e.nombre_emp',    'ilike', "%$buscar%");
+            });
         }
         if ($request->filled('id_depto')) {
             $query->where('e.id_depto', $request->id_depto);
