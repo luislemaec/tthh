@@ -45,12 +45,11 @@ class ReportesController extends Controller
             );
 
         if ($request->filled('id_emp')) {
-            $buscar = $request->id_emp;
-            $query->where(function($q) use ($buscar) {
-                $q->where('e.identificacion', 'ilike', "%$buscar%")
-                  ->orWhere('e.apellido_emp',  'ilike', "%$buscar%")
-                  ->orWhere('e.nombre_emp',    'ilike', "%$buscar%");
-            });
+            $buscar = '%' . $request->id_emp . '%';
+            $query->whereRaw(
+                "(e.identificacion ILIKE ? OR e.apellido_emp ILIKE ? OR e.nombre_emp ILIKE ?)",
+                [$buscar, $buscar, $buscar]
+            );
         }
         if ($request->filled('id_depto')) {
             $query->where('e.id_depto', $request->id_depto);
@@ -107,12 +106,11 @@ class ReportesController extends Controller
             ");
 
         if ($request->filled('id_emp')) {
-            $buscar = $request->id_emp;
-            $query->where(function($q) use ($buscar) {
-                $q->where('e.identificacion', 'ilike', "%$buscar%")
-                  ->orWhere('e.apellido_emp',  'ilike', "%$buscar%")
-                  ->orWhere('e.nombre_emp',    'ilike', "%$buscar%");
-            });
+            $buscar = '%' . $request->id_emp . '%';
+            $query->whereRaw(
+                "(e.identificacion ILIKE ? OR e.apellido_emp ILIKE ? OR e.nombre_emp ILIKE ?)",
+                [$buscar, $buscar, $buscar]
+            );
         }
         if ($request->filled('id_depto')) {
             $query->where('e.id_depto', $request->id_depto);
