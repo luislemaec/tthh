@@ -34,14 +34,31 @@ class ReportesController extends Controller
                 'c.atraso_lunch',
                 'c.atraso_salida',
                 'c.horas_decto',
-                // Minutos justificados por permisos aprobados en esa fecha
+                // Minutos justificados por tipo_horario
                 DB::raw("COALESCE((
                     SELECT SUM(EXTRACT(EPOCH FROM (p.hora_hasta::timestamp - p.hora_desde::timestamp)) / 60)
                     FROM dbo.d2_permiso p
                     WHERE p.id_emp = c.id_emp
                       AND DATE(p.fecha_desde) = DATE(c.fecha)
                       AND p.estado_permiso = 'APROBADO'
-                ), 0) as minutos_justificados")
+                      AND p.tipo_horario = 'ENTRADA'
+                ), 0) as min_just_entrada"),
+                DB::raw("COALESCE((
+                    SELECT SUM(EXTRACT(EPOCH FROM (p.hora_hasta::timestamp - p.hora_desde::timestamp)) / 60)
+                    FROM dbo.d2_permiso p
+                    WHERE p.id_emp = c.id_emp
+                      AND DATE(p.fecha_desde) = DATE(c.fecha)
+                      AND p.estado_permiso = 'APROBADO'
+                      AND p.tipo_horario = 'ENTRE JORNADA'
+                ), 0) as min_just_lunch"),
+                DB::raw("COALESCE((
+                    SELECT SUM(EXTRACT(EPOCH FROM (p.hora_hasta::timestamp - p.hora_desde::timestamp)) / 60)
+                    FROM dbo.d2_permiso p
+                    WHERE p.id_emp = c.id_emp
+                      AND DATE(p.fecha_desde) = DATE(c.fecha)
+                      AND p.estado_permiso = 'APROBADO'
+                      AND p.tipo_horario = 'SALIDA'
+                ), 0) as min_just_salida")
             );
 
         if ($request->filled('id_emp')) {
@@ -57,17 +74,21 @@ class ReportesController extends Controller
 
         $datos = $query->orderBy('c.fecha')->orderByRaw('e.apellido_emp')->get();
 
-        // Filtrar según justificación
+        // Filtrar según justificación por tipo
         $resultado = $datos->map(function ($r) {
-            $atrasoTotal = $r->atraso_entrada + $r->atraso_lunch + $r->atraso_salida;
-            $justificado = (float) $r->minutos_justificados;
+            $pendEntrada = max(0, $r->atraso_entrada - (float)$r->min_just_entrada);
+            $pendLunch   = max(0, $r->atraso_lunch   - (float)$r->min_just_lunch);
+            $pendSalida  = max(0, $r->atraso_salida  - (float)$r->min_just_salida);
+            $pendiente   = $pendEntrada + $pendLunch + $pendSalida;
 
-            if ($justificado >= $atrasoTotal) {
-                return null; // Totalmente justificado → no aparece
-            }
+            if ($pendiente <= 0) return null; // Totalmente justificado → no aparece
 
-            $r->justificacion = $justificado > 0 ? 'PARCIAL' : 'NINGUNA';
-            $r->minutos_pendientes = max(0, $atrasoTotal - $justificado);
+            $tieneAlgunJustificado = $r->min_just_entrada > 0
+                || $r->min_just_lunch > 0
+                || $r->min_just_salida > 0;
+
+            $r->justificacion      = $tieneAlgunJustificado ? 'PARCIAL' : 'NINGUNA';
+            $r->minutos_pendientes = $pendiente;
             return $r;
         })->filter()->values();
 

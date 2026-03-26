@@ -24,6 +24,12 @@
         <option value="NEGADO">Negado</option>
         <option value="ELIMINADO">Eliminado</option>
       </select>
+      <select v-model="filtros.descontable" @change="cargar"
+        class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
+        <option value="">Descontable / No descontable</option>
+        <option value="SI">Solo descontables</option>
+        <option value="NO">Solo no descontables</option>
+      </select>
       <input v-model="filtros.fecha_desde" type="date" @change="cargar"
         class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
       <input v-model="filtros.fecha_hasta" type="date" @change="cargar"
@@ -41,6 +47,7 @@
           <tr>
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Empleado</th>
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Razon</th>
+            <th class="text-left px-4 py-3 text-gray-600 font-medium">Tipo</th>
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Desde</th>
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Hasta</th>
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Todo el dia</th>
@@ -60,6 +67,13 @@
               {{ p.empleado?.apellido_emp }}, {{ p.empleado?.nombre_emp }}
             </td>
             <td class="px-4 py-3 text-gray-600">{{ p.razon_permiso?.descripcion?.trim() || p.razon }}</td>
+            <td class="px-4 py-3">
+              <span v-if="p.tipo_horario" :class="colorTipoHorario(p.tipo_horario)"
+                class="px-2 py-0.5 rounded-full text-xs font-medium">
+                {{ p.tipo_horario }}
+              </span>
+              <span v-else class="text-gray-300 text-xs">—</span>
+            </td>
             <td class="px-4 py-3 text-gray-600">{{ p.fecha_desde?.substring(0, 10) }}</td>
             <td class="px-4 py-3 text-gray-600">{{ p.fecha_hasta?.substring(0, 10) }}</td>
             <td class="px-4 py-3 text-center">
@@ -116,6 +130,16 @@
               <option v-for="r in razones" :key="r.secuencial" :value="r.secuencial">
                 {{ r.descripcion.trim() }}
               </option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Tipo de permiso *</label>
+            <select v-model="formNuevo.tipo_horario"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
+              <option value="">Seleccionar tipo...</option>
+              <option value="ENTRADA">Entrada — atraso a la entrada</option>
+              <option value="ENTRE JORNADA">Entre jornada — lunch, cita médica, etc.</option>
+              <option value="SALIDA">Salida — salida anticipada</option>
             </select>
           </div>
           <div class="flex items-center gap-2">
@@ -214,6 +238,17 @@
           <div>
             <dt class="text-gray-500">Descontable</dt>
             <dd class="font-medium">{{ permisoSeleccionado?.descontable }}</dd>
+          </div>
+          <div>
+            <dt class="text-gray-500">Tipo de permiso</dt>
+            <dd>
+              <span v-if="permisoSeleccionado?.tipo_horario"
+                :class="colorTipoHorario(permisoSeleccionado?.tipo_horario)"
+                class="px-2 py-0.5 rounded-full text-xs font-medium">
+                {{ permisoSeleccionado?.tipo_horario }}
+              </span>
+              <span v-else class="text-gray-400">—</span>
+            </dd>
           </div>
           <div class="col-span-2">
             <dt class="text-gray-500">Observaciones</dt>
@@ -371,10 +406,10 @@ const pagina              = ref(1)
 const totalPaginas        = ref(1)
 const miRol               = ref({ es_supervisor: false, es_admin_th: false })
 
-const filtros = ref({ estado: "", fecha_desde: "", fecha_hasta: "" })
+const filtros = ref({ estado: "", fecha_desde: "", fecha_hasta: "", descontable: "" })
 
 const formNuevo = ref({
-  sec_permiso: "", fecha_desde: "", fecha_hasta: "",
+  sec_permiso: "", tipo_horario: "", fecha_desde: "", fecha_hasta: "",
   hora_desde: "08:00", hora_hasta: "17:00",
   todo_dia: "NO", observaciones: "",
 })
@@ -411,7 +446,7 @@ const cargar = async () => {
 const abrirModalNuevo = async () => {
   errorNuevo.value = ""
   formNuevo.value = {
-    sec_permiso: "", fecha_desde: "", fecha_hasta: "",
+    sec_permiso: "", tipo_horario: "", fecha_desde: "", fecha_hasta: "",
     hora_desde: "08:00", hora_hasta: "17:00",
     todo_dia: "NO", observaciones: "",
   }
@@ -423,7 +458,8 @@ const abrirModalNuevo = async () => {
 }
 
 const guardarPermiso = async () => {
-  if (!formNuevo.value.sec_permiso) { errorNuevo.value = "Selecciona una razon"; return }
+  if (!formNuevo.value.sec_permiso)   { errorNuevo.value = "Selecciona una razon"; return }
+  if (!formNuevo.value.tipo_horario)  { errorNuevo.value = "Selecciona el tipo de permiso"; return }
   guardando.value  = true
   errorNuevo.value = ""
   try {
@@ -493,8 +529,17 @@ const confirmarEliminar = async () => {
   }
 }
 
+const colorTipoHorario = (tipo) => {
+  const colores = {
+    "ENTRADA":       "bg-green-100 text-green-700",
+    "ENTRE JORNADA": "bg-blue-100 text-[#0b5447]",
+    "SALIDA":        "bg-orange-100 text-orange-700",
+  }
+  return colores[tipo] || "bg-gray-100 text-gray-700"
+}
+
 const limpiarFiltros = () => {
-  filtros.value = { estado: "", fecha_desde: "", fecha_hasta: "" }
+  filtros.value = { estado: "", fecha_desde: "", fecha_hasta: "", descontable: "" }
   pagina.value  = 1
   cargar()
 }

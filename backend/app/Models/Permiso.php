@@ -36,6 +36,7 @@ class Permiso extends Model
         "principal",
         "descontable",
         "procedencia",
+        "tipo_horario",
     ];
 
     public function empleado()
