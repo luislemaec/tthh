@@ -14,7 +14,7 @@
                class="w-20 h-20 object-contain" />
         </div>
         <h1 class="text-2xl font-bold text-gray-800">CONSEJO DE COMUNICACIÓN</h1>
-        <p class="text-gray-500 text-sm mt-1">Sistema de Talento Humano</p>
+        <p class="text-gray-500 text-sm mt-1">Sistema Administración del Talento Humano</p>
       </div>
 
       <!-- Formulario -->
