@@ -24,12 +24,20 @@
         <option value="NEGADO">Negado</option>
         <option value="ELIMINADO">Eliminado</option>
       </select>
-      <select v-model="filtros.descontable" @change="cargar"
-        class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
-        <option value="">Descontable / No descontable</option>
-        <option value="SI">Solo descontables</option>
-        <option value="NO">Solo no descontables</option>
-      </select>
+      <label class="flex items-center gap-2 cursor-pointer select-none text-sm text-gray-700 border rounded-lg px-3 py-2 hover:bg-gray-50"
+        :class="filtros.descontable === 'SI' ? 'border-[#579186] bg-[#f0faf8]' : ''">
+        <input type="checkbox" :checked="filtros.descontable === 'SI'"
+          @change="filtros.descontable = filtros.descontable === 'SI' ? '' : 'SI'; cargar()"
+          class="accent-[#0b5447]" />
+        Descontables
+      </label>
+      <label class="flex items-center gap-2 cursor-pointer select-none text-sm text-gray-700 border rounded-lg px-3 py-2 hover:bg-gray-50"
+        :class="filtros.descontable === 'NO' ? 'border-[#579186] bg-[#f0faf8]' : ''">
+        <input type="checkbox" :checked="filtros.descontable === 'NO'"
+          @change="filtros.descontable = filtros.descontable === 'NO' ? '' : 'NO'; cargar()"
+          class="accent-[#0b5447]" />
+        No descontables
+      </label>
       <input v-model="filtros.fecha_desde" type="date" @change="cargar"
         class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
       <input v-model="filtros.fecha_hasta" type="date" @change="cargar"
