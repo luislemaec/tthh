@@ -24,6 +24,11 @@ class VacacionesController extends Controller
         $fechaCorteConfig = Configuracion::find("FECHA_CORTE_VACACIONES");
         $fechaCorte       = $fechaCorteConfig ? Carbon::parse($fechaCorteConfig->valor) : Carbon::today();
 
+        // Si el empleado ingresó después de la fecha de corte, acumula desde su ingreso
+        if ($emp->fecha_ingreso && Carbon::parse($emp->fecha_ingreso)->gt($fechaCorte)) {
+            $fechaCorte = Carbon::parse($emp->fecha_ingreso);
+        }
+
         $diasAcumulados = round(max(0, $fechaCorte->diffInDays(Carbon::today())) / 30 * $tasa, 2);
         $saldoInicial   = (float) ($cabecera->dias_adicionales  ?? 0);
         $tomados        = (float) ($cabecera->total_dias_tomados ?? 0);

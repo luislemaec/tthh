@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use App\Models\Empleado;
 use App\Models\Departamento;
 use App\Models\EmpleadoMail;
+use App\Models\CabeceraVacacion;
 use Illuminate\Http\Request;
 
 class EmpleadoController extends Controller
@@ -95,6 +96,23 @@ class EmpleadoController extends Controller
         ]);
 	$emp->password = bcrypt($request->identificacion);
 	$emp->save();
+
+        // Crear registro de vacaciones con saldo inicial 0
+        CabeceraVacacion::firstOrCreate(
+            ["id_emp" => $emp->id_emp],
+            [
+                "dias_adicionales"       => 0,
+                "fecha_proceso"          => $emp->fecha_ingreso ?? now()->toDateString(),
+                "total_dias_tomados"     => 0,
+                "total_fin_semana"       => 0,
+                "total_tomados"          => 0,
+                "dias_x_tomar_normal"    => 0,
+                "dias_x_tomar_fin_semana"=> 0,
+                "dias_totales"           => 0,
+                "venta_normal"           => 0,
+                "venta_adicional"        => 0,
+            ]
+        );
 
         // Guardar email si se proporcionó
         if ($request->filled("email")) {
