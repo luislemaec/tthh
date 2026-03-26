@@ -130,12 +130,27 @@
       <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-lg space-y-4">
         <h2 class="text-lg font-semibold text-gray-700">Solicitar Permiso</h2>
         <div class="space-y-4">
+          <div class="space-y-2">
+            <label class="block text-sm font-medium text-gray-600">Descontable *</label>
+            <div class="flex gap-6">
+              <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
+                <input type="radio" v-model="filtroDescontableForm" value="SI"
+                  @change="formNuevo.sec_permiso = ''" class="accent-[#0b5447]" />
+                SI
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
+                <input type="radio" v-model="filtroDescontableForm" value="NO"
+                  @change="formNuevo.sec_permiso = ''" class="accent-[#0b5447]" />
+                NO
+              </label>
+            </div>
+          </div>
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Razon *</label>
             <select v-model="formNuevo.sec_permiso"
               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
               <option value="">Seleccionar razon...</option>
-              <option v-for="r in razones" :key="r.secuencial" :value="r.secuencial">
+              <option v-for="r in razonesFiltradas" :key="r.secuencial" :value="r.secuencial">
                 {{ r.descripcion.trim() }}
               </option>
             </select>
@@ -422,6 +437,12 @@ const formNuevo = ref({
   todo_dia: "NO", observaciones: "",
 })
 
+const filtroDescontableForm = ref("SI")
+
+const razonesFiltradas = computed(() =>
+  razones.value.filter(r => r.descontable === filtroDescontableForm.value)
+)
+
 const esSupervisorOAdmin = computed(() =>
   miRol.value.es_supervisor || miRol.value.es_admin_th
 )
@@ -453,6 +474,7 @@ const cargar = async () => {
 
 const abrirModalNuevo = async () => {
   errorNuevo.value = ""
+  filtroDescontableForm.value = "SI"
   formNuevo.value = {
     sec_permiso: "", tipo_horario: "", fecha_desde: "", fecha_hasta: "",
     hora_desde: "08:00", hora_hasta: "17:00",
