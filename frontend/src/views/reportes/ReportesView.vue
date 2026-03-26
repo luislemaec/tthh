@@ -6,7 +6,7 @@
     <div class="flex border-b">
       <button
         v-for="tab in tabs" :key="tab.id"
-        @click="tabActivo = tab.id"
+        @click="cambiarTab(tab.id)"
         :class="tabActivo === tab.id
           ? 'border-b-2 border-blue-600 text-[#0b5447] font-medium'
           : 'text-gray-500 hover:text-gray-700'"
@@ -232,6 +232,12 @@ const buscar = async () => {
   } finally {
     cargando.value = false
   }
+}
+
+const cambiarTab = (id) => {
+  tabActivo.value = id
+  datos.value     = []
+  filtros.value   = { fecha_desde: primerDiaMes, fecha_hasta: hoy, id_depto: "", id_emp: "" }
 }
 
 const limpiar = () => {
