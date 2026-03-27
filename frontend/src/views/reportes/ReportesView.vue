@@ -38,9 +38,9 @@
         </select>
       </div>
       <div>
-        <label class="block text-xs text-gray-500 mb-1">Empleado (cédula)</label>
-        <input v-model="filtros.id_emp" type="text" placeholder="Opcional..."
-          class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186] w-36" />
+        <label class="block text-xs text-gray-500 mb-1">Empleado</label>
+        <input v-model="filtros.id_emp" type="text" placeholder="Nombre, apellido o cédula..."
+          class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186] w-56" />
       </div>
       <button @click="buscar" :disabled="cargando"
         class="bg-[#0b5447] text-white px-5 py-2 rounded-lg text-sm hover:bg-[#00372e] disabled:opacity-50 font-medium">
