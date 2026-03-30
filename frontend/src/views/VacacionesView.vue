@@ -2,10 +2,16 @@
   <div class="space-y-6">
     <div class="flex items-center justify-between">
       <h1 class="text-2xl font-bold text-gray-800">Vacaciones</h1>
-      <button v-if="!saldo.inactivo" @click="abrirModalNuevo"
-        class="bg-[#0b5447] text-white px-4 py-2 rounded-lg hover:bg-[#00372e] text-sm font-medium">
-        + Solicitar Vacaciones
-      </button>
+      <div class="flex gap-2">
+        <router-link to="/planificacion"
+          class="border border-[#0b5447] text-[#0b5447] px-4 py-2 rounded-lg hover:bg-[#f0faf8] text-sm font-medium">
+          Planificación
+        </router-link>
+        <button v-if="!saldo.inactivo" @click="abrirModalNuevo"
+          class="bg-[#0b5447] text-white px-4 py-2 rounded-lg hover:bg-[#00372e] text-sm font-medium">
+          + Solicitar Vacaciones
+        </button>
+      </div>
     </div>
 
     <!-- Empleado inactivo -->

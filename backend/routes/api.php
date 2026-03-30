@@ -12,6 +12,8 @@ use App\Http\Controllers\PermisosController;
 use App\Http\Controllers\SupervisorController;
 use App\Http\Controllers\VacacionesController;
 use App\Http\Controllers\ImportacionController;
+use App\Http\Controllers\PeriodoPlanificacionController;
+use App\Http\Controllers\PlanificacionVacController;
 use Illuminate\Support\Facades\Route;
 
 // Rutas PÚBLICAS
@@ -117,6 +119,22 @@ Route::middleware("auth:sanctum")->group(function () {
     // Reportes
     Route::get("/reportes/atrasos",               [ReportesController::class, "atrasos"]);
     Route::get("/reportes/marcaciones-faltantes", [ReportesController::class, "marcacionesFaltantes"]);
+
+    // Períodos de planificación (TH admin)
+    Route::get("/admin/periodos-planificacion",          [PeriodoPlanificacionController::class, "index"]);
+    Route::get("/admin/periodos-planificacion/activo",   [PeriodoPlanificacionController::class, "activo"]);
+    Route::post("/admin/periodos-planificacion",         [PeriodoPlanificacionController::class, "store"]);
+    Route::put("/admin/periodos-planificacion/{id}",     [PeriodoPlanificacionController::class, "update"]);
+    Route::delete("/admin/periodos-planificacion/{id}",  [PeriodoPlanificacionController::class, "destroy"]);
+
+    // Planificación de vacaciones
+    Route::get("/planificacion/mi-planificacion",        [PlanificacionVacController::class, "miPlanificacion"]);
+    Route::post("/planificacion",                        [PlanificacionVacController::class, "store"]);
+    Route::get("/planificacion",                         [PlanificacionVacController::class, "index"]);
+    Route::patch("/planificacion/{id}/aprobar",          [PlanificacionVacController::class, "aprobar"]);
+    Route::patch("/planificacion/{id}/negar",            [PlanificacionVacController::class, "negar"]);
+    Route::delete("/planificacion/{id}",                 [PlanificacionVacController::class, "destroy"]);
+    Route::patch("/planificacion/{id}/replanificar",     [PlanificacionVacController::class, "replanificar"]);
 
     // Vacaciones
     Route::get("/vacaciones/mi-rol",            [VacacionesController::class, "miRol"]);
