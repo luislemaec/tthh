@@ -122,44 +122,42 @@
           No hay planificaciones para los filtros seleccionados
         </div>
         <table v-else class="w-full text-xs">
-          <thead class="bg-gray-50 border-b">
-            <tr>
-              <th rowspan="2" class="px-3 py-2 text-left text-gray-600 font-medium border-r">N°</th>
-              <th rowspan="2" class="px-3 py-2 text-left text-gray-600 font-medium border-r">Cédula</th>
-              <th rowspan="2" class="px-3 py-2 text-left text-gray-600 font-medium border-r">Apellidos y Nombres</th>
-              <th rowspan="2" class="px-3 py-2 text-left text-gray-600 font-medium border-r">Departamento</th>
-              <th colspan="3" class="px-3 py-2 text-center text-gray-600 font-medium border-r bg-blue-50">1er Período</th>
-              <th colspan="3" class="px-3 py-2 text-center text-gray-600 font-medium border-r bg-green-50">2do Período</th>
-              <th colspan="3" class="px-3 py-2 text-center text-gray-600 font-medium border-r bg-yellow-50">3er Período</th>
-              <th colspan="3" class="px-3 py-2 text-center text-gray-600 font-medium border-r bg-orange-50">4to Período</th>
-              <th rowspan="2" class="px-3 py-2 text-center text-gray-600 font-medium border-r">Total</th>
-              <th rowspan="2" class="px-3 py-2 text-center text-gray-600 font-medium border-r">Estado</th>
-              <th rowspan="2" class="px-3 py-2 text-center text-gray-600 font-medium">Acciones</th>
+          <thead>
+            <tr class="bg-[#0b5447] text-white">
+              <th rowspan="2" class="px-3 py-3 text-left font-medium border-r border-[#579186]">N°</th>
+              <th rowspan="2" class="px-3 py-3 text-left font-medium border-r border-[#579186]">Apellidos y Nombres</th>
+              <th v-if="miRol.es_admin_th" rowspan="2" class="px-3 py-3 text-left font-medium border-r border-[#579186]">Departamento</th>
+              <th colspan="3" class="px-3 py-2 text-center font-semibold border-r border-[#579186] bg-blue-600">1er Período</th>
+              <th colspan="3" class="px-3 py-2 text-center font-semibold border-r border-[#579186] bg-teal-600">2do Período</th>
+              <th colspan="3" class="px-3 py-2 text-center font-semibold border-r border-[#579186] bg-amber-600">3er Período</th>
+              <th colspan="3" class="px-3 py-2 text-center font-semibold border-r border-[#579186] bg-orange-600">4to Período</th>
+              <th rowspan="2" class="px-3 py-3 text-center font-medium border-r border-[#579186]">Total</th>
+              <th rowspan="2" class="px-3 py-3 text-center font-medium border-r border-[#579186]">Estado</th>
+              <th rowspan="2" class="px-3 py-3 text-center font-medium">Acciones</th>
             </tr>
-            <tr>
-              <th class="px-2 py-1 text-gray-500 font-normal bg-blue-50">Desde</th>
-              <th class="px-2 py-1 text-gray-500 font-normal bg-blue-50">Hasta</th>
-              <th class="px-2 py-1 text-gray-500 font-normal bg-blue-50 border-r">Días</th>
-              <th class="px-2 py-1 text-gray-500 font-normal bg-green-50">Desde</th>
-              <th class="px-2 py-1 text-gray-500 font-normal bg-green-50">Hasta</th>
-              <th class="px-2 py-1 text-gray-500 font-normal bg-green-50 border-r">Días</th>
-              <th class="px-2 py-1 text-gray-500 font-normal bg-yellow-50">Desde</th>
-              <th class="px-2 py-1 text-gray-500 font-normal bg-yellow-50">Hasta</th>
-              <th class="px-2 py-1 text-gray-500 font-normal bg-yellow-50 border-r">Días</th>
-              <th class="px-2 py-1 text-gray-500 font-normal bg-orange-50">Desde</th>
-              <th class="px-2 py-1 text-gray-500 font-normal bg-orange-50">Hasta</th>
-              <th class="px-2 py-1 text-gray-500 font-normal bg-orange-50 border-r">Días</th>
+            <tr class="text-white text-center">
+              <th class="px-2 py-1 font-normal bg-blue-500">Desde</th>
+              <th class="px-2 py-1 font-normal bg-blue-500">Hasta</th>
+              <th class="px-2 py-1 font-normal bg-blue-500 border-r border-[#579186]">Días</th>
+              <th class="px-2 py-1 font-normal bg-teal-500">Desde</th>
+              <th class="px-2 py-1 font-normal bg-teal-500">Hasta</th>
+              <th class="px-2 py-1 font-normal bg-teal-500 border-r border-[#579186]">Días</th>
+              <th class="px-2 py-1 font-normal bg-amber-500">Desde</th>
+              <th class="px-2 py-1 font-normal bg-amber-500">Hasta</th>
+              <th class="px-2 py-1 font-normal bg-amber-500 border-r border-[#579186]">Días</th>
+              <th class="px-2 py-1 font-normal bg-orange-500">Desde</th>
+              <th class="px-2 py-1 font-normal bg-orange-500">Hasta</th>
+              <th class="px-2 py-1 font-normal bg-orange-500 border-r border-[#579186]">Días</th>
             </tr>
           </thead>
           <tbody>
             <template v-for="(plan, idx) in planificaciones" :key="plan.id">
               <tr class="border-b hover:bg-gray-50" :class="plan.observacion ? '' : ''">
                 <td class="px-3 py-2 text-gray-500 border-r">{{ idx + 1 }}</td>
-                <td class="px-3 py-2 text-gray-700 border-r whitespace-nowrap">{{ plan.empleado?.id_emp }}</td>
                 <td class="px-3 py-2 font-medium text-gray-800 border-r whitespace-nowrap">
                   {{ plan.empleado?.apellido_emp }}, {{ plan.empleado?.nombre_emp }}
                 </td>
-                <td class="px-3 py-2 text-gray-600 border-r whitespace-nowrap">{{ plan.empleado?.departamento?.nombre_depto }}</td>
+                <td v-if="miRol.es_admin_th" class="px-3 py-2 text-gray-600 border-r whitespace-nowrap">{{ plan.empleado?.departamento?.nombre_depto }}</td>
                 <!-- 4 períodos -->
                 <template v-for="n in 4" :key="n">
                   <td class="px-2 py-2 text-gray-700 whitespace-nowrap">{{ periodoDeplan(plan, n)?.fecha_inicial || '—' }}</td>
