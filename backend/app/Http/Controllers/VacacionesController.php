@@ -17,7 +17,7 @@ class VacacionesController extends Controller
     {
         $tasas = [
             "LOSEP"              => 2.50,
-            "CODIGO DEL TRABAJO" => 1.15,
+            "CODIGO DEL TRABAJO" => 1.25,
         ];
         $tasa = $tasas[trim($emp->tipo_contrato)] ?? 0;
 
@@ -29,7 +29,9 @@ class VacacionesController extends Controller
             $fechaCorte = Carbon::parse($emp->fecha_ingreso);
         }
 
-        $diasAcumulados = round(max(0, $fechaCorte->diffInDays(Carbon::today())) / 30 * $tasa, 2);
+        // Base 360 días: días transcurridos / 360 × tasa anual (tasa × 12)
+        $diasCalendario = max(0, $fechaCorte->diffInDays(Carbon::today()));
+        $diasAcumulados = round($diasCalendario / 360 * ($tasa * 12), 2);
         $saldoInicial   = (float) ($cabecera->dias_adicionales  ?? 0);
         $tomados        = (float) ($cabecera->total_dias_tomados ?? 0);
         $disponibles    = round($saldoInicial + $diasAcumulados - $tomados, 2);
