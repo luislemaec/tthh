@@ -109,10 +109,25 @@ class PlanificacionVacController extends Controller
                 ->first()
             : null;
 
+        $fechaCorteConfig = Configuracion::find('FECHA_CORTE_VACACIONES');
+        $fechaCorte       = $fechaCorteConfig ? Carbon::parse($fechaCorteConfig->valor) : Carbon::today();
+
+        if ($emp->fecha_ingreso && Carbon::parse($emp->fecha_ingreso)->gt($fechaCorte)) {
+            // Empleado nuevo: calcular meses reales desde ingreso
+            $mesesServicio   = Carbon::parse($emp->fecha_ingreso)->diffInMonths(Carbon::today());
+            $puedeplanificar = $mesesServicio >= 11;
+        } else {
+            // Empleado existente (ingreso antes del corte): ya cumplió suficiente tiempo
+            $mesesServicio   = 11; // mínimo requerido, ya cumplido
+            $puedeplanificar = true;
+        }
+
         return response()->json([
-            'periodo'       => $periodo,
-            'planificacion' => $planificacion,
-            'saldo'         => $this->calcularSaldo($emp),
+            'periodo'          => $periodo,
+            'planificacion'    => $planificacion,
+            'saldo'            => $this->calcularSaldo($emp),
+            'meses_servicio'   => $mesesServicio,
+            'puede_planificar' => $puedeplanificar,
         ]);
     }
 
@@ -130,6 +145,20 @@ class PlanificacionVacController extends Controller
 
         if ($emp->id_depto == 999) {
             return response()->json(['message' => 'El administrador no puede planificar vacaciones'], 403);
+        }
+
+        // Verificar 11 meses de servicio
+        $fechaCorteConfig2 = Configuracion::find('FECHA_CORTE_VACACIONES');
+        $fechaCorte2       = $fechaCorteConfig2 ? Carbon::parse($fechaCorteConfig2->valor) : Carbon::today();
+        if ($emp->fecha_ingreso && Carbon::parse($emp->fecha_ingreso)->gt($fechaCorte2)) {
+            $mesesServicio = Carbon::parse($emp->fecha_ingreso)->diffInMonths(Carbon::today());
+        } else {
+            $mesesServicio = 11; // empleado existente, ya cumplió
+        }
+        if ($mesesServicio < 11) {
+            return response()->json([
+                'message' => "Debes tener al menos 11 meses de servicio para planificar vacaciones (actualmente tienes {$mesesServicio} meses)"
+            ], 422);
         }
 
         // Verificar período activo
@@ -173,11 +202,10 @@ class PlanificacionVacController extends Controller
             $totalDias += $this->diasEntreFechas($p['fecha_inicial'], $p['fecha_final']);
         }
 
-        // Validar saldo
-        $saldo = $this->calcularSaldo($emp);
-        if ($totalDias > $saldo) {
+        // Validar que sean exactamente 30 días
+        if ($totalDias !== 30) {
             return response()->json([
-                'message' => "Los días planificados ({$totalDias}) superan tu saldo disponible ({$saldo} días)"
+                'message' => "La planificación debe sumar exactamente 30 días (actualmente: {$totalDias} días)"
             ], 422);
         }
 
@@ -376,12 +404,10 @@ class PlanificacionVacController extends Controller
             $totalDias += $this->diasEntreFechas($p['fecha_inicial'], $p['fecha_final']);
         }
 
-        // Validar saldo del empleado
-        $empleado = Empleado::find($planificacion->id_emp);
-        $saldo    = $this->calcularSaldo($empleado);
-        if ($totalDias > $saldo) {
+        // Validar que sean exactamente 30 días
+        if ($totalDias !== 30) {
             return response()->json([
-                'message' => "Los días replanificados ({$totalDias}) superan el saldo disponible ({$saldo} días)"
+                'message' => "La replanificación debe sumar exactamente 30 días (actualmente: {$totalDias} días)"
             ], 422);
         }
 

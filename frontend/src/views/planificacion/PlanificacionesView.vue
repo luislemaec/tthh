@@ -70,14 +70,19 @@
                 Período habilitado: {{ periodoActivo.fecha_inicio }} al {{ periodoActivo.fecha_fin }}
               </p>
             </div>
-            <button @click="modalPlanificar = true"
+            <button v-if="puedeplanificar" @click="modalPlanificar = true"
               class="bg-[#0b5447] text-white px-4 py-2 rounded-lg hover:bg-[#00372e] text-sm font-medium">
               Planificar mis vacaciones
             </button>
           </div>
-          <!-- Saldo disponible -->
+          <!-- Saldo disponible (solo informativo) -->
           <div class="bg-[#f0faf8] border border-[#95d0c7] rounded-lg p-3 text-sm">
-            Saldo disponible: <span class="font-bold text-[#0b5447]">{{ saldo }} días</span>
+            Saldo disponible (informativo): <span class="font-bold text-[#0b5447]">{{ saldo }} días</span>
+          </div>
+          <!-- Sin meses suficientes -->
+          <div v-if="!puedeplanificar" class="bg-orange-50 border border-orange-200 rounded-lg p-3 text-sm text-orange-700">
+            No puede planificar vacaciones hasta completar 11 meses de servicio (actualmente: {{ mesesServicio }} meses).
+            Los permisos con cargo a vacaciones están disponibles mientras tanto.
           </div>
         </div>
       </template>
@@ -175,13 +180,16 @@
           Planificar vacaciones {{ periodoActivo?.anio }}
         </h2>
 
-        <!-- Contador saldo -->
-        <div class="flex items-center justify-between bg-gray-50 rounded-lg p-3 text-sm">
-          <span class="text-gray-600">Saldo disponible: <strong>{{ saldo }} días</strong></span>
-          <span :class="totalPlanificado > saldo ? 'text-red-600 font-bold' : 'text-[#0b5447] font-bold'">
-            Planificado: {{ totalPlanificado }} días
+        <!-- Contador 30 días + saldo informativo -->
+        <div class="bg-gray-50 rounded-lg p-3 text-sm flex items-center justify-between">
+          <span class="text-gray-500">Saldo disponible (informativo): <strong class="text-[#0b5447]">{{ saldo }} días</strong></span>
+          <span :class="totalPlanificado === 30 ? 'text-green-600 font-bold' : totalPlanificado > 30 ? 'text-red-600 font-bold' : 'text-gray-700 font-bold'">
+            {{ totalPlanificado }} / 30 días
           </span>
         </div>
+        <p v-if="totalPlanificado !== 30 && totalPlanificado > 0" class="text-xs text-orange-600">
+          La planificación debe sumar exactamente 30 días.
+        </p>
 
         <!-- 4 períodos -->
         <div class="space-y-3">
@@ -209,7 +217,7 @@
         <div class="flex justify-end gap-3 pt-2">
           <button @click="modalPlanificar = false"
             class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
-          <button @click="guardarPlanificacion" :disabled="guardandoPlan || totalPlanificado > saldo"
+          <button @click="guardarPlanificacion" :disabled="guardandoPlan || totalPlanificado !== 30"
             class="px-4 py-2 rounded-lg bg-[#0b5447] text-white text-sm hover:bg-[#00372e] disabled:opacity-50">
             {{ guardandoPlan ? 'Enviando...' : 'Enviar planificación' }}
           </button>
@@ -266,11 +274,11 @@
           Esta acción solo puede realizarse una vez. Una vez replanificado no podrá volver a modificarse.
         </p>
 
-        <!-- Saldo empleado -->
-        <div class="bg-gray-50 rounded-lg p-3 text-sm">
-          Saldo disponible del empleado: <strong>{{ saldoReplan }} días</strong>
-          <span :class="totalReplan > saldoReplan ? 'text-red-600 ml-4 font-bold' : 'text-[#0b5447] ml-4 font-bold'">
-            Planificado: {{ totalReplan }} días
+        <!-- Contador replanificación -->
+        <div class="bg-gray-50 rounded-lg p-3 text-sm flex items-center justify-between">
+          <span class="text-gray-500">La replanificación debe sumar exactamente 30 días</span>
+          <span :class="totalReplan === 30 ? 'text-green-600 font-bold' : totalReplan > 30 ? 'text-red-600 font-bold' : 'text-gray-700 font-bold'">
+            {{ totalReplan }} / 30 días
           </span>
         </div>
 
@@ -299,7 +307,7 @@
         <div class="flex justify-end gap-3 pt-2">
           <button @click="modalReplanificar = false"
             class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
-          <button @click="confirmarReplanificar" :disabled="guardandoReplan || totalReplan > saldoReplan"
+          <button @click="confirmarReplanificar" :disabled="guardandoReplan || totalReplan !== 30"
             class="px-4 py-2 rounded-lg bg-[#0b5447] text-white text-sm hover:bg-[#00372e] disabled:opacity-50">
             {{ guardandoReplan ? 'Guardando...' : 'Confirmar replanificación' }}
           </button>
@@ -312,16 +320,15 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useAuthStore } from '@/stores/auth'
 import api from '@/services/api'
-
-const auth = useAuthStore()
 
 // Estado general
 const cargando        = ref(false)
 const periodoActivo   = ref(null)
 const miPlanificacion = ref(null)
 const saldo           = ref(0)
+const mesesServicio   = ref(0)
+const puedeplanificar = ref(true)
 const planificaciones = ref([])
 const miRol           = ref({ es_supervisor: false, es_admin_th: false })
 const tabActivo       = ref('mia')
@@ -348,7 +355,6 @@ const planSeleccionada = ref(null)
 const motivoAccion     = ref('')
 const errorAccion      = ref('')
 const guardandoReplan  = ref(false)
-const saldoReplan      = ref(0)
 const formReplan       = ref(Array.from({ length: 4 }, () => ({ fecha_inicial: '', fecha_final: '', dias: null })))
 
 const totalReplan = computed(() =>
@@ -393,6 +399,8 @@ const cargarMiPlanificacion = async () => {
   periodoActivo.value   = data.periodo
   miPlanificacion.value = data.planificacion
   saldo.value           = data.saldo
+  mesesServicio.value   = data.meses_servicio ?? 0
+  puedeplanificar.value = data.puede_planificar ?? true
 }
 
 const cargarPlanificaciones = async () => {
@@ -491,15 +499,6 @@ const abrirModalReplanificar = async (plan) => {
       dias:          p?.dias_calculados ?? null,
     }
   })
-
-  // Obtener saldo del empleado
-  try {
-    const { data } = await api.get('/planificacion', { params: { anio: plan.anio } })
-    const planData = data.find(x => x.id === plan.id)
-    // Usamos el saldo calculado via backend — aquí lo aproximamos con el total planificado actual
-    saldoReplan.value = plan.total_dias_planificados + 999 // placeholder; el backend valida
-  } catch {}
-  saldoReplan.value = 9999 // el backend valida; mostramos sin bloquear en frontend
 
   modalReplanificar.value = true
 }
