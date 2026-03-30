@@ -115,61 +115,85 @@
         </button>
       </div>
 
-      <!-- Lista planificaciones -->
-      <div class="space-y-4">
+      <!-- Tabla planificaciones -->
+      <div class="bg-white rounded-xl shadow overflow-x-auto">
         <div v-if="cargando" class="text-center py-8 text-gray-400">Cargando...</div>
-        <div v-else-if="planificaciones.length === 0" class="bg-white rounded-xl shadow p-8 text-center text-gray-400">
+        <div v-else-if="planificaciones.length === 0" class="text-center py-8 text-gray-400">
           No hay planificaciones para los filtros seleccionados
         </div>
-        <div v-for="plan in planificaciones" :key="plan.id"
-          class="bg-white rounded-xl shadow p-5 space-y-3">
-          <!-- Encabezado -->
-          <div class="flex items-start justify-between">
-            <div>
-              <p class="font-semibold text-gray-800">
-                {{ plan.empleado?.apellido_emp }}, {{ plan.empleado?.nombre_emp }}
-              </p>
-              <p class="text-xs text-gray-400">
-                {{ plan.empleado?.departamento?.nombre_depto }} · Año {{ plan.anio }} ·
-                {{ plan.total_dias_planificados }} días planificados
-              </p>
-            </div>
-            <span :class="colorEstado(plan.estado)" class="px-2 py-1 rounded-full text-xs font-medium">
-              {{ plan.estado }}
-            </span>
-          </div>
-
-          <!-- Períodos -->
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
-            <div v-for="p in plan.periodos.filter(x => x.fecha_inicial)" :key="p.id"
-              class="bg-gray-50 rounded-lg p-2 text-xs">
-              <p class="text-gray-500 font-medium">Período {{ p.numero_periodo }}</p>
-              <p class="text-gray-700">{{ p.fecha_inicial }} → {{ p.fecha_final }}</p>
-              <p class="text-[#0b5447] font-semibold">{{ p.dias_calculados }} días</p>
-            </div>
-          </div>
-
-          <!-- Observación (negado/eliminado) -->
-          <div v-if="plan.observacion" class="bg-red-50 border border-red-200 rounded p-2 text-xs text-red-700">
-            {{ plan.observacion }}
-          </div>
-
-          <!-- Acciones -->
-          <div v-if="plan.estado === 'PENDIENTE'" class="flex gap-2">
-            <button @click="aprobar(plan.id)"
-              class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs hover:bg-green-700">Aprobar</button>
-            <button @click="abrirModalNegar(plan)"
-              class="bg-red-500 text-white px-3 py-1.5 rounded-lg text-xs hover:bg-red-600">Negar</button>
-            <button @click="abrirModalEliminar(plan)"
-              class="bg-gray-500 text-white px-3 py-1.5 rounded-lg text-xs hover:bg-gray-600">Eliminar</button>
-          </div>
-          <div v-if="plan.estado === 'APROBADO' && plan.replanificada === 'NO'" class="flex gap-2">
-            <button @click="abrirModalReplanificar(plan)"
-              class="bg-[#0b5447] text-white px-3 py-1.5 rounded-lg text-xs hover:bg-[#00372e]">
-              Replanificar
-            </button>
-          </div>
-        </div>
+        <table v-else class="w-full text-xs">
+          <thead class="bg-gray-50 border-b">
+            <tr>
+              <th rowspan="2" class="px-3 py-2 text-left text-gray-600 font-medium border-r">N°</th>
+              <th rowspan="2" class="px-3 py-2 text-left text-gray-600 font-medium border-r">Cédula</th>
+              <th rowspan="2" class="px-3 py-2 text-left text-gray-600 font-medium border-r">Apellidos y Nombres</th>
+              <th rowspan="2" class="px-3 py-2 text-left text-gray-600 font-medium border-r">Departamento</th>
+              <th colspan="3" class="px-3 py-2 text-center text-gray-600 font-medium border-r bg-blue-50">1er Período</th>
+              <th colspan="3" class="px-3 py-2 text-center text-gray-600 font-medium border-r bg-green-50">2do Período</th>
+              <th colspan="3" class="px-3 py-2 text-center text-gray-600 font-medium border-r bg-yellow-50">3er Período</th>
+              <th colspan="3" class="px-3 py-2 text-center text-gray-600 font-medium border-r bg-orange-50">4to Período</th>
+              <th rowspan="2" class="px-3 py-2 text-center text-gray-600 font-medium border-r">Total</th>
+              <th rowspan="2" class="px-3 py-2 text-center text-gray-600 font-medium border-r">Estado</th>
+              <th rowspan="2" class="px-3 py-2 text-center text-gray-600 font-medium">Acciones</th>
+            </tr>
+            <tr>
+              <th class="px-2 py-1 text-gray-500 font-normal bg-blue-50">Desde</th>
+              <th class="px-2 py-1 text-gray-500 font-normal bg-blue-50">Hasta</th>
+              <th class="px-2 py-1 text-gray-500 font-normal bg-blue-50 border-r">Días</th>
+              <th class="px-2 py-1 text-gray-500 font-normal bg-green-50">Desde</th>
+              <th class="px-2 py-1 text-gray-500 font-normal bg-green-50">Hasta</th>
+              <th class="px-2 py-1 text-gray-500 font-normal bg-green-50 border-r">Días</th>
+              <th class="px-2 py-1 text-gray-500 font-normal bg-yellow-50">Desde</th>
+              <th class="px-2 py-1 text-gray-500 font-normal bg-yellow-50">Hasta</th>
+              <th class="px-2 py-1 text-gray-500 font-normal bg-yellow-50 border-r">Días</th>
+              <th class="px-2 py-1 text-gray-500 font-normal bg-orange-50">Desde</th>
+              <th class="px-2 py-1 text-gray-500 font-normal bg-orange-50">Hasta</th>
+              <th class="px-2 py-1 text-gray-500 font-normal bg-orange-50 border-r">Días</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template v-for="(plan, idx) in planificaciones" :key="plan.id">
+              <tr class="border-b hover:bg-gray-50" :class="plan.observacion ? '' : ''">
+                <td class="px-3 py-2 text-gray-500 border-r">{{ idx + 1 }}</td>
+                <td class="px-3 py-2 text-gray-700 border-r whitespace-nowrap">{{ plan.empleado?.id_emp }}</td>
+                <td class="px-3 py-2 font-medium text-gray-800 border-r whitespace-nowrap">
+                  {{ plan.empleado?.apellido_emp }}, {{ plan.empleado?.nombre_emp }}
+                </td>
+                <td class="px-3 py-2 text-gray-600 border-r whitespace-nowrap">{{ plan.empleado?.departamento?.nombre_depto }}</td>
+                <!-- 4 períodos -->
+                <template v-for="n in 4" :key="n">
+                  <td class="px-2 py-2 text-gray-700 whitespace-nowrap">{{ periodoDeplan(plan, n)?.fecha_inicial || '—' }}</td>
+                  <td class="px-2 py-2 text-gray-700 whitespace-nowrap">{{ periodoDeplan(plan, n)?.fecha_final || '—' }}</td>
+                  <td class="px-2 py-2 text-center font-semibold text-[#0b5447] border-r">{{ periodoDeplan(plan, n)?.dias_calculados ?? '—' }}</td>
+                </template>
+                <td class="px-3 py-2 text-center font-bold text-gray-800 border-r">{{ plan.total_dias_planificados }}</td>
+                <td class="px-3 py-2 text-center border-r">
+                  <span :class="colorEstado(plan.estado)" class="px-2 py-1 rounded-full font-medium whitespace-nowrap">
+                    {{ plan.estado }}
+                  </span>
+                </td>
+                <td class="px-3 py-2 text-center">
+                  <div class="flex gap-1 justify-center">
+                    <button v-if="plan.estado === 'PENDIENTE'" @click="aprobar(plan.id)"
+                      class="bg-green-600 text-white px-2 py-1 rounded text-xs hover:bg-green-700">Aprobar</button>
+                    <button v-if="plan.estado === 'PENDIENTE'" @click="abrirModalNegar(plan)"
+                      class="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600">Negar</button>
+                    <button v-if="plan.estado === 'PENDIENTE'" @click="abrirModalEliminar(plan)"
+                      class="bg-gray-500 text-white px-2 py-1 rounded text-xs hover:bg-gray-600">Eliminar</button>
+                    <button v-if="plan.estado === 'APROBADO' && plan.replanificada === 'NO'" @click="abrirModalReplanificar(plan)"
+                      class="bg-[#0b5447] text-white px-2 py-1 rounded text-xs hover:bg-[#00372e]">Replanificar</button>
+                  </div>
+                </td>
+              </tr>
+              <!-- Fila de observación si existe -->
+              <tr v-if="plan.observacion" class="border-b bg-red-50">
+                <td colspan="18" class="px-4 py-1 text-xs text-red-700">
+                  <span class="font-medium">Observación:</span> {{ plan.observacion }}
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
       </div>
     </template>
 
@@ -391,6 +415,9 @@ const calcularDiasReplan = (i) => {
   const p = formReplan.value[i]
   p.dias = diasEntreFechas(p.fecha_inicial, p.fecha_final)
 }
+
+const periodoDeplan = (plan, n) =>
+  plan.periodos?.find(p => p.numero_periodo === n) ?? null
 
 // ── Carga inicial ──────────────────────────────────────────────────────────
 
