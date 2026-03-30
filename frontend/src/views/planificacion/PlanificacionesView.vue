@@ -53,7 +53,7 @@
                 <td class="px-4 py-2 text-gray-600">Período {{ p.numero_periodo }}</td>
                 <td class="px-4 py-2">{{ p.fecha_inicial || '—' }}</td>
                 <td class="px-4 py-2">{{ p.fecha_final || '—' }}</td>
-                <td class="px-4 py-2 text-center font-medium">{{ p.dias_calculados ?? '—' }}</td>
+                <td class="px-4 py-2 text-center font-medium">{{ fmtDias(p.dias_calculados) }}</td>
               </tr>
             </tbody>
           </table>
@@ -162,9 +162,9 @@
                 <template v-for="n in 4" :key="n">
                   <td class="px-2 py-2 text-gray-700 whitespace-nowrap">{{ periodoDeplan(plan, n)?.fecha_inicial || '—' }}</td>
                   <td class="px-2 py-2 text-gray-700 whitespace-nowrap">{{ periodoDeplan(plan, n)?.fecha_final || '—' }}</td>
-                  <td class="px-2 py-2 text-center font-semibold text-[#0b5447] border-r">{{ periodoDeplan(plan, n)?.dias_calculados ?? '—' }}</td>
+                  <td class="px-2 py-2 text-center font-semibold text-[#0b5447] border-r">{{ fmtDias(periodoDeplan(plan, n)?.dias_calculados) }}</td>
                 </template>
-                <td class="px-3 py-2 text-center font-bold text-gray-800 border-r">{{ plan.total_dias_planificados }}</td>
+                <td class="px-3 py-2 text-center font-bold text-gray-800 border-r">{{ fmtDias(plan.total_dias_planificados) }}</td>
                 <td class="px-3 py-2 text-center border-r">
                   <span :class="colorEstado(plan.estado)" class="px-2 py-1 rounded-full font-medium whitespace-nowrap">
                     {{ plan.estado }}
@@ -229,7 +229,7 @@
             </div>
             <div class="text-center">
               <p class="text-xs text-gray-500 mb-1">Días</p>
-              <p class="font-semibold text-[#0b5447] text-lg">{{ p.dias ?? '—' }}</p>
+              <p class="font-semibold text-[#0b5447] text-lg">{{ fmtDias(p.dias) }}</p>
             </div>
           </div>
         </div>
@@ -320,7 +320,7 @@
             </div>
             <div class="text-center">
               <p class="text-xs text-gray-500 mb-1">Días</p>
-              <p class="font-semibold text-[#0b5447] text-lg">{{ p.dias ?? '—' }}</p>
+              <p class="font-semibold text-[#0b5447] text-lg">{{ fmtDias(p.dias) }}</p>
             </div>
           </div>
         </div>
@@ -416,6 +416,8 @@ const calcularDiasReplan = (i) => {
 
 const periodoDeplan = (plan, n) =>
   plan.periodos?.find(p => p.numero_periodo === n) ?? null
+
+const fmtDias = (val) => val != null ? Math.round(val) : '—'
 
 // ── Carga inicial ──────────────────────────────────────────────────────────
 
