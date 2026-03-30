@@ -4,8 +4,18 @@
       <h1 class="text-2xl font-bold text-gray-800">Planificación de Vacaciones</h1>
     </div>
 
+    <!-- Tabs (solo supervisor/admin) -->
+    <div v-if="esSupervisorOAdmin" class="flex border-b">
+      <button @click="tabActivo = 'mia'"
+        :class="tabActivo === 'mia' ? 'border-b-2 border-[#0b5447] text-[#0b5447] font-medium' : 'text-gray-500 hover:text-gray-700'"
+        class="px-6 py-3 text-sm transition">Mi Planificación</button>
+      <button @click="tabActivo = 'equipo'"
+        :class="tabActivo === 'equipo' ? 'border-b-2 border-[#0b5447] text-[#0b5447] font-medium' : 'text-gray-500 hover:text-gray-700'"
+        class="px-6 py-3 text-sm transition">Planificaciones del Equipo</button>
+    </div>
+
     <!-- ── VISTA EMPLEADO ────────────────────────────────────────────────── -->
-    <template v-if="!esSupervisorOAdmin">
+    <template v-if="!esSupervisorOAdmin || tabActivo === 'mia'">
       <!-- Sin período activo -->
       <div v-if="!periodoActivo" class="bg-white rounded-xl shadow p-8 text-center text-gray-400">
         <p class="text-lg font-medium">No hay un período de planificación activo en este momento.</p>
@@ -74,7 +84,7 @@
     </template>
 
     <!-- ── VISTA SUPERVISOR / ADMIN ──────────────────────────────────────── -->
-    <template v-if="esSupervisorOAdmin">
+    <template v-if="esSupervisorOAdmin && tabActivo === 'equipo'">
       <!-- Filtros -->
       <div class="bg-white rounded-xl shadow p-4 flex flex-wrap gap-3 items-end">
         <div>
@@ -314,6 +324,7 @@ const miPlanificacion = ref(null)
 const saldo           = ref(0)
 const planificaciones = ref([])
 const miRol           = ref({ es_supervisor: false, es_admin_th: false })
+const tabActivo       = ref('mia')
 
 const esSupervisorOAdmin = computed(() => miRol.value.es_supervisor || miRol.value.es_admin_th)
 
@@ -518,10 +529,12 @@ onMounted(async () => {
   const { data } = await api.get('/vacaciones/mi-rol')
   miRol.value = data
 
+  // Siempre carga la planificación propia
+  await cargarMiPlanificacion()
+
+  // Si es supervisor/admin también carga las del equipo en background
   if (esSupervisorOAdmin.value) {
     cargarPlanificaciones()
-  } else {
-    await cargarMiPlanificacion()
   }
 })
 </script>
