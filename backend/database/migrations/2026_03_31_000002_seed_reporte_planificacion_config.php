@@ -13,24 +13,23 @@ return new class extends Migration
             'valor'    => 'COORDINADOR GENERAL ADMINISTRATIVO FINANCIERO',
         ]);
 
-        // 2. Opción de menú — buscar la categoría de Planificación (donde está OPC006)
+        // 2. Opción de menú — buscar la categoría de Planificación (donde está la URL /planificacion)
         $opcPlanificacion = DB::table('dbo.admin_opcion')
-            ->where('ruta', '/planificacion')
+            ->where('url', '/planificacion')
             ->first();
 
         if (!$opcPlanificacion) return;
 
-        $idCategoria     = $opcPlanificacion->id_categoria;
-        $ordenCategoria  = $opcPlanificacion->orden_categoria;
+        $categoria      = $opcPlanificacion->categoria;
+        $ordenCategoria = $opcPlanificacion->orden_categoria;
 
-        // Calcular siguiente orden dentro de la categoría
-        $maxOrden = DB::table('dbo.admin_opcion')
-            ->where('id_categoria', $idCategoria)
-            ->max('orden');
+        // Calcular siguiente secuencia
+        $maxSecuencia = DB::table('dbo.admin_opcion')
+            ->where('categoria', $categoria)
+            ->max('secuencia');
 
         // Calcular siguiente ID
         $maxId = DB::table('dbo.admin_opcion')->max('id');
-        // Formato OPC + número con ceros
         preg_match('/(\d+)$/', $maxId, $m);
         $nextNum = isset($m[1]) ? (int)$m[1] + 1 : 99;
         $nextId  = 'OPC' . str_pad($nextNum, 3, '0', STR_PAD_LEFT);
@@ -38,11 +37,10 @@ return new class extends Migration
         DB::table('dbo.admin_opcion')->insertOrIgnore([
             'id'              => $nextId,
             'descripcion'     => 'Reporte Planificación Vacaciones',
-            'ruta'            => '/planificacion/reporte',
-            'icono'           => 'DocumentChartBarIcon',
-            'id_categoria'    => $idCategoria,
+            'url'             => '/planificacion/reporte',
+            'categoria'       => $categoria,
             'orden_categoria' => $ordenCategoria,
-            'orden'           => $maxOrden + 1,
+            'secuencia'       => $maxSecuencia + 1,
             'estado'          => 'ACTIVO',
         ]);
     }
@@ -54,7 +52,7 @@ return new class extends Migration
             ->delete();
 
         DB::table('dbo.admin_opcion')
-            ->where('ruta', '/planificacion/reporte')
+            ->where('url', '/planificacion/reporte')
             ->delete();
     }
 };
