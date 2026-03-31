@@ -155,7 +155,7 @@ class ReportePlanificacionController extends Controller
             }
         }
 
-        $coordinador = optional(Configuracion::find('COORDINADOR_PLANIFICACION'))->valor ?? 'Coordinador General Administrativo Financiero';
+        $coordinador = optional(Configuracion::find('APROBADOR_INST_VACACION'))->valor ?? 'Coordinador General Administrativo Financiero';
         $fechaHoy    = Carbon::now()->locale('es')->isoFormat('D [de] MMMM [de] YYYY');
 
         // Agrupar por departamento

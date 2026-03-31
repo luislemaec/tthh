@@ -9,7 +9,7 @@ return new class extends Migration
     {
         // 1. Configuración del coordinador
         DB::table('dbo.d2_configuracion')->insertOrIgnore([
-            'concepto' => 'COORDINADOR_PLANIFICACION',
+            'concepto' => 'APROBADOR_INST_VACACION',
             'valor'    => 'COORDINADOR GENERAL ADMINISTRATIVO FINANCIERO',
         ]);
 
@@ -48,7 +48,7 @@ return new class extends Migration
     public function down(): void
     {
         DB::table('dbo.d2_configuracion')
-            ->where('concepto', 'COORDINADOR_PLANIFICACION')
+            ->where('concepto', 'APROBADOR_INST_VACACION')
             ->delete();
 
         DB::table('dbo.admin_opcion')
