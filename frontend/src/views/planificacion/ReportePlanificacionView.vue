@@ -72,7 +72,7 @@
             <input ref="inputFile" type="file" accept=".pdf"
               class="text-sm text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-[#0b5447] file:text-white hover:file:bg-[#00372e]"
               @change="onFileChange" />
-            <button @click="subirFirmado" :disabled="!archivoSeleccionado || subiendo"
+            <button @click="subirFirmado" :disabled="!archivoSeleccionado || subiendo || !datos.todo_aprobado"
               class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 disabled:opacity-40">
               {{ subiendo ? 'Subiendo...' : 'Subir a Alfresco' }}
             </button>
