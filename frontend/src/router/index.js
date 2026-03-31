@@ -36,6 +36,7 @@ const routes = [
       { path: 'supervisores', name: 'Supervisores', component: () => import('@/views/supervisores/SupervisoresView.vue') },
       { path: 'reportes', name: 'Reportes', component: () => import('@/views/reportes/ReportesView.vue') },
       { path: 'planificacion', name: 'Planificacion', component: () => import('@/views/planificacion/PlanificacionesView.vue') },
+      { path: 'planificacion/reporte', name: 'ReportePlanificacion', component: () => import('@/views/planificacion/ReportePlanificacionView.vue') },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: '/' },

@@ -14,6 +14,7 @@ use App\Http\Controllers\VacacionesController;
 use App\Http\Controllers\ImportacionController;
 use App\Http\Controllers\PeriodoPlanificacionController;
 use App\Http\Controllers\PlanificacionVacController;
+use App\Http\Controllers\ReportePlanificacionController;
 use Illuminate\Support\Facades\Route;
 
 // Rutas PÚBLICAS
@@ -135,6 +136,12 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::patch("/planificacion/{id}/negar",            [PlanificacionVacController::class, "negar"]);
     Route::delete("/planificacion/{id}",                 [PlanificacionVacController::class, "destroy"]);
     Route::patch("/planificacion/{id}/replanificar",     [PlanificacionVacController::class, "replanificar"]);
+
+    // Reporte planificación de vacaciones (TH)
+    Route::get("/reporte-planificacion/{anio}/estado",            [ReportePlanificacionController::class, "estado"]);
+    Route::get("/reporte-planificacion/{anio}/pdf",               [ReportePlanificacionController::class, "generarPdf"]);
+    Route::post("/reporte-planificacion/{anio}/subir-firmado",    [ReportePlanificacionController::class, "subirFirmado"]);
+    Route::get("/reporte-planificacion/{anio}/descargar-firmado", [ReportePlanificacionController::class, "descargarFirmado"]);
 
     // Vacaciones
     Route::get("/vacaciones/mi-rol",            [VacacionesController::class, "miRol"]);

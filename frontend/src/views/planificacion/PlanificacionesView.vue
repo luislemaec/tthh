@@ -205,12 +205,12 @@
         <!-- Contador 30 días + saldo informativo -->
         <div class="bg-gray-50 rounded-lg p-3 text-sm flex items-center justify-between">
           <span class="text-gray-500">Saldo disponible (informativo): <strong class="text-[#0b5447]">{{ saldo }} días</strong></span>
-          <span :class="totalPlanificado === 30 ? 'text-green-600 font-bold' : totalPlanificado > 30 ? 'text-red-600 font-bold' : 'text-gray-700 font-bold'">
-            {{ totalPlanificado }} / 30 días
+          <span :class="totalPlanificado > 30 ? 'text-red-600 font-bold' : totalPlanificado > 0 ? 'text-green-600 font-bold' : 'text-gray-700 font-bold'">
+            {{ totalPlanificado }} / 30 días máximo
           </span>
         </div>
-        <p v-if="totalPlanificado !== 30 && totalPlanificado > 0" class="text-xs text-orange-600">
-          La planificación debe sumar exactamente 30 días.
+        <p v-if="totalPlanificado > 30" class="text-xs text-red-600">
+          La planificación no puede superar 30 días.
         </p>
 
         <!-- 4 períodos -->
@@ -239,7 +239,7 @@
         <div class="flex justify-end gap-3 pt-2">
           <button @click="modalPlanificar = false"
             class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
-          <button @click="guardarPlanificacion" :disabled="guardandoPlan || totalPlanificado !== 30"
+          <button @click="guardarPlanificacion" :disabled="guardandoPlan || totalPlanificado === 0 || totalPlanificado > 30"
             class="px-4 py-2 rounded-lg bg-[#0b5447] text-white text-sm hover:bg-[#00372e] disabled:opacity-50">
             {{ guardandoPlan ? 'Enviando...' : 'Enviar planificación' }}
           </button>
@@ -298,9 +298,9 @@
 
         <!-- Contador replanificación -->
         <div class="bg-gray-50 rounded-lg p-3 text-sm flex items-center justify-between">
-          <span class="text-gray-500">La replanificación debe sumar exactamente 30 días</span>
-          <span :class="totalReplan === 30 ? 'text-green-600 font-bold' : totalReplan > 30 ? 'text-red-600 font-bold' : 'text-gray-700 font-bold'">
-            {{ totalReplan }} / 30 días
+          <span class="text-gray-500">Máximo 30 días</span>
+          <span :class="totalReplan > 30 ? 'text-red-600 font-bold' : totalReplan > 0 ? 'text-green-600 font-bold' : 'text-gray-700 font-bold'">
+            {{ totalReplan }} / 30 días máximo
           </span>
         </div>
 
@@ -329,7 +329,7 @@
         <div class="flex justify-end gap-3 pt-2">
           <button @click="modalReplanificar = false"
             class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
-          <button @click="confirmarReplanificar" :disabled="guardandoReplan || totalReplan !== 30"
+          <button @click="confirmarReplanificar" :disabled="guardandoReplan || totalReplan === 0 || totalReplan > 30"
             class="px-4 py-2 rounded-lg bg-[#0b5447] text-white text-sm hover:bg-[#00372e] disabled:opacity-50">
             {{ guardandoReplan ? 'Guardando...' : 'Confirmar replanificación' }}
           </button>
@@ -523,7 +523,7 @@ const abrirModalReplanificar = async (plan) => {
     return {
       fecha_inicial: p?.fecha_inicial || '',
       fecha_final:   p?.fecha_final   || '',
-      dias:          p?.dias_calculados ?? null,
+      dias:          p?.dias_calculados != null ? Number(p.dias_calculados) : null,
     }
   })
 

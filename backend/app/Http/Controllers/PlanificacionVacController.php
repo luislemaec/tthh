@@ -202,10 +202,10 @@ class PlanificacionVacController extends Controller
             $totalDias += $this->diasEntreFechas($p['fecha_inicial'], $p['fecha_final']);
         }
 
-        // Validar que sean exactamente 30 días
-        if ($totalDias !== 30) {
+        // Validar máximo 30 días
+        if ($totalDias > 30) {
             return response()->json([
-                'message' => "La planificación debe sumar exactamente 30 días (actualmente: {$totalDias} días)"
+                'message' => "La planificación no puede superar 30 días (actualmente: {$totalDias} días)"
             ], 422);
         }
 
@@ -404,10 +404,10 @@ class PlanificacionVacController extends Controller
             $totalDias += $this->diasEntreFechas($p['fecha_inicial'], $p['fecha_final']);
         }
 
-        // Validar que sean exactamente 30 días
-        if ($totalDias !== 30) {
+        // Validar máximo 30 días
+        if ($totalDias > 30) {
             return response()->json([
-                'message' => "La replanificación debe sumar exactamente 30 días (actualmente: {$totalDias} días)"
+                'message' => "La replanificación no puede superar 30 días (actualmente: {$totalDias} días)"
             ], 422);
         }
 
