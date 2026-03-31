@@ -8,10 +8,9 @@ return new class extends Migration
     public function up(): void
     {
         // 1. Configuración del coordinador
-        DB::table('dbo.admin_configuracion')->insertOrIgnore([
-            'concepto'    => 'COORDINADOR_PLANIFICACION',
-            'valor'       => 'NOMBRE DEL COORDINADOR GENERAL ADMINISTRATIVO FINANCIERO',
-            'descripcion' => 'Nombre que aparece al pie del reporte de planificación de vacaciones',
+        DB::table('dbo.d2_configuracion')->insertOrIgnore([
+            'concepto' => 'COORDINADOR_PLANIFICACION',
+            'valor'    => 'COORDINADOR GENERAL ADMINISTRATIVO FINANCIERO',
         ]);
 
         // 2. Opción de menú — buscar la categoría de Planificación (donde está OPC006)
@@ -50,7 +49,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        DB::table('dbo.admin_configuracion')
+        DB::table('dbo.d2_configuracion')
             ->where('concepto', 'COORDINADOR_PLANIFICACION')
             ->delete();
 

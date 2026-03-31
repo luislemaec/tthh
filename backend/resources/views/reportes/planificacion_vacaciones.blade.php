@@ -153,8 +153,7 @@
 <div class="pie">
   <div class="pie-firma" style="margin-top: 40px;">
     <div class="linea"></div><br>
-    <strong>{{ $coordinador }}</strong><br>
-    Coordinador General Administrativo Financiero
+    <strong>{{ $coordinador }}</strong>
   </div>
 </div>
 
