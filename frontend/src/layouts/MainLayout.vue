@@ -48,30 +48,32 @@
               </svg>
             </button>
 
-            <!-- Items con animación slide -->
+            <!-- Items con animación cascada -->
             <div class="overflow-hidden transition-all duration-300 ease-in-out"
               :style="categoriasAbiertas[categoria]
-                ? 'max-height:500px; opacity:1;'
-                : 'max-height:0px; opacity:0;'">
+                ? 'max-height:500px;'
+                : 'max-height:0px;'">
               <router-link
-                v-for="item in items" :key="item.id"
+                v-for="(item, idx) in items" :key="item.id"
                 :to="'/' + item.url"
-                class="flex items-center gap-3 pl-7 pr-4 py-2 text-sm transition-all duration-150 relative group/item"
-                :class="isActive(item.url)
-                  ? 'text-white font-medium'
-                  : 'text-white/65 hover:text-white'"
-                :style="isActive(item.url)
-                  ? 'background:rgba(255,255,255,0.12);'
-                  : ''"
+                class="menu-item flex items-center gap-3 pl-7 pr-4 py-2 text-sm relative"
+                :class="[
+                  isActive(item.url) ? 'text-white font-medium' : 'text-white/65 hover:text-white',
+                  categoriasAbiertas[categoria] ? 'menu-item-enter' : ''
+                ]"
+                :style="[
+                  isActive(item.url) ? 'background:rgba(255,255,255,0.12);' : '',
+                  categoriasAbiertas[categoria] ? `animation-delay:${idx * 60}ms` : ''
+                ]"
                 @mouseenter="e => { if (!isActive(item.url)) e.currentTarget.style.background='rgba(255,255,255,0.06)' }"
                 @mouseleave="e => { if (!isActive(item.url)) e.currentTarget.style.background='' }">
-                <!-- Barra activa izquierda -->
                 <span v-if="isActive(item.url)"
                   class="absolute left-0 top-1 bottom-1 w-0.5 rounded-full"
                   style="background:#95d0c7;"></span>
-                <!-- Punto -->
-                <span class="w-1 h-1 rounded-full flex-shrink-0 transition-all duration-150"
-                  :style="isActive(item.url) ? 'background:#95d0c7; width:6px; height:6px;' : 'background:currentColor; opacity:0.5;'">
+                <span class="rounded-full flex-shrink-0 transition-all duration-150"
+                  :style="isActive(item.url)
+                    ? 'background:#95d0c7; width:6px; height:6px;'
+                    : 'background:currentColor; opacity:0.5; width:4px; height:4px;'">
                 </span>
                 {{ item.descripcion }}
               </router-link>
@@ -195,3 +197,23 @@ async function handleLogout() {
   router.push('/login')
 }
 </script>
+
+<style scoped>
+@keyframes menuSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateX(-14px) scale(0.95);
+  }
+  60% {
+    transform: translateX(3px) scale(1.01);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.menu-item-enter {
+  animation: menuSlideIn 0.28s ease-out both;
+}
+</style>
