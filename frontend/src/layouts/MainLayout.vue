@@ -22,29 +22,78 @@
         </span>
       </div>
 
-      <!-- Menú dinámico por categoría -->
-      <nav class="flex-1 overflow-y-auto py-4">
+      <!-- Menú acordeón -->
+      <nav class="flex-1 overflow-y-auto py-3 space-y-0.5">
         <template v-for="(items, categoria) in auth.menuAgrupado" :key="categoria">
-          <div v-show="sidebarOpen" class="px-4 pt-3 pb-1">
-            <p class="text-xs font-semibold uppercase tracking-wider"
-               style="color: #95d0c7;">
-              {{ categoria }}
-            </p>
+
+          <!-- Cabecera de categoría (solo visible con sidebar abierto) -->
+          <div v-if="sidebarOpen">
+            <button @click="toggleCategoria(categoria)"
+              class="w-full flex items-center justify-between px-4 py-2 text-xs font-bold uppercase tracking-widest transition-all duration-200 rounded-none group"
+              :style="categoriasAbiertas[categoria]
+                ? 'color:#ffffff; background:rgba(255,255,255,0.08);'
+                : 'color:#95d0c7; background:transparent;'">
+              <div class="flex items-center gap-2">
+                <!-- Indicador de categoría -->
+                <span class="w-1.5 h-1.5 rounded-full transition-all duration-200"
+                  :style="categoriasAbiertas[categoria] ? 'background:#95d0c7;' : 'background:#579186;'">
+                </span>
+                {{ categoria }}
+              </div>
+              <!-- Chevron animado -->
+              <svg class="w-3.5 h-3.5 transition-transform duration-300 flex-shrink-0"
+                :style="categoriasAbiertas[categoria] ? 'transform:rotate(180deg); opacity:1;' : 'opacity:0.5;'"
+                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
+              </svg>
+            </button>
+
+            <!-- Items con animación slide -->
+            <div class="overflow-hidden transition-all duration-300 ease-in-out"
+              :style="categoriasAbiertas[categoria]
+                ? 'max-height:500px; opacity:1;'
+                : 'max-height:0px; opacity:0;'">
+              <router-link
+                v-for="item in items" :key="item.id"
+                :to="'/' + item.url"
+                class="flex items-center gap-3 pl-7 pr-4 py-2 text-sm transition-all duration-150 relative group/item"
+                :class="isActive(item.url)
+                  ? 'text-white font-medium'
+                  : 'text-white/65 hover:text-white'"
+                :style="isActive(item.url)
+                  ? 'background:rgba(255,255,255,0.12);'
+                  : ''"
+                @mouseenter="e => { if (!isActive(item.url)) e.currentTarget.style.background='rgba(255,255,255,0.06)' }"
+                @mouseleave="e => { if (!isActive(item.url)) e.currentTarget.style.background='' }">
+                <!-- Barra activa izquierda -->
+                <span v-if="isActive(item.url)"
+                  class="absolute left-0 top-1 bottom-1 w-0.5 rounded-full"
+                  style="background:#95d0c7;"></span>
+                <!-- Punto -->
+                <span class="w-1 h-1 rounded-full flex-shrink-0 transition-all duration-150"
+                  :style="isActive(item.url) ? 'background:#95d0c7; width:6px; height:6px;' : 'background:currentColor; opacity:0.5;'">
+                </span>
+                {{ item.descripcion }}
+              </router-link>
+            </div>
           </div>
-          <router-link
-            v-for="item in items" :key="item.id"
-            :to="'/' + item.url"
-            class="flex items-center gap-3 px-4 py-2.5 transition text-sm text-white/80 hover:text-white"
-            style="--hover-bg: #00372e;"
-            active-class="text-white border-r-2"
-            :style="''"
-            @mouseenter="$event.currentTarget.style.backgroundColor='#00372e'"
-            @mouseleave="$event.currentTarget.style.backgroundColor=''">
-            <span class="w-5 h-5 flex-shrink-0 flex items-center justify-center">
-              <span class="w-1.5 h-1.5 rounded-full bg-current opacity-70"></span>
-            </span>
-            <span v-show="sidebarOpen">{{ item.descripcion }}</span>
-          </router-link>
+
+          <!-- Sidebar colapsado: solo puntos/iconos sin categoría -->
+          <template v-else>
+            <router-link
+              v-for="item in items" :key="item.id"
+              :to="'/' + item.url"
+              class="flex items-center justify-center w-full py-2.5 transition"
+              :title="item.descripcion"
+              :style="isActive(item.url) ? 'background:rgba(255,255,255,0.12);' : ''"
+              @mouseenter="e => e.currentTarget.style.background='rgba(255,255,255,0.08)'"
+              @mouseleave="e => { if (!isActive(item.url)) e.currentTarget.style.background='' }">
+              <span class="w-2 h-2 rounded-full"
+                :style="isActive(item.url) ? 'background:#95d0c7;' : 'background:rgba(255,255,255,0.4);'">
+              </span>
+            </router-link>
+          </template>
+
         </template>
       </nav>
 
@@ -98,13 +147,42 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
-const router     = useRouter()
-const auth       = useAuthStore()
+const router      = useRouter()
+const route       = useRoute()
+const auth        = useAuthStore()
 const sidebarOpen = ref(true)
+
+// Estado del acordeón — qué categorías están abiertas
+const categoriasAbiertas = ref({})
+
+// Abre automáticamente la categoría que contiene la ruta activa
+const abrirCategoriaActiva = () => {
+  const currentPath = route.path.replace(/^\//, '')
+  for (const [categoria, items] of Object.entries(auth.menuAgrupado || {})) {
+    const tieneActivo = items.some(item => currentPath.startsWith(item.url))
+    if (tieneActivo) {
+      categoriasAbiertas.value[categoria] = true
+    } else if (!(categoria in categoriasAbiertas.value)) {
+      categoriasAbiertas.value[categoria] = false
+    }
+  }
+}
+
+const toggleCategoria = (categoria) => {
+  categoriasAbiertas.value[categoria] = !categoriasAbiertas.value[categoria]
+}
+
+const isActive = (url) => {
+  return route.path.replace(/^\//, '').startsWith(url)
+}
+
+// Re-evaluar cuando cambia la ruta o el menú
+watch(() => route.path, abrirCategoriaActiva)
+watch(() => auth.menuAgrupado, abrirCategoriaActiva, { immediate: true })
 
 const iniciales = computed(() => {
   const n = auth.empleado?.nombre?.[0] || ''
