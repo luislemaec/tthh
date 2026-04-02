@@ -70,6 +70,7 @@ class ReportePlanificacionController extends Controller
 
         return Empleado::where('estado', 'ACTIVO')
             ->whereNotNull('fecha_ingreso')
+            ->where('id_depto', '!=', 999)
             ->get()
             ->filter(function ($emp) use ($fechaCorte) {
                 $ingreso = Carbon::parse($emp->fecha_ingreso);

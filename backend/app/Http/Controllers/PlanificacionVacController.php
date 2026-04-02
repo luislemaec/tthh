@@ -209,14 +209,19 @@ class PlanificacionVacController extends Controller
             ], 422);
         }
 
+        // Supervisores auto-aprueban su propia planificación
+        $esSupervisor = $this->esSupervisor($emp->id_emp);
+
         // Crear cabecera
         $cab = PlanificacionCab::create([
             'id_emp'                  => $emp->id_emp,
             'anio'                    => $request->anio,
-            'estado'                  => 'PENDIENTE',
+            'estado'                  => $esSupervisor ? 'APROBADO' : 'PENDIENTE',
             'total_dias_planificados' => $totalDias,
             'fecha_registro'          => now(),
             'usuario_registro'        => $emp->id_emp,
+            'fecha_decision'          => $esSupervisor ? now() : null,
+            'usuario_decision'        => $esSupervisor ? $emp->id_emp : null,
             'replanificada'           => 'NO',
         ]);
 
