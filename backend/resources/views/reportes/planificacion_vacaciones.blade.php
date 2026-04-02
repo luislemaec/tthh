@@ -138,9 +138,9 @@
           <td class="nombre">{{ $fila['nombre'] }}</td>
           @for($n = 0; $n < 4; $n++)
             @php $p = $fila['periodos'][$n]; @endphp
-            <td>{{ $p ? \Carbon\Carbon::parse($p->fecha_inicial)->format('d/m/Y') : '—' }}</td>
-            <td>{{ $p ? \Carbon\Carbon::parse($p->fecha_final)->format('d/m/Y') : '—' }}</td>
-            <td>{{ $p ? (int)$p->dias_calculados : '—' }}</td>
+            <td>{{ ($p && $p->fecha_inicial) ? \Carbon\Carbon::parse($p->fecha_inicial)->format('d/m/Y') : '—' }}</td>
+            <td>{{ ($p && $p->fecha_final) ? \Carbon\Carbon::parse($p->fecha_final)->format('d/m/Y') : '—' }}</td>
+            <td>{{ ($p && $p->dias_calculados) ? (int)$p->dias_calculados : '—' }}</td>
           @endfor
           <td class="total-cell">{{ (int)$fila['total'] }}</td>
         </tr>
