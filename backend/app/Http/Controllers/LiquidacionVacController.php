@@ -19,19 +19,18 @@ class LiquidacionVacController extends Controller
 
     // Estado requerido por motivo: ACTIVO o INACTIVO
     private const ESTADO_REQUERIDO = [
-        'INICIO_COMISION'      => 'INACTIVO',  // ya se fue
-        'FIN_COMISION_RETORNO' => 'ACTIVO',    // ya regresó
-        'COMISION_ENTRANTE'    => 'ACTIVO',    // ya llegó
-        'FIN_COMISION_SALIDA'  => 'INACTIVO',  // ya se fue
-        'NUEVO_INGRESO'        => 'ACTIVO',    // ya está contratado
+        'INICIO_COMISION'      => 'INACTIVO',  // ya se fue de comisión
+        'FIN_COMISION_RETORNO' => 'INACTIVO',  // está inactivo, regresa a la institución
+        'COMISION_ENTRANTE'    => 'ACTIVO',    // ya llegó de otra institución
+        'FIN_COMISION_SALIDA'  => 'INACTIVO',  // ya se fue a su institución de origen
         'DESVINCULACION'       => 'INACTIVO',  // ya salió
     ];
 
     private const MOTIVOS_POR_MODALIDAD = [
         'Nombramiento definitivo'    => ['INICIO_COMISION', 'FIN_COMISION_RETORNO'],
         'Comisión de servicios'      => ['COMISION_ENTRANTE', 'FIN_COMISION_SALIDA'],
-        'Contrato ocasional'         => ['NUEVO_INGRESO', 'DESVINCULACION'],
-        'Nombramiento provisional'   => ['NUEVO_INGRESO', 'DESVINCULACION'],
+        'Contrato ocasional'         => ['DESVINCULACION'],
+        'Nombramiento provisional'   => ['DESVINCULACION'],
     ];
 
     // Motivos que requieren cargar días de certificado externo
