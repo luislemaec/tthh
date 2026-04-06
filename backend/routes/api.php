@@ -15,6 +15,7 @@ use App\Http\Controllers\ImportacionController;
 use App\Http\Controllers\PeriodoPlanificacionController;
 use App\Http\Controllers\PlanificacionVacController;
 use App\Http\Controllers\ReportePlanificacionController;
+use App\Http\Controllers\LiquidacionVacController;
 use Illuminate\Support\Facades\Route;
 
 // Rutas PÚBLICAS
@@ -142,6 +143,12 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::get("/reporte-planificacion/{anio}/pdf",               [ReportePlanificacionController::class, "generarPdf"]);
     Route::post("/reporte-planificacion/{anio}/subir-firmado",    [ReportePlanificacionController::class, "subirFirmado"]);
     Route::get("/reporte-planificacion/{anio}/descargar-firmado", [ReportePlanificacionController::class, "descargarFirmado"]);
+
+    // Liquidación / comisión de vacaciones (solo TH)
+    Route::get("/liquidacion/buscar",                         [LiquidacionVacController::class, "buscar"]);
+    Route::get("/liquidacion/{id_emp}",                       [LiquidacionVacController::class, "consultar"]);
+    Route::post("/liquidacion/{id_emp}/registrar",            [LiquidacionVacController::class, "registrar"]);
+    Route::get("/liquidacion/certificado/{historico_id}",     [LiquidacionVacController::class, "generarCertificado"]);
 
     // Vacaciones
     Route::get("/vacaciones/mi-rol",            [VacacionesController::class, "miRol"]);

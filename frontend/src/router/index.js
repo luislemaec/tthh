@@ -37,6 +37,7 @@ const routes = [
       { path: 'reportes', name: 'Reportes', component: () => import('@/views/reportes/ReportesView.vue') },
       { path: 'planificacion', name: 'Planificacion', component: () => import('@/views/planificacion/PlanificacionesView.vue') },
       { path: 'planificacion/reporte', name: 'ReportePlanificacion', component: () => import('@/views/planificacion/ReportePlanificacionView.vue') },
+      { path: 'planificacion/liquidacion', name: 'LiquidacionVacaciones', component: () => import('@/views/planificacion/LiquidacionVacView.vue') },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: '/' },
