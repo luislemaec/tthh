@@ -46,33 +46,21 @@
     text-transform: uppercase;
   }
 
-  .seccion-body {
-    padding: 10px;
-  }
+  .seccion-body { padding: 10px; }
 
-  table.datos {
-    width: 100%;
-    border-collapse: collapse;
-  }
-
+  table.datos { width: 100%; border-collapse: collapse; }
   table.datos td {
     padding: 4px 8px;
     border-bottom: 1px solid #f3f4f6;
     vertical-align: top;
   }
-
   table.datos td.label {
     font-weight: bold;
     color: #374151;
     width: 35%;
   }
 
-  table.saldo {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 4px;
-  }
-
+  table.saldo { width: 100%; border-collapse: collapse; margin-top: 4px; }
   table.saldo th {
     background-color: #1d4ed8;
     color: #fff;
@@ -80,16 +68,14 @@
     text-align: center;
     font-size: 9px;
   }
-
   table.saldo td {
     padding: 5px 10px;
     text-align: center;
     border: 1px solid #d1d5db;
   }
-
   table.saldo td.total {
     font-weight: bold;
-    font-size: 11px;
+    font-size: 12px;
     color: #0b5447;
   }
 
@@ -101,11 +87,12 @@
     font-size: 9px;
     color: #fff;
   }
-
-  .badge-DESVINCULACION  { background-color: #dc2626; }
-  .badge-COMISION_SALIDA { background-color: #b45309; }
-  .badge-COMISION_RETORNO { background-color: #0f766e; }
-  .badge-NUEVO_INGRESO   { background-color: #1d4ed8; }
+  .badge-INICIO_COMISION    { background-color: #b45309; }
+  .badge-FIN_COMISION_RETORNO { background-color: #0f766e; }
+  .badge-COMISION_ENTRANTE  { background-color: #1d4ed8; }
+  .badge-FIN_COMISION_SALIDA { background-color: #b45309; }
+  .badge-NUEVO_INGRESO      { background-color: #1d4ed8; }
+  .badge-DESVINCULACION     { background-color: #dc2626; }
 
   .observacion {
     margin-top: 8px;
@@ -116,11 +103,7 @@
     color: #374151;
   }
 
-  .pie {
-    margin-top: 40px;
-    text-align: center;
-  }
-
+  .pie { margin-top: 50px; text-align: center; }
   .pie .linea {
     display: inline-block;
     width: 260px;
@@ -131,17 +114,19 @@
 </head>
 <body>
 
-<p class="titulo">
-  @if($historico->motivo === 'DESVINCULACION')
-    Reporte de Liquidación de Vacaciones
-  @elseif($historico->motivo === 'COMISION_SALIDA')
-    Certificado de Saldo de Vacaciones — Comisión de Servicios
-  @elseif($historico->motivo === 'COMISION_RETORNO')
-    Constancia de Saldo Inicial — Retorno de Comisión
-  @else
-    Constancia de Vacaciones
-  @endif
-</p>
+@php
+  $titulos = [
+    'INICIO_COMISION'     => 'Certificado de Saldo de Vacaciones — Inicio de Comisión de Servicios',
+    'FIN_COMISION_RETORNO'=> 'Constancia de Carga de Saldo — Retorno de Comisión de Servicios',
+    'COMISION_ENTRANTE'   => 'Constancia de Carga de Saldo — Comisión de Servicios Entrante',
+    'FIN_COMISION_SALIDA' => 'Certificado de Saldo de Vacaciones — Fin de Comisión de Servicios',
+    'NUEVO_INGRESO'       => 'Constancia de Inicio de Acumulación de Vacaciones',
+    'DESVINCULACION'      => 'Reporte de Liquidación de Vacaciones',
+  ];
+  $titulo = $titulos[$historico->motivo] ?? 'Reporte de Vacaciones';
+@endphp
+
+<p class="titulo">{{ $titulo }}</p>
 <p class="subtitulo">Talento Humano</p>
 <p class="fecha-emision">Fecha de emisión: {{ $fechaHoy }}</p>
 
@@ -165,24 +150,24 @@
         <td colspan="3">{{ $empleado->departamento?->nombre_depto ?? '—' }}</td>
       </tr>
       <tr>
+        <td class="label">Modalidad laboral:</td>
+        <td>{{ trim($empleado->modalidad_laboral ?? '—') }}</td>
         <td class="label">Tipo de contrato:</td>
         <td>{{ trim($empleado->tipo_contrato) }}</td>
+      </tr>
+      <tr>
         <td class="label">Fecha de ingreso:</td>
         <td>{{ $empleado->fecha_ingreso ? \Carbon\Carbon::parse($empleado->fecha_ingreso)->format('d/m/Y') : '—' }}</td>
-      </tr>
-      @if($empleado->fecha_salida)
-      <tr>
         <td class="label">Fecha de salida:</td>
-        <td colspan="3">{{ \Carbon\Carbon::parse($empleado->fecha_salida)->format('d/m/Y') }}</td>
+        <td>{{ $empleado->fecha_salida ? \Carbon\Carbon::parse($empleado->fecha_salida)->format('d/m/Y') : '—' }}</td>
       </tr>
-      @endif
     </table>
   </div>
 </div>
 
 {{-- Motivo y fecha del evento --}}
 <div class="seccion">
-  <div class="seccion-titulo">Motivo del Evento</div>
+  <div class="seccion-titulo">Detalle del Evento</div>
   <div class="seccion-body">
     <table class="datos">
       <tr>
@@ -210,7 +195,13 @@
 
 {{-- Saldo de vacaciones --}}
 <div class="seccion">
-  <div class="seccion-titulo">Saldo de Vacaciones a la Fecha del Evento</div>
+  <div class="seccion-titulo">
+    @if(in_array($historico->motivo, ['FIN_COMISION_RETORNO', 'COMISION_ENTRANTE']))
+      Saldo Cargado desde Certificado Externo
+    @else
+      Saldo de Vacaciones a la Fecha del Evento
+    @endif
+  </div>
   <div class="seccion-body">
     <table class="saldo">
       <thead>
@@ -218,7 +209,15 @@
           <th>Saldo Inicial (corte)</th>
           <th>Días Acumulados</th>
           <th>Días Tomados</th>
-          <th>Saldo a Liquidar</th>
+          <th>
+            @if($historico->motivo === 'DESVINCULACION')
+              Días a Liquidar
+            @elseif(in_array($historico->motivo, ['INICIO_COMISION', 'FIN_COMISION_SALIDA']))
+              Días Certificados
+            @else
+              Saldo Cargado
+            @endif
+          </th>
         </tr>
       </thead>
       <tbody>

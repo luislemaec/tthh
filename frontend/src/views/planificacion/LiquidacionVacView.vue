@@ -5,16 +5,13 @@
     <!-- Buscador de empleado -->
     <div class="bg-white rounded-xl shadow p-4 mb-6">
       <label class="block text-sm font-semibold text-gray-700 mb-1">Buscar empleado (cédula o nombre)</label>
-      <div class="flex gap-2">
-        <input
-          v-model="busqueda"
-          @input="buscarEmpleado"
-          type="text"
-          placeholder="Ej: 1001967932 o Pérez Juan..."
-          class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-600"
-        />
-      </div>
-      <!-- Resultados de búsqueda -->
+      <input
+        v-model="busqueda"
+        @input="buscarEmpleado"
+        type="text"
+        placeholder="Ej: 1001967932 o Pérez Juan..."
+        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-600"
+      />
       <ul v-if="resultados.length" class="mt-2 border border-gray-200 rounded-lg divide-y text-sm">
         <li
           v-for="emp in resultados"
@@ -23,46 +20,49 @@
           class="px-4 py-2 hover:bg-green-50 cursor-pointer flex justify-between items-center"
         >
           <span>{{ emp.apellido_emp }}, {{ emp.nombre_emp }} — {{ emp.identificacion }}</span>
-          <span
-            :class="emp.estado === 'ACTIVO' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-700'"
-            class="text-xs px-2 py-0.5 rounded-full font-semibold"
-          >{{ emp.estado }}</span>
+          <div class="flex gap-2 items-center">
+            <span class="text-xs text-gray-500">{{ emp.modalidad_laboral }}</span>
+            <span
+              :class="emp.estado === 'ACTIVO' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-700'"
+              class="text-xs px-2 py-0.5 rounded-full font-semibold"
+            >{{ emp.estado }}</span>
+          </div>
         </li>
       </ul>
     </div>
 
     <!-- Panel del empleado seleccionado -->
     <template v-if="empleado">
+
       <!-- Info empleado -->
       <div class="bg-white rounded-xl shadow p-5 mb-4">
         <div class="flex items-start justify-between mb-3">
           <div>
             <p class="text-lg font-bold text-gray-800">{{ empleado.nombre }}</p>
             <p class="text-sm text-gray-500">{{ empleado.identificacion }} · {{ empleado.tipo_contrato }}</p>
+            <p class="text-sm text-gray-500">{{ empleado.departamento }}</p>
           </div>
-          <span
-            :class="empleado.estado === 'ACTIVO' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-700'"
-            class="text-sm px-3 py-1 rounded-full font-semibold"
-          >{{ empleado.estado }}</span>
+          <div class="text-right">
+            <span
+              :class="empleado.estado === 'ACTIVO' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-700'"
+              class="text-sm px-3 py-1 rounded-full font-semibold block mb-1"
+            >{{ empleado.estado }}</span>
+            <span class="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{{ empleado.modalidad_laboral || 'Sin modalidad' }}</span>
+          </div>
         </div>
         <div class="grid grid-cols-2 gap-2 text-sm text-gray-600">
-          <div><span class="font-semibold">Ingreso:</span> {{ fmtFecha(empleado.fecha_ingreso) }}</div>
-          <div><span class="font-semibold">Salida:</span> {{ fmtFecha(empleado.fecha_salida) || '—' }}</div>
-          <div v-if="empleado.motivo_inactividad">
-            <span class="font-semibold">Último motivo:</span>
-            <span class="ml-1 px-2 py-0.5 rounded text-xs font-bold text-white" :class="badgeMotivo(empleado.motivo_inactividad)">
-              {{ empleado.motivo_inactividad.replace('_', ' ') }}
-            </span>
-          </div>
+          <div><span class="font-semibold">Fecha ingreso:</span> {{ fmtFecha(empleado.fecha_ingreso) || '—' }}</div>
+          <div><span class="font-semibold">Fecha salida:</span> {{ fmtFecha(empleado.fecha_salida) || '—' }}</div>
         </div>
       </div>
 
       <!-- Saldo calculado -->
       <div class="bg-white rounded-xl shadow p-5 mb-4" v-if="saldo">
-        <h2 class="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">
-          Saldo de Vacaciones
-          <span class="text-xs text-gray-400 font-normal ml-1">(calculado hasta {{ fmtFecha(saldo.fecha_referencia) }})</span>
-        </h2>
+        <h2 class="text-sm font-bold text-gray-700 mb-1 uppercase tracking-wide">Saldo de Vacaciones</h2>
+        <p class="text-xs text-gray-400 mb-3">
+          Calculado hasta {{ fmtFecha(saldo.fecha_referencia) }}
+          <span v-if="empleado.estado !== 'ACTIVO'" class="text-amber-600 font-semibold">(fecha de salida del empleado)</span>
+        </p>
         <div class="grid grid-cols-4 gap-3 text-center">
           <div class="bg-blue-50 rounded-lg p-3">
             <p class="text-xs text-gray-500 mb-1">Saldo Inicial</p>
@@ -80,7 +80,7 @@
             <p class="text-xs text-gray-400">días</p>
           </div>
           <div class="bg-green-50 rounded-lg p-3 border-2 border-green-300">
-            <p class="text-xs text-gray-500 mb-1">Saldo a Liquidar</p>
+            <p class="text-xs text-gray-500 mb-1">Saldo Total</p>
             <p class="text-2xl font-bold text-green-700">{{ saldo.saldo_liquidado }}</p>
             <p class="text-xs text-gray-400">días</p>
           </div>
@@ -90,34 +90,65 @@
       <!-- Registrar evento -->
       <div class="bg-white rounded-xl shadow p-5 mb-4">
         <h2 class="text-sm font-bold text-gray-700 mb-4 uppercase tracking-wide">Registrar Evento</h2>
-        <div class="grid grid-cols-2 gap-4 mb-4">
-          <div>
-            <label class="block text-xs font-semibold text-gray-600 mb-1">Motivo</label>
-            <select v-model="form.motivo" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-600">
-              <option value="">-- Seleccione --</option>
-              <option value="DESVINCULACION">Desvinculación</option>
-              <option value="COMISION_SALIDA">Comisión de Servicios (Salida)</option>
-              <option value="COMISION_RETORNO">Retorno de Comisión</option>
-              <option value="NUEVO_INGRESO">Nuevo Ingreso</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-gray-600 mb-1">Fecha del evento</label>
-            <input v-model="form.fecha_evento" type="date" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-600" />
-          </div>
+
+        <!-- Sin modalidad laboral -->
+        <div v-if="!motivosDisponibles.length" class="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
+          Este empleado no tiene modalidad laboral asignada. Asígnela en la ficha del empleado para registrar un evento.
         </div>
-        <div class="mb-4">
-          <label class="block text-xs font-semibold text-gray-600 mb-1">Observación (opcional)</label>
-          <textarea v-model="form.observacion" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-600" placeholder="Ej: Resolución N° 001-2026..."></textarea>
-        </div>
-        <button
-          @click="registrarEvento"
-          :disabled="!form.motivo || !form.fecha_evento || guardando"
-          class="bg-green-700 hover:bg-green-800 disabled:opacity-50 text-white text-sm font-semibold px-5 py-2 rounded-lg"
-        >
-          {{ guardando ? 'Guardando...' : 'Registrar y guardar histórico' }}
-        </button>
-        <p v-if="error" class="mt-2 text-red-600 text-xs">{{ error }}</p>
+
+        <template v-else>
+          <div class="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1">Motivo</label>
+              <select v-model="form.motivo" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-600">
+                <option value="">-- Seleccione --</option>
+                <option v-for="m in motivosDisponibles" :key="m" :value="m">{{ labelMotivo(m) }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1">Fecha del evento</label>
+              <input v-model="form.fecha_evento" type="date" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-600" />
+            </div>
+          </div>
+
+          <!-- Campo días a cargar (solo para motivos de carga de saldo) -->
+          <div v-if="requiereCargaSaldo" class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <label class="block text-xs font-semibold text-blue-700 mb-1">
+              Días de vacaciones según certificado externo
+            </label>
+            <input
+              v-model="form.dias_a_cargar"
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="Ej: 15.50"
+              class="w-40 border border-blue-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p class="text-xs text-blue-600 mt-1">Este valor reemplazará el saldo actual del empleado.</p>
+          </div>
+
+          <div class="mb-4">
+            <label class="block text-xs font-semibold text-gray-600 mb-1">Observación (opcional)</label>
+            <textarea v-model="form.observacion" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-600" placeholder="Ej: Resolución N° 001-2026, acción de personal..."></textarea>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <button
+              @click="registrarEvento"
+              :disabled="!form.motivo || !form.fecha_evento || guardando"
+              class="bg-green-700 hover:bg-green-800 disabled:opacity-50 text-white text-sm font-semibold px-5 py-2 rounded-lg"
+            >
+              {{ guardando ? 'Guardando...' : 'Registrar y guardar histórico' }}
+            </button>
+            <p v-if="ultimoRegistro && ultimoRegistro.genera_certificado" class="text-sm text-green-700">
+              ✓ Evento registrado —
+              <button @click="descargarPdf(ultimoRegistro.historico.id)" class="underline font-semibold">
+                Descargar certificado PDF
+              </button>
+            </p>
+          </div>
+          <p v-if="error" class="mt-2 text-red-600 text-xs">{{ error }}</p>
+        </template>
       </div>
 
       <!-- Historial de eventos -->
@@ -128,10 +159,10 @@
             <tr class="bg-green-800 text-white text-xs">
               <th class="px-3 py-2 text-left">Fecha</th>
               <th class="px-3 py-2 text-left">Motivo</th>
-              <th class="px-3 py-2 text-right">Saldo Inicial</th>
+              <th class="px-3 py-2 text-right">S. Inicial</th>
               <th class="px-3 py-2 text-right">Acumulado</th>
               <th class="px-3 py-2 text-right">Tomados</th>
-              <th class="px-3 py-2 text-right font-bold">Liquidado</th>
+              <th class="px-3 py-2 text-right font-bold">Saldo</th>
               <th class="px-3 py-2 text-center">PDF</th>
             </tr>
           </thead>
@@ -140,7 +171,7 @@
               <td class="px-3 py-2">{{ fmtFecha(h.fecha_evento) }}</td>
               <td class="px-3 py-2">
                 <span class="px-2 py-0.5 rounded text-xs font-bold text-white" :class="badgeMotivo(h.motivo)">
-                  {{ h.motivo.replace('_', ' ') }}
+                  {{ labelMotivo(h.motivo) }}
                 </span>
               </td>
               <td class="px-3 py-2 text-right">{{ h.saldo_inicial }}</td>
@@ -154,23 +185,55 @@
           </tbody>
         </table>
       </div>
+
     </template>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import api from '@/services/api'
 
-const busqueda  = ref('')
-const resultados = ref([])
-const empleado  = ref(null)
-const saldo     = ref(null)
-const historial = ref([])
-const guardando = ref(false)
-const error     = ref('')
+const busqueda    = ref('')
+const resultados  = ref([])
+const empleado    = ref(null)
+const saldo       = ref(null)
+const historial   = ref([])
+const guardando   = ref(false)
+const error       = ref('')
+const ultimoRegistro = ref(null)
+const motivosDisponibles = ref([])
+const motivosCargaSaldo  = ref([])
 
-const form = ref({ motivo: '', fecha_evento: '', observacion: '' })
+const form = ref({ motivo: '', fecha_evento: '', dias_a_cargar: '', observacion: '' })
+
+const requiereCargaSaldo = computed(() =>
+  form.value.motivo && motivosCargaSaldo.value.includes(form.value.motivo)
+)
+
+const LABELS_MOTIVO = {
+  INICIO_COMISION:      'Inicio de comisión de servicios',
+  FIN_COMISION_RETORNO: 'Retorno de comisión (regresa a la institución)',
+  COMISION_ENTRANTE:    'Comisión de servicios entrante (viene de otra institución)',
+  FIN_COMISION_SALIDA:  'Fin de comisión (regresa a su institución de origen)',
+  NUEVO_INGRESO:        'Nuevo ingreso',
+  DESVINCULACION:       'Desvinculación',
+}
+
+function labelMotivo(m) {
+  return LABELS_MOTIVO[m] || m.replace(/_/g, ' ')
+}
+
+function badgeMotivo(m) {
+  return {
+    INICIO_COMISION:      'bg-amber-700',
+    FIN_COMISION_RETORNO: 'bg-teal-700',
+    COMISION_ENTRANTE:    'bg-blue-700',
+    FIN_COMISION_SALIDA:  'bg-amber-700',
+    NUEVO_INGRESO:        'bg-blue-700',
+    DESVINCULACION:       'bg-red-600',
+  }[m] || 'bg-gray-500'
+}
 
 let busquedaTimer = null
 function buscarEmpleado() {
@@ -186,22 +249,28 @@ async function seleccionarEmpleado(emp) {
   resultados.value = []
   busqueda.value   = `${emp.apellido_emp}, ${emp.nombre_emp}`
   const { data }   = await api.get(`/liquidacion/${emp.id_emp}`)
-  empleado.value   = data.empleado
-  saldo.value      = data.saldo
-  historial.value  = data.historial
-  error.value      = ''
-  form.value       = { motivo: '', fecha_evento: '', observacion: '' }
+  empleado.value           = data.empleado
+  saldo.value              = data.saldo
+  historial.value          = data.historial
+  motivosDisponibles.value = data.motivos_disponibles
+  motivosCargaSaldo.value  = data.motivos_carga_saldo
+  error.value              = ''
+  ultimoRegistro.value     = null
+  form.value               = { motivo: '', fecha_evento: '', dias_a_cargar: '', observacion: '' }
 }
 
 async function registrarEvento() {
-  error.value   = ''
-  guardando.value = true
+  error.value      = ''
+  guardando.value  = true
+  ultimoRegistro.value = null
   try {
-    const { data } = await api.post(`/liquidacion/${empleado.value.id_emp}/registrar`, form.value)
+    const payload = { ...form.value }
+    if (!requiereCargaSaldo.value) delete payload.dias_a_cargar
+    const { data } = await api.post(`/liquidacion/${empleado.value.id_emp}/registrar`, payload)
     historial.value.unshift(data.historico)
-    saldo.value     = data.saldo
-    empleado.value.motivo_inactividad = form.value.motivo
-    form.value = { motivo: '', fecha_evento: '', observacion: '' }
+    saldo.value          = data.saldo
+    ultimoRegistro.value = data
+    form.value = { motivo: '', fecha_evento: '', dias_a_cargar: '', observacion: '' }
   } catch (e) {
     error.value = e.response?.data?.message || 'Error al registrar el evento'
   } finally {
@@ -221,16 +290,7 @@ async function descargarPdf(historicoId) {
 
 function fmtFecha(f) {
   if (!f) return null
-  const [y, m, d] = f.split('T')[0].split('-')
-  return `${d}/${m}/${y}`
-}
-
-function badgeMotivo(motivo) {
-  return {
-    'DESVINCULACION':   'bg-red-600',
-    'COMISION_SALIDA':  'bg-amber-700',
-    'COMISION_RETORNO': 'bg-teal-700',
-    'NUEVO_INGRESO':    'bg-blue-700',
-  }[motivo] || 'bg-gray-500'
+  const d = f.split('T')[0].split('-')
+  return `${d[2]}/${d[1]}/${d[0]}`
 }
 </script>

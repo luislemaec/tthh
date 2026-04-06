@@ -8,15 +8,32 @@ use App\Models\LiquidacionHistorico;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\DB;
 
 class LiquidacionVacController extends Controller
 {
-    private const MOTIVOS = ['DESVINCULACION', 'COMISION_SALIDA', 'COMISION_RETORNO', 'NUEVO_INGRESO'];
+    // Motivos válidos por modalidad laboral
+    // Nombramiento definitivo:  INICIO_COMISION, FIN_COMISION_RETORNO
+    // Comisión de servicios:    COMISION_ENTRANTE, FIN_COMISION_SALIDA
+    // Contrato ocasional / Nombramiento provisional: NUEVO_INGRESO, DESVINCULACION
+
+    private const MOTIVOS_POR_MODALIDAD = [
+        'Nombramiento definitivo'    => ['INICIO_COMISION', 'FIN_COMISION_RETORNO'],
+        'Comisión de servicios'      => ['COMISION_ENTRANTE', 'FIN_COMISION_SALIDA'],
+        'Contrato ocasional'         => ['NUEVO_INGRESO', 'DESVINCULACION'],
+        'Nombramiento provisional'   => ['NUEVO_INGRESO', 'DESVINCULACION'],
+    ];
+
+    // Motivos que requieren cargar días de certificado externo
+    private const MOTIVOS_CARGA_SALDO = ['FIN_COMISION_RETORNO', 'COMISION_ENTRANTE'];
+
+    // Motivos que generan certificado PDF
+    private const MOTIVOS_CON_CERTIFICADO = ['INICIO_COMISION', 'FIN_COMISION_SALIDA'];
 
     // ── Helper: verifica que el usuario autenticado es TH o Admin ────────────
     private function esAdminOTH($id_emp): bool
     {
-        return \Illuminate\Support\Facades\DB::table('dbo.admin_usuario_rol as ur')
+        return DB::table('dbo.admin_usuario_rol as ur')
             ->join('dbo.admin_rol as r', 'ur.id_rol', '=', 'r.id')
             ->where('ur.id_emp', $id_emp)
             ->whereIn('r.descripcion', ['ADMINISTRADOR', 'TALENTO HUMANO'])
@@ -77,23 +94,26 @@ class LiquidacionVacController extends Controller
             })
             ->orderBy('apellido_emp')
             ->limit(15)
-            ->get(['id_emp', 'identificacion', 'nombre_emp', 'apellido_emp', 'estado', 'motivo_inactividad', 'fecha_ingreso', 'fecha_salida', 'tipo_contrato', 'id_depto']);
+            ->get(['id_emp', 'identificacion', 'nombre_emp', 'apellido_emp',
+                   'estado', 'modalidad_laboral', 'fecha_ingreso', 'fecha_salida',
+                   'tipo_contrato', 'id_depto']);
 
         return response()->json($empleados);
     }
 
-    // ── Consultar saldo de un empleado (hasta fecha_salida si inactivo) ──────
+    // ── Consultar saldo de un empleado ───────────────────────────────────────
     public function consultar(Request $request, string $id_emp)
     {
         if (!$this->esAdminOTH($request->user()->id_emp)) {
             return response()->json(['message' => 'Acceso no autorizado'], 403);
         }
 
-        $emp = Empleado::where('id_emp', $id_emp)
+        $emp = Empleado::with('departamento')
+            ->where('id_emp', $id_emp)
             ->where('id_depto', '!=', 999)
             ->firstOrFail();
 
-        // Si inactivo, calcular hasta fecha_salida; si activo, hasta hoy
+        // Si inactivo y tiene fecha_salida, calcular hasta esa fecha; si no, hasta hoy
         $fechaRef = (strtoupper($emp->estado) !== 'ACTIVO' && $emp->fecha_salida)
             ? $emp->fecha_salida
             : Carbon::today()->toDateString();
@@ -103,63 +123,91 @@ class LiquidacionVacController extends Controller
             ->orderBy('fecha_evento', 'desc')
             ->get();
 
+        $modalidad = trim($emp->modalidad_laboral ?? '');
+        $motivosDisponibles = self::MOTIVOS_POR_MODALIDAD[$modalidad] ?? [];
+
         return response()->json([
             'empleado' => [
                 'id_emp'             => $emp->id_emp,
                 'identificacion'     => $emp->identificacion,
                 'nombre'             => $emp->apellido_emp . ', ' . $emp->nombre_emp,
                 'estado'             => $emp->estado,
-                'motivo_inactividad' => $emp->motivo_inactividad,
+                'modalidad_laboral'  => $modalidad,
                 'fecha_ingreso'      => $emp->fecha_ingreso,
                 'fecha_salida'       => $emp->fecha_salida,
                 'tipo_contrato'      => trim($emp->tipo_contrato),
+                'departamento'       => $emp->departamento?->nombre_depto,
             ],
-            'saldo'    => $saldo,
-            'historial' => $historial,
+            'saldo'              => $saldo,
+            'historial'          => $historial,
+            'motivos_disponibles'=> $motivosDisponibles,
+            'motivos_carga_saldo'=> self::MOTIVOS_CARGA_SALDO,
         ]);
     }
 
-    // ── Registrar evento (guarda histórico y actualiza motivo) ───────────────
+    // ── Registrar evento ─────────────────────────────────────────────────────
     public function registrar(Request $request, string $id_emp)
     {
         if (!$this->esAdminOTH($request->user()->id_emp)) {
             return response()->json(['message' => 'Acceso no autorizado'], 403);
         }
 
+        $todosMotivos = array_merge(...array_values(self::MOTIVOS_POR_MODALIDAD));
+
         $request->validate([
-            'motivo'      => 'required|in:DESVINCULACION,COMISION_SALIDA,COMISION_RETORNO,NUEVO_INGRESO',
-            'fecha_evento' => 'required|date',
-            'observacion'  => 'nullable|string|max:500',
+            'motivo'        => 'required|in:' . implode(',', $todosMotivos),
+            'fecha_evento'  => 'required|date',
+            'dias_a_cargar' => 'nullable|numeric|min:0',
+            'observacion'   => 'nullable|string|max:500',
         ]);
 
-        $emp = Empleado::where('id_emp', $id_emp)
+        $emp = Empleado::with('departamento')
+            ->where('id_emp', $id_emp)
             ->where('id_depto', '!=', 999)
             ->firstOrFail();
 
+        $motivo = $request->motivo;
+
+        // Calcular saldo hasta la fecha del evento
         $saldo = $this->calcularSaldo($emp, $request->fecha_evento);
 
-        // Guardar fotografía del saldo
+        // Si el motivo requiere cargar días de certificado externo, actualizar cabecera
+        if (in_array($motivo, self::MOTIVOS_CARGA_SALDO)) {
+            $diasACargar = (float) ($request->dias_a_cargar ?? 0);
+            CabeceraVacacion::updateOrCreate(
+                ['id_emp' => $emp->id_emp],
+                [
+                    'dias_adicionales'   => $diasACargar,
+                    'total_dias_tomados' => 0,
+                    'fecha_proceso'      => now(),
+                ]
+            );
+            // Recalcular saldo con los nuevos días cargados
+            $saldo['saldo_inicial']  = $diasACargar;
+            $saldo['tomados']        = 0;
+            $saldo['saldo_liquidado'] = $diasACargar;
+        }
+
+        // Guardar fotografía del saldo en el histórico
         $historico = LiquidacionHistorico::create([
-            'id_emp'           => $emp->id_emp,
-            'motivo'           => $request->motivo,
-            'fecha_evento'     => $request->fecha_evento,
-            'fecha_corte_usada'=> $saldo['fecha_corte'],
-            'saldo_inicial'    => $saldo['saldo_inicial'],
-            'acumulado'        => $saldo['acumulado'],
-            'tomados'          => $saldo['tomados'],
-            'saldo_liquidado'  => $saldo['saldo_liquidado'],
-            'observacion'      => $request->observacion,
-            'usuario_proceso'  => $request->user()->id_emp,
-            'fecha_registro'   => now(),
+            'id_emp'            => $emp->id_emp,
+            'motivo'            => $motivo,
+            'fecha_evento'      => $request->fecha_evento,
+            'fecha_corte_usada' => $saldo['fecha_corte'],
+            'saldo_inicial'     => $saldo['saldo_inicial'],
+            'acumulado'         => $saldo['acumulado'],
+            'tomados'           => $saldo['tomados'],
+            'saldo_liquidado'   => $saldo['saldo_liquidado'],
+            'observacion'       => $request->observacion,
+            'usuario_proceso'   => $request->user()->id_emp,
+            'fecha_registro'    => now(),
         ]);
 
-        // Actualizar motivo_inactividad en el empleado
-        $emp->update(['motivo_inactividad' => $request->motivo]);
-
         return response()->json([
-            'message'   => 'Evento registrado correctamente',
-            'historico' => $historico,
-            'saldo'     => $saldo,
+            'message'              => 'Evento registrado correctamente',
+            'historico'            => $historico,
+            'saldo'                => $saldo,
+            'genera_certificado'   => in_array($motivo, self::MOTIVOS_CON_CERTIFICADO),
         ], 201);
     }
 
