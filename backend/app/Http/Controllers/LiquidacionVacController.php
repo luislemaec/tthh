@@ -17,6 +17,16 @@ class LiquidacionVacController extends Controller
     // Comisión de servicios:    COMISION_ENTRANTE, FIN_COMISION_SALIDA
     // Contrato ocasional / Nombramiento provisional: NUEVO_INGRESO, DESVINCULACION
 
+    // Estado requerido por motivo: ACTIVO o INACTIVO
+    private const ESTADO_REQUERIDO = [
+        'INICIO_COMISION'      => 'INACTIVO',  // ya se fue
+        'FIN_COMISION_RETORNO' => 'ACTIVO',    // ya regresó
+        'COMISION_ENTRANTE'    => 'ACTIVO',    // ya llegó
+        'FIN_COMISION_SALIDA'  => 'INACTIVO',  // ya se fue
+        'NUEVO_INGRESO'        => 'ACTIVO',    // ya está contratado
+        'DESVINCULACION'       => 'INACTIVO',  // ya salió
+    ];
+
     private const MOTIVOS_POR_MODALIDAD = [
         'Nombramiento definitivo'    => ['INICIO_COMISION', 'FIN_COMISION_RETORNO'],
         'Comisión de servicios'      => ['COMISION_ENTRANTE', 'FIN_COMISION_SALIDA'],
@@ -174,6 +184,21 @@ class LiquidacionVacController extends Controller
             ->firstOrFail();
 
         $motivo = $request->motivo;
+
+        // Validar que el estado del empleado sea compatible con el motivo
+        $estadoRequerido = self::ESTADO_REQUERIDO[$motivo] ?? null;
+        if ($estadoRequerido && strtoupper($emp->estado) !== $estadoRequerido) {
+            $mensajes = [
+                'INACTIVO' => 'El empleado debe estar INACTIVO (con fecha de salida registrada) para registrar este evento.',
+                'ACTIVO'   => 'El empleado debe estar ACTIVO para registrar este evento.',
+            ];
+            return response()->json(['message' => $mensajes[$estadoRequerido]], 422);
+        }
+
+        // Para motivos que requieren INACTIVO, verificar que tenga fecha_salida
+        if ($estadoRequerido === 'INACTIVO' && !$emp->fecha_salida) {
+            return response()->json(['message' => 'El empleado no tiene fecha de salida registrada en su ficha.'], 422);
+        }
 
         // Calcular saldo hasta la fecha del evento
         $saldo = $this->calcularSaldo($emp, $request->fecha_evento);

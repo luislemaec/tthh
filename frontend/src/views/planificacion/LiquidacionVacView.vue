@@ -111,6 +111,11 @@
             </div>
           </div>
 
+          <!-- Aviso si el estado del empleado no es compatible con el motivo -->
+          <div v-if="avisoEstadoIncompatible" class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+            {{ avisoEstadoIncompatible }}
+          </div>
+
           <!-- Campo días a cargar (solo para motivos de carga de saldo) -->
           <div v-if="requiereCargaSaldo" class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <label class="block text-xs font-semibold text-blue-700 mb-1">
@@ -135,7 +140,7 @@
           <div class="flex items-center gap-3">
             <button
               @click="registrarEvento"
-              :disabled="!form.motivo || !form.fecha_evento || guardando"
+              :disabled="!form.motivo || !form.fecha_evento || guardando || !!avisoEstadoIncompatible"
               class="bg-green-700 hover:bg-green-800 disabled:opacity-50 text-white text-sm font-semibold px-5 py-2 rounded-lg"
             >
               {{ guardando ? 'Guardando...' : 'Registrar y guardar histórico' }}
@@ -210,6 +215,29 @@ const form = ref({ motivo: '', fecha_evento: '', dias_a_cargar: '', observacion:
 const requiereCargaSaldo = computed(() =>
   form.value.motivo && motivosCargaSaldo.value.includes(form.value.motivo)
 )
+
+const ESTADO_REQUERIDO = {
+  INICIO_COMISION:      'INACTIVO',
+  FIN_COMISION_RETORNO: 'ACTIVO',
+  COMISION_ENTRANTE:    'ACTIVO',
+  FIN_COMISION_SALIDA:  'INACTIVO',
+  NUEVO_INGRESO:        'ACTIVO',
+  DESVINCULACION:       'INACTIVO',
+}
+
+const avisoEstadoIncompatible = computed(() => {
+  if (!form.value.motivo || !empleado.value) return null
+  const requerido = ESTADO_REQUERIDO[form.value.motivo]
+  if (!requerido) return null
+  if (empleado.value.estado !== requerido) {
+    if (requerido === 'INACTIVO') {
+      return 'Para este motivo el empleado debe estar INACTIVO con fecha de salida registrada en su ficha.'
+    } else {
+      return 'Para este motivo el empleado debe estar ACTIVO en su ficha.'
+    }
+  }
+  return null
+})
 
 const LABELS_MOTIVO = {
   INICIO_COMISION:      'Inicio de comisión de servicios',
