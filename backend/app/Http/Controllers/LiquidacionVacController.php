@@ -124,7 +124,14 @@ class LiquidacionVacController extends Controller
             ->get();
 
         $modalidad = trim($emp->modalidad_laboral ?? '');
-        $motivosDisponibles = self::MOTIVOS_POR_MODALIDAD[$modalidad] ?? [];
+        // Búsqueda case-insensitive por si hay diferencias de mayúsculas en la BD
+        $motivosDisponibles = [];
+        foreach (self::MOTIVOS_POR_MODALIDAD as $key => $motivos) {
+            if (mb_strtolower($key) === mb_strtolower($modalidad)) {
+                $motivosDisponibles = $motivos;
+                break;
+            }
+        }
 
         return response()->json([
             'empleado' => [
