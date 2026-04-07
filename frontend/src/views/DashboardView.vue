@@ -58,8 +58,8 @@
       </div>
     </div>
 
-    <!-- Tabla por departamento -->
-    <div class="bg-white rounded-xl shadow overflow-hidden">
+    <!-- Tabla por departamento (solo Admin y TH) -->
+    <div v-if="esAdmin" class="bg-white rounded-xl shadow overflow-hidden">
       <div class="px-6 py-4 border-b">
         <h2 class="text-lg font-semibold text-gray-700">Empleados por Departamento</h2>
       </div>
@@ -96,8 +96,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import api from '@/services/api'
+import { useAuthStore } from '@/stores/auth'
+
+const auth    = useAuthStore()
+const esAdmin = computed(() => auth.tieneRol('ADMINISTRADOR') || auth.tieneRol('TALENTO HUMANO'))
 
 const stats = ref({
   total_activos: 0,
