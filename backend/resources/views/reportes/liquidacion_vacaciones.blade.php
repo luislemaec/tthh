@@ -127,7 +127,7 @@
 @endphp
 
 <p class="titulo">{{ $titulo }}</p>
-<p class="subtitulo">Talento Humano</p>
+<p class="subtitulo">DIRECCIÓN DE ADMINISTRACIÓN DEL TALENTO HUMANO</p>
 <p class="fecha-emision">Fecha de emisión: {{ $fechaHoy }}</p>
 
 {{-- Datos del empleado --}}
@@ -182,9 +182,7 @@
       </tr>
       <tr>
         <td class="label">Fecha de corte usada:</td>
-        <td>{{ \Carbon\Carbon::parse($historico->fecha_corte_usada)->format('d/m/Y') }}</td>
-        <td class="label">Procesado por:</td>
-        <td>{{ $historico->usuario_proceso }}</td>
+        <td colspan="3">{{ \Carbon\Carbon::parse($historico->fecha_corte_usada)->format('d/m/Y') }}</td>
       </tr>
     </table>
     @if($historico->observacion)
@@ -236,6 +234,8 @@
   <div class="linea"></div><br>
   <strong>{{ $aprobador }}</strong><br>
   <span style="font-size:8px; color:#6b7280;">Responsable de Talento Humano</span>
+  <br><br>
+  <span style="font-size:8px; color:#6b7280;">Generado por: <strong>{{ $generadoPor }}</strong></span>
 </div>
 
 </body>
