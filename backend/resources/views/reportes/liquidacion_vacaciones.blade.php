@@ -115,6 +115,11 @@
 <body>
 
 @php
+  $logoPath   = public_path('logo.png');
+  $logoBase64 = file_exists($logoPath)
+      ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath))
+      : null;
+
   $titulos = [
     'INICIO_COMISION'     => 'Certificado de Saldo de Vacaciones — Inicio de Comisión de Servicios',
     'FIN_COMISION_RETORNO'=> 'Constancia de Carga de Saldo — Retorno de Comisión de Servicios',
@@ -126,8 +131,21 @@
   $titulo = $titulos[$historico->motivo] ?? 'Reporte de Vacaciones';
 @endphp
 
-<p class="titulo">{{ $titulo }}</p>
-<p class="subtitulo">DIRECCIÓN DE ADMINISTRACIÓN DEL TALENTO HUMANO</p>
+{{-- Encabezado con logo --}}
+<table style="width:100%; margin-bottom:8px;">
+  <tr>
+    <td style="width:80px; vertical-align:middle;">
+      @if($logoBase64)
+        <img src="{{ $logoBase64 }}" style="height:55px; width:auto;">
+      @endif
+    </td>
+    <td style="vertical-align:middle; text-align:center;">
+      <p class="titulo" style="margin-bottom:2px;">{{ $titulo }}</p>
+      <p class="subtitulo" style="margin-bottom:0;">DIRECCIÓN DE ADMINISTRACIÓN DEL TALENTO HUMANO</p>
+    </td>
+    <td style="width:80px;"></td>
+  </tr>
+</table>
 <p class="fecha-emision">Fecha de emisión: {{ $fechaHoy }}</p>
 
 {{-- Datos del empleado --}}

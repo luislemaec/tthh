@@ -106,7 +106,26 @@
 </head>
 <body>
 
-<p class="titulo">Planificación Anual de Vacaciones &mdash; Período {{ $anio }}</p>
+@php
+  $logoPath   = public_path('logo.png');
+  $logoBase64 = file_exists($logoPath)
+      ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath))
+      : null;
+@endphp
+
+<table style="width:100%; margin-bottom:6px;">
+  <tr>
+    <td style="width:80px; vertical-align:middle;">
+      @if($logoBase64)
+        <img src="{{ $logoBase64 }}" style="height:55px; width:auto;">
+      @endif
+    </td>
+    <td style="vertical-align:middle; text-align:center;">
+      <p class="titulo" style="margin-bottom:0;">Planificación Anual de Vacaciones &mdash; Período {{ $anio }}</p>
+    </td>
+    <td style="width:80px;"></td>
+  </tr>
+</table>
 <p class="pie-fecha">Fecha de emisión: {{ $fechaHoy }}</p>
 
 <table>
