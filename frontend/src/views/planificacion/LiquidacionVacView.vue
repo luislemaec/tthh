@@ -317,7 +317,8 @@ async function descargarPdf(historicoId) {
 
 function fmtFecha(f) {
   if (!f) return null
-  const d = f.split('T')[0].split('-')
+  const clean = f.split('T')[0].split(' ')[0]
+  const d = clean.split('-')
   return `${d[2]}/${d[1]}/${d[0]}`
 }
 </script>

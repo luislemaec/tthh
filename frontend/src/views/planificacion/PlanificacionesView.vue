@@ -27,7 +27,7 @@
             </span>
           </div>
           <div class="text-sm text-gray-500">
-            Total planificado: <span class="font-semibold text-gray-700">{{ miPlanificacion.total_dias_planificados }} días</span>
+            Total planificado: <span class="font-semibold text-gray-700">{{ fmtDias(miPlanificacion.total_dias_planificados) }} días</span>
           </div>
           <div v-if="miPlanificacion.observacion" class="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
             <strong>Observación:</strong> {{ miPlanificacion.observacion }}
