@@ -16,14 +16,8 @@
 
     <!-- ── VISTA EMPLEADO ────────────────────────────────────────────────── -->
     <template v-if="!esSupervisorOAdmin || tabActivo === 'mia'">
-      <!-- Sin período activo -->
-      <div v-if="!periodoActivo" class="bg-white rounded-xl shadow p-8 text-center text-gray-400">
-        <p class="text-lg font-medium">No hay un período de planificación activo en este momento.</p>
-        <p class="text-sm mt-1">Talento Humano habilitará el período cuando corresponda.</p>
-      </div>
-
-      <!-- Con período activo y ya tiene planificación -->
-      <template v-else-if="miPlanificacion">
+      <!-- Ya tiene planificación: siempre visible aunque el período esté cerrado -->
+      <template v-if="miPlanificacion">
         <div class="bg-white rounded-xl shadow p-6 space-y-4">
           <div class="flex items-center justify-between">
             <h2 class="font-semibold text-gray-700">Mi planificación {{ miPlanificacion.anio }}</h2>
@@ -59,6 +53,13 @@
           </table>
         </div>
       </template>
+
+      <!-- Sin planificación: solo muestra opciones si el período está activo -->
+      <!-- Sin período activo y sin planificación -->
+      <div v-else-if="!periodoActivo" class="bg-white rounded-xl shadow p-8 text-center text-gray-400">
+        <p class="text-lg font-medium">No hay un período de planificación activo en este momento.</p>
+        <p class="text-sm mt-1">Talento Humano habilitará el período cuando corresponda.</p>
+      </div>
 
       <!-- Con período activo y sin planificación -->
       <template v-else-if="periodoActivo">
