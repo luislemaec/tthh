@@ -123,8 +123,9 @@ class LiquidacionVacController extends Controller
             ->firstOrFail();
 
         // Si inactivo y tiene fecha_salida, calcular hasta esa fecha; si no, hasta hoy
-        $fechaRef = (strtoupper($emp->estado) !== 'ACTIVO' && $emp->fecha_salida)
-            ? $emp->fecha_salida
+        $estaInactivo = strtoupper(trim($emp->estado)) === 'INACTIVO';
+        $fechaRef = ($estaInactivo && $emp->fecha_salida)
+            ? Carbon::parse($emp->fecha_salida)->toDateString()
             : Carbon::today()->toDateString();
 
         $saldo    = $this->calcularSaldo($emp, $fechaRef);
