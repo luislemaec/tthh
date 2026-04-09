@@ -38,12 +38,8 @@
               </span>
             </td>
             <td class="px-4 py-3">
-              <div class="flex gap-2">
-                <button @click="abrirModalEditar(p)"
-                  class="text-[#0b5447] hover:underline text-xs font-medium">Editar</button>
-                <button @click="eliminar(p.id)"
-                  class="text-red-500 hover:underline text-xs font-medium">Eliminar</button>
-              </div>
+              <button @click="abrirModalEditar(p)"
+                class="text-[#0b5447] hover:underline text-xs font-medium">Editar</button>
             </td>
           </tr>
         </tbody>
@@ -148,16 +144,6 @@ const guardar = async () => {
     errorForm.value = e.response?.data?.message || 'Error al guardar'
   } finally {
     guardando.value = false
-  }
-}
-
-const eliminar = async (id) => {
-  if (!confirm('¿Eliminar este período?')) return
-  try {
-    await api.delete(`/admin/periodos-planificacion/${id}`)
-    cargar()
-  } catch (e) {
-    alert(e.response?.data?.message || 'Error al eliminar')
   }
 }
 
