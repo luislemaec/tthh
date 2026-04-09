@@ -29,8 +29,14 @@ class VacacionesController extends Controller
             $fechaCorte = Carbon::parse($emp->fecha_ingreso);
         }
 
+        // Si el empleado está inactivo con fecha de salida, acumula hasta esa fecha
+        $estaInactivo   = strtoupper(trim($emp->estado)) === 'INACTIVO';
+        $fechaHasta     = ($estaInactivo && $emp->fecha_salida)
+            ? Carbon::parse($emp->fecha_salida)
+            : Carbon::today();
+
         // Base 360 días: días transcurridos / 360 × tasa anual (tasa × 12)
-        $diasCalendario = max(0, $fechaCorte->diffInDays(Carbon::today()));
+        $diasCalendario = max(0, $fechaCorte->diffInDays($fechaHasta));
         $diasAcumulados = round($diasCalendario / 360 * ($tasa * 12), 2);
         $saldoInicial   = (float) ($cabecera->dias_adicionales  ?? 0);
         $tomados        = (float) ($cabecera->total_dias_tomados ?? 0);
