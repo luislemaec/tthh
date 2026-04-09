@@ -20,7 +20,7 @@ class DepartamentoController extends Controller
     {
         $request->validate([
             'nombre_depto' => 'required|string|max:120',
-            'padre_id'     => 'nullable|integer|exists:dbo.ad_departamento,id_depto',
+            'padre_id'     => 'nullable|integer',
         ]);
 
         // Generar id_depto correlativo
@@ -42,7 +42,7 @@ class DepartamentoController extends Controller
         $dep = Departamento::findOrFail($id);
         $request->validate([
             'nombre_depto' => 'required|string|max:120',
-            'padre_id'     => 'nullable|integer|exists:dbo.ad_departamento,id_depto',
+            'padre_id'     => 'nullable|integer',
         ]);
 
         // Evitar que un departamento sea su propio padre
