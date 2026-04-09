@@ -102,12 +102,17 @@ class PlanificacionVacController extends Controller
             ->where('fecha_fin',    '>=', $hoy)
             ->first();
 
+        // Si hay período activo, buscar la planificación de ese año;
+        // si no, mostrar la más reciente del empleado para que pueda consultarla
         $planificacion = $periodo
             ? PlanificacionCab::with('periodos')
                 ->where('id_emp', $emp->id_emp)
                 ->where('anio', $periodo->anio)
                 ->first()
-            : null;
+            : PlanificacionCab::with('periodos')
+                ->where('id_emp', $emp->id_emp)
+                ->orderByDesc('anio')
+                ->first();
 
         $fechaCorteConfig = Configuracion::find('FECHA_CORTE_VACACIONES');
         $fechaCorte       = $fechaCorteConfig ? Carbon::parse($fechaCorteConfig->valor) : Carbon::today();
