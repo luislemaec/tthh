@@ -38,6 +38,8 @@ Route::middleware("auth:sanctum")->group(function () {
     // Administración
     Route::prefix("admin")->group(function () {
         Route::apiResource("departamentos", \App\Http\Controllers\Admin\DepartamentoController::class);
+        Route::patch("departamentos/{id}/inactivar", [\App\Http\Controllers\Admin\DepartamentoController::class, "inactivar"]);
+        Route::patch("departamentos/{id}/activar",   [\App\Http\Controllers\Admin\DepartamentoController::class, "activar"]);
         Route::apiResource("razones",       \App\Http\Controllers\Admin\RazonController::class);
         Route::apiResource("turnos",        \App\Http\Controllers\Admin\TurnoController::class);
         Route::post("turnos/{id}/horarios", [\App\Http\Controllers\Admin\TurnoController::class, "guardarHorarios"]);

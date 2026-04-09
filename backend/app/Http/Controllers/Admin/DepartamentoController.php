@@ -32,6 +32,7 @@ class DepartamentoController extends Controller
             'nombre_depto'    => strtoupper($request->nombre_depto),
             'centro_de_costo' => strtoupper($request->centro_de_costo ?? ''),
             'padre_id'        => $request->padre_id ?: null,
+            'estado'          => 'ACTIVO',
         ]);
 
         return response()->json($dep->load('padre'), 201);
@@ -59,26 +60,33 @@ class DepartamentoController extends Controller
         return response()->json($dep->load('padre'));
     }
 
-    public function destroy($id)
+    public function inactivar($id)
     {
         $dep = Departamento::findOrFail($id);
 
         // Verificar que no tenga empleados activos
         if ($dep->empleados()->where('estado', 'ACTIVO')->exists()) {
             return response()->json([
-                'message' => 'No se puede eliminar: tiene empleados activos asignados.'
+                'message' => 'No se puede inactivar: tiene empleados activos asignados. Muévalos a otra área primero.'
             ], 422);
         }
 
-        // Verificar que no tenga departamentos hijos
-        if ($dep->hijos()->exists()) {
-            $hijos = $dep->hijos()->pluck('nombre_depto')->implode(', ');
+        // Verificar que no tenga departamentos hijos activos
+        if ($dep->hijos()->where('estado', 'ACTIVO')->exists()) {
+            $hijos = $dep->hijos()->where('estado', 'ACTIVO')->pluck('nombre_depto')->implode(', ');
             return response()->json([
-                'message' => "No se puede eliminar: tiene áreas hijas asignadas ($hijos). Reasígnalas primero."
+                'message' => "No se puede inactivar: tiene áreas hijas activas ($hijos). Inactívalas primero."
             ], 422);
         }
 
-        $dep->delete();
-        return response()->json(['message' => 'Departamento eliminado.']);
+        $dep->update(['estado' => 'INACTIVO']);
+        return response()->json(['message' => 'Departamento inactivado correctamente.']);
+    }
+
+    public function activar($id)
+    {
+        $dep = Departamento::findOrFail($id);
+        $dep->update(['estado' => 'ACTIVO']);
+        return response()->json(['message' => 'Departamento activado correctamente.']);
     }
 }
