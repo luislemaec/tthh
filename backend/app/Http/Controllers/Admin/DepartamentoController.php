@@ -62,12 +62,22 @@ class DepartamentoController extends Controller
     public function destroy($id)
     {
         $dep = Departamento::findOrFail($id);
+
         // Verificar que no tenga empleados activos
         if ($dep->empleados()->where('estado', 'ACTIVO')->exists()) {
             return response()->json([
-                'message' => 'No se puede eliminar, tiene empleados activos.'
+                'message' => 'No se puede eliminar: tiene empleados activos asignados.'
             ], 422);
         }
+
+        // Verificar que no tenga departamentos hijos
+        if ($dep->hijos()->exists()) {
+            $hijos = $dep->hijos()->pluck('nombre_depto')->implode(', ');
+            return response()->json([
+                'message' => "No se puede eliminar: tiene áreas hijas asignadas ($hijos). Reasígnalas primero."
+            ], 422);
+        }
+
         $dep->delete();
         return response()->json(['message' => 'Departamento eliminado.']);
     }
