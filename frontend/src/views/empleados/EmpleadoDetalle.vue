@@ -73,6 +73,19 @@
           </div>
         </div>
 
+        <!-- Reset contraseña -->
+        <div class="mt-4 pt-4 border-t">
+          <p class="text-sm text-gray-500 mb-2">Contraseña de acceso:</p>
+          <button @click="resetPassword" :disabled="reseteando"
+            class="bg-red-50 text-red-600 border border-red-200 px-4 py-2 rounded-lg text-sm hover:bg-red-100 disabled:opacity-50">
+            {{ reseteando ? 'Reseteando...' : 'Resetear contraseña a cédula' }}
+          </button>
+          <p class="text-xs text-gray-400 mt-1">La contraseña volverá a ser el número de cédula del empleado.</p>
+          <div v-if="mensajeReset" class="mt-2 text-sm text-green-600 bg-green-50 px-3 py-2 rounded-lg">
+            {{ mensajeReset }}
+          </div>
+        </div>
+
         <!-- Asignar nuevo rol -->
         <div class="flex gap-2">
           <select v-model="rolSeleccionado"
@@ -109,8 +122,10 @@ const cargando = ref(true)
 const rolesAsignados  = ref([])
 const rolesDisponibles = ref([])
 const rolSeleccionado  = ref("")
-const asignando  = ref(false)
-const mensajeRol = ref("")
+const asignando    = ref(false)
+const mensajeRol   = ref("")
+const reseteando   = ref(false)
+const mensajeReset = ref("")
 
 const iniciales = computed(() => {
   const n = emp.value.nombre_emp?.[0] || ""
@@ -152,6 +167,21 @@ const asignarRol = async () => {
     mensajeRol.value = e.response?.data?.message || "Error al asignar rol"
   } finally {
     asignando.value = false
+  }
+}
+
+const resetPassword = async () => {
+  if (!confirm(`¿Resetear la contraseña de ${emp.value.apellido_emp}, ${emp.value.nombre_emp} a su cédula?`)) return
+  reseteando.value = true
+  mensajeReset.value = ""
+  try {
+    const { data } = await api.post(`/empleados/${emp.value.id_emp}/reset-password`)
+    mensajeReset.value = data.message
+    setTimeout(() => { mensajeReset.value = "" }, 4000)
+  } catch (e) {
+    alert(e.response?.data?.message || "Error al resetear contraseña")
+  } finally {
+    reseteando.value = false
   }
 }
 

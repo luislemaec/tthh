@@ -100,7 +100,16 @@
       </nav>
 
       <!-- Footer sidebar -->
-      <div class="p-4 flex-shrink-0" style="border-top: 1px solid #00372e;">
+      <div class="p-4 flex-shrink-0 space-y-2" style="border-top: 1px solid #00372e;">
+        <router-link to="/perfil"
+          class="flex items-center gap-3 text-sm w-full hover:text-white transition"
+          style="color: #95d0c7;">
+          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+          </svg>
+          <span v-show="sidebarOpen">Mi Perfil</span>
+        </router-link>
         <button @click="handleLogout"
           class="flex items-center gap-3 text-sm w-full hover:text-white transition"
           style="color: #95d0c7;">

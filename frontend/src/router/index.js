@@ -15,6 +15,7 @@ const routes = [
     children: [
       { path: '', redirect: '/dashboard' },
       { path: 'dashboard', name: 'Dashboard', component: () => import('@/views/DashboardView.vue') },
+      { path: 'perfil', name: 'Perfil', component: () => import('@/views/PerfilView.vue') },
       { path: 'empleados', name: 'Empleados', component: () => import('@/views/empleados/EmpleadosIndex.vue') },
       { path: 'empleados/crear', name: 'EmpleadoCrear', component: () => import('@/views/empleados/EmpleadoForm.vue') },
       { path: 'empleados/:id', name: 'EmpleadoDetalle', component: () => import('@/views/empleados/EmpleadoDetalle.vue') },

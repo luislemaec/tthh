@@ -6,6 +6,8 @@ use App\Models\Departamento;
 use App\Models\EmpleadoMail;
 use App\Models\CabeceraVacacion;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class EmpleadoController extends Controller
 {
@@ -183,6 +185,48 @@ class EmpleadoController extends Controller
         $emp = Empleado::findOrFail($id);
         $emp->update(["estado" => "INACTIVO"]);
         return response()->json(["message" => "Empleado desactivado correctamente."]);
+    }
+
+    // POST /api/empleados/{id}/reset-password — solo Admin o TH
+    public function resetPassword(Request $request, $id)
+    {
+        $user = $request->user();
+        $esAdminOTH = DB::table('dbo.admin_usuario_rol as ur')
+            ->join('dbo.admin_rol as r', 'ur.id_rol', '=', 'r.id')
+            ->where('ur.id_emp', $user->id_emp)
+            ->whereIn('r.descripcion', ['ADMINISTRADOR', 'TALENTO HUMANO'])
+            ->exists();
+
+        if (!$esAdminOTH) {
+            return response()->json(['message' => 'Acceso no autorizado.'], 403);
+        }
+
+        $emp = Empleado::findOrFail($id);
+        $emp->password = bcrypt($emp->identificacion);
+        $emp->save();
+
+        return response()->json(['message' => "Contraseña reseteada a la cédula del empleado."]);
+    }
+
+    // POST /api/cambiar-password — empleado cambia su propia contraseña
+    public function cambiarPassword(Request $request)
+    {
+        $request->validate([
+            'password_actual' => 'required|string',
+            'password_nuevo'  => 'required|string|min:6',
+            'password_confirmar' => 'required|same:password_nuevo',
+        ]);
+
+        $emp = $request->user();
+
+        if (!Hash::check($request->password_actual, $emp->password)) {
+            return response()->json(['message' => 'La contraseña actual es incorrecta.'], 422);
+        }
+
+        $emp->password = bcrypt($request->password_nuevo);
+        $emp->save();
+
+        return response()->json(['message' => 'Contraseña actualizada correctamente.']);
     }
 
     // GET /api/departamentos
