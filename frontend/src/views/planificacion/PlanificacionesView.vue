@@ -32,6 +32,18 @@
           <div v-if="miPlanificacion.observacion" class="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
             <strong>Observación:</strong> {{ miPlanificacion.observacion }}
           </div>
+
+          <!-- Alertas por período -->
+          <div class="space-y-2">
+            <template v-for="p in miPlanificacion.periodos" :key="'alerta-' + p.id">
+              <div v-if="p.fecha_inicial && p.fecha_final && alertaPeriodo(p)"
+                :class="alertaPeriodo(p).clase"
+                class="rounded-lg px-4 py-2 text-sm font-medium border">
+                {{ alertaPeriodo(p).mensaje }}
+              </div>
+            </template>
+          </div>
+
           <table class="w-full text-sm mt-2">
             <thead class="bg-gray-50 border-b">
               <tr>
@@ -419,6 +431,35 @@ const periodoDeplan = (plan, n) =>
   plan.periodos?.find(p => p.numero_periodo === n) ?? null
 
 const fmtDias = (val) => val != null ? Math.round(val) : '—'
+
+const alertaPeriodo = (p) => {
+  if (!p.fecha_inicial || !p.fecha_final) return null
+  const hoy    = new Date()
+  hoy.setHours(0, 0, 0, 0)
+  const inicio = new Date(p.fecha_inicial)
+  const fin    = new Date(p.fecha_final)
+  const diasHastaInicio = Math.ceil((inicio - hoy) / (1000 * 60 * 60 * 24))
+
+  if (fin < hoy) {
+    return {
+      clase:   'bg-red-50 border-red-300 text-red-700',
+      mensaje: `⚠ El Período ${p.numero_periodo} (${p.fecha_inicial} al ${p.fecha_final}) ya venció. Debes replanificar.`
+    }
+  }
+  if (inicio <= hoy && fin >= hoy) {
+    return {
+      clase:   'bg-blue-50 border-blue-300 text-blue-700',
+      mensaje: `🏖 Estás en período de vacaciones (Período ${p.numero_periodo}) hasta el ${p.fecha_final}.`
+    }
+  }
+  if (diasHastaInicio <= 15) {
+    return {
+      clase:   'bg-green-50 border-green-300 text-green-700',
+      mensaje: `📅 Tu Período ${p.numero_periodo} comienza en ${diasHastaInicio} día${diasHastaInicio === 1 ? '' : 's'} (${p.fecha_inicial}).`
+    }
+  }
+  return null
+}
 
 // ── Carga inicial ──────────────────────────────────────────────────────────
 
