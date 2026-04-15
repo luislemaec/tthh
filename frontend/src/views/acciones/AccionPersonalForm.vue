@@ -85,6 +85,30 @@
       <!-- Situación Propuesta -->
       <div class="bg-white rounded-xl shadow p-6 space-y-4">
         <h2 class="text-lg font-semibold text-gray-700 border-b pb-2">Situación Propuesta <span class="text-sm font-normal text-gray-400">(cargo a encargar/subrogar)</span></h2>
+
+        <!-- Buscador del titular del cargo -->
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">
+            Buscar titular del cargo <span class="text-gray-400 font-normal">(opcional — autocompleta los campos)</span>
+          </label>
+          <input v-model="busquedaTitular" type="text" placeholder="Buscar empleado titular por nombre o cédula..."
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]"
+            @input="buscarTitular" />
+          <div v-if="resultadosTitular.length" class="border rounded-lg overflow-hidden mt-1">
+            <div v-for="e in resultadosTitular" :key="e.id_emp"
+              @click="seleccionarTitular(e)"
+              class="px-4 py-2 hover:bg-purple-50 cursor-pointer border-b last:border-b-0 text-sm">
+              <span class="font-medium">{{ e.apellido_emp }}, {{ e.nombre_emp }}</span>
+              <span class="text-gray-400 ml-2">{{ e.identificacion }}</span>
+              <span class="text-gray-500 ml-2">— {{ e.cargo_empleado }}</span>
+            </div>
+          </div>
+          <div v-if="titularSeleccionado" class="mt-2 flex items-center gap-2 text-xs text-purple-700 bg-purple-50 px-3 py-2 rounded-lg">
+            Datos cargados desde: <strong>{{ titularSeleccionado.apellido_emp }}, {{ titularSeleccionado.nombre_emp }}</strong>
+            <button type="button" @click="limpiarTitular" class="ml-auto text-red-400 hover:text-red-600">✕ Limpiar</button>
+          </div>
+        </div>
+
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div class="sm:col-span-2">
             <label class="block text-sm font-medium text-gray-600 mb-1">Denominación del Puesto *</label>
@@ -174,6 +198,7 @@ const form = ref({
   tipo_accion:            "",
   fecha_elaboracion:      new Date().toISOString().substring(0, 10),
   id_emp:                 "",
+  id_emp_titular:         "",
   fecha_inicio:           "",
   fecha_fin:              "",
   motivacion:             "",
@@ -185,13 +210,17 @@ const form = ref({
   propuesto_proceso_inst: "",
 })
 
-const busquedaEmp       = ref("")
-const resultadosEmp     = ref([])
+const busquedaEmp          = ref("")
+const resultadosEmp        = ref([])
 const empleadoSeleccionado = ref(null)
-const diferencial       = ref(null)
-const guardando         = ref(false)
-const error             = ref("")
-let busquedaTimer       = null
+const busquedaTitular      = ref("")
+const resultadosTitular    = ref([])
+const titularSeleccionado  = ref(null)
+const diferencial          = ref(null)
+const guardando            = ref(false)
+const error                = ref("")
+let busquedaTimer          = null
+let titularTimer           = null
 
 const buscarEmpleados = () => {
   clearTimeout(busquedaTimer)
@@ -215,6 +244,43 @@ const seleccionarEmpleado = (e) => {
 const limpiarEmpleado = () => {
   empleadoSeleccionado.value = null
   form.value.id_emp = ""
+  diferencial.value = null
+}
+
+const buscarTitular = () => {
+  clearTimeout(titularTimer)
+  if (busquedaTitular.value.length < 2) { resultadosTitular.value = []; return }
+  titularTimer = setTimeout(async () => {
+    const { data } = await api.get("/empleados", {
+      params: { buscar: busquedaTitular.value, estado: "ACTIVO", per_page: 8 }
+    })
+    resultadosTitular.value = data.data
+  }, 300)
+}
+
+const seleccionarTitular = (e) => {
+  titularSeleccionado.value = e
+  form.value.id_emp_titular       = e.id_emp
+  form.value.propuesto_cargo       = e.cargo_empleado      || ""
+  form.value.propuesto_grupo_ocup  = e.grupo_ocupacional   || ""
+  form.value.propuesto_grado       = e.nivel               || ""
+  form.value.propuesto_remuneracion = e.sueldo             || ""
+  form.value.propuesto_partida     = e.partida_presupuestaria || ""
+  form.value.propuesto_proceso_inst = e.proceso_institucional || ""
+  busquedaTitular.value   = ""
+  resultadosTitular.value = []
+  calcularDiferencial()
+}
+
+const limpiarTitular = () => {
+  titularSeleccionado.value         = null
+  form.value.id_emp_titular         = ""
+  form.value.propuesto_cargo        = ""
+  form.value.propuesto_grupo_ocup   = ""
+  form.value.propuesto_grado        = ""
+  form.value.propuesto_remuneracion = ""
+  form.value.propuesto_partida      = ""
+  form.value.propuesto_proceso_inst = ""
   diferencial.value = null
 }
 
