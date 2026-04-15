@@ -100,6 +100,7 @@
             <div><dt class="text-gray-500 text-xs">Grado</dt><dd class="font-medium">{{ empleadoSeleccionado.nivel || '—' }}</dd></div>
             <div><dt class="text-gray-500 text-xs">Remuneración</dt><dd class="font-medium">${{ Number(empleadoSeleccionado.sueldo || 0).toFixed(2) }}</dd></div>
             <div><dt class="text-gray-500 text-xs">Proceso institucional</dt><dd class="font-medium">{{ empleadoSeleccionado.proceso_institucional || '—' }}</dd></div>
+            <div class="sm:col-span-3"><dt class="text-gray-500 text-xs">Partida presupuestaria</dt><dd class="font-mono text-xs font-medium">{{ empleadoSeleccionado.partida_presupuestaria ? (empleadoSeleccionado.partida_presupuestaria + (empleadoSeleccionado.partida_individual ? `-${empleadoSeleccionado.partida_individual}` : '')) : '—' }}</dd></div>
           </dl>
         </div>
       </div>
@@ -318,7 +319,9 @@ const seleccionarTitular = (e) => {
   form.value.propuesto_grupo_ocup   = e.grupo_ocupacional      || ""
   form.value.propuesto_grado        = e.nivel                  || ""
   form.value.propuesto_remuneracion = e.sueldo                 || ""
-  form.value.propuesto_partida      = e.partida_presupuestaria || ""
+  form.value.propuesto_partida      = e.partida_presupuestaria
+    ? (e.partida_presupuestaria + (e.partida_individual ? `-${e.partida_individual}` : ""))
+    : ""
   form.value.propuesto_proceso_inst = e.proceso_institucional  || ""
   busquedaTitular.value   = ""
   resultadosTitular.value = []

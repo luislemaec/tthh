@@ -96,7 +96,9 @@ class AccionPersonalController extends Controller
             "actual_grupo_ocup"      => $emp->grupo_ocupacional,
             "actual_grado"           => $emp->nivel,
             "actual_remuneracion"    => $actualRem,
-            "actual_partida"         => $emp->partida_presupuestaria,
+            "actual_partida"         => $emp->partida_presupuestaria
+                ? ($emp->partida_presupuestaria . ($emp->partida_individual ? "-{$emp->partida_individual}" : ""))
+                : null,
             "actual_proceso_inst"    => $emp->proceso_institucional,
             // Situación propuesta
             "propuesto_cargo"        => $request->propuesto_cargo,
