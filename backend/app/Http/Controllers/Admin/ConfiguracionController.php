@@ -72,6 +72,7 @@ class ConfiguracionController extends Controller
             ["concepto" => "correo_notificaciones",   "valor" => "rrhh@institucion.gob.ec"],
             ["concepto" => "nombre_institucion",      "valor" => "CONSEJO DE COMUNICACION"],
             ["concepto" => "ubicacion_default",       "valor" => "Quito"],
+            ["concepto" => "RUC_PATRONAL",            "valor" => "1768174610001"],
         ];
 
         $insertados = 0;

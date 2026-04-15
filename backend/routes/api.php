@@ -61,6 +61,11 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post("configuracion",                    [\App\Http\Controllers\Admin\ConfiguracionController::class, "store"]);
         Route::put("configuracion/{concepto}",          [\App\Http\Controllers\Admin\ConfiguracionController::class, "update"]);
         Route::delete("configuracion/{concepto}",       [\App\Http\Controllers\Admin\ConfiguracionController::class, "destroy"]);
+
+        // Aportes IESS
+        Route::get("aportes-iess",          [\App\Http\Controllers\Admin\AportesIessController::class, "index"]);
+        Route::get("aportes-iess/vigentes", [\App\Http\Controllers\Admin\AportesIessController::class, "vigentes"]);
+        Route::post("aportes-iess",         [\App\Http\Controllers\Admin\AportesIessController::class, "store"]);
     });
 
     // Opciones de menú
