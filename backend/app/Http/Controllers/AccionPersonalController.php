@@ -14,6 +14,13 @@ class AccionPersonalController extends Controller
     // GET /api/acciones-personal
     public function index(Request $request)
     {
+        // Auto-cerrar subrogaciones cuya fecha_fin ya pasó
+        AccionPersonal::where("tipo_accion", "SUBROGACION")
+            ->where("estado", "ACTIVO")
+            ->whereNotNull("fecha_fin")
+            ->where("fecha_fin", "<", now()->toDateString())
+            ->update(["estado" => "FINALIZADO", "updated_at" => now()]);
+
         $query = AccionPersonal::with(["empleado", "titular"])
             ->orderByDesc("created_at");
 
@@ -50,7 +57,7 @@ class AccionPersonalController extends Controller
             "fecha_elaboracion"     => "required|date",
             "id_emp"                => "required|string",
             "fecha_inicio"          => "required|date",
-            "fecha_fin"             => "nullable|date|after_or_equal:fecha_inicio",
+            "fecha_fin"             => ($request->tipo_accion === "SUBROGACION" ? "required" : "nullable") . "|date|after_or_equal:fecha_inicio",
             "motivacion"            => "nullable|string",
             "propuesto_cargo"       => "required|string|max:200",
             "propuesto_grupo_ocup"  => "nullable|string|max:100",
@@ -109,9 +116,20 @@ class AccionPersonalController extends Controller
     // PATCH /api/acciones-personal/{id}/estado
     public function cambiarEstado(Request $request, $id)
     {
-        $request->validate(["estado" => "required|in:ACTIVO,FINALIZADO,ANULADO"]);
+        $request->validate([
+            "estado"    => "required|in:ACTIVO,FINALIZADO,ANULADO",
+            "fecha_fin" => "nullable|date",
+        ]);
         $accion = AccionPersonal::findOrFail($id);
-        $accion->update(["estado" => $request->estado, "updated_at" => now()]);
+
+        $data = ["estado" => $request->estado, "updated_at" => now()];
+
+        // Al finalizar un encargo manualmente, guardar la fecha de fin ingresada
+        if ($request->estado === "FINALIZADO" && $request->filled("fecha_fin")) {
+            $data["fecha_fin"] = $request->fecha_fin;
+        }
+
+        $accion->update($data);
         return response()->json(["message" => "Estado actualizado correctamente."]);
     }
 

@@ -73,7 +73,7 @@
               <div class="flex gap-2">
                 <button @click="descargarPdf(a.id_accion)"
                   class="text-[#0b5447] hover:underline text-xs font-medium">PDF</button>
-                <button v-if="a.estado === 'ACTIVO'" @click="cambiarEstado(a.id_accion, 'FINALIZADO')"
+                <button v-if="a.estado === 'ACTIVO'" @click="abrirModalFinalizar(a.id_accion)"
                   class="text-green-600 hover:underline text-xs font-medium">Finalizar</button>
                 <button v-if="a.estado === 'ACTIVO'" @click="cambiarEstado(a.id_accion, 'ANULADO')"
                   class="text-red-500 hover:underline text-xs font-medium">Anular</button>
@@ -91,17 +91,41 @@
       </div>
     </div>
   </div>
+
+  <!-- Modal Finalizar Encargo -->
+  <div v-if="modalFinalizar.show" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm space-y-4">
+      <h3 class="text-lg font-semibold text-gray-800">Finalizar encargo</h3>
+      <p class="text-sm text-gray-500">Ingrese la fecha en que finaliza el encargo de funciones.</p>
+      <div>
+        <label class="block text-sm font-medium text-gray-600 mb-1">Fecha de fin *</label>
+        <input v-model="modalFinalizar.fecha" type="date" required
+          class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+      </div>
+      <div class="flex justify-end gap-3 pt-2">
+        <button @click="modalFinalizar.show = false"
+          class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">
+          Cancelar
+        </button>
+        <button @click="confirmarFinalizar"
+          class="px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700">
+          Confirmar
+        </button>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from "vue"
 import api from "@/services/api"
 
-const acciones   = ref([])
-const cargando   = ref(false)
-const pagina     = ref(1)
-const paginacion = ref({ current_page: 1, last_page: 1 })
-const filtro     = ref({ buscar: "", tipo_accion: "", estado: "" })
+const acciones      = ref([])
+const cargando      = ref(false)
+const pagina        = ref(1)
+const paginacion    = ref({ current_page: 1, last_page: 1 })
+const filtro        = ref({ buscar: "", tipo_accion: "", estado: "" })
+const modalFinalizar = ref({ show: false, id: null, fecha: "" })
 
 const fmtFecha = (f) => {
   if (!f) return "—"
@@ -136,9 +160,30 @@ const cargar = async () => {
   }
 }
 
+const abrirModalFinalizar = (id) => {
+  modalFinalizar.value = {
+    show: true,
+    id,
+    fecha: new Date().toISOString().substring(0, 10),
+  }
+}
+
+const confirmarFinalizar = async () => {
+  if (!modalFinalizar.value.fecha) { alert("Ingrese la fecha de fin."); return }
+  try {
+    await api.patch(`/acciones-personal/${modalFinalizar.value.id}/estado`, {
+      estado: "FINALIZADO",
+      fecha_fin: modalFinalizar.value.fecha,
+    })
+    modalFinalizar.value.show = false
+    cargar()
+  } catch (e) {
+    alert(e.response?.data?.message || "Error al finalizar")
+  }
+}
+
 const cambiarEstado = async (id, estado) => {
-  const msg = estado === 'FINALIZADO' ? '¿Marcar esta acción como Finalizada?' : '¿Anular esta acción de personal?'
-  if (!confirm(msg)) return
+  if (!confirm('¿Anular esta acción de personal?')) return
   try {
     await api.patch(`/acciones-personal/${id}/estado`, { estado })
     cargar()
