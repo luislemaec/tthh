@@ -127,10 +127,75 @@
             <input v-model="form.salario" type="number" step="0.01" min="0"
               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
+        </div>
+      </div>
+
+      <!-- Datos del Puesto -->
+      <div class="bg-white rounded-xl shadow p-6 space-y-4">
+        <h2 class="text-lg font-semibold text-gray-700 border-b pb-2">Datos del Puesto</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-medium text-gray-600 mb-1">Nivel</label>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Grupo Ocupacional</label>
+            <input v-model="form.grupo_ocupacional" type="text" placeholder="Ej: SERVIDOR PUBLICO 7"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Grado</label>
             <input v-model="form.nivel" type="number" min="1"
               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Proceso Institucional</label>
+            <select v-model="form.proceso_institucional"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
+              <option value="">Seleccionar...</option>
+              <option value="SUSTANTIVO">SUSTANTIVO</option>
+              <option value="ADJETIVO">ADJETIVO</option>
+              <option value="GOBERNANTE">GOBERNANTE</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Estado del Puesto</label>
+            <select v-model="form.estado_puesto"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
+              <option value="OCUPADO">OCUPADO</option>
+              <option value="VACANTE">VACANTE</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Partida Individual</label>
+            <input v-model="form.partida_individual" type="number" min="1"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Fondos de Reserva</label>
+            <select v-model="form.acumula_fondos_reserva"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
+              <option :value="0">No tiene derecho</option>
+              <option :value="1">Cobra mensualmente</option>
+              <option :value="2">Acumula</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Décimo Tercero</label>
+            <select v-model="form.acumula_decimo_tercero"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
+              <option :value="true">Acumula</option>
+              <option :value="false">No acumula</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Décimo Cuarto</label>
+            <select v-model="form.acumula_decimo_cuarto"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
+              <option :value="true">Acumula</option>
+              <option :value="false">No acumula</option>
+            </select>
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-sm font-medium text-gray-600 mb-1">Partida Presupuestaria</label>
+            <input v-model="form.partida_presupuestaria" type="text" placeholder="Ej: 202622000000000..."
+              class="w-full border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
         </div>
       </div>
@@ -185,7 +250,16 @@ const form = ref({
   fecha_ingreso:  "",
   fecha_salida:   "",
   salario:        "",
-  nivel:          "",
+  // Datos del puesto
+  nivel:                   "",
+  grupo_ocupacional:       "",
+  proceso_institucional:   "",
+  estado_puesto:           "OCUPADO",
+  partida_individual:      "",
+  partida_presupuestaria:  "",
+  acumula_fondos_reserva:  0,
+  acumula_decimo_tercero:  false,
+  acumula_decimo_cuarto:   false,
 })
 
 const guardar = async () => {
@@ -209,6 +283,14 @@ const guardar = async () => {
       modalidad_laboral: form.value.modalidad_laboral,
       id_jornada:        form.value.id_jornada || null,
       email:             form.value.email,
+      grupo_ocupacional:       form.value.grupo_ocupacional      || null,
+      proceso_institucional:   form.value.proceso_institucional  || null,
+      estado_puesto:           form.value.estado_puesto,
+      partida_individual:      form.value.partida_individual     || null,
+      partida_presupuestaria:  form.value.partida_presupuestaria || null,
+      acumula_fondos_reserva:  form.value.acumula_fondos_reserva,
+      acumula_decimo_tercero:  form.value.acumula_decimo_tercero,
+      acumula_decimo_cuarto:   form.value.acumula_decimo_cuarto,
     }
 
     if (esEdicion.value) {
@@ -253,6 +335,15 @@ onMounted(async () => {
     form.value.modalidad_laboral = data.modalidad_laboral?.trim() || ""
     form.value.id_jornada        = data.id_jornada                || ""
     form.value.email             = data.emails?.[0]?.mail         || ""
+    // Datos del puesto
+    form.value.grupo_ocupacional      = data.grupo_ocupacional      || ""
+    form.value.proceso_institucional  = data.proceso_institucional  || ""
+    form.value.estado_puesto          = data.estado_puesto          || "OCUPADO"
+    form.value.partida_individual     = data.partida_individual     || ""
+    form.value.partida_presupuestaria = data.partida_presupuestaria || ""
+    form.value.acumula_fondos_reserva = data.acumula_fondos_reserva ?? 0
+    form.value.acumula_decimo_tercero = data.acumula_decimo_tercero ?? false
+    form.value.acumula_decimo_cuarto  = data.acumula_decimo_cuarto  ?? false
   }
 })
 </script>
