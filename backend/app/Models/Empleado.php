@@ -22,6 +22,9 @@ class Empleado extends Authenticatable
         "fecha_ingreso", "fecha_salida", "ubicacion", "sueldo",
         "nivel", "cargo_empleado", "telefono", "calle_y_numero",
         "campo_supervisor", "modalidad_laboral",
+        "partida_individual", "partida_presupuestaria", "estado_puesto",
+        "grupo_ocupacional", "proceso_institucional",
+        "acumula_fondos_reserva", "acumula_decimo_tercero", "acumula_decimo_cuarto",
     ];
 
     protected $hidden = ["password", "clave"];

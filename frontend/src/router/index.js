@@ -21,6 +21,7 @@ const routes = [
       { path: 'empleados/:id', name: 'EmpleadoDetalle', component: () => import('@/views/empleados/EmpleadoDetalle.vue') },
       { path: 'empleados/:id/editar', name: 'EmpleadoEditar', component: () => import('@/views/empleados/EmpleadoForm.vue') },
       { path: 'empleados/importar', name: 'EmpleadoImportar', component: () => import('@/views/empleados/ImportacionView.vue') },
+      { path: 'empleados/distributivo', name: 'EmpleadoDistributivo', component: () => import('@/views/empleados/DistributivoView.vue') },
       { path: 'asistencia', name: 'Asistencia', component: () => import('@/views/AsistenciaView.vue') },
       { path: 'permisos', name: 'Permisos', component: () => import('@/views/PermisosView.vue') },
       { path: 'vacaciones', name: 'Vacaciones', component: () => import('@/views/VacacionesView.vue') },

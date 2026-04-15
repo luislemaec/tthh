@@ -80,8 +80,9 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::put("/empleados/{id}",    [EmpleadoController::class, "update"]);
     Route::delete("/empleados/{id}", [EmpleadoController::class, "destroy"]);
 
-    Route::post("/empleados/{id}/reset-password", [EmpleadoController::class, "resetPassword"]);
-    Route::post("/cambiar-password",              [EmpleadoController::class, "cambiarPassword"]);
+    Route::post("/empleados/importar-distributivo", [EmpleadoController::class, "importarDistributivo"]);
+    Route::post("/empleados/{id}/reset-password",  [EmpleadoController::class, "resetPassword"]);
+    Route::post("/cambiar-password",               [EmpleadoController::class, "cambiarPassword"]);
 
     // Asignación de roles a empleados
     Route::get("/empleados/{id_emp}/roles",             [RolController::class, "rolesEmpleado"]);

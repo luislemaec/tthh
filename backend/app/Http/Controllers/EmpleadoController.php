@@ -145,23 +145,31 @@ class EmpleadoController extends Controller
         ]);
 
         $emp->update([
-            "identificacion" => $request->identificacion  ?? $emp->identificacion,
-            "nombre_emp"     => $request->filled("nombre_emp")    ? strtoupper($request->nombre_emp)    : $emp->nombre_emp,
-            "apellido_emp"   => $request->filled("apellido_emp")  ? strtoupper($request->apellido_emp)  : $emp->apellido_emp,
-            "id_depto"       => $request->id_depto        ?? $emp->id_depto,
-            "estado"         => $request->filled("estado")        ? strtoupper($request->estado)        : $emp->estado,
-            "tipo_contrato"      => $request->tipo_contrato       ?? $emp->tipo_contrato,
-            "jornada_id"     => $request->jornada_id      ?? $emp->jornada_id,
-            "fecha_ingreso"  => $request->fecha_ingreso   ?? $emp->fecha_ingreso,
-            "fecha_salida"   => $request->fecha_salida    ?? $emp->fecha_salida,
-            "sueldo"         => $request->sueldo          ?? $emp->sueldo,
-            "nivel"          => $request->nivel           ?? $emp->nivel,
-            "ubicacion"      => $request->ubicacion       ?? $emp->ubicacion,
-            "cargo_empleado"   => $request->cargo_empleado   ?? $emp->cargo_empleado,
-            "telefono"         => $request->telefono          ?? $emp->telefono,
-            "calle_y_numero"   => $request->calle_y_numero    ?? $emp->calle_y_numero,
-            "modalidad_laboral"=> $request->modalidad_laboral ?? $emp->modalidad_laboral,
-            "id_jornada"       => $request->id_jornada        ?? $emp->id_jornada,
+            "identificacion"        => $request->identificacion        ?? $emp->identificacion,
+            "nombre_emp"            => $request->filled("nombre_emp")    ? strtoupper($request->nombre_emp)   : $emp->nombre_emp,
+            "apellido_emp"          => $request->filled("apellido_emp")  ? strtoupper($request->apellido_emp) : $emp->apellido_emp,
+            "id_depto"              => $request->id_depto               ?? $emp->id_depto,
+            "estado"                => $request->filled("estado")        ? strtoupper($request->estado)       : $emp->estado,
+            "tipo_contrato"         => $request->tipo_contrato           ?? $emp->tipo_contrato,
+            "jornada_id"            => $request->jornada_id              ?? $emp->jornada_id,
+            "fecha_ingreso"         => $request->fecha_ingreso           ?? $emp->fecha_ingreso,
+            "fecha_salida"          => $request->fecha_salida            ?? $emp->fecha_salida,
+            "sueldo"                => $request->sueldo                  ?? $emp->sueldo,
+            "nivel"                 => $request->nivel                   ?? $emp->nivel,
+            "ubicacion"             => $request->ubicacion               ?? $emp->ubicacion,
+            "cargo_empleado"        => $request->cargo_empleado          ?? $emp->cargo_empleado,
+            "telefono"              => $request->telefono                ?? $emp->telefono,
+            "calle_y_numero"        => $request->calle_y_numero          ?? $emp->calle_y_numero,
+            "modalidad_laboral"     => $request->modalidad_laboral       ?? $emp->modalidad_laboral,
+            "id_jornada"            => $request->id_jornada              ?? $emp->id_jornada,
+            "partida_individual"    => $request->partida_individual      ?? $emp->partida_individual,
+            "partida_presupuestaria"=> $request->partida_presupuestaria  ?? $emp->partida_presupuestaria,
+            "estado_puesto"         => $request->estado_puesto           ?? $emp->estado_puesto,
+            "grupo_ocupacional"     => $request->grupo_ocupacional       ?? $emp->grupo_ocupacional,
+            "proceso_institucional" => $request->proceso_institucional   ?? $emp->proceso_institucional,
+            "acumula_fondos_reserva"  => $request->acumula_fondos_reserva  ?? $emp->acumula_fondos_reserva,
+            "acumula_decimo_tercero"  => $request->acumula_decimo_tercero  ?? $emp->acumula_decimo_tercero,
+            "acumula_decimo_cuarto"   => $request->acumula_decimo_cuarto   ?? $emp->acumula_decimo_cuarto,
         ]);
 
         // Actualizar email
@@ -227,6 +235,91 @@ class EmpleadoController extends Controller
         $emp->save();
 
         return response()->json(['message' => 'Contraseña actualizada correctamente.']);
+    }
+
+    // POST /api/empleados/importar-distributivo — solo Admin o TH
+    public function importarDistributivo(Request $request)
+    {
+        $user = $request->user();
+        $esAdminOTH = DB::table('dbo.admin_usuario_rol as ur')
+            ->join('dbo.admin_rol as r', 'ur.id_rol', '=', 'r.id')
+            ->where('ur.id_emp', $user->id_emp)
+            ->whereIn('r.descripcion', ['ADMINISTRADOR', 'TALENTO HUMANO'])
+            ->exists();
+
+        if (!$esAdminOTH) {
+            return response()->json(['message' => 'Acceso no autorizado.'], 403);
+        }
+
+        $request->validate(['archivo' => 'required|file|mimes:csv,txt|max:2048']);
+
+        $path = $request->file('archivo')->getRealPath();
+        $handle = fopen($path, 'r');
+
+        // Leer encabezado
+        $header = fgetcsv($handle, 0, ',');
+        if (!$header) {
+            fclose($handle);
+            return response()->json(['message' => 'Archivo CSV vacío o inválido.'], 422);
+        }
+
+        // Normalizar nombres de columna
+        $header = array_map(fn($h) => strtoupper(trim(preg_replace('/\s+/', ' ', $h))), $header);
+
+        $actualizados = 0;
+        $noEncontrados = [];
+        $errores = [];
+
+        while (($row = fgetcsv($handle, 0, ',')) !== false) {
+            if (count($row) < 12) continue;
+
+            $fila = array_combine(array_slice($header, 0, count($row)), $row);
+
+            // La cédula puede venir sin ceros iniciales — rellenar a 10 dígitos
+            $cedula = str_pad(trim($fila['IDENTIFICACION'] ?? ''), 10, '0', STR_PAD_LEFT);
+            if (empty($cedula) || $cedula === '0000000000') continue;
+
+            $emp = Empleado::where('identificacion', $cedula)->first();
+            if (!$emp) {
+                $noEncontrados[] = $cedula;
+                continue;
+            }
+
+            try {
+                // Columna 0: partida_individual (corta), columna 9: partida_presupuestaria (larga)
+                // Hay dos columnas con el mismo nombre "PARTIDA INDIVIDUAL" en el CSV
+                $partida_individual     = isset($row[0]) ? (int) trim($row[0]) : $emp->partida_individual;
+                $partida_presupuestaria = isset($row[9]) ? trim($row[9])       : $emp->partida_presupuestaria;
+
+                $acumulaFondos = isset($fila['ACUMULA FONDOS DE RESERVA'])
+                    ? (int) trim($fila['ACUMULA FONDOS DE RESERVA'])
+                    : $emp->acumula_fondos_reserva;
+
+                $emp->update([
+                    'nivel'                   => isset($fila['GRADO'])                  ? (int) trim($fila['GRADO'])                  : $emp->nivel,
+                    'grupo_ocupacional'       => isset($fila['GRUPO OCUPACIONAL'])      ? trim($fila['GRUPO OCUPACIONAL'])            : $emp->grupo_ocupacional,
+                    'proceso_institucional'   => isset($fila['PROCESO INSTITUCIONAL'])  ? trim($fila['PROCESO INSTITUCIONAL'])        : $emp->proceso_institucional,
+                    'partida_individual'      => $partida_individual,
+                    'partida_presupuestaria'  => $partida_presupuestaria,
+                    'estado_puesto'           => isset($fila['ESTADO DEL PUESTO'])      ? trim($fila['ESTADO DEL PUESTO'])            : $emp->estado_puesto,
+                    'acumula_fondos_reserva'  => $acumulaFondos,
+                    'acumula_decimo_tercero'  => isset($fila['ACUMULA DÉCIMO TERCERO']) ? (strtoupper(trim($fila['ACUMULA DÉCIMO TERCERO'])) === 'SI') : $emp->acumula_decimo_tercero,
+                    'acumula_decimo_cuarto'   => isset($fila['ACUMULA DÉCIMO CUARTO'])  ? (strtoupper(trim($fila['ACUMULA DÉCIMO CUARTO']))  === 'SI') : $emp->acumula_decimo_cuarto,
+                ]);
+                $actualizados++;
+            } catch (\Exception $e) {
+                $errores[] = $cedula . ': ' . $e->getMessage();
+            }
+        }
+
+        fclose($handle);
+
+        return response()->json([
+            'message'        => "Importación completada.",
+            'actualizados'   => $actualizados,
+            'no_encontrados' => $noEncontrados,
+            'errores'        => $errores,
+        ]);
     }
 
     // GET /api/departamentos
