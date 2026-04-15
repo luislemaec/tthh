@@ -94,6 +94,13 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::post("/empleados/{id_emp}/roles",            [RolController::class, "asignarRolEmpleado"]);
     Route::delete("/empleados/{id_emp}/roles/{id_rol}", [RolController::class, "quitarRolEmpleado"]);
 
+    // Acciones de Personal
+    Route::get("/acciones-personal",                    [\App\Http\Controllers\AccionPersonalController::class, "index"]);
+    Route::post("/acciones-personal",                   [\App\Http\Controllers\AccionPersonalController::class, "store"]);
+    Route::get("/acciones-personal/{id}",               [\App\Http\Controllers\AccionPersonalController::class, "show"]);
+    Route::patch("/acciones-personal/{id}/estado",      [\App\Http\Controllers\AccionPersonalController::class, "cambiarEstado"]);
+    Route::get("/acciones-personal/{id}/pdf",           [\App\Http\Controllers\AccionPersonalController::class, "pdf"]);
+
     // Supervisores
     Route::get("/supervisores",                          [SupervisorController::class, "index"]);
     Route::post("/supervisores",                         [SupervisorController::class, "store"]);
