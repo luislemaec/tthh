@@ -133,17 +133,19 @@ const fmtFecha = (f) => {
   return `${d[2]}/${d[1]}/${d[0]}`
 }
 
+const hoy = new Date().toISOString().substring(0, 10)
+
 const estadoLabel = (a) => {
   if (a.estado === 'ANULADO') return 'Anulado'
   if (a.estado === 'FINALIZADO') return 'Finalizado'
-  if (a.fecha_fin && new Date(a.fecha_fin) < new Date()) return 'Vencido'
+  if (a.fecha_fin && a.fecha_fin.substring(0, 10) < hoy) return 'Vencido'
   return 'Activo'
 }
 
 const estadoClase = (a) => {
   if (a.estado === 'ANULADO') return 'bg-red-100 text-red-700'
   if (a.estado === 'FINALIZADO') return 'bg-gray-100 text-gray-600'
-  if (a.fecha_fin && new Date(a.fecha_fin) < new Date()) return 'bg-orange-100 text-orange-700'
+  if (a.fecha_fin && a.fecha_fin.substring(0, 10) < hoy) return 'bg-orange-100 text-orange-700'
   return 'bg-green-100 text-green-700'
 }
 
