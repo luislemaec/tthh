@@ -83,6 +83,7 @@
               <option value="">Seleccionar...</option>
               <option value="Nombramiento Definitivo">Nombramiento Definitivo</option>
               <option value="Nombramiento Provisional">Nombramiento Provisional</option>
+              <option value="Libre Nombramiento y Remoción">Libre Nombramiento y Remoción</option>
               <option value="Contrato Ocasional">Contrato Ocasional</option>
               <option value="Comisión de Servicios">Comisión de Servicios</option>
             </select>
