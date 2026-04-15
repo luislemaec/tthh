@@ -6,7 +6,7 @@
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: Arial, sans-serif; font-size: 8.5pt; color: #000; }
 
-  .page { width: 100%; padding: 10mm 12mm 8mm 12mm; }
+  .page { width: 100%; }
 
   /* Encabezado */
   .header-table { width: 100%; border-collapse: collapse; margin-bottom: 3px; }
@@ -67,7 +67,7 @@
   .notif-value { font-size: 8pt; }
   .notif-blank { border-bottom: 1px solid #555; min-height: 14px; display: inline-block; width: 90%; }
 
-  @page { margin: 0; size: letter portrait; }
+  @page { margin: 10mm 14mm 8mm 14mm; size: letter portrait; }
 </style>
 </head>
 <body>
