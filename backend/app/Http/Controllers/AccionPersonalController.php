@@ -8,9 +8,41 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Http;
 
 class AccionPersonalController extends Controller
 {
+    private string $alfrescoBase = 'http://192.168.26.38:8080/alfresco/api/-default-/public/alfresco/versions/1';
+    private string $alfrescoUser = 'admin';
+    private string $alfrescoPass = 'admin';
+    private string $alfrescoSite = 'talentohumano';
+
+    private function getDocLibNodeId(): string
+    {
+        $resp = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+            ->get("{$this->alfrescoBase}/sites/{$this->alfrescoSite}/containers/documentLibrary");
+        if (!$resp->successful()) abort(502, 'No se pudo conectar con Alfresco');
+        return $resp->json('entry.id');
+    }
+
+    private function getOrCreateFolderNodeId(string $parentNodeId, string $folderName): string
+    {
+        $search = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+            ->get("{$this->alfrescoBase}/nodes/{$parentNodeId}/children", [
+                'where' => "(isFolder=true AND name='{$folderName}')",
+            ]);
+        $entries = $search->json('list.entries') ?? [];
+        if (!empty($entries)) return $entries[0]['entry']['id'];
+
+        $create = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+            ->post("{$this->alfrescoBase}/nodes/{$parentNodeId}/children", [
+                'name'     => $folderName,
+                'nodeType' => 'cm:folder',
+            ]);
+        if (!$create->successful()) abort(502, 'No se pudo crear la carpeta en Alfresco');
+        return $create->json('entry.id');
+    }
+
     // GET /api/acciones-personal
     public function index(Request $request)
     {
@@ -138,7 +170,8 @@ class AccionPersonalController extends Controller
     // GET /api/acciones-personal/{id}/pdf
     public function pdf($id)
     {
-        $accion = AccionPersonal::with(["empleado.departamento", "titular.departamento"])->findOrFail($id);
+        $accion  = AccionPersonal::with(["empleado.departamento", "titular.departamento"])->findOrFail($id);
+        $creador = Empleado::find($accion->creado_por);
 
         $config = Configuracion::whereIn("concepto", [
             "DIRECTOR_TALENTO_HUMANO",
@@ -147,18 +180,75 @@ class AccionPersonalController extends Controller
             "PREFIJO_ACCION_PERSONAL",
         ])->pluck("valor", "concepto");
 
-        $logoPath = public_path("logo.png");
+        $logoPath   = public_path("logo.png");
         $logoBase64 = file_exists($logoPath)
             ? "data:image/png;base64," . base64_encode(file_get_contents($logoPath))
             : null;
 
         $pdf = Pdf::loadView("reportes.accion_personal", [
-            "accion"     => $accion,
-            "config"     => $config,
-            "logo"       => $logoBase64,
+            "accion"   => $accion,
+            "config"   => $config,
+            "logo"     => $logoBase64,
+            "creador"  => $creador,
         ])->setPaper("letter", "portrait");
 
         $filename = "accion_personal_{$accion->numero_accion}.pdf";
         return $pdf->download($filename);
+    }
+
+    // POST /api/acciones-personal/{id}/subir-firmado
+    public function subirFirmado(Request $request, $id)
+    {
+        $request->validate(["archivo" => "required|file|mimes:pdf|max:20480"]);
+        $accion = AccionPersonal::findOrFail($id);
+
+        // Eliminar nodo anterior en Alfresco si existe
+        if ($accion->pdf_firmado) {
+            Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+                ->delete("{$this->alfrescoBase}/nodes/{$accion->pdf_firmado}");
+        }
+
+        $anio     = Carbon::parse($accion->fecha_elaboracion)->year;
+        $docLibId = $this->getDocLibNodeId();
+        $rootId   = $this->getOrCreateFolderNodeId($docLibId, "acciones-personal");
+        $folderId = $this->getOrCreateFolderNodeId($rootId, (string)$anio);
+        $archivo  = $request->file("archivo");
+        $nombre   = "accion_{$accion->numero_accion}_firmado.pdf";
+
+        $upload = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+            ->attach("filedata", file_get_contents($archivo->getRealPath()), $nombre)
+            ->post("{$this->alfrescoBase}/nodes/{$folderId}/children", [
+                "name"       => $nombre,
+                "nodeType"   => "cm:content",
+                "autoRename" => true,
+            ]);
+
+        if (!$upload->successful()) {
+            return response()->json(["message" => "Error al subir el archivo a Alfresco"], 502);
+        }
+
+        $accion->update(["pdf_firmado" => $upload->json("entry.id")]);
+        return response()->json(["message" => "PDF firmado subido correctamente."]);
+    }
+
+    // GET /api/acciones-personal/{id}/descargar-firmado
+    public function descargarFirmado($id)
+    {
+        $accion = AccionPersonal::findOrFail($id);
+        if (!$accion->pdf_firmado) {
+            return response()->json(["message" => "No hay PDF firmado disponible."], 404);
+        }
+
+        $resp = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+            ->get("{$this->alfrescoBase}/nodes/{$accion->pdf_firmado}/content");
+
+        if (!$resp->successful()) {
+            return response()->json(["message" => "No se pudo obtener el archivo desde Alfresco"], 502);
+        }
+
+        return response($resp->body(), 200, [
+            "Content-Type"        => "application/pdf",
+            "Content-Disposition" => "attachment; filename=\"accion_firmada_{$accion->numero_accion}.pdf\"",
+        ]);
     }
 }

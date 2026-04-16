@@ -17,7 +17,7 @@ class AccionPersonal extends Model
         "actual_remuneracion", "actual_partida", "actual_proceso_inst",
         "propuesto_cargo", "propuesto_grupo_ocup", "propuesto_grado",
         "propuesto_remuneracion", "propuesto_partida", "propuesto_proceso_inst",
-        "diferencial", "estado", "creado_por",
+        "diferencial", "estado", "creado_por", "pdf_firmado",
     ];
 
     protected $casts = [

@@ -70,9 +70,15 @@
               </span>
             </td>
             <td class="px-4 py-3">
-              <div class="flex gap-2">
+              <div class="flex gap-2 flex-wrap">
                 <button @click="descargarPdf(a.id_accion)"
                   class="text-[#0b5447] hover:underline text-xs font-medium">PDF</button>
+                <button v-if="a.pdf_firmado" @click="descargarFirmado(a.id_accion)"
+                  class="text-indigo-600 hover:underline text-xs font-medium">Firmado</button>
+                <label v-else class="text-gray-400 hover:text-indigo-600 cursor-pointer text-xs font-medium">
+                  Subir firmado
+                  <input type="file" accept=".pdf" class="hidden" @change="subirFirmado(a.id_accion, $event)" />
+                </label>
                 <button v-if="a.estado === 'ACTIVO'" @click="abrirModalFinalizar(a.id_accion)"
                   class="text-green-600 hover:underline text-xs font-medium">Finalizar</button>
                 <button v-if="a.estado === 'ACTIVO'" @click="cambiarEstado(a.id_accion, 'ANULADO')"
@@ -191,6 +197,37 @@ const cambiarEstado = async (id, estado) => {
     cargar()
   } catch (e) {
     alert(e.response?.data?.message || "Error al cambiar estado")
+  }
+}
+
+const subirFirmado = async (id, event) => {
+  const file = event.target.files[0]
+  if (!file) return
+  const formData = new FormData()
+  formData.append("archivo", file)
+  try {
+    await api.post(`/acciones-personal/${id}/subir-firmado`, formData, {
+      headers: { "Content-Type": "multipart/form-data" }
+    })
+    cargar()
+  } catch (e) {
+    alert(e.response?.data?.message || "Error al subir el PDF firmado")
+  }
+  event.target.value = ""
+}
+
+const descargarFirmado = async (id) => {
+  try {
+    const response = await api.get(`/acciones-personal/${id}/descargar-firmado`, { responseType: "blob" })
+    const url  = window.URL.createObjectURL(new Blob([response.data], { type: "application/pdf" }))
+    const link = document.createElement("a")
+    link.href  = url
+    link.setAttribute("download", `accion_firmada_${id}.pdf`)
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+  } catch (e) {
+    alert("Error al descargar el PDF firmado")
   }
 }
 

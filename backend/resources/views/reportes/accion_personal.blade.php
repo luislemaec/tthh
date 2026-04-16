@@ -32,10 +32,17 @@
 
 @php
   $tipo = strtoupper($accion->tipo_accion);
-  function cb($t, $v) { return $t === $v ? '&#10003;' : '&nbsp;'; }
+  function cb($t, $v) { return $t === $v ? 'X' : '&nbsp;'; }
   function cbcls($t, $v) { return $t === $v ? 'cb cb-on' : 'cb'; }
   $deptActual    = $accion->empleado->departamento->nombre_depto ?? '';
   $deptPropuesto = $accion->titular->departamento->nombre_depto ?? '';
+  $meses = ['','enero','febrero','marzo','abril','mayo','junio',
+            'julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  $fe = \Carbon\Carbon::parse($accion->fecha_elaboracion);
+  $fechaElabStr = $fe->day . ' de ' . $meses[$fe->month] . ' de ' . $fe->year;
+  $creadorNombre = $creador ? strtoupper(($creador->apellido_emp ?? '') . ', ' . ($creador->nombre_emp ?? '')) : '';
+  $creadorPuesto = $creador->cargo_empleado ?? '';
+  $directorTH    = $config['DIRECTOR_TALENTO_HUMANO'] ?? '';
 @endphp
 
 {{-- ==================== PÁGINA 1 ==================== --}}
@@ -62,7 +69,7 @@
         </tr>
         <tr>
           <td style="border-right:1px solid #000; padding:2px 6px; font-weight:bold; font-size:7.5pt;">FECHA DE ELABORACIÓN</td>
-          <td style="padding:2px 6px; font-size:8pt;">{{ \Carbon\Carbon::parse($accion->fecha_elaboracion)->translatedFormat('d \d\e F \d\e Y') }}</td>
+          <td style="padding:2px 6px; font-size:8pt;">{{ $fechaElabStr }}</td>
         </tr>
       </table>
     </td>
@@ -132,18 +139,18 @@
       <td style="padding:1px 2px; font-size:7.5pt;"><span class="{{ cbcls($tipo,'INGRESO') }}">{!! cb($tipo,'INGRESO') !!}</span> INGRESO</td>
       <td style="padding:1px 2px; font-size:7.5pt;"><span class="{{ cbcls($tipo,'TRASPASO') }}">{!! cb($tipo,'TRASPASO') !!}</span> TRASPASO</td>
       <td style="padding:1px 2px; font-size:7.5pt;"><span class="{{ cbcls($tipo,'INCREMENTO RMU') }}">{!! cb($tipo,'INCREMENTO RMU') !!}</span> INCREMENTO RMU</td>
-      <td style="padding:1px 2px; font-size:7.5pt;"><span class="{{ cbcls($tipo,'REVISION CLASI. PUESTO') }}">{!! cb($tipo,'REVISION CLASI. PUESTO') !!}</span> REVISIÓN CLASI. PUESTO &nbsp; <span class="{{ cbcls($tipo,'REVISION CLASI. PUESTO') }}">{!! cb($tipo,'REVISION CLASI. PUESTO') !!}</span></td>
+      <td style="padding:1px 2px; font-size:7.5pt;"><span class="{{ cbcls($tipo,'REVISION CLASI. PUESTO') }}">{!! cb($tipo,'REVISION CLASI. PUESTO') !!}</span> REVISIÓN CLASI. PUESTO</td>
     </tr>
     <tr>
       <td style="padding:1px 2px; font-size:7.5pt;"><span class="{{ cbcls($tipo,'REINGRESO') }}">{!! cb($tipo,'REINGRESO') !!}</span> REINGRESO</td>
       <td style="padding:1px 2px; font-size:7.5pt;"><span class="{{ cbcls($tipo,'CAMBIO ADMINISTRATIVO') }}">{!! cb($tipo,'CAMBIO ADMINISTRATIVO') !!}</span> CAMBIO ADMINISTRATIVO</td>
-      <td style="padding:1px 2px; font-size:7.5pt;"><span class="{{ cbcls($tipo,'SUBROGACION') }}">{!! cb($tipo,'SUBROGACION') !!}</span> SUBROGACIÓN &nbsp; <span class="{{ cbcls($tipo,'SUBROGACION') }}">{!! cb($tipo,'SUBROGACION') !!}</span></td>
-      <td style="padding:1px 2px; font-size:7.5pt;"><span class="cb">&nbsp;</span> OTRO (DETALLAR) &nbsp; <span class="cb">&nbsp;</span></td>
+      <td style="padding:1px 2px; font-size:7.5pt;"><span class="{{ cbcls($tipo,'SUBROGACION') }}">{!! cb($tipo,'SUBROGACION') !!}</span> SUBROGACIÓN</td>
+      <td style="padding:1px 2px; font-size:7.5pt;"><span class="cb">&nbsp;</span> OTRO (DETALLAR)</td>
     </tr>
     <tr>
       <td style="padding:1px 2px; font-size:7.5pt;"><span class="{{ cbcls($tipo,'RESTITUCION') }}">{!! cb($tipo,'RESTITUCION') !!}</span> RESTITUCIÓN</td>
       <td style="padding:1px 2px; font-size:7.5pt;"><span class="{{ cbcls($tipo,'INTERCAMBIO VOLUNTARIO') }}">{!! cb($tipo,'INTERCAMBIO VOLUNTARIO') !!}</span> INTERCAMBIO VOLUNTARIO</td>
-      <td style="padding:1px 2px; font-size:7.5pt;"><span class="{{ cbcls($tipo,'ENCARGO') }}">{!! cb($tipo,'ENCARGO') !!}</span> ENCARGO &nbsp; <span class="{{ cbcls($tipo,'ENCARGO') }}">{!! cb($tipo,'ENCARGO') !!}</span></td>
+      <td style="padding:1px 2px; font-size:7.5pt;"><span class="{{ cbcls($tipo,'ENCARGO') }}">{!! cb($tipo,'ENCARGO') !!}</span> ENCARGO</td>
       <td></td>
     </tr>
     <tr>
@@ -298,7 +305,11 @@
       <td style="width:50%; border-right:1px solid #000; padding:0; vertical-align:top;">
         <div class="gray" style="text-align:center; font-weight:bold; font-size:7.5pt; padding:2px; border-bottom:1px solid #000;">ACEPTACIÓN Y/O RECEPCIÓN DEL SERVIDOR PÚBLICO</div>
         <div style="padding:5px 6px;">
-          <div style="min-height:55px;"></div>
+          <div style="font-size:7.5pt; margin-bottom:4px;">
+            {{ strtoupper(($accion->empleado->apellido_emp ?? '') . ', ' . ($accion->empleado->nombre_emp ?? '')) }}<br>
+            C.I.: {{ $accion->empleado->identificacion ?? '' }}
+          </div>
+          <div style="min-height:40px;"></div>
           <div style="font-size:7.5pt;">FIRMA <span style="border-bottom:1px solid #000; display:inline-block; width:74%;">&nbsp;</span></div>
           <div style="font-size:7.5pt; margin-top:2px;">NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:68%;">&nbsp;</span></div>
           <div style="font-size:7.5pt; margin-top:2px;">FECHA: <span style="border-bottom:1px solid #000; display:inline-block; width:71%;">&nbsp;</span></div>
@@ -331,8 +342,8 @@
         <div style="padding:5px 6px;">
           <div style="min-height:55px;"></div>
           <div style="font-size:7.5pt;">FIRMA: <span style="border-bottom:1px solid #000; display:inline-block; width:68%;">&nbsp;</span></div>
-          <div style="font-size:7.5pt; margin-top:2px;">NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">&nbsp;</span></div>
-          <div style="font-size:7.5pt; margin-top:2px;">PUESTO: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">&nbsp;</span></div>
+          <div style="font-size:7.5pt; margin-top:2px;">NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">{{ $creadorNombre }}</span></div>
+          <div style="font-size:7.5pt; margin-top:2px;">PUESTO: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">{{ $creadorPuesto }}</span></div>
         </div>
       </td>
       <td style="width:33.3%; border-right:1px solid #000; padding:0; vertical-align:top;">
@@ -340,8 +351,8 @@
         <div style="padding:5px 6px;">
           <div style="min-height:55px;"></div>
           <div style="font-size:7.5pt;">FIRMA: <span style="border-bottom:1px solid #000; display:inline-block; width:68%;">&nbsp;</span></div>
-          <div style="font-size:7.5pt; margin-top:2px;">NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">&nbsp;</span></div>
-          <div style="font-size:7.5pt; margin-top:2px;">PUESTO: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">&nbsp;</span></div>
+          <div style="font-size:7.5pt; margin-top:2px;">NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">{{ $directorTH }}</span></div>
+          <div style="font-size:7.5pt; margin-top:2px;">PUESTO: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">DIRECTOR DE ADMINISTRACIÓN DEL TALENTO HUMANO</span></div>
         </div>
       </td>
       <td style="width:33.4%; padding:0; vertical-align:top;">
@@ -349,8 +360,8 @@
         <div style="padding:5px 6px;">
           <div style="min-height:55px;"></div>
           <div style="font-size:7.5pt;">FIRMA: <span style="border-bottom:1px solid #000; display:inline-block; width:68%;">&nbsp;</span></div>
-          <div style="font-size:7.5pt; margin-top:2px;">NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">&nbsp;</span></div>
-          <div style="font-size:7.5pt; margin-top:2px;">PUESTO: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">&nbsp;</span></div>
+          <div style="font-size:7.5pt; margin-top:2px;">NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">{{ $creadorNombre }}</span></div>
+          <div style="font-size:7.5pt; margin-top:2px;">PUESTO: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">{{ $creadorPuesto }}</span></div>
         </div>
       </td>
     </tr>
