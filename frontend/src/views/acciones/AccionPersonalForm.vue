@@ -16,8 +16,12 @@
             <select v-model="form.tipo_accion" required
               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
               <option value="">Seleccionar...</option>
+              <option value="INGRESO">Ingreso</option>
               <option value="ENCARGO">Encargo de Funciones</option>
               <option value="SUBROGACION">Subrogación</option>
+              <option value="VACACIONES">Vacaciones</option>
+              <option value="DESTITUCION">Destitución</option>
+              <option value="CESACION DE FUNCIONES">Cesación de Funciones</option>
             </select>
           </div>
           <div>
@@ -34,13 +38,12 @@
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-medium text-gray-600 mb-1">Vigente desde *</label>
+            <label class="block text-sm font-medium text-gray-600 mb-1">{{ labelFechaInicio }}</label>
             <input v-model="form.fecha_inicio" type="date" required
               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
 
-          <!-- Vigente hasta: SUBROGACION = requerido, ENCARGO = checkbox hasta nueva orden -->
-          <div>
+          <div v-if="conFechaFin">
             <template v-if="form.tipo_accion === 'ENCARGO'">
               <div class="flex items-center justify-between mb-1">
                 <label class="block text-sm font-medium text-gray-600">Vigente hasta</label>
@@ -55,15 +58,10 @@
                 Sin fecha definida — se cierra manualmente
               </div>
             </template>
-            <template v-else-if="form.tipo_accion === 'SUBROGACION'">
-              <label class="block text-sm font-medium text-gray-600 mb-1">Vigente hasta *</label>
-              <input v-model="form.fecha_fin" type="date" required
-                class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
-            </template>
             <template v-else>
-              <label class="block text-sm font-medium text-gray-600 mb-1">Vigente hasta</label>
-              <input v-model="form.fecha_fin" type="date" disabled
-                class="w-full border rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-400" />
+              <label class="block text-sm font-medium text-gray-600 mb-1">{{ labelFechaFin }} *</label>
+              <input v-model="form.fecha_fin" type="date" :required="fechaFinRequerida"
+                class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
             </template>
           </div>
         </div>
@@ -71,7 +69,7 @@
 
       <!-- Empleado -->
       <div class="bg-white rounded-xl shadow p-6 space-y-4">
-        <h2 class="text-lg font-semibold text-gray-700 border-b pb-2">Empleado que recibe el encargo / subrogación</h2>
+        <h2 class="text-lg font-semibold text-gray-700 border-b pb-2">{{ tituloEmpleado }}</h2>
         <div class="flex gap-3">
           <input v-model="busquedaEmp" type="text" placeholder="Buscar por nombre o cédula..."
             class="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]"
@@ -106,10 +104,11 @@
       </div>
 
       <!-- Situación Propuesta -->
-      <div class="bg-white rounded-xl shadow p-6 space-y-4">
-        <h2 class="text-lg font-semibold text-gray-700 border-b pb-2">Situación Propuesta <span class="text-sm font-normal text-gray-400">(cargo a encargar/subrogar)</span></h2>
+      <div v-if="conPropuesta" class="bg-white rounded-xl shadow p-6 space-y-4">
+        <h2 class="text-lg font-semibold text-gray-700 border-b pb-2">{{ tituloPropuesta }}</h2>
 
-        <div>
+        <!-- Buscador titular (solo ENCARGO / SUBROGACION) -->
+        <div v-if="conTitular">
           <label class="block text-sm font-medium text-gray-600 mb-1">
             Buscar titular del cargo <span class="text-gray-400 font-normal">(opcional — autocompleta los campos)</span>
           </label>
@@ -141,7 +140,6 @@
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Grupo Ocupacional</label>
             <input v-model="form.propuesto_grupo_ocup" type="text"
-              placeholder="Ej: NIVEL JERARQUICO SUPERIOR 5"
               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
           <div>
@@ -194,7 +192,7 @@
         <h2 class="text-lg font-semibold text-gray-700 border-b pb-2">Motivación / Resolución</h2>
         <p class="text-xs text-gray-400">Ingrese el texto completo de la resolución tal como debe aparecer en el documento oficial.</p>
         <textarea v-model="form.motivacion" rows="8"
-          placeholder="Ej: El Presidente del Consejo..., en ejercicio de sus facultades, RESUELVE: Autorizar la subrogación..."
+          placeholder="Ej: El Presidente del Consejo..., en ejercicio de sus facultades, RESUELVE: Autorizar..."
           class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186] resize-none"></textarea>
       </div>
 
@@ -225,6 +223,12 @@ import api from "@/services/api"
 
 const router = useRouter()
 
+// Reglas por tipo
+const TIPOS_CON_PROPUESTA = ['ENCARGO', 'SUBROGACION', 'INGRESO']
+const TIPOS_CON_TITULAR   = ['ENCARGO', 'SUBROGACION']
+const TIPOS_CON_FECHA_FIN = ['ENCARGO', 'SUBROGACION', 'VACACIONES']
+const TIPOS_FECHA_FIN_REQ = ['SUBROGACION', 'VACACIONES']
+
 const form = ref({
   tipo_accion:            "",
   fecha_elaboracion:      new Date().toISOString().substring(0, 10),
@@ -254,18 +258,43 @@ const error                = ref("")
 let busquedaTimer          = null
 let titularTimer           = null
 
-// Al cambiar tipo, resetear hastaNuevaOrden y fecha_fin
-watch(() => form.value.tipo_accion, () => {
-  hastaNuevaOrden.value = false
-  form.value.fecha_fin = ""
+// Computed: reglas por tipo
+const conPropuesta     = computed(() => TIPOS_CON_PROPUESTA.includes(form.value.tipo_accion))
+const conTitular       = computed(() => TIPOS_CON_TITULAR.includes(form.value.tipo_accion))
+const conFechaFin      = computed(() => TIPOS_CON_FECHA_FIN.includes(form.value.tipo_accion))
+const fechaFinRequerida = computed(() => TIPOS_FECHA_FIN_REQ.includes(form.value.tipo_accion))
+
+// Labels dinámicos
+const labelFechaInicio = computed(() => {
+  switch (form.value.tipo_accion) {
+    case 'INGRESO':               return 'Fecha de Posesión *'
+    case 'DESTITUCION':           return 'Fecha de Destitución *'
+    case 'CESACION DE FUNCIONES': return 'Fecha de Cesación *'
+    default:                      return 'Vigente desde *'
+  }
 })
 
-// Al marcar hasta nueva orden, limpiar fecha_fin
-watch(hastaNuevaOrden, (val) => {
-  if (val) form.value.fecha_fin = ""
+const labelFechaFin = computed(() =>
+  form.value.tipo_accion === 'VACACIONES' ? 'Fecha de retorno' : 'Vigente hasta'
+)
+
+const tituloEmpleado = computed(() => {
+  switch (form.value.tipo_accion) {
+    case 'INGRESO':               return 'Servidor público que ingresa'
+    case 'DESTITUCION':
+    case 'CESACION DE FUNCIONES': return 'Servidor público afectado'
+    case 'VACACIONES':            return 'Empleado que sale de vacaciones'
+    default:                      return 'Empleado que recibe el encargo / subrogación'
+  }
 })
 
-// Monto proporcional: solo cuando hay diferencial > 0 y ambas fechas definidas
+const tituloPropuesta = computed(() =>
+  form.value.tipo_accion === 'INGRESO'
+    ? 'Situación Propuesta (cargo de ingreso)'
+    : 'Situación Propuesta (cargo a encargar/subrogar)'
+)
+
+// Monto proporcional: solo con diferencial > 0 y ambas fechas
 const montoProporacional = computed(() => {
   if (!diferencial.value || diferencial.value <= 0) return null
   if (!form.value.fecha_inicio || !form.value.fecha_fin) return null
@@ -274,6 +303,31 @@ const montoProporacional = computed(() => {
   const dias   = Math.round((fin - inicio) / (1000 * 60 * 60 * 24)) + 1
   if (dias <= 0) return null
   return { monto: (diferencial.value / 30) * dias, dias }
+})
+
+// Al cambiar tipo: resetear campos que no aplican
+watch(() => form.value.tipo_accion, () => {
+  hastaNuevaOrden.value  = false
+  form.value.fecha_fin   = ""
+  if (!TIPOS_CON_PROPUESTA.includes(form.value.tipo_accion)) {
+    form.value.propuesto_cargo        = ""
+    form.value.propuesto_grupo_ocup   = ""
+    form.value.propuesto_grado        = ""
+    form.value.propuesto_remuneracion = ""
+    form.value.propuesto_partida      = ""
+    form.value.propuesto_proceso_inst = ""
+    diferencial.value = null
+  }
+  if (!TIPOS_CON_TITULAR.includes(form.value.tipo_accion)) {
+    titularSeleccionado.value = null
+    form.value.id_emp_titular = ""
+    busquedaTitular.value     = ""
+    resultadosTitular.value   = []
+  }
+})
+
+watch(hastaNuevaOrden, (val) => {
+  if (val) form.value.fecha_fin = ""
 })
 
 const buscarEmpleados = () => {
@@ -358,6 +412,12 @@ const guardar = async () => {
     const payload = {
       ...form.value,
       fecha_fin: hastaNuevaOrden.value ? null : (form.value.fecha_fin || null),
+      propuesto_cargo:        conPropuesta.value ? form.value.propuesto_cargo        : null,
+      propuesto_grupo_ocup:   conPropuesta.value ? form.value.propuesto_grupo_ocup   : null,
+      propuesto_grado:        conPropuesta.value ? form.value.propuesto_grado        : null,
+      propuesto_remuneracion: conPropuesta.value ? form.value.propuesto_remuneracion : 0,
+      propuesto_partida:      conPropuesta.value ? form.value.propuesto_partida      : null,
+      propuesto_proceso_inst: conPropuesta.value ? form.value.propuesto_proceso_inst : null,
     }
     await api.post("/acciones-personal", payload)
     router.push("/acciones-personal")

@@ -16,8 +16,12 @@
       <select v-model="filtro.tipo_accion" @change="cargar"
         class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
         <option value="">Todos los tipos</option>
+        <option value="INGRESO">Ingreso</option>
         <option value="ENCARGO">Encargo</option>
         <option value="SUBROGACION">Subrogación</option>
+        <option value="VACACIONES">Vacaciones</option>
+        <option value="DESTITUCION">Destitución</option>
+        <option value="CESACION DE FUNCIONES">Cesación de Funciones</option>
       </select>
       <select v-model="filtro.estado" @change="cargar"
         class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">

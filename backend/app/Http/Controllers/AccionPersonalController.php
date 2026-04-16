@@ -46,8 +46,8 @@ class AccionPersonalController extends Controller
     // GET /api/acciones-personal
     public function index(Request $request)
     {
-        // Auto-cerrar subrogaciones cuya fecha_fin ya pasó
-        AccionPersonal::where("tipo_accion", "SUBROGACION")
+        // Auto-cerrar acciones con fecha_fin que ya pasó (SUBROGACION, VACACIONES)
+        AccionPersonal::whereIn("tipo_accion", ["SUBROGACION", "VACACIONES"])
             ->where("estado", "ACTIVO")
             ->whereNotNull("fecha_fin")
             ->where("fecha_fin", "<", now()->toDateString())
@@ -84,17 +84,22 @@ class AccionPersonalController extends Controller
     // POST /api/acciones-personal
     public function store(Request $request)
     {
+        $tiposSinPropuesta  = ['DESTITUCION', 'CESACION DE FUNCIONES', 'VACACIONES'];
+        $tiposConFechaFin   = ['SUBROGACION', 'VACACIONES'];
+        $conPropuesta       = !in_array($request->tipo_accion, $tiposSinPropuesta);
+        $fechaFinRequerida  = in_array($request->tipo_accion, $tiposConFechaFin);
+
         $request->validate([
-            "tipo_accion"           => "required|in:ENCARGO,SUBROGACION",
+            "tipo_accion"           => "required|in:ENCARGO,SUBROGACION,INGRESO,VACACIONES,DESTITUCION,CESACION DE FUNCIONES",
             "fecha_elaboracion"     => "required|date",
             "id_emp"                => "required|string",
             "fecha_inicio"          => "required|date",
-            "fecha_fin"             => ($request->tipo_accion === "SUBROGACION" ? "required" : "nullable") . "|date|after_or_equal:fecha_inicio",
+            "fecha_fin"             => ($fechaFinRequerida ? "required" : "nullable") . "|date|after_or_equal:fecha_inicio",
             "motivacion"            => "nullable|string",
-            "propuesto_cargo"       => "required|string|max:200",
+            "propuesto_cargo"       => ($conPropuesta ? "required" : "nullable") . "|string|max:200",
             "propuesto_grupo_ocup"  => "nullable|string|max:100",
             "propuesto_grado"       => "nullable|integer",
-            "propuesto_remuneracion"=> "required|numeric|min:0",
+            "propuesto_remuneracion"=> ($conPropuesta ? "required" : "nullable") . "|numeric|min:0",
             "propuesto_partida"     => "nullable|string|max:60",
             "propuesto_proceso_inst"=> "nullable|string|max:30",
         ]);
