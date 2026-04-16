@@ -305,15 +305,11 @@
       <td style="width:50%; border-right:1px solid #000; padding:0; vertical-align:top;">
         <div class="gray" style="text-align:center; font-weight:bold; font-size:7.5pt; padding:2px; border-bottom:1px solid #000;">ACEPTACIÓN Y/O RECEPCIÓN DEL SERVIDOR PÚBLICO</div>
         <div style="padding:5px 6px;">
-          <div style="font-size:7.5pt; margin-bottom:4px;">
-            {{ strtoupper(($accion->empleado->apellido_emp ?? '') . ', ' . ($accion->empleado->nombre_emp ?? '')) }}<br>
-            C.I.: {{ $accion->empleado->identificacion ?? '' }}
-          </div>
-          <div style="min-height:40px;"></div>
+          <div style="min-height:55px;"></div>
           <div style="font-size:7.5pt;">FIRMA <span style="border-bottom:1px solid #000; display:inline-block; width:74%;">&nbsp;</span></div>
-          <div style="font-size:7.5pt; margin-top:2px;">NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:68%;">&nbsp;</span></div>
-          <div style="font-size:7.5pt; margin-top:2px;">FECHA: <span style="border-bottom:1px solid #000; display:inline-block; width:71%;">&nbsp;</span></div>
-          <div style="font-size:7.5pt; margin-top:2px;">HORA: <span style="border-bottom:1px solid #000; display:inline-block; width:73%;">&nbsp;</span></div>
+          <div style="font-size:7.5pt; margin-top:2px;">NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:68%;">{{ strtoupper(($accion->empleado->apellido_emp ?? '') . ', ' . ($accion->empleado->nombre_emp ?? '')) }}</span></div>
+          <div style="font-size:7.5pt; margin-top:2px;">FECHA: <span style="border-bottom:1px solid #000; display:inline-block; width:71%;">CONSTA EN FIRMA ELECTRÓNICA</span></div>
+          <div style="font-size:7.5pt; margin-top:2px;">HORA: <span style="border-bottom:1px solid #000; display:inline-block; width:73%;">CONSTA EN FIRMA ELECTRÓNICA</span></div>
         </div>
       </td>
       <td style="width:50%; padding:0; vertical-align:top;">
