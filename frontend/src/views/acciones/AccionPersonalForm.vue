@@ -86,7 +86,19 @@
           </div>
         </div>
 
-        <div v-if="empleadoSeleccionado" class="bg-gray-50 rounded-lg p-4">
+        <!-- INGRESO: solo muestra nombre/CI, no situación actual -->
+        <div v-if="empleadoSeleccionado && form.tipo_accion === 'INGRESO'" class="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-semibold text-green-800">{{ empleadoSeleccionado.apellido_emp }}, {{ empleadoSeleccionado.nombre_emp }}</p>
+              <p class="text-xs text-green-600 mt-0.5">CI: {{ empleadoSeleccionado.identificacion }} — situación propuesta cargada desde la ficha</p>
+            </div>
+            <button type="button" @click="limpiarEmpleado" class="text-red-400 hover:text-red-600 text-xs">✕ Quitar</button>
+          </div>
+        </div>
+
+        <!-- Otros tipos: muestra situación actual completa -->
+        <div v-else-if="empleadoSeleccionado" class="bg-gray-50 rounded-lg p-4">
           <div class="flex items-center justify-between mb-3">
             <p class="text-sm font-semibold text-gray-700">Situación Actual — cargada automáticamente</p>
             <button type="button" @click="limpiarEmpleado" class="text-red-400 hover:text-red-600 text-xs">✕ Quitar</button>
@@ -344,8 +356,21 @@ const buscarEmpleados = () => {
 const seleccionarEmpleado = (e) => {
   empleadoSeleccionado.value = e
   form.value.id_emp = e.id_emp
-  busquedaEmp.value = ""
+  busquedaEmp.value   = ""
   resultadosEmp.value = []
+
+  // INGRESO: auto-llenar propuesta desde la ficha del empleado
+  if (form.value.tipo_accion === 'INGRESO') {
+    form.value.propuesto_cargo        = e.cargo_empleado         || ""
+    form.value.propuesto_grupo_ocup   = e.grupo_ocupacional      || ""
+    form.value.propuesto_grado        = e.nivel                  || ""
+    form.value.propuesto_remuneracion = e.sueldo                 || ""
+    form.value.propuesto_partida      = e.partida_presupuestaria
+      ? (e.partida_presupuestaria + (e.partida_individual ? `-${e.partida_individual}` : ""))
+      : ""
+    form.value.propuesto_proceso_inst = e.proceso_institucional  || ""
+  }
+
   calcularDiferencial()
 }
 

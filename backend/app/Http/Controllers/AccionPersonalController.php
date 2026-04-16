@@ -115,8 +115,9 @@ class AccionPersonalController extends Controller
         $numero  = str_pad($ultimo + 1, 5, "0", STR_PAD_LEFT);
         $numeroAccion = "{$prefijo}-{$anio}-{$numero}";
 
+        $esIngreso    = $request->tipo_accion === 'INGRESO';
         $propuestoRem = (float) $request->propuesto_remuneracion;
-        $actualRem    = (float) ($emp->sueldo ?? 0);
+        $actualRem    = $esIngreso ? 0.0 : (float) ($emp->sueldo ?? 0);
         $diferencial  = max(0, $propuestoRem - $actualRem);
 
         $accion = AccionPersonal::create([
@@ -128,15 +129,15 @@ class AccionPersonalController extends Controller
             "fecha_inicio"           => $request->fecha_inicio,
             "fecha_fin"              => $request->fecha_fin ?? null,
             "motivacion"             => $request->motivacion,
-            // Snapshot situación actual
-            "actual_cargo"           => $emp->cargo_empleado,
-            "actual_grupo_ocup"      => $emp->grupo_ocupacional,
-            "actual_grado"           => $emp->nivel,
+            // Snapshot situación actual (vacío para INGRESO)
+            "actual_cargo"           => $esIngreso ? null : $emp->cargo_empleado,
+            "actual_grupo_ocup"      => $esIngreso ? null : $emp->grupo_ocupacional,
+            "actual_grado"           => $esIngreso ? null : $emp->nivel,
             "actual_remuneracion"    => $actualRem,
-            "actual_partida"         => $emp->partida_presupuestaria
+            "actual_partida"         => $esIngreso ? null : ($emp->partida_presupuestaria
                 ? ($emp->partida_presupuestaria . ($emp->partida_individual ? "-{$emp->partida_individual}" : ""))
-                : null,
-            "actual_proceso_inst"    => $emp->proceso_institucional,
+                : null),
+            "actual_proceso_inst"    => $esIngreso ? null : $emp->proceso_institucional,
             // Situación propuesta
             "propuesto_cargo"        => $request->propuesto_cargo,
             "propuesto_grupo_ocup"   => $request->propuesto_grupo_ocup,
