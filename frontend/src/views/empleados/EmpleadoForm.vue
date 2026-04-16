@@ -63,8 +63,8 @@
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-600 mb-1">Cargo</label>
-            <input v-model="form.cargo_empleado" type="text" placeholder="Ej: Analista de Sistemas"
+            <label class="block text-sm font-medium text-gray-600 mb-1">Cargo *</label>
+            <input v-model="form.cargo_empleado" type="text" placeholder="Ej: Analista de Sistemas" required
               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
           <div>
@@ -77,8 +77,8 @@
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-600 mb-1">Modalidad Laboral</label>
-            <select v-model="form.modalidad_laboral"
+            <label class="block text-sm font-medium text-gray-600 mb-1">Modalidad Laboral *</label>
+            <select v-model="form.modalidad_laboral" required
               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
               <option value="">Seleccionar...</option>
               <option value="Nombramiento Definitivo">Nombramiento Definitivo</option>
@@ -124,8 +124,8 @@
               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-600 mb-1">Salario Base</label>
-            <input v-model="form.salario" type="number" step="0.01" min="0"
+            <label class="block text-sm font-medium text-gray-600 mb-1">Salario Base *</label>
+            <input v-model="form.salario" type="number" step="0.01" min="0" required
               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
         </div>
@@ -136,18 +136,18 @@
         <h2 class="text-lg font-semibold text-gray-700 border-b pb-2">Datos del Puesto</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-medium text-gray-600 mb-1">Grupo Ocupacional</label>
-            <input v-model="form.grupo_ocupacional" type="text" placeholder="Ej: SERVIDOR PUBLICO 7"
+            <label class="block text-sm font-medium text-gray-600 mb-1">Grupo Ocupacional *</label>
+            <input v-model="form.grupo_ocupacional" type="text" placeholder="Ej: SERVIDOR PUBLICO 7" required
               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-600 mb-1">Grado</label>
-            <input v-model="form.nivel" type="number" min="1"
+            <label class="block text-sm font-medium text-gray-600 mb-1">Grado *</label>
+            <input v-model="form.nivel" type="number" min="1" required
               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-600 mb-1">Proceso Institucional</label>
-            <select v-model="form.proceso_institucional"
+            <label class="block text-sm font-medium text-gray-600 mb-1">Proceso Institucional *</label>
+            <select v-model="form.proceso_institucional" required
               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
               <option value="">Seleccionar...</option>
               <option value="SUSTANTIVO">SUSTANTIVO</option>
@@ -164,8 +164,8 @@
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-600 mb-1">Partida Individual</label>
-            <input v-model="form.partida_individual" type="number" min="1"
+            <label class="block text-sm font-medium text-gray-600 mb-1">Partida Individual *</label>
+            <input v-model="form.partida_individual" type="number" min="1" required
               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
           <div>
@@ -194,8 +194,8 @@
             </select>
           </div>
           <div class="sm:col-span-2">
-            <label class="block text-sm font-medium text-gray-600 mb-1">Partida Presupuestaria</label>
-            <input v-model="form.partida_presupuestaria" type="text" placeholder="Ej: 202622000000000..."
+            <label class="block text-sm font-medium text-gray-600 mb-1">Partida Presupuestaria *</label>
+            <input v-model="form.partida_presupuestaria" type="text" placeholder="Ej: 202622000000000..." required
               class="w-full border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
         </div>

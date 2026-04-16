@@ -67,14 +67,22 @@ class EmpleadoController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            "identificacion" => "required|string|max:15",
-            "nombre_emp"     => "required|string|max:240",
-            "apellido_emp"   => "required|string|max:240",
-            "id_depto"       => "required|integer",
-            "fecha_ingreso"  => "nullable|date",
-            "sueldo"         => "nullable|numeric|min:0",
-            "estado"         => "nullable|string|max:10",
-            "email"          => "nullable|email",
+            "identificacion"         => "required|string|max:15",
+            "nombre_emp"             => "required|string|max:240",
+            "apellido_emp"           => "required|string|max:240",
+            "id_depto"               => "required|integer",
+            "fecha_ingreso"          => "nullable|date",
+            "estado"                 => "nullable|string|max:10",
+            "email"                  => "nullable|email",
+            // Datos del puesto — obligatorios
+            "cargo_empleado"         => "required|string|max:200",
+            "grupo_ocupacional"      => "required|string|max:100",
+            "nivel"                  => "required|integer",
+            "sueldo"                 => "required|numeric|min:0",
+            "partida_presupuestaria" => "required|string|max:100",
+            "partida_individual"     => "required|string|max:60",
+            "proceso_institucional"  => "required|string|max:30",
+            "modalidad_laboral"      => "required|string|max:50",
         ]);
 
         $emp = Empleado::create([
@@ -134,14 +142,22 @@ class EmpleadoController extends Controller
         $emp = Empleado::findOrFail($id);
 
         $request->validate([
-            "identificacion" => "nullable|string|max:15",
-            "nombre_emp"     => "nullable|string|max:240",
-            "apellido_emp"   => "nullable|string|max:240",
-            "id_depto"       => "nullable|integer",
-            "fecha_ingreso"  => "nullable|date",
-            "sueldo"         => "nullable|numeric|min:0",
-            "estado"         => "nullable|string|max:10",
-            "email"          => "nullable|email",
+            "identificacion"         => "nullable|string|max:15",
+            "nombre_emp"             => "nullable|string|max:240",
+            "apellido_emp"           => "nullable|string|max:240",
+            "id_depto"               => "nullable|integer",
+            "fecha_ingreso"          => "nullable|date",
+            "estado"                 => "nullable|string|max:10",
+            "email"                  => "nullable|email",
+            // Datos del puesto — obligatorios
+            "cargo_empleado"         => "required|string|max:200",
+            "grupo_ocupacional"      => "required|string|max:100",
+            "nivel"                  => "required|integer",
+            "sueldo"                 => "required|numeric|min:0",
+            "partida_presupuestaria" => "required|string|max:100",
+            "partida_individual"     => "required|string|max:60",
+            "proceso_institucional"  => "required|string|max:30",
+            "modalidad_laboral"      => "required|string|max:50",
         ]);
 
         $emp->update([

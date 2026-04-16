@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Full-stack HR management system ("Gestión de Talento Humano") for the Consejo de Comunicación (Ecuador). Manages employees, attendance, permissions, vacations, vacation planning, and vacation settlement/liquidation.
+Full-stack HR management system ("Gestión de Talento Humano") for the Consejo de Comunicación (Ecuador). Manages employees, attendance, permissions, vacations, vacation planning, vacation settlement/liquidation, and personnel actions (encargo/subrogación/ingreso/etc.).
 
 - **Backend:** Laravel 12 (PHP 8.2+), PostgreSQL (`dbo` schema), Laravel Sanctum (token auth), DomPDF for PDF generation
 - **Frontend:** Vue 3 (Composition API), Pinia, Vue Router 5, Tailwind CSS 4, Axios, Vite 7
@@ -22,13 +22,21 @@ composer test               # Run PHPUnit tests
 ### Frontend (`d:\rrhh\frontend`)
 ```bash
 npm run dev                 # Start Vite dev server
-npm run build               # Production build
+npm run build               # Production build (required after any frontend change in prod)
 ```
 
 ### Run both together (from backend)
 ```bash
 composer dev                # Runs artisan serve + queue + pail + vite concurrently
 ```
+
+## Deployment Workflow
+
+After any change, always tell the user:
+1. **Push** (from dev machine)
+2. **Pull** (on server)
+3. **`npm run build`** in `frontend/` — **only when frontend files changed** (`.vue`, `.js`, `.css`)
+4. No build needed for backend-only changes (PHP, Blade, migrations)
 
 ## Architecture
 
@@ -51,6 +59,22 @@ Three roles: `ADMINISTRADOR`, `TALENTO HUMANO`, `SUPERVISOR`. Regular employees 
 - Request statuses: `PENDIENTE`, `APROBADO`, `NEGADO`, `ELIMINADO`
 - Department 999 (`id_depto = 999`) is excluded from all queries — it's a system/admin placeholder
 - Primary key for employees is `id_emp` (string), not integer
+- `dbo.d2_configuracion` stores institution-wide config values (key/value pairs)
+
+### PDF Generation
+Uses `barryvdh/laravel-dompdf`. All Blade PDF templates are in `backend/resources/views/reportes/`.
+- Always embed images as base64 (`public_path()` + `base64_encode(file_get_contents())`) — direct file paths fail in dompdf
+- Institution logo: `backend/public/logo.png` (transparent PNG)
+- Margins must be set at `@page { margin: ... }` level, not on `.page` div — otherwise dompdf overflows the right edge
+- Use `table-layout: fixed` on all tables to prevent overflow
+- Spanish dates: use a manual `$meses` PHP array — do NOT use `Carbon::translatedFormat()` (locale may not be set)
+
+### Alfresco Document Storage
+Used for signed PDF uploads (vacation planning, personnel actions).
+- Base URL: `http://192.168.26.38:8080/alfresco/api/-default-/public/alfresco/versions/1`
+- Credentials: `admin / admin`, site: `talentohumano`
+- Pattern: upload to `talentohumano/{module-folder}/{year}/`, save returned `entry.id` (node ID) to DB
+- Helpers `getDocLibNodeId()` and `getOrCreateFolderNodeId()` are repeated in each controller that uses Alfresco (no shared service yet)
 
 ### Vacation Balance Calculation
 Computed on-the-fly in `calcularSaldoDisponible()` / `calcularSaldo()`:
@@ -60,24 +84,37 @@ Computed on-the-fly in `calcularSaldoDisponible()` / `calcularSaldo()`:
 - `FECHA_CORTE_VACACIONES` is stored in `dbo.d2_configuracion`
 - Balance = `dias_adicionales` (initial/carried) + accrued − `total_dias_tomados`
 
-### PDF Generation
-Uses `barryvdh/laravel-dompdf`. All Blade PDF templates are in `backend/resources/views/reportes/`.
-- Always embed images as base64 (use `public_path()` + `base64_encode(file_get_contents())`) — direct file paths are unreliable in dompdf
-- Institution logo: `backend/public/logo.png` (transparent PNG)
-- Approver name comes from `dbo.d2_configuracion` key `APROBADOR_INST_VACACION`
-
 ### Key Controllers
 | Controller | Responsibility |
 |---|---|
 | `AuthController` | Login / logout / me |
 | `EmpleadoController` | Employee CRUD + role assignment |
+| `AccionPersonalController` | Personnel actions (encargo, subrogación, ingreso, vacaciones, destitución, cesación) |
 | `VacacionesController` | Vacation requests (approve/deny/balance) |
-| `PlanificacionController` | Annual vacation planning |
+| `PlanificacionVacController` | Annual vacation planning |
 | `LiquidacionVacController` | Vacation settlement for commissions/exits |
+| `ReportePlanificacionController` | Planning PDF + Alfresco signed upload |
 | `PermisosController` | Permission/leave requests |
 | `AsistenciaController` | Attendance marking and reports |
+| `CuadreController` | Attendance reconciliation |
 | `DashboardController` | Dashboard stats |
-| `ReportePlanificacionController` | Planning PDF + signed upload |
+| `Admin/*` | Departments, reasons, shifts, schedules, calendar, configuration, IESS contributions |
+
+### Acciones de Personal Module
+Table: `dbo.acc_accion_personal`. Supported types and their rules:
+
+| Tipo | fecha_fin | Situación Actual | Situación Propuesta | Buscador Titular | Declaración Jurada | Auto-cierra |
+|---|---|---|---|---|---|---|
+| INGRESO | No aplica | Vacía (null) | Requerida — auto-llena desde ficha empleado | No | SI | No |
+| ENCARGO | Opcional ("Hasta nueva orden" = null) | ✓ | Requerida | ✓ | NO APLICA | No (manual) |
+| SUBROGACION | Requerida | ✓ | Requerida | ✓ | NO APLICA | Sí (al vencer fecha_fin) |
+| VACACIONES | Requerida | ✓ | No aplica | No | NO APLICA | Sí (al vencer fecha_fin) |
+| DESTITUCION | No aplica | ✓ | No aplica | No | SI | No |
+| CESACION DE FUNCIONES | No aplica | ✓ | No aplica | No | SI | No |
+
+- Auto-cierre: corre en cada llamada a `index()` para SUBROGACION y VACACIONES cuya `fecha_fin < today`
+- Signed PDF stored as Alfresco node ID in `pdf_firmado` column
+- Workflow: INGRESO → create employee first, then action; DESTITUCION/CESACION → action first, then deactivate employee
 
 ### Vacation Liquidation Module (`LiquidacionVacController`)
 Handles special events that require freezing/certifying vacation balances:
@@ -90,12 +127,14 @@ Handles special events that require freezing/certifying vacation balances:
 ### Frontend Structure
 ```
 frontend/src/
-  router/index.js       # Routes with meta.requiresAuth / meta.rol guards
-  stores/auth.js        # Pinia: token, empleado, roles, menu (localStorage)
-  services/api.js       # Axios instance (base URL from VITE_API_URL)
+  router/index.js           # Routes with meta.requiresAuth / meta.rol guards
+  stores/auth.js            # Pinia: token, empleado, roles, menu (localStorage)
+  services/api.js           # Axios instance (base URL from VITE_API_URL)
   layouts/MainLayout.vue
-  views/                # One folder per module
-  components/           # Shared components
+  views/acciones/           # Acciones de Personal (list + form)
+  views/planificacion/      # Vacation planning, liquidation, report
+  views/empleados/          # Employee CRUD, detail, import, distributivo
+  views/admin/              # Admin panel (roles, departments, shifts, config, etc.)
 ```
 
 ### Environment
