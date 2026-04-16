@@ -408,10 +408,10 @@
   </div>
 
   <div style="font-size:8pt; margin-bottom:2px;">
-    NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:65%;">&nbsp;</span>
+    NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:65%;">{{ $creadorNombre }}</span>
   </div>
   <div style="font-size:8pt; margin-bottom:8px;">
-    PUESTO: <span style="border-bottom:1px solid #000; display:inline-block; width:65%;">&nbsp;</span>
+    PUESTO: <span style="border-bottom:1px solid #000; display:inline-block; width:65%;">{{ $creadorPuesto }}</span>
   </div>
 
   <div style="font-size:7pt; color:#333;">
