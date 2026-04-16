@@ -5,406 +5,420 @@
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: Arial, sans-serif; font-size: 8.5pt; color: #000; }
-
   .page { width: 100%; }
 
-  /* Encabezado */
-  .header-table { width: 100%; border-collapse: collapse; margin-bottom: 3px; }
-  .header-table td { vertical-align: middle; }
-  .logo-cell { width: 28%; text-align: center; padding: 4px; border: 1px solid #000; }
-  .logo-cell img { max-height: 42px; max-width: 100%; }
-  .title-cell { width: 72%; border: 1px solid #000; border-left: none; }
-  .title-main { background: #fff; text-align: center; padding: 4px; }
-  .title-main h1 { font-size: 13pt; font-weight: bold; letter-spacing: 1px; }
-  .title-meta { border-top: 1px solid #000; }
-  .title-meta table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-  .title-meta td { padding: 2px 6px; font-size: 8pt; }
-  .title-meta td:first-child { border-right: 1px solid #000; width: 40%; font-weight: bold; }
+  .lbl  { font-weight: bold; font-size: 7.5pt; }
+  .val  { font-size: 8pt; }
+  .gray { background-color: #d8d8d8; }
 
-  /* Secciones */
-  .section { border: 1px solid #000; margin-bottom: 3px; }
-  .section-row { border-collapse: collapse; width: 100%; table-layout: fixed; }
-  .section-row td { border: 1px solid #000; padding: 2px 5px; vertical-align: top; word-wrap: break-word; overflow: hidden; }
-  .label { font-weight: bold; font-size: 7.5pt; color: #000; }
-  .value { font-size: 8pt; }
+  /* Checkboxes */
+  .cb    { display: inline-block; width: 9px; height: 9px; border: 1px solid #000;
+           margin-right: 2px; text-align: center; line-height: 9px; font-size: 7pt;
+           font-weight: bold; vertical-align: middle; }
+  .cb-on { background: #000; color: #fff; }
 
-  /* Checkboxes — tabla fija para evitar desbordamiento */
-  .checks-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-  .checks-table td { padding: 1px 3px; font-size: 7.5pt; vertical-align: middle; word-wrap: break-word; overflow: hidden; }
-  .checkbox { display: inline-block; width: 10px; height: 10px; border: 1px solid #000; margin-right: 2px; text-align: center; line-height: 10px; font-size: 8pt; font-weight: bold; vertical-align: middle; }
-  .checked { background: #000; color: #fff; }
+  /* Situación actual/propuesta */
+  .sit-lbl { font-weight: bold; font-size: 7.5pt; width: 46%; padding: 1px 4px;
+             border-right: 1px solid #000; border-bottom: 1px solid #ddd; vertical-align: top; }
+  .sit-val { font-size: 7.5pt; padding: 1px 4px; border-bottom: 1px solid #ddd;
+             word-wrap: break-word; overflow: hidden; }
 
-  /* Situación actual / propuesta */
-  .sit-table { width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 3px; table-layout: fixed; }
-  .sit-header { background: #d0d0d0; text-align: center; font-weight: bold; font-size: 8pt; padding: 2px; border-bottom: 1px solid #000; }
-  .sit-inner { width: 100%; border-collapse: collapse; table-layout: fixed; }
-  .sit-inner td { border-bottom: 1px solid #ccc; padding: 2px 4px; font-size: 7.5pt; word-wrap: break-word; overflow: hidden; }
-  .sit-inner td:first-child { font-weight: bold; border-right: 1px solid #000; width: 45%; }
+  .pg2 { page-break-before: always; }
 
-  /* Motivación */
-  .motivacion-box { min-height: 45px; padding: 3px 4px; font-size: 8pt; word-wrap: break-word; overflow: hidden; }
-
-  /* Firmas */
-  .firma-section { border: 1px solid #000; margin-top: 3px; }
-  .firma-header { background: #d0d0d0; text-align: center; font-weight: bold; font-size: 8pt; padding: 2px; border-bottom: 1px solid #000; }
-  .firma-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-  .firma-table td { border-right: 1px solid #000; padding: 6px; vertical-align: bottom; width: 50%; font-size: 7.5pt; }
-  .firma-table td:last-child { border-right: none; }
-  .firma-line { border-top: 1px solid #000; margin-top: 22px; padding-top: 2px; }
-
-  .footer { font-size: 6.5pt; color: #555; text-align: center; margin-top: 4px; border-top: 1px solid #ccc; padding-top: 2px; }
-  .gray-bg { background-color: #e0e0e0; }
-  .bold { font-weight: bold; }
-  .center { text-align: center; }
-
-  /* Página 2 */
-  .page-break { page-break-before: always; }
-
-  /* Tabla de notificación */
-  .notif-table { width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 4px; table-layout: fixed; }
-  .notif-table td { border: 1px solid #000; padding: 3px 5px; font-size: 8pt; word-wrap: break-word; }
-  .notif-label { font-weight: bold; font-size: 7.5pt; width: 40%; }
-  .notif-value { font-size: 8pt; }
-  .notif-blank { border-bottom: 1px solid #555; min-height: 14px; display: inline-block; width: 90%; }
-
-  @page { margin: 10mm 14mm 8mm 14mm; size: letter portrait; }
+  @page { margin: 10mm 12mm 8mm 12mm; size: letter portrait; }
 </style>
 </head>
 <body>
 
+@php
+  $tipo = strtoupper($accion->tipo_accion);
+  function cb($t, $v) { return $t === $v ? '&#10003;' : '&nbsp;'; }
+  function cbcls($t, $v) { return $t === $v ? 'cb cb-on' : 'cb'; }
+  $deptActual    = $accion->empleado->departamento->nombre_depto ?? '';
+  $deptPropuesto = $accion->titular->departamento->nombre_depto ?? '';
+@endphp
+
 {{-- ==================== PÁGINA 1 ==================== --}}
 <div class="page">
 
-  {{-- ENCABEZADO --}}
-  <table class="header-table">
+{{-- ENCABEZADO --}}
+<table style="width:100%; border-collapse:collapse; margin-bottom:3px;">
+  <tr>
+    <td style="width:40%; border:1px solid #000; text-align:center; padding:6px; vertical-align:middle;">
+      @if($logo)
+        <img src="{{ $logo }}" style="max-height:62px; max-width:95%;">
+      @else
+        <div style="font-size:9pt; color:#777; padding:8px;">(LOGO INSTITUCIONAL)</div>
+      @endif
+    </td>
+    <td style="width:60%; border:1px solid #000; border-left:none; vertical-align:top; padding:0;">
+      <div style="text-align:center; padding:5px 4px; border-bottom:1px solid #000;">
+        <span style="font-size:14pt; font-weight:bold; letter-spacing:1px;">ACCIÓN DE PERSONAL</span>
+      </div>
+      <table style="width:100%; border-collapse:collapse; table-layout:fixed;">
+        <tr>
+          <td style="border-right:1px solid #000; border-bottom:1px solid #000; padding:2px 6px; width:42%; font-weight:bold; font-size:7.5pt;">Nro.</td>
+          <td style="border-bottom:1px solid #000; padding:2px 6px; font-size:9pt; font-weight:bold;">{{ $accion->numero_accion }}</td>
+        </tr>
+        <tr>
+          <td style="border-right:1px solid #000; padding:2px 6px; font-weight:bold; font-size:7.5pt;">FECHA DE ELABORACIÓN</td>
+          <td style="padding:2px 6px; font-size:8pt;">{{ \Carbon\Carbon::parse($accion->fecha_elaboracion)->translatedFormat('d \d\e F \d\e Y') }}</td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+
+{{-- DATOS DEL EMPLEADO --}}
+<table style="width:100%; border-collapse:collapse; border:1px solid #000; margin-bottom:3px; table-layout:fixed;">
+  <tr>
+    <td style="width:42%; border-right:1px solid #000; border-bottom:1px solid #000; padding:3px 6px; text-align:center; vertical-align:middle;">
+      <div class="lbl">APELLIDOS</div>
+      <div style="font-size:10pt; margin-top:2px;">{{ strtoupper($accion->empleado->apellido_emp ?? '') }}</div>
+    </td>
+    <td style="width:58%; border-bottom:1px solid #000; padding:0; vertical-align:top;">
+      <table style="width:100%; border-collapse:collapse; table-layout:fixed;">
+        <tr>
+          <td colspan="2" style="border-bottom:1px solid #000; padding:3px 6px; text-align:center;">
+            <div class="lbl">NOMBRES</div>
+            <div style="font-size:10pt; margin-top:2px;">{{ strtoupper($accion->empleado->nombre_emp ?? '') }}</div>
+          </td>
+        </tr>
+        <tr>
+          <td style="border-right:1px solid #000; padding:2px 5px; width:50%; vertical-align:top;">
+            <div class="lbl">RIGE: &nbsp; DESDE (dd-mm-aaaa)</div>
+            <div class="val">{{ \Carbon\Carbon::parse($accion->fecha_inicio)->format('d-m-Y') }}</div>
+          </td>
+          <td style="padding:2px 5px; width:50%; vertical-align:top;">
+            <div class="lbl">HASTA (dd-mm-aaaa) (cuando aplica)</div>
+            <div class="val">
+              @if($accion->fecha_fin)
+                {{ \Carbon\Carbon::parse($accion->fecha_fin)->format('d-m-Y') }}
+              @else
+                Hasta nueva orden
+              @endif
+            </div>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" style="padding:0;">
+      <table style="width:100%; border-collapse:collapse; table-layout:fixed;">
+        <tr>
+          <td style="border-right:1px solid #000; padding:2px 6px; width:38%; vertical-align:top;">
+            <div class="lbl">DOCUMENTO DE IDENTIFICACIÓN</div>
+            <div class="val">CÉDULA DE CIUDADANÍA</div>
+          </td>
+          <td style="padding:2px 6px; vertical-align:top;">
+            <div class="lbl">NRO. DE IDENTIFICACIÓN</div>
+            <div class="val">{{ $accion->empleado->identificacion ?? '' }}</div>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+
+{{-- TIPO DE ACCIÓN --}}
+<div style="border:1px solid #000; padding:3px 5px; margin-bottom:3px;">
+  <div style="font-size:7.5pt; margin-bottom:3px;">
+    <b>Escoja una opción</b> (según lo estipulado en el artículo 21 del Reglamento General a la Ley Orgánica del Servicio Público)
+  </div>
+  <table style="width:100%; border-collapse:collapse; table-layout:fixed;">
+    <colgroup><col style="width:22%"><col style="width:24%"><col style="width:25%"><col style="width:29%"></colgroup>
     <tr>
-      <td class="logo-cell">
-        @if($logo)
-          <img src="{{ $logo }}" alt="Logo">
-        @else
-          <div style="font-size:7pt;color:#777;">(LOGO)</div>
-        @endif
+      <td style="padding:1px 2px; font-size:7.5pt;"><span class="{{ cbcls($tipo,'INGRESO') }}">{!! cb($tipo,'INGRESO') !!}</span> INGRESO</td>
+      <td style="padding:1px 2px; font-size:7.5pt;"><span class="{{ cbcls($tipo,'TRASPASO') }}">{!! cb($tipo,'TRASPASO') !!}</span> TRASPASO</td>
+      <td style="padding:1px 2px; font-size:7.5pt;"><span class="{{ cbcls($tipo,'INCREMENTO RMU') }}">{!! cb($tipo,'INCREMENTO RMU') !!}</span> INCREMENTO RMU</td>
+      <td style="padding:1px 2px; font-size:7.5pt;"><span class="{{ cbcls($tipo,'REVISION CLASI. PUESTO') }}">{!! cb($tipo,'REVISION CLASI. PUESTO') !!}</span> REVISIÓN CLASI. PUESTO &nbsp; <span class="{{ cbcls($tipo,'REVISION CLASI. PUESTO') }}">{!! cb($tipo,'REVISION CLASI. PUESTO') !!}</span></td>
+    </tr>
+    <tr>
+      <td style="padding:1px 2px; font-size:7.5pt;"><span class="{{ cbcls($tipo,'REINGRESO') }}">{!! cb($tipo,'REINGRESO') !!}</span> REINGRESO</td>
+      <td style="padding:1px 2px; font-size:7.5pt;"><span class="{{ cbcls($tipo,'CAMBIO ADMINISTRATIVO') }}">{!! cb($tipo,'CAMBIO ADMINISTRATIVO') !!}</span> CAMBIO ADMINISTRATIVO</td>
+      <td style="padding:1px 2px; font-size:7.5pt;"><span class="{{ cbcls($tipo,'SUBROGACION') }}">{!! cb($tipo,'SUBROGACION') !!}</span> SUBROGACIÓN &nbsp; <span class="{{ cbcls($tipo,'SUBROGACION') }}">{!! cb($tipo,'SUBROGACION') !!}</span></td>
+      <td style="padding:1px 2px; font-size:7.5pt;"><span class="cb">&nbsp;</span> OTRO (DETALLAR) &nbsp; <span class="cb">&nbsp;</span></td>
+    </tr>
+    <tr>
+      <td style="padding:1px 2px; font-size:7.5pt;"><span class="{{ cbcls($tipo,'RESTITUCION') }}">{!! cb($tipo,'RESTITUCION') !!}</span> RESTITUCIÓN</td>
+      <td style="padding:1px 2px; font-size:7.5pt;"><span class="{{ cbcls($tipo,'INTERCAMBIO VOLUNTARIO') }}">{!! cb($tipo,'INTERCAMBIO VOLUNTARIO') !!}</span> INTERCAMBIO VOLUNTARIO</td>
+      <td style="padding:1px 2px; font-size:7.5pt;"><span class="{{ cbcls($tipo,'ENCARGO') }}">{!! cb($tipo,'ENCARGO') !!}</span> ENCARGO &nbsp; <span class="{{ cbcls($tipo,'ENCARGO') }}">{!! cb($tipo,'ENCARGO') !!}</span></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td style="padding:1px 2px; font-size:7.5pt;"><span class="{{ cbcls($tipo,'REINTEGRO') }}">{!! cb($tipo,'REINTEGRO') !!}</span> REINTEGRO</td>
+      <td style="padding:1px 2px; font-size:7.5pt;"><span class="{{ cbcls($tipo,'LICENCIA') }}">{!! cb($tipo,'LICENCIA') !!}</span> LICENCIA</td>
+      <td style="padding:1px 2px; font-size:7.5pt;"><span class="{{ cbcls($tipo,'CESACION DE FUNCIONES') }}">{!! cb($tipo,'CESACION DE FUNCIONES') !!}</span> CESACIÓN DE FUNCIONES</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td style="padding:1px 2px; font-size:7.5pt;"><span class="{{ cbcls($tipo,'ASCENSO') }}">{!! cb($tipo,'ASCENSO') !!}</span> ASCENSO</td>
+      <td style="padding:1px 2px; font-size:7.5pt;"><span class="{{ cbcls($tipo,'COMISION DE SERVICIOS') }}">{!! cb($tipo,'COMISION DE SERVICIOS') !!}</span> COMISIÓN DE SERVICIOS</td>
+      <td style="padding:1px 2px; font-size:7.5pt;"><span class="{{ cbcls($tipo,'DESTITUCION') }}">{!! cb($tipo,'DESTITUCION') !!}</span> DESTITUCIÓN</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td style="padding:1px 2px; font-size:7.5pt;"><span class="{{ cbcls($tipo,'TRASLADO') }}">{!! cb($tipo,'TRASLADO') !!}</span> TRASLADO</td>
+      <td style="padding:1px 2px; font-size:7.5pt;"><span class="{{ cbcls($tipo,'SANCIONES') }}">{!! cb($tipo,'SANCIONES') !!}</span> SANCIONES</td>
+      <td style="padding:1px 2px; font-size:7.5pt;"><span class="{{ cbcls($tipo,'VACACIONES') }}">{!! cb($tipo,'VACACIONES') !!}</span> VACACIONES</td>
+      <td></td>
+    </tr>
+  </table>
+  <div style="font-size:7.5pt; border-top:1px solid #ccc; margin-top:2px; padding-top:2px;">
+    EN CASO DE REQUERIR ESPECIFICACIÓN DE LO SELECCIONADO:
+    <span style="border-bottom:1px solid #000; display:inline-block; width:55%;">&nbsp;</span>
+  </div>
+  <div style="font-size:7.5pt; margin-top:2px;">
+    <b>* PRESENTÓ LA DECLARACIÓN JURADA</b> (número 2 del art. 3 RLOSEP) &nbsp;
+    SI <span class="cb">&nbsp;</span> &nbsp;&nbsp;
+    NO APLICA <span class="cb cb-on">&#10003;</span>
+  </div>
+</div>
+
+{{-- MOTIVACIÓN --}}
+<div style="border:1px solid #000; padding:3px 5px; margin-bottom:3px;">
+  <div class="lbl">MOTIVACIÓN: <span style="font-weight:normal;">(adjuntar anexo si lo posee)</span></div>
+  <div style="min-height:52px; font-size:8pt; word-wrap:break-word; overflow:hidden; margin-top:2px; white-space:pre-wrap;">{{ $accion->motivacion ?? '' }}</div>
+</div>
+
+{{-- SITUACIÓN ACTUAL vs PROPUESTA --}}
+<table style="width:100%; border-collapse:collapse; border:1px solid #000; margin-bottom:3px; table-layout:fixed;">
+  <tr>
+    <td style="width:50%; border-right:1px solid #000; padding:0; vertical-align:top;">
+      <div class="gray" style="text-align:center; font-weight:bold; font-size:8pt; padding:2px; border-bottom:1px solid #000;">SITUACION ACTUAL</div>
+      <table style="width:100%; border-collapse:collapse; table-layout:fixed;">
+        <tr><td class="sit-lbl">PROCESO INSTITUCIONAL:</td><td class="sit-val">{{ $accion->actual_proceso_inst ?? '' }}</td></tr>
+        <tr><td class="sit-lbl">NIVEL DE GESTIÓN:</td><td class="sit-val">&nbsp;</td></tr>
+        <tr><td class="sit-lbl">UNIDAD ADMINISTRATIVA:</td><td class="sit-val">{{ $deptActual }}</td></tr>
+        <tr><td class="sit-lbl">LUGAR DE TRABAJO:</td><td class="sit-val">Quito</td></tr>
+        <tr><td class="sit-lbl">DENOMINACIÓN DEL PUESTO:</td><td class="sit-val">{{ $accion->actual_cargo ?? '' }}</td></tr>
+        <tr><td class="sit-lbl">GRUPO OCUPACIONAL:</td><td class="sit-val">{{ $accion->actual_grupo_ocup ?? '' }}</td></tr>
+        <tr><td class="sit-lbl">GRADO:</td><td class="sit-val">{{ $accion->actual_grado ?? '' }}</td></tr>
+        <tr><td class="sit-lbl">REMUNERACIÓN MENSUAL:</td><td class="sit-val">${{ number_format($accion->actual_remuneracion ?? 0, 2) }}</td></tr>
+        <tr>
+          <td class="sit-lbl" style="border-bottom:none;">PARTIDA INDIVIDUAL:</td>
+          <td style="font-size:6.5pt; word-break:break-all; padding:1px 4px; border-bottom:none; vertical-align:top;">{{ $accion->actual_partida ?? '' }}</td>
+        </tr>
+      </table>
+    </td>
+    <td style="width:50%; padding:0; vertical-align:top;">
+      <div class="gray" style="text-align:center; font-weight:bold; font-size:8pt; padding:2px; border-bottom:1px solid #000;">SITUACION PROPUESTA</div>
+      <table style="width:100%; border-collapse:collapse; table-layout:fixed;">
+        <tr><td class="sit-lbl">PROCESO INSTITUCIONAL:</td><td class="sit-val">{{ $accion->propuesto_proceso_inst ?? '' }}</td></tr>
+        <tr><td class="sit-lbl">NIVEL DE GESTIÓN:</td><td class="sit-val">&nbsp;</td></tr>
+        <tr><td class="sit-lbl">UNIDAD ADMINISTRATIVA:</td><td class="sit-val">{{ $deptPropuesto }}</td></tr>
+        <tr><td class="sit-lbl">LUGAR DE TRABAJO:</td><td class="sit-val">Quito</td></tr>
+        <tr><td class="sit-lbl">DENOMINACIÓN DEL PUESTO:</td><td class="sit-val">{{ $accion->propuesto_cargo ?? '' }}</td></tr>
+        <tr><td class="sit-lbl">GRUPO OCUPACIONAL:</td><td class="sit-val">{{ $accion->propuesto_grupo_ocup ?? '' }}</td></tr>
+        <tr><td class="sit-lbl">GRADO:</td><td class="sit-val">{{ $accion->propuesto_grado ?? '' }}</td></tr>
+        <tr><td class="sit-lbl">REMUNERACIÓN MENSUAL:</td><td class="sit-val">${{ number_format($accion->propuesto_remuneracion ?? 0, 2) }}</td></tr>
+        <tr>
+          <td class="sit-lbl" style="border-bottom:none;">PARTIDA INDIVIDUAL:</td>
+          <td style="font-size:6.5pt; word-break:break-all; padding:1px 4px; border-bottom:none; vertical-align:top;">{{ $accion->propuesto_partida ?? '' }}</td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+
+{{-- POSESIÓN DEL PUESTO --}}
+<div style="border:1px solid #000; margin-bottom:3px;">
+  <div style="font-weight:bold; font-size:7.5pt; padding:2px 5px; border-bottom:1px solid #000;">POSESIÓN DEL PUESTO</div>
+  <table style="width:100%; border-collapse:collapse; table-layout:fixed; padding:0;">
+    <tr>
+      <td style="width:55%; padding:4px 6px; vertical-align:top; font-size:7.5pt; border-right:1px solid #000;">
+        YO, <span style="border-bottom:1px solid #000; display:inline-block; width:58%;">&nbsp;</span><br>
+        JURO LEALTAD AL ESTADO ECUATORIANO.<br>
+        LUGAR: <span style="border-bottom:1px solid #000; display:inline-block; width:26%;">&nbsp;</span>
+        &nbsp; FECHA: <span style="border-bottom:1px solid #000; display:inline-block; width:26%;">&nbsp;</span><br><br>
+        <div style="font-size:7pt;">** (EN CASO DE GANADOR DE CONCURSO DE MÉRITOS Y OPOSICIÓN)</div>
+        <table style="border-collapse:collapse; margin-top:3px; width:75%;">
+          <tr>
+            <td style="border:1px solid #000; padding:2px 5px; font-weight:bold; font-size:7.5pt; width:50%;">NRO. ACTA FINAL</td>
+            <td style="border:1px solid #000; border-left:none; padding:2px 5px; font-weight:bold; font-size:7.5pt;">FECHA</td>
+          </tr>
+          <tr>
+            <td style="border:1px solid #000; border-top:none; padding:5px;">&nbsp;</td>
+            <td style="border:1px solid #000; border-left:none; border-top:none; padding:5px;">&nbsp;</td>
+          </tr>
+        </table>
       </td>
-      <td class="title-cell">
-        <div class="title-main"><h1>ACCIÓN DE PERSONAL</h1></div>
-        <div class="title-meta">
-          <table>
-            <tr>
-              <td class="label">Nro.</td>
-              <td class="value">{{ $accion->numero_accion }}</td>
-            </tr>
-            <tr>
-              <td class="label">FECHA DE ELABORACIÓN</td>
-              <td class="value">{{ \Carbon\Carbon::parse($accion->fecha_elaboracion)->format('d/m/Y') }}</td>
-            </tr>
-          </table>
-        </div>
+      <td style="width:45%; padding:4px 6px; vertical-align:top; font-size:7.5pt;">
+        CON NRO. DE DOCUMENTO DE IDENTIFICACIÓN:
+        <span style="border-bottom:1px solid #000; display:inline-block; width:40%;">&nbsp;</span><br><br><br>
+        FIRMA: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">&nbsp;</span><br>
+        <div style="text-align:right; padding-right:5%; font-weight:bold; margin-top:2px;">SERVIDOR PÚBLICO</div>
       </td>
     </tr>
   </table>
+</div>
 
-  {{-- DATOS DEL EMPLEADO --}}
-  <div class="section">
-    <table class="section-row">
-      <tr>
-        <td style="width:45%; border-right:1px solid #000;">
-          <div class="label">APELLIDOS</div>
-          <div class="value">{{ strtoupper($accion->empleado->apellido_emp ?? '') }}</div>
-        </td>
-        <td style="width:55%;">
-          <div class="label">NOMBRES</div>
-          <div class="value">{{ strtoupper($accion->empleado->nombre_emp ?? '') }}</div>
-        </td>
-      </tr>
-      <tr>
-        <td style="border-right:1px solid #000; border-top:1px solid #000;">
-          <div class="label">DOCUMENTO DE IDENTIFICACIÓN</div>
-          <div class="value">CÉDULA DE CIUDADANÍA</div>
-        </td>
-        <td style="border-top:1px solid #000;">
-          <div class="label">NRO. DE IDENTIFICACIÓN</div>
-          <div class="value">{{ $accion->empleado->identificacion ?? '' }}</div>
-        </td>
-      </tr>
-    </table>
-    <div style="border-top:1px solid #000; padding: 2px 5px;">
-      <span class="label">RIGE: &nbsp;</span>
-      <span class="label">DESDE:</span> <span class="value">{{ \Carbon\Carbon::parse($accion->fecha_inicio)->format('d/m/Y') }}</span>
-      &nbsp;&nbsp;&nbsp;
-      <span class="label">HASTA:</span>
-      <span class="value">
-        @if($accion->fecha_fin)
-          {{ \Carbon\Carbon::parse($accion->fecha_fin)->format('d/m/Y') }}
-        @else
-          Hasta nueva orden
-        @endif
-      </span>
-    </div>
-  </div>
-
-  {{-- TIPO DE ACCIÓN --}}
-  <div class="section" style="padding: 3px 5px;">
-    <div class="label" style="margin-bottom:3px;">Escoja una opción <span style="font-weight:normal;">(según lo estipulado en el artículo 21 del Reglamento General a la Ley Orgánica del Servicio Público)</span></div>
-    @php
-      $tipo = strtoupper($accion->tipo_accion);
-      function chk($tipo, $val) { return $tipo === $val ? '&#10003;' : '&nbsp;'; }
-      function chkClass($tipo, $val) { return $tipo === $val ? 'checkbox checked' : 'checkbox'; }
-    @endphp
-    {{-- 5 columnas iguales (20% cada una), sin nowrap --}}
-    <table class="checks-table">
-      <colgroup>
-        <col style="width:20%"><col style="width:20%"><col style="width:22%"><col style="width:22%"><col style="width:16%">
-      </colgroup>
-      <tr>
-        <td><span class="{{ chkClass($tipo,'INGRESO') }}">{!! chk($tipo,'INGRESO') !!}</span> INGRESO</td>
-        <td><span class="{{ chkClass($tipo,'TRASPASO') }}">{!! chk($tipo,'TRASPASO') !!}</span> TRASPASO</td>
-        <td><span class="{{ chkClass($tipo,'INCREMENTO RMU') }}">{!! chk($tipo,'INCREMENTO RMU') !!}</span> INCREMENTO RMU</td>
-        <td><span class="{{ chkClass($tipo,'REVISION CLASI. PUESTO') }}">{!! chk($tipo,'REVISION CLASI. PUESTO') !!}</span> REVISIÓN CLASI. PUESTO</td>
-        <td><span class="checkbox">&nbsp;</span> OTRO</td>
-      </tr>
-      <tr>
-        <td><span class="{{ chkClass($tipo,'REINGRESO') }}">{!! chk($tipo,'REINGRESO') !!}</span> REINGRESO</td>
-        <td><span class="{{ chkClass($tipo,'CAMBIO ADMINISTRATIVO') }}">{!! chk($tipo,'CAMBIO ADMINISTRATIVO') !!}</span> CAMBIO ADMINISTRATIVO</td>
-        <td><span class="{{ chkClass($tipo,'SUBROGACION') }}">{!! chk($tipo,'SUBROGACION') !!}</span> SUBROGACIÓN</td>
-        <td colspan="2"></td>
-      </tr>
-      <tr>
-        <td><span class="{{ chkClass($tipo,'RESTITUCION') }}">{!! chk($tipo,'RESTITUCION') !!}</span> RESTITUCIÓN</td>
-        <td><span class="{{ chkClass($tipo,'INTERCAMBIO VOLUNTARIO') }}">{!! chk($tipo,'INTERCAMBIO VOLUNTARIO') !!}</span> INTERCAMBIO VOLUNTARIO</td>
-        <td><span class="{{ chkClass($tipo,'ENCARGO') }}">{!! chk($tipo,'ENCARGO') !!}</span> ENCARGO</td>
-        <td colspan="2"></td>
-      </tr>
-      <tr>
-        <td><span class="{{ chkClass($tipo,'REINTEGRO') }}">{!! chk($tipo,'REINTEGRO') !!}</span> REINTEGRO</td>
-        <td><span class="{{ chkClass($tipo,'LICENCIA') }}">{!! chk($tipo,'LICENCIA') !!}</span> LICENCIA</td>
-        <td><span class="{{ chkClass($tipo,'CESACION DE FUNCIONES') }}">{!! chk($tipo,'CESACION DE FUNCIONES') !!}</span> CESACIÓN DE FUNCIONES</td>
-        <td colspan="2"></td>
-      </tr>
-      <tr>
-        <td><span class="{{ chkClass($tipo,'ASCENSO') }}">{!! chk($tipo,'ASCENSO') !!}</span> ASCENSO</td>
-        <td><span class="{{ chkClass($tipo,'COMISION DE SERVICIOS') }}">{!! chk($tipo,'COMISION DE SERVICIOS') !!}</span> COMISIÓN DE SERVICIOS</td>
-        <td><span class="{{ chkClass($tipo,'DESTITUCION') }}">{!! chk($tipo,'DESTITUCION') !!}</span> DESTITUCIÓN</td>
-        <td colspan="2"></td>
-      </tr>
-      <tr>
-        <td><span class="{{ chkClass($tipo,'TRASLADO') }}">{!! chk($tipo,'TRASLADO') !!}</span> TRASLADO</td>
-        <td><span class="{{ chkClass($tipo,'SANCIONES') }}">{!! chk($tipo,'SANCIONES') !!}</span> SANCIONES</td>
-        <td><span class="{{ chkClass($tipo,'VACACIONES') }}">{!! chk($tipo,'VACACIONES') !!}</span> VACACIONES</td>
-        <td colspan="2"></td>
-      </tr>
-    </table>
-  </div>
-
-  {{-- MOTIVACIÓN --}}
-  <div class="section" style="padding: 2px 5px;">
-    <div class="label">MOTIVACIÓN: <span style="font-weight:normal;">(adjuntar anexo si lo posee)</span></div>
-    <div class="motivacion-box">{{ $accion->motivacion ?? '' }}</div>
-  </div>
-
-  {{-- SITUACIÓN ACTUAL vs PROPUESTA --}}
-  <table class="sit-table">
+{{-- RESPONSABLES DE APROBACIÓN --}}
+<div style="border:1px solid #000; margin-bottom:3px;">
+  <div class="gray" style="text-align:center; font-weight:bold; font-size:8pt; padding:2px; border-bottom:1px solid #000;">RESPONSABLES DE APROBACIÓN</div>
+  <table style="width:100%; border-collapse:collapse; table-layout:fixed;">
     <tr>
-      <td style="width:50%; border-right:1px solid #000; padding:0; vertical-align:top;">
-        <div class="sit-header">SITUACIÓN ACTUAL</div>
-        <table class="sit-inner">
-          <tr><td>PROCESO INSTITUCIONAL:</td><td>{{ $accion->actual_proceso_inst ?? '' }}</td></tr>
-          <tr><td>NIVEL DE GESTIÓN:</td><td>{{ $accion->empleado->departamento->nombre_depto ?? '' }}</td></tr>
-          <tr><td>LUGAR DE TRABAJO:</td><td>Quito</td></tr>
-          <tr><td>DENOMINACIÓN DEL PUESTO:</td><td>{{ $accion->actual_cargo ?? '' }}</td></tr>
-          <tr><td>GRUPO OCUPACIONAL:</td><td>{{ $accion->actual_grupo_ocup ?? '' }}</td></tr>
-          <tr><td>GRADO:</td><td>{{ $accion->actual_grado ?? '' }}</td></tr>
-          <tr><td>REMUNERACIÓN MENSUAL:</td><td>${{ number_format($accion->actual_remuneracion ?? 0, 2) }}</td></tr>
-          <tr><td>PARTIDA INDIVIDUAL:</td><td style="font-size:6.5pt; word-break:break-all;">{{ $accion->actual_partida ?? '' }}</td></tr>
-        </table>
+      <td style="width:50%; border-right:1px solid #000; padding:5px 6px; vertical-align:bottom;">
+        <div class="lbl">DIRECTOR (A) O RESPONSABLE DE TALENTO HUMANO</div>
+        <div style="min-height:26px;"></div>
+        <div style="font-size:7.5pt;">FIRMA: <span style="border-bottom:1px solid #000; display:inline-block; width:68%;">&nbsp;</span></div>
+        <div style="font-size:7.5pt; margin-top:1px;">NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">{{ $config['DIRECTOR_TALENTO_HUMANO'] ?? '' }}</span></div>
+        <div style="font-size:7.5pt; margin-top:1px;">PUESTO: <span style="border-bottom:1px solid #000; display:inline-block; width:64%;">DIRECTOR DE ADMINISTRACIÓN DEL TALENTO HUMANO</span></div>
       </td>
-      <td style="width:50%; padding:0; vertical-align:top;">
-        <div class="sit-header">SITUACIÓN PROPUESTA</div>
-        <table class="sit-inner">
-          <tr><td>PROCESO INSTITUCIONAL:</td><td>{{ $accion->propuesto_proceso_inst ?? '' }}</td></tr>
-          <tr><td>NIVEL DE GESTIÓN:</td><td></td></tr>
-          <tr><td>LUGAR DE TRABAJO:</td><td>Quito</td></tr>
-          <tr><td>DENOMINACIÓN DEL PUESTO:</td><td>{{ $accion->propuesto_cargo ?? '' }}</td></tr>
-          <tr><td>GRUPO OCUPACIONAL:</td><td>{{ $accion->propuesto_grupo_ocup ?? '' }}</td></tr>
-          <tr><td>GRADO:</td><td>{{ $accion->propuesto_grado ?? '' }}</td></tr>
-          <tr><td>REMUNERACIÓN MENSUAL:</td><td>${{ number_format($accion->propuesto_remuneracion ?? 0, 2) }}</td></tr>
-          <tr><td>PARTIDA INDIVIDUAL:</td><td style="font-size:6.5pt; word-break:break-all;">{{ $accion->propuesto_partida ?? '' }}</td></tr>
-        </table>
+      <td style="width:50%; padding:5px 6px; vertical-align:bottom;">
+        <div class="lbl">AUTORIDAD NOMINADORA O SU DELEGADO</div>
+        <div style="min-height:26px;"></div>
+        <div style="font-size:7.5pt;">FIRMA: <span style="border-bottom:1px solid #000; display:inline-block; width:68%;">&nbsp;</span></div>
+        <div style="font-size:7.5pt; margin-top:1px;">NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">{{ $config['PRESIDENTE_INSTITUCION'] ?? '' }}</span></div>
+        <div style="font-size:7.5pt; margin-top:1px;">PUESTO: <span style="border-bottom:1px solid #000; display:inline-block; width:64%;">&nbsp;</span></div>
       </td>
     </tr>
   </table>
+</div>
 
-  {{-- FIRMAS --}}
-  <div class="firma-section">
-    <div class="firma-header">RESPONSABLES DE APROBACIÓN</div>
-    <table class="firma-table">
-      <tr>
-        <td style="border-right:1px solid #000;">
-          <div style="font-size:7pt; font-weight:bold;">DIRECTOR (A) O RESPONSABLE DE TALENTO HUMANO</div>
-          <div class="firma-line">
-            <div class="label">FIRMA: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
-            <div style="font-size:7pt;">NOMBRE: {{ $config['DIRECTOR_TALENTO_HUMANO'] ?? '' }}</div>
-            <div style="font-size:7pt;">PUESTO: Director/a de Talento Humano</div>
-          </div>
-        </td>
-        <td>
-          <div style="font-size:7pt; font-weight:bold;">AUTORIDAD NOMINADORA O SU DELEGADO</div>
-          <div class="firma-line">
-            <div class="label">FIRMA: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
-            <div style="font-size:7pt;">NOMBRE: {{ $config['PRESIDENTE_INSTITUCION'] ?? '' }}</div>
-            <div style="font-size:7pt;">PUESTO: Presidente del Consejo</div>
-          </div>
-        </td>
-      </tr>
-    </table>
-  </div>
-
-  <div class="footer">
-    Elaborado por el Ministerio del Trabajo &nbsp;|&nbsp; Versión: 01.1 &nbsp;|&nbsp; Fecha actualización formato: 2024-08-23 &nbsp;|&nbsp; Página 1 de 2
-  </div>
+{{-- FOOTER P1 --}}
+<table style="width:100%; border-collapse:collapse; margin-top:3px;">
+  <tr>
+    <td style="font-size:6.5pt; color:#555;">Elaborado por el Ministerio del Trabajo</td>
+    <td style="font-size:6.5pt; color:#555; text-align:right;">Fecha de actualización de formato: 2024-08-23 &nbsp;/&nbsp; Versión: 01.1 &nbsp;/&nbsp; Página 1 de 2</td>
+  </tr>
+</table>
 
 </div>
 
 {{-- ==================== PÁGINA 2 ==================== --}}
-<div class="page page-break">
+<div class="page pg2">
 
-  {{-- ENCABEZADO --}}
-  <table class="header-table">
+{{-- RESPONSABLES DE FIRMAS --}}
+<div style="border:1px solid #000; margin-bottom:4px;">
+  <div class="gray" style="text-align:center; font-weight:bold; font-size:8pt; padding:2px; border-bottom:1px solid #000;">RESPONSABLES DE FIRMAS</div>
+  <table style="width:100%; border-collapse:collapse; table-layout:fixed;">
     <tr>
-      <td class="logo-cell">
-        @if($logo)
-          <img src="{{ $logo }}" alt="Logo">
-        @else
-          <div style="font-size:7pt;color:#777;">(LOGO)</div>
-        @endif
+      <td style="width:50%; border-right:1px solid #000; padding:0; vertical-align:top;">
+        <div class="gray" style="text-align:center; font-weight:bold; font-size:7.5pt; padding:2px; border-bottom:1px solid #000;">ACEPTACIÓN Y/O RECEPCIÓN DEL SERVIDOR PÚBLICO</div>
+        <div style="padding:5px 6px;">
+          <div style="min-height:55px;"></div>
+          <div style="font-size:7.5pt;">FIRMA <span style="border-bottom:1px solid #000; display:inline-block; width:74%;">&nbsp;</span></div>
+          <div style="font-size:7.5pt; margin-top:2px;">NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:68%;">&nbsp;</span></div>
+          <div style="font-size:7.5pt; margin-top:2px;">FECHA: <span style="border-bottom:1px solid #000; display:inline-block; width:71%;">&nbsp;</span></div>
+          <div style="font-size:7.5pt; margin-top:2px;">HORA: <span style="border-bottom:1px solid #000; display:inline-block; width:73%;">&nbsp;</span></div>
+        </div>
       </td>
-      <td class="title-cell">
-        <div class="title-main"><h1>ACCIÓN DE PERSONAL</h1></div>
-        <div class="title-meta">
-          <table>
-            <tr>
-              <td class="label">Nro.</td>
-              <td class="value">{{ $accion->numero_accion }}</td>
-            </tr>
-            <tr>
-              <td class="label">FECHA DE ELABORACIÓN</td>
-              <td class="value">{{ \Carbon\Carbon::parse($accion->fecha_elaboracion)->format('d/m/Y') }}</td>
-            </tr>
-          </table>
+      <td style="width:50%; padding:0; vertical-align:top;">
+        <div class="gray" style="text-align:center; font-weight:bold; font-size:7.5pt; padding:2px; border-bottom:1px solid #000;">EN CASO DE NEGATIVA DE LA RECEPCIÓN (TESTIGO)</div>
+        <div style="padding:5px 6px;">
+          <div style="min-height:55px;"></div>
+          <div style="font-size:7.5pt;">FIRMA: <span style="border-bottom:1px solid #000; display:inline-block; width:73%;">&nbsp;</span></div>
+          <div style="font-size:7.5pt; margin-top:2px;">NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:68%;">&nbsp;</span></div>
+          <div style="font-size:7.5pt; margin-top:2px;">FECHA: <span style="border-bottom:1px solid #000; display:inline-block; width:71%;">&nbsp;</span></div>
+          <div style="font-size:7.5pt; margin-top:4px;">
+            <b>RAZÓN:</b> En presencia del testigo se deja constancia de que la o el servidor
+            público tiene la negativa de recibir la comunicación de registro de esta acción de personal.
+          </div>
         </div>
       </td>
     </tr>
   </table>
+</div>
 
-  {{-- REGISTRO DE NOTIFICACIÓN --}}
-  <div class="section" style="padding: 3px 5px; margin-bottom: 6px;">
-    <div class="gray-bg" style="text-align:center; font-weight:bold; font-size:9pt; padding:3px; margin-bottom:4px;">
-      REGISTRO DE NOTIFICACIÓN AL SERVIDOR/A
-    </div>
+{{-- TRES RESPONSABLES --}}
+<div style="border:1px solid #000; margin-bottom:12px;">
+  <table style="width:100%; border-collapse:collapse; table-layout:fixed;">
+    <tr>
+      <td style="width:33.3%; border-right:1px solid #000; padding:0; vertical-align:top;">
+        <div class="gray" style="text-align:center; font-weight:bold; font-size:7.5pt; padding:2px; border-bottom:1px solid #000;">RESPONSABLE DE ELABORACIÓN</div>
+        <div style="padding:5px 6px;">
+          <div style="min-height:55px;"></div>
+          <div style="font-size:7.5pt;">FIRMA: <span style="border-bottom:1px solid #000; display:inline-block; width:68%;">&nbsp;</span></div>
+          <div style="font-size:7.5pt; margin-top:2px;">NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">&nbsp;</span></div>
+          <div style="font-size:7.5pt; margin-top:2px;">PUESTO: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">&nbsp;</span></div>
+        </div>
+      </td>
+      <td style="width:33.3%; border-right:1px solid #000; padding:0; vertical-align:top;">
+        <div class="gray" style="text-align:center; font-weight:bold; font-size:7.5pt; padding:2px; border-bottom:1px solid #000;">RESPONSABLE DE REVISIÓN</div>
+        <div style="padding:5px 6px;">
+          <div style="min-height:55px;"></div>
+          <div style="font-size:7.5pt;">FIRMA: <span style="border-bottom:1px solid #000; display:inline-block; width:68%;">&nbsp;</span></div>
+          <div style="font-size:7.5pt; margin-top:2px;">NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">&nbsp;</span></div>
+          <div style="font-size:7.5pt; margin-top:2px;">PUESTO: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">&nbsp;</span></div>
+        </div>
+      </td>
+      <td style="width:33.4%; padding:0; vertical-align:top;">
+        <div class="gray" style="text-align:center; font-weight:bold; font-size:7.5pt; padding:2px; border-bottom:1px solid #000;">RESPONSABLE DE REGISTRO Y CONTROL</div>
+        <div style="padding:5px 6px;">
+          <div style="min-height:55px;"></div>
+          <div style="font-size:7.5pt;">FIRMA: <span style="border-bottom:1px solid #000; display:inline-block; width:68%;">&nbsp;</span></div>
+          <div style="font-size:7.5pt; margin-top:2px;">NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">&nbsp;</span></div>
+          <div style="font-size:7.5pt; margin-top:2px;">PUESTO: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">&nbsp;</span></div>
+        </div>
+      </td>
+    </tr>
+  </table>
+</div>
 
-    <table class="notif-table" style="margin-bottom:6px;">
-      <tr>
-        <td class="notif-label">APELLIDOS Y NOMBRES:</td>
-        <td class="notif-value">{{ strtoupper(($accion->empleado->apellido_emp ?? '') . ', ' . ($accion->empleado->nombre_emp ?? '')) }}</td>
-      </tr>
-      <tr>
-        <td class="notif-label">NRO. DE IDENTIFICACIÓN:</td>
-        <td class="notif-value">{{ $accion->empleado->identificacion ?? '' }}</td>
-      </tr>
-      <tr>
-        <td class="notif-label">ACCIÓN DE PERSONAL Nro.:</td>
-        <td class="notif-value">{{ $accion->numero_accion }}</td>
-      </tr>
-      <tr>
-        <td class="notif-label">TIPO DE ACCIÓN:</td>
-        <td class="notif-value">{{ $accion->tipo_accion }}</td>
-      </tr>
-      <tr>
-        <td class="notif-label">VIGENCIA:</td>
-        <td class="notif-value">
-          Desde: {{ \Carbon\Carbon::parse($accion->fecha_inicio)->format('d/m/Y') }}
-          &nbsp;&nbsp;
-          Hasta: {{ $accion->fecha_fin ? \Carbon\Carbon::parse($accion->fecha_fin)->format('d/m/Y') : 'Hasta nueva orden' }}
-        </td>
-      </tr>
-    </table>
+{{-- USO EXCLUSIVO TH --}}
+<div style="border-top:2px dashed #000; border-bottom:2px dashed #000; padding:5px 0; margin-bottom:8px; text-align:center;">
+  <span style="font-size:13pt; font-weight:bold;">** USO EXCLUSIVO PARA TALENTO HUMANO</span>
+</div>
 
-    <p style="font-size:8pt; margin-bottom:6px;">
-      Se notifica al servidor/a antes indicado/a sobre la presente Acción de Personal y su contenido,
-      en cumplimiento de lo establecido en la normativa vigente del Servicio Público.
-    </p>
-
-    {{-- Firma del servidor --}}
-    <table style="width:100%; border-collapse:collapse; table-layout:fixed; margin-bottom:10px;">
-      <tr>
-        <td style="width:50%; padding:4px 6px; border:1px solid #000; vertical-align:bottom;">
-          <div style="font-size:7pt; font-weight:bold;">FECHA DE NOTIFICACIÓN:</div>
-          <div style="min-height:20px; border-bottom:1px solid #555; margin-top:14px;"></div>
-          <div style="font-size:7pt;">dd / mm / aaaa</div>
-        </td>
-        <td style="width:50%; padding:4px 6px; border:1px solid #000; border-left:none; vertical-align:bottom;">
-          <div style="font-size:7pt; font-weight:bold;">FIRMA DEL SERVIDOR/A NOTIFICADO/A:</div>
-          <div style="min-height:20px; border-bottom:1px solid #555; margin-top:14px;"></div>
-          <div style="font-size:7pt;">{{ strtoupper(($accion->empleado->apellido_emp ?? '') . ', ' . ($accion->empleado->nombre_emp ?? '')) }}</div>
-        </td>
-      </tr>
-    </table>
-
-    {{-- Observaciones --}}
-    <div style="margin-bottom:8px;">
-      <div class="label" style="margin-bottom:2px;">OBSERVACIONES:</div>
-      <div style="border:1px solid #999; min-height:40px; padding:3px;"></div>
-    </div>
-
-    {{-- Distribución de copias --}}
-    <div>
-      <div class="gray-bg" style="text-align:center; font-weight:bold; font-size:8pt; padding:2px; border:1px solid #000; border-bottom:none;">
-        DISTRIBUCIÓN DE COPIAS
-      </div>
-      <table style="width:100%; border-collapse:collapse; table-layout:fixed; border:1px solid #000;">
-        <tr>
-          <td style="border:1px solid #000; padding:2px 5px; font-size:7.5pt; width:10%; font-weight:bold; text-align:center;">1</td>
-          <td style="border:1px solid #000; padding:2px 5px; font-size:7.5pt; width:50%;">DIRECCIÓN DE ADMINISTRACIÓN DEL TALENTO HUMANO</td>
-          <td style="border:1px solid #000; padding:2px 5px; font-size:7.5pt; width:40%;">ARCHIVO</td>
-        </tr>
-        <tr>
-          <td style="border:1px solid #000; padding:2px 5px; font-size:7.5pt; text-align:center; font-weight:bold;">2</td>
-          <td style="border:1px solid #000; padding:2px 5px; font-size:7.5pt;">SERVIDOR/A NOTIFICADO/A</td>
-          <td style="border:1px solid #000; padding:2px 5px; font-size:7.5pt;"></td>
-        </tr>
-        <tr>
-          <td style="border:1px solid #000; padding:2px 5px; font-size:7.5pt; text-align:center; font-weight:bold;">3</td>
-          <td style="border:1px solid #000; padding:2px 5px; font-size:7.5pt;">ÁREA / UNIDAD RESPONSABLE</td>
-          <td style="border:1px solid #000; padding:2px 5px; font-size:7.5pt;"></td>
-        </tr>
-      </table>
-    </div>
+{{-- REGISTRO DE NOTIFICACIÓN --}}
+<div style="border:1px solid #000; padding:6px 8px;">
+  <div style="font-size:8pt; margin-bottom:6px;">
+    <b>REGISTRO DE NOTIFICACIÓN AL SERVIDOR PÚBLICO DE LA ACCIÓN DE PERSONAL</b>
+    <span style="font-size:7pt; font-weight:normal;"> (primer inciso del art. 22 RGLOSEP, art. 101 COA, art. 66 y 126 ERJAFE)</span>
   </div>
 
-  {{-- Firma responsable de notificación --}}
-  <div class="firma-section">
-    <div class="firma-header">RESPONSABLE DE LA NOTIFICACIÓN</div>
-    <table class="firma-table">
-      <tr>
-        <td style="border-right:1px solid #000; text-align:center;">
-          <div style="font-size:7pt; font-weight:bold;">DIRECTOR (A) O RESPONSABLE DE TALENTO HUMANO</div>
-          <div class="firma-line">
-            <div class="label">FIRMA: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
-            <div style="font-size:7pt;">NOMBRE: {{ $config['DIRECTOR_TALENTO_HUMANO'] ?? '' }}</div>
-            <div style="font-size:7pt;">PUESTO: Director/a de Talento Humano</div>
-          </div>
-        </td>
-        <td style="text-align:center;">
-          <div style="font-size:7pt; font-weight:bold;">FECHA:</div>
-          <div style="min-height:30px; border-bottom:1px solid #555; margin-top:20px;"></div>
-          <div style="font-size:7pt;">dd / mm / aaaa</div>
-        </td>
-      </tr>
-    </table>
+  <div style="font-size:8pt; margin-bottom:6px;">
+    COMUNICACIÓN ELECTRÓNICA: &nbsp; <span class="cb">&nbsp;</span>
   </div>
 
-  <div class="footer">
-    Elaborado por el Ministerio del Trabajo &nbsp;|&nbsp; Versión: 01.1 &nbsp;|&nbsp; Fecha actualización formato: 2024-08-23 &nbsp;|&nbsp; Página 2 de 2
+  <table style="width:100%; border-collapse:collapse; table-layout:fixed; margin-bottom:4px;">
+    <tr>
+      <td style="width:50%; font-size:8pt; padding:2px 0;">
+        FECHA: <span style="border-bottom:1px solid #000; display:inline-block; width:65%;">&nbsp;</span>
+      </td>
+      <td style="width:50%; font-size:8pt; padding:2px 0;">
+        HORA: <span style="border-bottom:1px solid #000; display:inline-block; width:65%;">&nbsp;</span>
+      </td>
+    </tr>
+  </table>
+
+  <div style="font-size:8pt; margin-bottom:8px;">
+    ** MEDIO: <span style="border-bottom:1px solid #000; display:inline-block; width:38%;">&nbsp;</span>
   </div>
+
+  <div style="border-bottom:1px solid #000; margin-bottom:5px; width:55%;">&nbsp;</div>
+  <div style="border-bottom:1px solid #000; margin-bottom:5px; width:55%;">&nbsp;</div>
+  <div style="border-bottom:1px solid #000; margin-bottom:5px; width:55%;">&nbsp;</div>
+
+  <div style="min-height:35px;"></div>
+
+  <div style="text-align:center; margin-bottom:4px;">
+    <span style="border-top:1px solid #000; display:inline-block; width:48%; padding-top:3px; font-size:7.5pt; font-weight:bold; text-align:center;">
+      FIRMA DEL RESPONSABLE QUE NOTIFICÓ
+    </span>
+  </div>
+
+  <div style="font-size:8pt; margin-bottom:2px;">
+    NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:65%;">&nbsp;</span>
+  </div>
+  <div style="font-size:8pt; margin-bottom:8px;">
+    PUESTO: <span style="border-bottom:1px solid #000; display:inline-block; width:65%;">&nbsp;</span>
+  </div>
+
+  <div style="font-size:7pt; color:#333;">
+    ** Si la comunicación fue electrónica se deberá colocar el medio por el cual se notificó al servidor; así como, el número del documento.
+  </div>
+</div>
+
+{{-- FOOTER P2 --}}
+<table style="width:100%; border-collapse:collapse; margin-top:4px;">
+  <tr>
+    <td style="font-size:6.5pt; color:#555;">Elaborado por el Ministerio del Trabajo</td>
+    <td style="font-size:6.5pt; color:#555; text-align:right;">Fecha de actualización de formato: 2024-08-23 &nbsp;/&nbsp; Versión: 01.1 &nbsp;/&nbsp; Página 1 de 2</td>
+  </tr>
+</table>
 
 </div>
 </body>

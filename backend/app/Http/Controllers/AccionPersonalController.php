@@ -138,7 +138,7 @@ class AccionPersonalController extends Controller
     // GET /api/acciones-personal/{id}/pdf
     public function pdf($id)
     {
-        $accion = AccionPersonal::with(["empleado.departamento", "titular"])->findOrFail($id);
+        $accion = AccionPersonal::with(["empleado.departamento", "titular.departamento"])->findOrFail($id);
 
         $config = Configuracion::whereIn("concepto", [
             "DIRECTOR_TALENTO_HUMANO",
