@@ -80,15 +80,15 @@
 <table style="width:100%; border-collapse:collapse; border:1px solid #000; margin-bottom:3px; table-layout:fixed;">
   <tr>
     <td style="width:42%; border-right:1px solid #000; border-bottom:1px solid #000; padding:3px 6px; text-align:center; vertical-align:middle;">
-      <div class="lbl">APELLIDOS</div>
-      <div style="font-size:10pt; margin-top:2px;">{{ strtoupper($accion->empleado->apellido_emp ?? '') }}</div>
+      <div style="font-size:10pt; font-weight:bold;">{{ strtoupper($accion->empleado->apellido_emp ?? '') }}</div>
+      <div class="lbl" style="border-top:1px solid #ccc; margin-top:3px; padding-top:1px;">APELLIDOS</div>
     </td>
     <td style="width:58%; border-bottom:1px solid #000; padding:0; vertical-align:top;">
       <table style="width:100%; border-collapse:collapse; table-layout:fixed;">
         <tr>
           <td colspan="2" style="border-bottom:1px solid #000; padding:3px 6px; text-align:center;">
-            <div class="lbl">NOMBRES</div>
-            <div style="font-size:10pt; margin-top:2px;">{{ strtoupper($accion->empleado->nombre_emp ?? '') }}</div>
+            <div style="font-size:10pt; font-weight:bold;">{{ strtoupper($accion->empleado->nombre_emp ?? '') }}</div>
+            <div class="lbl" style="border-top:1px solid #ccc; margin-top:3px; padding-top:1px;">NOMBRES</div>
           </td>
         </tr>
         <tr>
