@@ -377,22 +377,22 @@
   </div>
 
   <div style="font-size:8pt; margin-bottom:6px;">
-    COMUNICACIÓN ELECTRÓNICA: &nbsp; <span class="cb">&nbsp;</span>
+    COMUNICACIÓN ELECTRÓNICA: &nbsp; <span class="cb cb-on">X</span>
   </div>
 
   <table style="width:100%; border-collapse:collapse; table-layout:fixed; margin-bottom:4px;">
     <tr>
       <td style="width:50%; font-size:8pt; padding:2px 0;">
-        FECHA: <span style="border-bottom:1px solid #000; display:inline-block; width:65%;">&nbsp;</span>
+        FECHA: <span style="border-bottom:1px solid #000; display:inline-block; width:65%;">CONSTA EN CORREO ELECTRÓNICO</span>
       </td>
       <td style="width:50%; font-size:8pt; padding:2px 0;">
-        HORA: <span style="border-bottom:1px solid #000; display:inline-block; width:65%;">&nbsp;</span>
+        HORA: <span style="border-bottom:1px solid #000; display:inline-block; width:65%;">CONSTA EN CORREO ELECTRÓNICO</span>
       </td>
     </tr>
   </table>
 
   <div style="font-size:8pt; margin-bottom:8px;">
-    ** MEDIO: <span style="border-bottom:1px solid #000; display:inline-block; width:38%;">&nbsp;</span>
+    ** MEDIO: <span style="border-bottom:1px solid #000; display:inline-block; width:38%;">DIGITAL</span>
   </div>
 
   <div style="border-bottom:1px solid #000; margin-bottom:5px; width:55%;">&nbsp;</div>
