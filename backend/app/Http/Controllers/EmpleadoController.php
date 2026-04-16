@@ -80,7 +80,7 @@ class EmpleadoController extends Controller
             "nivel"                  => "required|integer",
             "sueldo"                 => "required|numeric|min:0",
             "partida_presupuestaria" => "required|string|max:100",
-            "partida_individual"     => "required|string|max:60",
+            "partida_individual"     => "required|integer|min:1",
             "proceso_institucional"  => "required|string|max:30",
             "modalidad_laboral"      => "required|string|max:50",
         ]);
@@ -155,7 +155,7 @@ class EmpleadoController extends Controller
             "nivel"                  => "required|integer",
             "sueldo"                 => "required|numeric|min:0",
             "partida_presupuestaria" => "required|string|max:100",
-            "partida_individual"     => "required|string|max:60",
+            "partida_individual"     => "required|integer|min:1",
             "proceso_institucional"  => "required|string|max:30",
             "modalidad_laboral"      => "required|string|max:50",
         ]);
