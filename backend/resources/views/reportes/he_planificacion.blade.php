@@ -186,34 +186,6 @@
   </tbody>
 </table>
 
-{{-- PORCENTAJES Y CÁLCULO REFERENCIAL --}}
-<table style="border:1px solid #ccc; margin-bottom:10px; font-size:8pt;">
-  <tr>
-    <td style="background:#efefef; font-weight:bold; padding:4px 8px;" colspan="4">
-      PORCENTAJES APLICABLES ({{ $tipoContr }})
-    </td>
-  </tr>
-  <tr>
-    <td style="padding:3px 8px; width:40%;"><b>H. Extraordinarias:</b> Fuera de jornada hasta 11:59 PM → {{ $porcExtra }}%</td>
-    <td style="padding:3px 8px; width:25%;"><b>Tarifa c/recargo:</b> $ {{ number_format($valorExtra, 4) }}/h</td>
-    <td style="padding:3px 8px; width:20%;"><b>Horas planif.:</b> {{ number_format($cab->total_extraordinarias, 2) }} h</td>
-    <td style="padding:3px 8px; width:15%;"><b>Subtotal:</b> $ {{ number_format($pagoExtra, 2) }}</td>
-  </tr>
-  <tr>
-    <td style="padding:3px 8px;"><b>H. Suplementarias:</b> Desde 00:00 hasta inicio jornada / fines → {{ $porcSupl }}%</td>
-    <td style="padding:3px 8px;"><b>Tarifa c/recargo:</b> $ {{ number_format($valorSupl, 4) }}/h</td>
-    <td style="padding:3px 8px;"><b>Horas planif.:</b> {{ number_format($cab->total_suplementarias, 2) }} h</td>
-    <td style="padding:3px 8px;"><b>Subtotal:</b> $ {{ number_format($pagoSupl, 2) }}</td>
-  </tr>
-  <tr>
-    <td colspan="3" style="text-align:right; font-weight:bold; padding:4px 8px;">TOTAL REFERENCIAL A PAGAR:</td>
-    <td style="font-weight:bold; padding:4px 8px;">$ {{ number_format($pagoTotal, 2) }}</td>
-  </tr>
-</table>
-
-<p class="nota">* El total referencial es un valor estimado basado en las horas planificadas. El valor real depende de las horas efectivamente trabajadas y confirmadas.</p>
-<p class="nota">* Base de cálculo: Remuneración mensual / 240 horas (30 días × 8 horas)</p>
-
 {{-- FIRMAS --}}
 <table class="firma-table" style="margin-top:30px;">
   <tr>
