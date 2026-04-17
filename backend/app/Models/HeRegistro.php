@@ -13,6 +13,8 @@ class HeRegistro extends Model
         "cab_id",
         "id_emp",
         "fecha",
+        "hora_inicio",
+        "hora_fin",
         "horas_extraordinarias",
         "horas_suplementarias",
         "descripcion",

@@ -21,6 +21,58 @@ class HorasExtrasController extends Controller
     private string $alfrescoPass = 'admin';
     private string $alfrescoSite = 'talentohumano';
 
+    // ── Cálculo de horas extras ────────────────────────────────────────────────
+
+    private function toMinutes(string $hora): int
+    {
+        [$h, $m] = explode(':', $hora);
+        return (int)$h * 60 + (int)$m;
+    }
+
+    private function calcularHorasExtras(string $fecha, string $horaInicio, string $horaFin): array
+    {
+        $inicio = $this->toMinutes($horaInicio);
+        $fin    = $this->toMinutes($horaFin);
+        if ($fin === 0) $fin = 1440;        // 00:00 = fin de día
+        if ($fin <= $inicio) $fin += 1440;  // cruza medianoche
+
+        $esFeriado = DB::table('dbo.d2_lista_fecha')
+            ->whereDate('fecha', $fecha)
+            ->exists();
+
+        $carbon = Carbon::parse($fecha);
+
+        $extraordinarias = 0.0;
+        $suplementarias  = 0.0;
+
+        if ($carbon->isWeekend() || $esFeriado) {
+            $extraordinarias = ($fin - $inicio) / 60;
+        } else {
+            // Lun-Vie: rangos en minutos
+            $rangos = [
+                [0,    360,  'extra'],  // 00:00-06:00
+                [360,  480,  'supl'],   // 06:00-08:00
+                [480,  990,  'normal'], // 08:00-16:30
+                [990,  1440, 'supl'],   // 16:30-24:00
+                // Para cruces de medianoche (fin > 1440):
+                [1440, 1800, 'extra'],  // 00:00-06:00 del día siguiente
+                [1800, 1920, 'supl'],   // 06:00-08:00 del día siguiente
+            ];
+            foreach ($rangos as [$desde, $hasta, $tipo]) {
+                $overlap = min($fin, $hasta) - max($inicio, $desde);
+                if ($overlap > 0) {
+                    if ($tipo === 'extra') $extraordinarias += $overlap / 60;
+                    if ($tipo === 'supl')  $suplementarias  += $overlap / 60;
+                }
+            }
+        }
+
+        return [
+            'horas_extraordinarias' => round($extraordinarias, 2),
+            'horas_suplementarias'  => round($suplementarias,  2),
+        ];
+    }
+
     // ── Helpers ────────────────────────────────────────────────────────────────
 
     private function esAdminOTH($id_emp): bool
@@ -70,6 +122,20 @@ class HorasExtrasController extends Controller
             ->get("{$this->alfrescoBase}/sites/{$this->alfrescoSite}/containers/documentLibrary");
         if (!$resp->successful()) abort(502, 'No se pudo conectar con Alfresco');
         return $resp->json('entry.id');
+    }
+
+    // GET /api/horas-extras/calcular?fecha=&hora_inicio=&hora_fin=
+    public function calcular(Request $request)
+    {
+        $request->validate([
+            'fecha'       => 'required|date',
+            'hora_inicio' => 'required|date_format:H:i',
+            'hora_fin'    => 'required|date_format:H:i',
+        ]);
+
+        return response()->json(
+            $this->calcularHorasExtras($request->fecha, $request->hora_inicio, $request->hora_fin)
+        );
     }
 
     // ── ROL ────────────────────────────────────────────────────────────────────
@@ -486,11 +552,11 @@ class HorasExtrasController extends Controller
     public function registrar(Request $request)
     {
         $request->validate([
-            'cab_id'                => 'required|integer',
-            'fecha'                 => 'required|date',
-            'horas_extraordinarias' => 'nullable|numeric|min:0',
-            'horas_suplementarias'  => 'nullable|numeric|min:0',
-            'descripcion'           => 'nullable|string|max:300',
+            'cab_id'      => 'required|integer',
+            'fecha'       => 'required|date',
+            'hora_inicio' => 'required|date_format:H:i',
+            'hora_fin'    => 'required|date_format:H:i',
+            'descripcion' => 'nullable|string|max:300',
         ]);
 
         $emp = $request->user();
@@ -514,11 +580,13 @@ class HorasExtrasController extends Controller
             ], 422);
         }
 
-        $nuevasExtraordinarias = (float)($request->horas_extraordinarias ?? 0);
-        $nuevasSupl            = (float)($request->horas_suplementarias  ?? 0);
+        // Calcular horas automáticamente
+        $calculado = $this->calcularHorasExtras($request->fecha, $request->hora_inicio, $request->hora_fin);
+        $nuevasExtraordinarias = $calculado['horas_extraordinarias'];
+        $nuevasSupl            = $calculado['horas_suplementarias'];
 
         if ($nuevasExtraordinarias <= 0 && $nuevasSupl <= 0) {
-            return response()->json(['message' => 'Debe ingresar al menos una hora extraordinaria o suplementaria.'], 422);
+            return response()->json(['message' => 'El rango horario ingresado no genera horas extras (corresponde a jornada normal).'], 422);
         }
 
         // Verificar que no supere el total planificado
@@ -546,6 +614,8 @@ class HorasExtrasController extends Controller
             'cab_id'                => $cab->id,
             'id_emp'                => $emp->id_emp,
             'fecha'                 => $request->fecha,
+            'hora_inicio'           => $request->hora_inicio,
+            'hora_fin'              => $request->hora_fin,
             'horas_extraordinarias' => $nuevasExtraordinarias,
             'horas_suplementarias'  => $nuevasSupl,
             'descripcion'           => $request->descripcion,

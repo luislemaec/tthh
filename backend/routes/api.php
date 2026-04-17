@@ -172,6 +172,7 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::get("/liquidacion/certificado/{historico_id}",     [LiquidacionVacController::class, "generarCertificado"]);
 
     // Horas Extras
+    Route::get("/horas-extras/calcular",                                         [HorasExtrasController::class, "calcular"]);
     Route::get("/horas-extras/mi-rol",                                           [HorasExtrasController::class, "miRol"]);
     Route::get("/horas-extras/mi-planificacion",                          [HorasExtrasController::class, "miPlanificacion"]);
     Route::post("/horas-extras/planificacion",                            [HorasExtrasController::class, "store"]);

@@ -473,19 +473,20 @@
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Fecha *</label>
             <input v-model="modalRegistro.form.fecha" type="date"
+              @change="calcularPreview"
               class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#579186] outline-none" />
           </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">H. Extraordinarias</label>
-              <input v-model="modalRegistro.form.horas_extraordinarias" type="number" step="0.5" min="0"
-                placeholder="0"
+              <label class="block text-sm font-medium text-gray-700 mb-1">Hora inicio *</label>
+              <input v-model="modalRegistro.form.hora_inicio" type="time"
+                @change="calcularPreview"
                 class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#579186] outline-none" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">H. Suplementarias</label>
-              <input v-model="modalRegistro.form.horas_suplementarias" type="number" step="0.5" min="0"
-                placeholder="0"
+              <label class="block text-sm font-medium text-gray-700 mb-1">Hora fin *</label>
+              <input v-model="modalRegistro.form.hora_fin" type="time"
+                @change="calcularPreview"
                 class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#579186] outline-none" />
             </div>
           </div>
@@ -495,6 +496,19 @@
               placeholder="Describe brevemente el trabajo realizado"
               class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#579186] outline-none text-sm">
             </textarea>
+          </div>
+        </div>
+
+        <!-- Preview cálculo -->
+        <div v-if="modalRegistro.preview" class="bg-green-50 border border-green-200 rounded-lg p-3 text-sm mb-3">
+          <p class="font-medium text-green-800 mb-1">Desglose calculado:</p>
+          <div class="flex justify-between text-green-700">
+            <span>H. Extraordinarias:</span>
+            <strong>{{ modalRegistro.preview.horas_extraordinarias }} h</strong>
+          </div>
+          <div class="flex justify-between text-green-700">
+            <span>H. Suplementarias:</span>
+            <strong>{{ modalRegistro.preview.horas_suplementarias }} h</strong>
           </div>
         </div>
 
@@ -852,15 +866,26 @@ function abrirModalRegistrar() {
   errorModal.value = ""
   modalRegistro.value = {
     show: true,
-    form: { fecha: "", horas_extraordinarias: 0, horas_suplementarias: 0, descripcion: "" },
+    preview: null,
+    form: { fecha: "", hora_inicio: "", hora_fin: "", descripcion: "" },
   }
+}
+async function calcularPreview() {
+  const { fecha, hora_inicio, hora_fin } = modalRegistro.value.form
+  if (!fecha || !hora_inicio || !hora_fin) return
+  try {
+    const { data } = await api.get("/horas-extras/calcular", {
+      params: { fecha, hora_inicio, hora_fin },
+    })
+    modalRegistro.value.preview = data
+  } catch { modalRegistro.value.preview = null }
 }
 async function guardarRegistro() {
   errorModal.value = ""
   guardando.value  = true
   try {
     await api.post("/horas-extras/registro", {
-      cab_id:                 misHorasData.value.planificacion.id,
+      cab_id: misHorasData.value.planificacion.id,
       ...modalRegistro.value.form,
     })
     modalRegistro.value.show = false
