@@ -228,8 +228,8 @@
     <td style="width:50%;">
       <div style="margin-bottom:25px;">&nbsp;</div>
       <div class="firma-linea">
-        {{ strtoupper($directorTH) }}<br>
-        DIRECTOR/A DE TALENTO HUMANO<br>
+        {{ $nombreSupervisor }}<br>
+        SUPERVISOR/A DE ÁREA<br>
         <span style="font-weight:normal;">Autoriza</span>
       </div>
     </td>

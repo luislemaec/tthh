@@ -341,6 +341,13 @@ class HorasExtrasController extends Controller
             'DIRECTOR_TALENTO_HUMANO',
         ])->pluck('valor', 'concepto');
 
+        // Buscar supervisor del departamento del empleado
+        $supervisorEmp = Supervisor::where('id_depto', $emp->id_depto)->first();
+        $supervisorObj = $supervisorEmp ? Empleado::find($supervisorEmp->id_supervisor) : null;
+        $nombreSupervisor = $supervisorObj
+            ? strtoupper(($supervisorObj->apellido_emp ?? '') . ' ' . ($supervisorObj->nombre_emp ?? ''))
+            : ($config['DIRECTOR_TALENTO_HUMANO'] ?? '');
+
         $logoPath   = public_path('logo.png');
         $logoBase64 = file_exists($logoPath)
             ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath))
@@ -353,12 +360,13 @@ class HorasExtrasController extends Controller
         ];
 
         $pdf = Pdf::loadView('reportes.he_planificacion', [
-            'cab'     => $cab,
-            'emp'     => $emp,
-            'jornada' => $jornada,
-            'config'  => $config,
-            'logo'    => $logoBase64,
-            'meses'   => $meses,
+            'cab'              => $cab,
+            'emp'              => $emp,
+            'jornada'          => $jornada,
+            'config'           => $config,
+            'logo'             => $logoBase64,
+            'meses'            => $meses,
+            'nombreSupervisor' => $nombreSupervisor,
         ])->setPaper('letter', 'portrait');
 
         $filename = "horas_extras_{$emp->apellido_emp}_{$emp->nombre_emp}_{$cab->anio}_{$cab->mes}.pdf";
