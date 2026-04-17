@@ -585,16 +585,9 @@
 
 <script setup>
 import { ref, computed, onMounted } from "vue"
-import { useAuthStore } from "@/stores/auth"
 import api from "@/services/api"
 
-const auth  = useAuthStore()
-const esSupervisorOAdmin = computed(() =>
-  auth.tieneRol("SUPERVISOR") ||
-  auth.tieneRol("ADMINISTRADOR") ||
-  auth.tieneRol("TALENTO HUMANO") ||
-  auth.tieneRol("TH NOMINA")
-)
+const esSupervisorOAdmin = ref(false)
 
 const MESES = [
   { v: 1, l: "Enero" }, { v: 2, l: "Febrero" }, { v: 3, l: "Marzo" },
@@ -901,7 +894,9 @@ async function negarRegistroAction() {
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
-onMounted(() => {
+onMounted(async () => {
+  const { data } = await api.get("/horas-extras/mi-rol")
+  esSupervisorOAdmin.value = data.es_supervisor || data.es_admin_th
   cargarMiPlanificacion()
 })
 </script>

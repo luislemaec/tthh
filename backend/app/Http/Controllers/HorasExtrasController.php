@@ -72,6 +72,18 @@ class HorasExtrasController extends Controller
         return $resp->json('entry.id');
     }
 
+    // ── ROL ────────────────────────────────────────────────────────────────────
+
+    // GET /api/horas-extras/mi-rol
+    public function miRol(Request $request)
+    {
+        $emp = $request->user();
+        return response()->json([
+            'es_supervisor' => $this->esSupervisor($emp->id_emp),
+            'es_admin_th'   => $this->esAdminOTH($emp->id_emp),
+        ]);
+    }
+
     // ── PLANIFICACIÓN ──────────────────────────────────────────────────────────
 
     // GET /api/horas-extras/mi-planificacion?anio=&mes=
