@@ -16,6 +16,7 @@ use App\Http\Controllers\PeriodoPlanificacionController;
 use App\Http\Controllers\PlanificacionVacController;
 use App\Http\Controllers\ReportePlanificacionController;
 use App\Http\Controllers\LiquidacionVacController;
+use App\Http\Controllers\HorasExtrasController;
 use Illuminate\Support\Facades\Route;
 
 // Rutas PÚBLICAS
@@ -169,6 +170,23 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::get("/liquidacion/{id_emp}",                       [LiquidacionVacController::class, "consultar"]);
     Route::post("/liquidacion/{id_emp}/registrar",            [LiquidacionVacController::class, "registrar"]);
     Route::get("/liquidacion/certificado/{historico_id}",     [LiquidacionVacController::class, "generarCertificado"]);
+
+    // Horas Extras
+    Route::get("/horas-extras/mi-planificacion",                          [HorasExtrasController::class, "miPlanificacion"]);
+    Route::post("/horas-extras/planificacion",                            [HorasExtrasController::class, "store"]);
+    Route::put("/horas-extras/planificacion/{id}",                        [HorasExtrasController::class, "update"]);
+    Route::delete("/horas-extras/planificacion/{id}",                     [HorasExtrasController::class, "destroy"]);
+    Route::get("/horas-extras/planificacion",                             [HorasExtrasController::class, "index"]);
+    Route::patch("/horas-extras/planificacion/{id}/aprobar",              [HorasExtrasController::class, "aprobar"]);
+    Route::patch("/horas-extras/planificacion/{id}/negar",                [HorasExtrasController::class, "negar"]);
+    Route::get("/horas-extras/planificacion/{id}/pdf",                    [HorasExtrasController::class, "pdf"]);
+    Route::post("/horas-extras/planificacion/{id}/subir-firmado",         [HorasExtrasController::class, "subirFirmado"]);
+    Route::get("/horas-extras/planificacion/{id}/descargar-firmado",      [HorasExtrasController::class, "descargarFirmado"]);
+    Route::get("/horas-extras/mis-registros",                             [HorasExtrasController::class, "misHoras"]);
+    Route::post("/horas-extras/registro",                                 [HorasExtrasController::class, "registrar"]);
+    Route::get("/horas-extras/equipo-registros",                          [HorasExtrasController::class, "equipoHoras"]);
+    Route::patch("/horas-extras/registro/{id}/confirmar",                 [HorasExtrasController::class, "confirmar"]);
+    Route::patch("/horas-extras/registro/{id}/negar",                     [HorasExtrasController::class, "negarRegistro"]);
 
     // Vacaciones
     Route::get("/vacaciones/mi-rol",            [VacacionesController::class, "miRol"]);

@@ -19,6 +19,8 @@
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Horas Máximas</th>
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Horas Normales</th>
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Recargo %</th>
+            <th class="text-left px-6 py-3 text-gray-600 font-medium">H. Extra. %</th>
+            <th class="text-left px-6 py-3 text-gray-600 font-medium">H. Supl. %</th>
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Acciones</th>
           </tr>
         </thead>
@@ -40,6 +42,8 @@
             <td class="px-6 py-3">{{ jornada.jornada_ordinaria_maxima ?? "-" }}</td>
             <td class="px-6 py-3">{{ jornada.normal ?? "-" }}</td>
             <td class="px-6 py-3">{{ jornada.recargo ?? "-" }}</td>
+            <td class="px-6 py-3">{{ jornada.porc_extraordinaria ?? "-" }}</td>
+            <td class="px-6 py-3">{{ jornada.porc_suplementaria ?? "-" }}</td>
             <td class="px-6 py-3 flex gap-3">
               <button @click="editarJornada(jornada)"
                 class="text-[#0b5447] hover:text-blue-800 text-xs font-medium">
@@ -122,6 +126,25 @@
             </div>
           </div>
 
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">
+                H. Extraordinarias %
+              </label>
+              <input v-model="modal.form.porc_extraordinaria" type="number" step="0.01"
+                placeholder="Ej: 50 (CdT) / 25 (LOSEP)"
+                class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#579186] outline-none" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">
+                H. Suplementarias %
+              </label>
+              <input v-model="modal.form.porc_suplementaria" type="number" step="0.01"
+                placeholder="Ej: 100 (CdT) / 60 (LOSEP)"
+                class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#579186] outline-none" />
+            </div>
+          </div>
+
           <!-- Mensaje de error -->
           <div v-if="error"
             class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
@@ -194,6 +217,8 @@ function abrirModalNuevo() {
       normal: "",
       recargo: "",
       porc_25: "",
+      porc_extraordinaria: "",
+      porc_suplementaria: "",
     }
   }
 }

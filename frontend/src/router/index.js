@@ -43,6 +43,7 @@ const routes = [
       { path: 'planificacion', name: 'Planificacion', component: () => import('@/views/planificacion/PlanificacionesView.vue') },
       { path: 'planificacion/reporte', name: 'ReportePlanificacion', component: () => import('@/views/planificacion/ReportePlanificacionView.vue') },
       { path: 'planificacion/liquidacion', name: 'LiquidacionVacaciones', component: () => import('@/views/planificacion/LiquidacionVacView.vue') },
+      { path: 'horas-extras', name: 'HorasExtras', component: () => import('@/views/horasextras/HorasExtrasView.vue') },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: '/' },
