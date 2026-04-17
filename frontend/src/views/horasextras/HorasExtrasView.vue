@@ -936,9 +936,11 @@ async function negarRegistroAction() {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 onMounted(async () => {
-  const { data } = await api.get("/horas-extras/mi-rol")
-  esSupervisorOAdmin.value = data.es_supervisor || data.es_admin_th
-  esTHNomina.value         = data.es_admin_th
+  try {
+    const { data } = await api.get("/horas-extras/mi-rol")
+    esSupervisorOAdmin.value = data.es_supervisor || data.es_admin_th
+    esTHNomina.value         = data.es_admin_th
+  } catch { /* si falla, el usuario ve solo sus tabs */ }
   cargarMiPlanificacion()
 })
 
