@@ -79,11 +79,11 @@
               class="text-xs bg-white border border-red-300 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-50">
               Eliminar
             </button>
-            <button @click="descargarPdf"
+            <button v-if="miPlan.estado === 'APROBADO'" @click="descargarPdf"
               class="text-xs bg-white border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-50">
               Generar PDF
             </button>
-            <button @click="abrirSubirFirmado"
+            <button v-if="miPlan.estado === 'APROBADO'" @click="abrirSubirFirmado"
               class="text-xs bg-white border border-blue-300 text-blue-700 px-3 py-1.5 rounded-lg hover:bg-blue-50">
               Subir PDF Firmado
             </button>
