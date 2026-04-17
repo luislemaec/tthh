@@ -585,7 +585,10 @@ import api from "@/services/api"
 
 const auth  = useAuthStore()
 const esSupervisorOAdmin = computed(() =>
-  auth.tieneRol("SUPERVISOR") || auth.tieneRol("ADMINISTRADOR") || auth.tieneRol("TALENTO HUMANO")
+  auth.tieneRol("SUPERVISOR") ||
+  auth.tieneRol("ADMINISTRADOR") ||
+  auth.tieneRol("TALENTO HUMANO") ||
+  auth.tieneRol("TALENTO HUMANO NOMINA")
 )
 
 const MESES = [

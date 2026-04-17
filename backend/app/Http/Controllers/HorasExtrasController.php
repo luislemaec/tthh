@@ -28,7 +28,7 @@ class HorasExtrasController extends Controller
         return DB::table('dbo.admin_usuario_rol as ur')
             ->join('dbo.admin_rol as r', 'ur.id_rol', '=', 'r.id')
             ->where('ur.id_emp', $id_emp)
-            ->whereIn('r.descripcion', ['ADMINISTRADOR', 'TALENTO HUMANO'])
+            ->whereIn('r.descripcion', ['ADMINISTRADOR', 'TALENTO HUMANO', 'TALENTO HUMANO NOMINA'])
             ->exists();
     }
 
