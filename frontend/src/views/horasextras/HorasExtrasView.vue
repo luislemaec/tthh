@@ -38,8 +38,13 @@
         </div>
       </div>
 
+      <!-- Cargando -->
+      <div v-if="cargandoPlan" class="text-center py-10 text-gray-400 text-sm">
+        Cargando...
+      </div>
+
       <!-- Sin planificación -->
-      <div v-if="!miPlan">
+      <div v-else-if="!miPlan">
         <div class="bg-blue-50 border border-blue-200 rounded-xl p-6 text-center">
           <p class="text-blue-700 mb-4">
             No tienes planificación de horas extras para {{ mesNombre(filtro.mes) }} {{ filtro.anio }}.
@@ -52,7 +57,7 @@
       </div>
 
       <!-- Con planificación -->
-      <div v-else>
+      <div v-else-if="miPlan">
         <!-- Estado banner -->
         <div :class="{
           'bg-yellow-50 border-yellow-300 text-yellow-800': miPlan.estado === 'PENDIENTE',
@@ -617,6 +622,7 @@ const filtroEstadoReg = ref("")
 
 // ── Estado ──────────────────────────────────────────────────────────────────
 const miPlan         = ref(null)
+const cargandoPlan   = ref(false)
 const misHorasData   = ref({ planificacion: null, registros: [] })
 const equipoPlan     = ref([])
 const equipoHoras    = ref([])
@@ -661,12 +667,14 @@ function detalleVacio() {
 
 // ── Carga de datos ──────────────────────────────────────────────────────────
 async function cargarMiPlanificacion() {
+  cargandoPlan.value = true
   try {
     const { data } = await api.get("/horas-extras/mi-planificacion", {
       params: { anio: filtro.value.anio, mes: filtro.value.mes },
     })
-    miPlan.value = data
+    miPlan.value = (data && data.id) ? data : null
   } catch { miPlan.value = null }
+  finally { cargandoPlan.value = false }
 }
 
 async function cargarMisHoras() {
