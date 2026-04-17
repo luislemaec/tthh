@@ -329,6 +329,32 @@ class HorasExtrasController extends Controller
         return response()->json(['message' => 'Planificación negada.']);
     }
 
+    // PATCH /api/horas-extras/planificacion/{id}/autorizar
+    public function autorizar(Request $request, $id)
+    {
+        $request->validate(['memorando' => 'required|string|max:300']);
+        $user = $request->user();
+
+        if (!$this->esAdminOTH($user->id_emp)) {
+            return response()->json(['message' => 'Acceso no autorizado.'], 403);
+        }
+
+        $cab = HePlanificacionCab::findOrFail($id);
+
+        if ($cab->estado !== 'APROBADO') {
+            return response()->json(['message' => 'Solo se pueden autorizar planificaciones en estado APROBADO.'], 422);
+        }
+
+        $cab->update([
+            'estado'               => 'AUTORIZADO',
+            'memorando'            => $request->memorando,
+            'usuario_autorizacion' => $user->id_emp,
+            'fecha_autorizacion'   => now(),
+        ]);
+
+        return response()->json(['message' => 'Planificación autorizada.']);
+    }
+
     // GET /api/horas-extras/planificacion/{id}/pdf
     public function pdf(Request $request, $id)
     {
@@ -473,8 +499,19 @@ class HorasExtrasController extends Controller
         if ($cab->id_emp !== $emp->id_emp) {
             return response()->json(['message' => 'Acceso no autorizado.'], 403);
         }
-        if ($cab->estado !== 'APROBADO') {
-            return response()->json(['message' => 'La planificación debe estar aprobada para registrar horas.'], 422);
+        if ($cab->estado !== 'AUTORIZADO') {
+            return response()->json(['message' => 'La planificación debe estar autorizada para registrar horas.'], 422);
+        }
+
+        // Validar que el mes/año actual coincida con el mes/año planificado
+        $hoy = now();
+        if ((int)$hoy->year !== (int)$cab->anio || (int)$hoy->month !== (int)$cab->mes) {
+            $meses = [1=>'enero',2=>'febrero',3=>'marzo',4=>'abril',5=>'mayo',6=>'junio',
+                      7=>'julio',8=>'agosto',9=>'septiembre',10=>'octubre',11=>'noviembre',12=>'diciembre'];
+            $mesNombre = $meses[$cab->mes] ?? $cab->mes;
+            return response()->json([
+                'message' => "Solo puede registrar horas en el mes planificado ({$mesNombre} {$cab->anio})."
+            ], 422);
         }
 
         $nuevasExtraordinarias = (float)($request->horas_extraordinarias ?? 0);

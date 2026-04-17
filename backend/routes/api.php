@@ -178,6 +178,7 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::put("/horas-extras/planificacion/{id}",                        [HorasExtrasController::class, "update"]);
     Route::delete("/horas-extras/planificacion/{id}",                     [HorasExtrasController::class, "destroy"]);
     Route::get("/horas-extras/planificacion",                             [HorasExtrasController::class, "index"]);
+    Route::patch("/horas-extras/planificacion/{id}/autorizar",               [HorasExtrasController::class, "autorizar"]);
     Route::patch("/horas-extras/planificacion/{id}/aprobar",              [HorasExtrasController::class, "aprobar"]);
     Route::patch("/horas-extras/planificacion/{id}/negar",                [HorasExtrasController::class, "negar"]);
     Route::get("/horas-extras/planificacion/{id}/pdf",                    [HorasExtrasController::class, "pdf"]);

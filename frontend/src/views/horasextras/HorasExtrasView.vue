@@ -60,9 +60,10 @@
       <div v-else-if="miPlan">
         <!-- Estado banner -->
         <div :class="{
-          'bg-yellow-50 border-yellow-300 text-yellow-800': miPlan.estado === 'PENDIENTE',
-          'bg-green-50 border-green-300 text-green-800':   miPlan.estado === 'APROBADO',
-          'bg-red-50 border-red-300 text-red-800':         miPlan.estado === 'NEGADO',
+          'bg-yellow-50 border-yellow-300 text-yellow-800':  miPlan.estado === 'PENDIENTE',
+          'bg-green-50 border-green-300 text-green-800':    miPlan.estado === 'APROBADO',
+          'bg-red-50 border-red-300 text-red-800':           miPlan.estado === 'NEGADO',
+          'bg-purple-50 border-purple-300 text-purple-800': miPlan.estado === 'AUTORIZADO',
         }" class="border rounded-xl p-4 mb-4 flex justify-between items-start">
           <div>
             <span class="font-semibold">Estado: {{ miPlan.estado }}</span>
@@ -163,11 +164,15 @@
             </p>
           </div>
           <button
-            v-if="misHorasData.planificacion.estado === 'APROBADO'"
+            v-if="misHorasData.planificacion.estado === 'AUTORIZADO' && esMesActual(misHorasData.planificacion)"
             @click="abrirModalRegistrar"
             class="bg-[#00372e] text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-800">
             + Registrar horas
           </button>
+          <p v-else-if="misHorasData.planificacion.estado === 'AUTORIZADO' && !esMesActual(misHorasData.planificacion)"
+            class="text-xs text-gray-500 italic">
+            Registro habilitado en {{ mesNombre(misHorasData.planificacion.mes) }} {{ misHorasData.planificacion.anio }}
+          </p>
         </div>
       </div>
       <div v-else class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-4 text-yellow-800 text-sm">
@@ -269,9 +274,10 @@
               <td class="px-6 py-3 text-right">{{ plan.total_suplementarias }}</td>
               <td class="px-6 py-3">
                 <span :class="{
-                  'bg-yellow-100 text-yellow-800': plan.estado === 'PENDIENTE',
-                  'bg-green-100 text-green-800':   plan.estado === 'APROBADO',
-                  'bg-red-100 text-red-800':        plan.estado === 'NEGADO',
+                  'bg-yellow-100 text-yellow-800':  plan.estado === 'PENDIENTE',
+                  'bg-green-100 text-green-800':    plan.estado === 'APROBADO',
+                  'bg-red-100 text-red-800':         plan.estado === 'NEGADO',
+                  'bg-purple-100 text-purple-800':  plan.estado === 'AUTORIZADO',
                 }" class="px-2 py-0.5 rounded-full text-xs font-medium">
                   {{ plan.estado }}
                 </span>
@@ -286,6 +292,11 @@
                   @click="abrirModalNegarPlan(plan)"
                   class="text-xs text-red-600 hover:text-red-800 font-medium">
                   Negar
+                </button>
+                <button v-if="plan.estado === 'APROBADO' && esTHNomina"
+                  @click="abrirModalAutorizar(plan)"
+                  class="text-xs text-purple-700 hover:text-purple-900 font-medium">
+                  Autorizar
                 </button>
               </td>
             </tr>
@@ -559,6 +570,30 @@
       </div>
     </div>
 
+    <!-- Modal: Autorizar planificación -->
+    <div v-if="modalAutorizar.show"
+      class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
+        <h2 class="text-lg font-bold mb-2">Autorizar Planificación</h2>
+        <p class="text-sm text-gray-500 mb-4">Ingrese la referencia del memorando de autorización</p>
+        <textarea v-model="modalAutorizar.memorando" rows="3" maxlength="300"
+          placeholder="Ej: Según Memorando nro. CDPIC-DATH-2026-0098-M se autorizó el pago de horas extras."
+          class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-400 outline-none resize-none mb-4">
+        </textarea>
+        <div v-if="errorModal" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">
+          {{ errorModal }}
+        </div>
+        <div class="flex justify-end gap-3">
+          <button @click="modalAutorizar.show = false"
+            class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancelar</button>
+          <button @click="autorizarPlan" :disabled="guardando"
+            class="bg-purple-700 text-white px-5 py-2 rounded-lg text-sm hover:bg-purple-800 disabled:opacity-50">
+            {{ guardando ? 'Autorizando...' : 'Autorizar' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Modal: Subir PDF firmado -->
     <div v-if="modalFirmado.show"
       class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -588,6 +623,7 @@ import { ref, computed, onMounted } from "vue"
 import api from "@/services/api"
 
 const esSupervisorOAdmin = ref(false)
+const esTHNomina         = ref(false)
 
 const MESES = [
   { v: 1, l: "Enero" }, { v: 2, l: "Febrero" }, { v: 3, l: "Marzo" },
@@ -627,6 +663,7 @@ const errorModal     = ref("")
 const modalPlan = ref({ show: false, editando: false, detalles: [] })
 const modalRegistro  = ref({ show: false, form: {} })
 const modalNegar     = ref({ show: false, planId: null, observacion: "" })
+const modalAutorizar = ref({ show: false, planId: null, memorando: "" })
 const modalNegarReg  = ref({ show: false, regId: null, observacion: "" })
 const modalFirmado   = ref({ show: false, archivo: null })
 
@@ -656,6 +693,10 @@ function formatFecha(f) {
 }
 function detalleVacio() {
   return { actividad: "", horas_extraordinarias: 0, horas_suplementarias: 0 }
+}
+function esMesActual(plan) {
+  const hoy = new Date()
+  return hoy.getFullYear() === parseInt(plan.anio) && (hoy.getMonth() + 1) === parseInt(plan.mes)
 }
 
 // ── Carga de datos ──────────────────────────────────────────────────────────
@@ -897,6 +938,29 @@ async function negarRegistroAction() {
 onMounted(async () => {
   const { data } = await api.get("/horas-extras/mi-rol")
   esSupervisorOAdmin.value = data.es_supervisor || data.es_admin_th
+  esTHNomina.value         = data.es_admin_th
   cargarMiPlanificacion()
 })
+
+function abrirModalAutorizar(plan) {
+  errorModal.value = ""
+  modalAutorizar.value = { show: true, planId: plan.id, memorando: "" }
+}
+async function autorizarPlan() {
+  if (!modalAutorizar.value.memorando.trim()) {
+    errorModal.value = "Ingrese el texto del memorando"
+    return
+  }
+  guardando.value = true
+  errorModal.value = ""
+  try {
+    await api.patch("/horas-extras/planificacion/" + modalAutorizar.value.planId + "/autorizar", {
+      memorando: modalAutorizar.value.memorando,
+    })
+    modalAutorizar.value.show = false
+    await cargarEquipoPlan()
+  } catch (e) {
+    errorModal.value = e.response?.data?.message || "Error al autorizar"
+  } finally { guardando.value = false }
+}
 </script>

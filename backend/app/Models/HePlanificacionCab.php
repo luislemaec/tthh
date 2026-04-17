@@ -22,6 +22,9 @@ class HePlanificacionCab extends Model
         "usuario_decision",
         "fecha_decision",
         "pdf_aprobado",
+        "memorando",
+        "usuario_autorizacion",
+        "fecha_autorizacion",
     ];
 
     public function empleado()
