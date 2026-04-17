@@ -619,7 +619,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue"
+import { ref, computed, onMounted, watch } from "vue"
 import api from "@/services/api"
 
 const esSupervisorOAdmin = ref(false)
@@ -933,6 +933,12 @@ async function negarRegistroAction() {
     errorModal.value = e.response?.data?.message || "Error al negar"
   } finally { guardando.value = false }
 }
+
+watch(tabActiva, (tab) => {
+  if (tab === 'equipo-plan')  cargarEquipoPlan()
+  if (tab === 'equipo-horas') cargarEquipoHoras()
+  if (tab === 'mis-horas')    cargarMisHoras()
+})
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 onMounted(async () => {
