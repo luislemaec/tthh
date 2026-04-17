@@ -593,7 +593,7 @@ const esSupervisorOAdmin = computed(() =>
   auth.tieneRol("SUPERVISOR") ||
   auth.tieneRol("ADMINISTRADOR") ||
   auth.tieneRol("TALENTO HUMANO") ||
-  auth.tieneRol("TALENTO HUMANO NOMINA")
+  auth.tieneRol("TH NOMINA")
 )
 
 const MESES = [
