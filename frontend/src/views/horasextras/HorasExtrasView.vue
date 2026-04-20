@@ -359,12 +359,22 @@
       <!-- Grupos por empleado -->
       <div v-for="grupo in equipoHorasAgrupado" :key="grupo.id_emp" class="bg-white rounded-xl shadow overflow-hidden mb-4">
         <!-- Cabecera del empleado -->
-        <div class="bg-[#00372e] text-white px-6 py-3 flex justify-between items-center">
-          <span class="font-semibold text-sm">{{ grupo.nombre }}</span>
-          <div class="text-xs flex gap-4">
-            <span>H. Extra: <b>{{ grupo.registros.filter(r=>r.estado!=='NEGADO').reduce((s,r)=>s+parseFloat(r.horas_extraordinarias||0),0).toFixed(2) }}</b></span>
-            <span>H. Supl: <b>{{ grupo.registros.filter(r=>r.estado!=='NEGADO').reduce((s,r)=>s+parseFloat(r.horas_suplementarias||0),0).toFixed(2) }}</b></span>
-            <span v-if="esTHNomina">Total: <b>${{ grupo.registros.filter(r=>r.estado==='APROBADO'&&r.valor_total!==undefined).reduce((s,r)=>s+parseFloat(r.valor_total||0),0).toFixed(2) }}</b></span>
+        <div class="bg-[#00372e] text-white px-6 py-3">
+          <div class="font-semibold text-sm mb-1">{{ grupo.nombre }}</div>
+          <div class="text-xs flex flex-wrap gap-4 mt-1">
+            <span>
+              H. Extraordinarias:
+              <b>{{ grupo.registros.filter(r=>r.estado==='APROBADO').reduce((s,r)=>s+parseFloat(r.horas_extraordinarias||0),0).toFixed(2) }} h</b>
+              <span v-if="esTHNomina"> → <b>${{ grupo.registros.filter(r=>r.estado==='APROBADO').reduce((s,r)=>s+parseFloat(r.valor_extraordinarias||0),0).toFixed(2) }}</b></span>
+            </span>
+            <span>
+              H. Suplementarias:
+              <b>{{ grupo.registros.filter(r=>r.estado==='APROBADO').reduce((s,r)=>s+parseFloat(r.horas_suplementarias||0),0).toFixed(2) }} h</b>
+              <span v-if="esTHNomina"> → <b>${{ grupo.registros.filter(r=>r.estado==='APROBADO').reduce((s,r)=>s+parseFloat(r.valor_suplementarias||0),0).toFixed(2) }}</b></span>
+            </span>
+            <span v-if="esTHNomina" class="text-green-300 font-bold">
+              Total a Pagar: ${{ grupo.registros.filter(r=>r.estado==='APROBADO'&&r.valor_total!==undefined).reduce((s,r)=>s+parseFloat(r.valor_total||0),0).toFixed(2) }}
+            </span>
           </div>
         </div>
 
