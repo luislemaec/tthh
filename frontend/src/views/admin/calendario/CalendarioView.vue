@@ -250,7 +250,7 @@ const cargarFeriados = async () => {
 
 onMounted(() => {
   const actual = new Date().getFullYear()
-  anios.value = [actual - 1, actual, actual + 1]
+  anios.value = [actual - 1, actual, actual + 1, actual + 2, actual + 3]
   cargar()
 })
 </script>
