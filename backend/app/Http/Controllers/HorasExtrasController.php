@@ -204,6 +204,13 @@ class HorasExtrasController extends Controller
             return response()->json(['message' => 'Debe ingresar al menos una hora extraordinaria o suplementaria.'], 422);
         }
 
+        if ($totalExtraordinarias > 20) {
+            return response()->json(['message' => 'Las horas extraordinarias no pueden superar las 20 horas mensuales.'], 422);
+        }
+        if ($totalSupl > 20) {
+            return response()->json(['message' => 'Las horas suplementarias no pueden superar las 20 horas mensuales.'], 422);
+        }
+
         $esSupervisorPropio = $this->esSupervisor($emp->id_emp) || $this->esAdminOTH($emp->id_emp);
 
         $cab = HePlanificacionCab::create([
@@ -260,6 +267,13 @@ class HorasExtrasController extends Controller
 
         if ($totalExtraordinarias <= 0 && $totalSupl <= 0) {
             return response()->json(['message' => 'Debe ingresar al menos una hora extraordinaria o suplementaria.'], 422);
+        }
+
+        if ($totalExtraordinarias > 20) {
+            return response()->json(['message' => 'Las horas extraordinarias no pueden superar las 20 horas mensuales.'], 422);
+        }
+        if ($totalSupl > 20) {
+            return response()->json(['message' => 'Las horas suplementarias no pueden superar las 20 horas mensuales.'], 422);
         }
 
         // Reemplazar detalles

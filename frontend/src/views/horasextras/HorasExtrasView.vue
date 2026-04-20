@@ -929,6 +929,12 @@ function quitarDetalle(i) {
 
 async function guardarPlan() {
   errorModal.value = ""
+
+  const totalExtra = modalPlan.value.detalles.reduce((s, d) => s + parseFloat(d.horas_extraordinarias || 0), 0)
+  const totalSupl  = modalPlan.value.detalles.reduce((s, d) => s + parseFloat(d.horas_suplementarias  || 0), 0)
+  if (totalExtra > 20) { errorModal.value = "Las horas extraordinarias no pueden superar las 20 horas mensuales."; return }
+  if (totalSupl  > 20) { errorModal.value = "Las horas suplementarias no pueden superar las 20 horas mensuales."; return }
+
   guardando.value  = true
   try {
     const payload = {
