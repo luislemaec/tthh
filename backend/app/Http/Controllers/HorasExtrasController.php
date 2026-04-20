@@ -619,10 +619,84 @@ class HorasExtrasController extends Controller
             'horas_extraordinarias' => $nuevasExtraordinarias,
             'horas_suplementarias'  => $nuevasSupl,
             'descripcion'           => $request->descripcion,
-            'estado'                => 'PENDIENTE',
+            'estado'                => 'EN REVISION',
         ]);
 
         return response()->json($registro, 201);
+    }
+
+    // PUT /api/horas-extras/registro/{id} — empleado edita cuando está EN REVISION
+    public function actualizarRegistro(Request $request, $id)
+    {
+        $request->validate([
+            'fecha'       => 'required|date',
+            'hora_inicio' => 'required|date_format:H:i',
+            'hora_fin'    => 'required|date_format:H:i',
+            'descripcion' => 'nullable|string|max:300',
+        ]);
+
+        $emp      = $request->user();
+        $registro = HeRegistro::findOrFail($id);
+
+        if ($registro->id_emp !== $emp->id_emp) {
+            return response()->json(['message' => 'Acceso no autorizado.'], 403);
+        }
+        if ($registro->estado !== 'EN REVISION') {
+            return response()->json(['message' => 'Solo puede editar registros en estado EN REVISIÓN.'], 422);
+        }
+
+        $calculado = $this->calcularHorasExtras($request->fecha, $request->hora_inicio, $request->hora_fin);
+
+        $registro->update([
+            'fecha'                 => $request->fecha,
+            'hora_inicio'           => $request->hora_inicio,
+            'hora_fin'              => $request->hora_fin,
+            'horas_extraordinarias' => $calculado['horas_extraordinarias'],
+            'horas_suplementarias'  => $calculado['horas_suplementarias'],
+            'descripcion'           => $request->descripcion,
+            'observacion'           => null,
+        ]);
+
+        return response()->json($registro);
+    }
+
+    // PATCH /api/horas-extras/registro/{id}/revisar — TH NOMINA aprueba revisión o devuelve
+    public function revisarRegistro(Request $request, $id)
+    {
+        $request->validate([
+            'accion'      => 'required|in:aprobar,devolver',
+            'observacion' => 'nullable|string|max:250',
+        ]);
+
+        $user = $request->user();
+        if (!$this->esAdminOTH($user->id_emp)) {
+            return response()->json(['message' => 'Acceso no autorizado.'], 403);
+        }
+
+        $registro = HeRegistro::findOrFail($id);
+        if ($registro->estado !== 'EN REVISION') {
+            return response()->json(['message' => 'Solo se pueden revisar registros en estado EN REVISIÓN.'], 422);
+        }
+
+        if ($request->accion === 'aprobar') {
+            $registro->update([
+                'estado'           => 'PENDIENTE',
+                'observacion'      => null,
+                'usuario_decision' => $user->id_emp,
+                'fecha_decision'   => now(),
+            ]);
+            return response()->json(['message' => 'Registro aprobado en revisión. Pasa al supervisor.']);
+        }
+
+        if (!$request->filled('observacion')) {
+            return response()->json(['message' => 'Debe indicar qué debe corregir el empleado.'], 422);
+        }
+
+        $registro->update([
+            'estado'      => 'EN REVISION',
+            'observacion' => $request->observacion,
+        ]);
+        return response()->json(['message' => 'Registro devuelto al empleado para corrección.']);
     }
 
     // GET /api/horas-extras/equipo-registros?anio=&mes=
@@ -652,7 +726,27 @@ class HorasExtrasController extends Controller
             $query->where('estado', $request->estado);
         }
 
-        return response()->json($query->orderBy('fecha')->get());
+        $registros = $query->orderBy('fecha')->get();
+
+        // Agregar desglose monetario para registros APROBADO (solo visible para TH NOMINA/Admin)
+        if ($esAdmin) {
+            $registros = $registros->map(function ($reg) {
+                if ($reg->estado === 'APROBADO') {
+                    $emp     = $reg->empleado;
+                    $jornada = $emp->id_jornada ? Jornada::find($emp->id_jornada) : null;
+                    $sueldo  = (float)($emp->sueldo ?? 0);
+                    $tarifa  = $sueldo > 0 ? $sueldo / 240 : 0;
+                    $pExtra  = $jornada ? (float)$jornada->porc_extraordinaria : 0;
+                    $pSupl   = $jornada ? (float)$jornada->porc_suplementaria  : 0;
+                    $reg->valor_extraordinarias = round($tarifa * (1 + $pExtra / 100) * (float)$reg->horas_extraordinarias, 2);
+                    $reg->valor_suplementarias  = round($tarifa * (1 + $pSupl  / 100) * (float)$reg->horas_suplementarias,  2);
+                    $reg->valor_total           = round($reg->valor_extraordinarias + $reg->valor_suplementarias, 2);
+                }
+                return $reg;
+            });
+        }
+
+        return response()->json($registros);
     }
 
     // PATCH /api/horas-extras/registro/{id}/confirmar

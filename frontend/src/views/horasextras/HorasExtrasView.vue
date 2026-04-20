@@ -189,11 +189,12 @@
               <th class="text-right px-6 py-3 text-gray-600 font-medium">H. Extra.</th>
               <th class="text-right px-6 py-3 text-gray-600 font-medium">H. Supl.</th>
               <th class="text-left px-6 py-3 text-gray-600 font-medium">Estado</th>
+              <th class="text-left px-6 py-3 text-gray-600 font-medium"></th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="!misHorasData.registros.length">
-              <td colspan="5" class="px-6 py-8 text-center text-gray-400">
+              <td colspan="6" class="px-6 py-8 text-center text-gray-400">
                 No hay registros para este mes
               </td>
             </tr>
@@ -205,15 +206,23 @@
               <td class="px-6 py-3 text-right">{{ reg.horas_suplementarias > 0 ? reg.horas_suplementarias : '-' }}</td>
               <td class="px-6 py-3">
                 <span :class="{
+                  'bg-blue-100 text-blue-800':     reg.estado === 'EN REVISION',
                   'bg-yellow-100 text-yellow-800': reg.estado === 'PENDIENTE',
                   'bg-green-100 text-green-800':   reg.estado === 'APROBADO',
                   'bg-red-100 text-red-800':        reg.estado === 'NEGADO',
                 }" class="px-2 py-0.5 rounded-full text-xs font-medium">
                   {{ reg.estado }}
                 </span>
-                <span v-if="reg.observacion" class="block text-xs text-gray-400 mt-0.5">
+                <span v-if="reg.observacion" class="block text-xs text-red-500 mt-0.5 italic">
                   {{ reg.observacion }}
                 </span>
+              </td>
+              <td class="px-6 py-3">
+                <button v-if="reg.estado === 'EN REVISION'"
+                  @click="abrirEditarRegistro(reg)"
+                  class="text-xs text-blue-600 hover:text-blue-800 font-medium">
+                  Editar
+                </button>
               </td>
             </tr>
           </tbody>
@@ -327,6 +336,7 @@
           <select v-model="filtroEstadoReg" @change="cargarEquipoHoras"
             class="border rounded-lg px-3 py-2 text-sm">
             <option value="">Todos</option>
+            <option value="EN REVISION">En Revisión</option>
             <option value="PENDIENTE">Pendiente</option>
             <option value="APROBADO">Aprobado</option>
             <option value="NEGADO">Negado</option>
@@ -364,20 +374,40 @@
               <td class="px-6 py-3 text-right">{{ reg.horas_suplementarias > 0 ? reg.horas_suplementarias : '-' }}</td>
               <td class="px-6 py-3">
                 <span :class="{
+                  'bg-blue-100 text-blue-800':     reg.estado === 'EN REVISION',
                   'bg-yellow-100 text-yellow-800': reg.estado === 'PENDIENTE',
                   'bg-green-100 text-green-800':   reg.estado === 'APROBADO',
                   'bg-red-100 text-red-800':        reg.estado === 'NEGADO',
                 }" class="px-2 py-0.5 rounded-full text-xs font-medium">
                   {{ reg.estado }}
                 </span>
+                <!-- Desglose monetario solo para APROBADO y TH NOMINA -->
+                <div v-if="reg.estado === 'APROBADO' && esTHNomina && reg.valor_total !== undefined"
+                  class="mt-1 text-xs text-gray-500 space-y-0.5">
+                  <div>Extra: <b>${{ reg.valor_extraordinarias }}</b></div>
+                  <div>Supl: <b>${{ reg.valor_suplementarias }}</b></div>
+                  <div class="font-semibold text-green-700">Total: ${{ reg.valor_total }}</div>
+                </div>
               </td>
-              <td class="px-6 py-3 flex gap-2">
-                <button v-if="reg.estado === 'PENDIENTE'"
+              <td class="px-6 py-3 flex gap-2 flex-wrap">
+                <!-- TH NOMINA: revisa EN REVISION -->
+                <button v-if="reg.estado === 'EN REVISION' && esTHNomina"
+                  @click="aprobarRevision(reg.id)"
+                  class="text-xs text-blue-700 hover:text-blue-900 font-medium">
+                  Aprobar revisión
+                </button>
+                <button v-if="reg.estado === 'EN REVISION' && esTHNomina"
+                  @click="abrirModalDevolverRegistro(reg)"
+                  class="text-xs text-orange-600 hover:text-orange-800 font-medium">
+                  Devolver
+                </button>
+                <!-- Supervisor: confirma/niega PENDIENTE -->
+                <button v-if="reg.estado === 'PENDIENTE' && !esTHNomina"
                   @click="confirmarRegistro(reg.id)"
                   class="text-xs text-green-700 hover:text-green-900 font-medium">
                   Confirmar
                 </button>
-                <button v-if="reg.estado === 'PENDIENTE'"
+                <button v-if="reg.estado === 'PENDIENTE' && !esTHNomina"
                   @click="abrirModalNegarRegistro(reg)"
                   class="text-xs text-red-600 hover:text-red-800 font-medium">
                   Negar
@@ -584,6 +614,75 @@
       </div>
     </div>
 
+    <!-- Modal: Editar registro (empleado EN REVISION) -->
+    <div v-if="modalEditarReg.show"
+      class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+        <h2 class="text-lg font-bold mb-4">Editar Registro de Horas</h2>
+        <div class="space-y-3 mb-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Fecha *</label>
+            <input v-model="modalEditarReg.form.fecha" type="date" @change="calcularPreviewEditar"
+              class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#579186] outline-none" />
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Hora inicio *</label>
+              <input v-model="modalEditarReg.form.hora_inicio" type="time" @change="calcularPreviewEditar"
+                class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#579186] outline-none" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Hora fin *</label>
+              <input v-model="modalEditarReg.form.hora_fin" type="time" @change="calcularPreviewEditar"
+                class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#579186] outline-none" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+            <textarea v-model="modalEditarReg.form.descripcion" maxlength="300" rows="2"
+              class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#579186] outline-none text-sm"></textarea>
+          </div>
+        </div>
+        <div v-if="modalEditarReg.preview" class="bg-green-50 border border-green-200 rounded-lg p-3 text-sm mb-3">
+          <p class="font-medium text-green-800 mb-1">Desglose calculado:</p>
+          <div class="flex justify-between text-green-700">
+            <span>H. Extraordinarias:</span><strong>{{ modalEditarReg.preview.horas_extraordinarias }} h</strong>
+          </div>
+          <div class="flex justify-between text-green-700">
+            <span>H. Suplementarias:</span><strong>{{ modalEditarReg.preview.horas_suplementarias }} h</strong>
+          </div>
+        </div>
+        <div v-if="errorModal" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">{{ errorModal }}</div>
+        <div class="flex justify-end gap-3">
+          <button @click="modalEditarReg.show = false" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancelar</button>
+          <button @click="guardarEditarRegistro" :disabled="guardando"
+            class="bg-[#00372e] text-white px-5 py-2 rounded-lg text-sm hover:bg-blue-800 disabled:opacity-50">
+            {{ guardando ? 'Guardando...' : 'Guardar' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Devolver registro (TH NOMINA) -->
+    <div v-if="modalDevolverReg.show"
+      class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+        <h2 class="text-lg font-bold mb-2">Devolver para Corrección</h2>
+        <p class="text-sm text-gray-500 mb-4">Indique al empleado qué debe corregir</p>
+        <textarea v-model="modalDevolverReg.observacion" rows="3" maxlength="250"
+          placeholder="Ej: La hora de inicio no corresponde al rango autorizado..."
+          class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-400 outline-none resize-none mb-4"></textarea>
+        <div v-if="errorModal" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">{{ errorModal }}</div>
+        <div class="flex justify-end gap-3">
+          <button @click="modalDevolverReg.show = false" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancelar</button>
+          <button @click="devolverRegistro" :disabled="guardando"
+            class="bg-orange-600 text-white px-5 py-2 rounded-lg text-sm hover:bg-orange-700 disabled:opacity-50">
+            {{ guardando ? 'Enviando...' : 'Devolver' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Modal: Autorizar planificación -->
     <div v-if="modalAutorizar.show"
       class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -678,7 +777,9 @@ const modalPlan = ref({ show: false, editando: false, detalles: [] })
 const modalRegistro  = ref({ show: false, form: {} })
 const modalNegar     = ref({ show: false, planId: null, observacion: "" })
 const modalAutorizar = ref({ show: false, planId: null, memorando: "" })
-const modalNegarReg  = ref({ show: false, regId: null, observacion: "" })
+const modalNegarReg    = ref({ show: false, regId: null, observacion: "" })
+const modalDevolverReg = ref({ show: false, regId: null, observacion: "" })
+const modalEditarReg   = ref({ show: false, reg: null, preview: null, form: {} })
 const modalFirmado   = ref({ show: false, archivo: null })
 
 // ── Computed ──────────────────────────────────────────────────────────────────
@@ -956,6 +1057,65 @@ async function negarRegistroAction() {
     await cargarEquipoHoras()
   } catch (e) {
     errorModal.value = e.response?.data?.message || "Error al negar"
+  } finally { guardando.value = false }
+}
+
+// ── Editar registro (empleado, EN REVISION) ──────────────────────────────────
+function abrirEditarRegistro(reg) {
+  errorModal.value = ""
+  modalEditarReg.value = {
+    show: true, reg, preview: null,
+    form: { fecha: reg.fecha, hora_inicio: reg.hora_inicio || "", hora_fin: reg.hora_fin || "", descripcion: reg.descripcion || "" },
+  }
+}
+async function calcularPreviewEditar() {
+  const { fecha, hora_inicio, hora_fin } = modalEditarReg.value.form
+  if (!fecha || !hora_inicio || !hora_fin) return
+  try {
+    const { data } = await api.get("/horas-extras/calcular", { params: { fecha, hora_inicio, hora_fin } })
+    modalEditarReg.value.preview = data
+  } catch { modalEditarReg.value.preview = null }
+}
+async function guardarEditarRegistro() {
+  errorModal.value = ""
+  guardando.value  = true
+  try {
+    await api.put("/horas-extras/registro/" + modalEditarReg.value.reg.id, modalEditarReg.value.form)
+    modalEditarReg.value.show = false
+    await cargarMisHoras()
+  } catch (e) {
+    errorModal.value = e.response?.data?.message || "Error al actualizar el registro"
+  } finally { guardando.value = false }
+}
+
+// ── Revisión TH NOMINA ────────────────────────────────────────────────────────
+async function aprobarRevision(id) {
+  if (!confirm("¿Aprobar la revisión y enviar al supervisor?")) return
+  try {
+    await api.patch("/horas-extras/registro/" + id + "/revisar", { accion: "aprobar" })
+    await cargarEquipoHoras()
+  } catch (e) { alert(e.response?.data?.message || "Error") }
+}
+function abrirModalDevolverRegistro(reg) {
+  errorModal.value = ""
+  modalDevolverReg.value = { show: true, regId: reg.id, observacion: "" }
+}
+async function devolverRegistro() {
+  if (!modalDevolverReg.value.observacion.trim()) {
+    errorModal.value = "Ingrese la observación para el empleado"
+    return
+  }
+  guardando.value = true
+  errorModal.value = ""
+  try {
+    await api.patch("/horas-extras/registro/" + modalDevolverReg.value.regId + "/revisar", {
+      accion: "devolver",
+      observacion: modalDevolverReg.value.observacion,
+    })
+    modalDevolverReg.value.show = false
+    await cargarEquipoHoras()
+  } catch (e) {
+    errorModal.value = e.response?.data?.message || "Error al devolver"
   } finally { guardando.value = false }
 }
 

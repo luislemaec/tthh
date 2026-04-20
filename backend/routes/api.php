@@ -189,6 +189,8 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::get("/horas-extras/mis-registros",                             [HorasExtrasController::class, "misHoras"]);
     Route::post("/horas-extras/registro",                                 [HorasExtrasController::class, "registrar"]);
     Route::get("/horas-extras/equipo-registros",                          [HorasExtrasController::class, "equipoHoras"]);
+    Route::put("/horas-extras/registro/{id}",                             [HorasExtrasController::class, "actualizarRegistro"]);
+    Route::patch("/horas-extras/registro/{id}/revisar",                   [HorasExtrasController::class, "revisarRegistro"]);
     Route::patch("/horas-extras/registro/{id}/confirmar",                 [HorasExtrasController::class, "confirmar"]);
     Route::patch("/horas-extras/registro/{id}/negar",                     [HorasExtrasController::class, "negarRegistro"]);
 
