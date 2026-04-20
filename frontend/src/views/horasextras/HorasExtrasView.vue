@@ -414,6 +414,20 @@
                 </button>
               </td>
             </tr>
+            <!-- Fila de totales para TH NOMINA -->
+            <tr v-if="esTHNomina && equipoHoras.length" class="bg-gray-100 font-semibold border-t-2 border-gray-300">
+              <td colspan="3" class="px-6 py-3 text-right text-gray-700">TOTAL</td>
+              <td class="px-6 py-3 text-right">
+                {{ equipoHoras.filter(r => r.estado !== 'NEGADO').reduce((s, r) => s + parseFloat(r.horas_extraordinarias || 0), 0).toFixed(2) }}
+              </td>
+              <td class="px-6 py-3 text-right">
+                {{ equipoHoras.filter(r => r.estado !== 'NEGADO').reduce((s, r) => s + parseFloat(r.horas_suplementarias || 0), 0).toFixed(2) }}
+              </td>
+              <td class="px-6 py-3 text-green-700">
+                ${{ equipoHoras.filter(r => r.estado === 'APROBADO' && r.valor_total !== undefined).reduce((s, r) => s + parseFloat(r.valor_total || 0), 0).toFixed(2) }}
+              </td>
+              <td></td>
+            </tr>
           </tbody>
         </table>
       </div>
