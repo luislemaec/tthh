@@ -164,11 +164,15 @@
             </p>
           </div>
           <button
-            v-if="misHorasData.planificacion.estado === 'AUTORIZADO' && esMesActual(misHorasData.planificacion)"
+            v-if="misHorasData.planificacion.estado === 'AUTORIZADO' && esMesActual(misHorasData.planificacion) && !misHorasData.registros.some(r => r.estado === 'NEGADO')"
             @click="abrirModalRegistrar"
             class="bg-[#00372e] text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-800">
             + Registrar horas
           </button>
+          <p v-else-if="misHorasData.planificacion.estado === 'AUTORIZADO' && misHorasData.registros.some(r => r.estado === 'NEGADO')"
+            class="text-xs text-red-600 italic">
+            Registro negado. Debe volver a planificar.
+          </p>
           <p v-else-if="misHorasData.planificacion.estado === 'AUTORIZADO' && !esMesActual(misHorasData.planificacion)"
             class="text-xs text-gray-500 italic">
             Registro habilitado en {{ mesNombre(misHorasData.planificacion.mes) }} {{ misHorasData.planificacion.anio }}
