@@ -111,13 +111,13 @@
                 class="border-b hover:bg-gray-50">
                 <td class="px-6 py-3 text-gray-400">{{ i + 1 }}</td>
                 <td class="px-6 py-3">{{ det.actividad }}</td>
-                <td class="px-6 py-3 text-right">{{ det.horas_extraordinarias > 0 ? det.horas_extraordinarias : '-' }}</td>
-                <td class="px-6 py-3 text-right">{{ det.horas_suplementarias > 0 ? det.horas_suplementarias : '-' }}</td>
+                <td class="px-6 py-3 text-right">{{ hhmm(det.horas_extraordinarias) }}</td>
+                <td class="px-6 py-3 text-right">{{ hhmm(det.horas_suplementarias) }}</td>
               </tr>
               <tr class="bg-gray-50 font-semibold">
                 <td colspan="2" class="px-6 py-3 text-right">TOTAL</td>
-                <td class="px-6 py-3 text-right">{{ miPlan.total_extraordinarias }}</td>
-                <td class="px-6 py-3 text-right">{{ miPlan.total_suplementarias }}</td>
+                <td class="px-6 py-3 text-right">{{ hhmm(miPlan.total_extraordinarias) }}</td>
+                <td class="px-6 py-3 text-right">{{ hhmm(miPlan.total_suplementarias) }}</td>
               </tr>
             </tbody>
           </table>
@@ -151,16 +151,16 @@
           <div>
             <p class="font-semibold text-green-800">Planificación {{ misHorasData.planificacion.estado }}</p>
             <p class="text-sm text-green-700 mt-1">
-              Planificado: <b>{{ misHorasData.planificacion.total_extraordinarias }}</b> h. extraordinarias,
-              <b>{{ misHorasData.planificacion.total_suplementarias }}</b> h. suplementarias
+              Planificado: <b>{{ hhmm(misHorasData.planificacion.total_extraordinarias) }}</b> extraordinarias,
+              <b>{{ hhmm(misHorasData.planificacion.total_suplementarias) }}</b> suplementarias
             </p>
             <p class="text-sm text-green-700">
-              Declarado: <b>{{ totalDeclarado.extra }}</b> h. extraordinarias,
-              <b>{{ totalDeclarado.supl }}</b> h. suplementarias
+              Declarado: <b>{{ hhmm(totalDeclarado.extra) }}</b> extraordinarias,
+              <b>{{ hhmm(totalDeclarado.supl) }}</b> suplementarias
             </p>
             <p class="text-sm text-green-700">
-              Disponible: <b>{{ misHorasData.planificacion.total_extraordinarias - totalDeclarado.extra }}</b> h. extraordinarias,
-              <b>{{ misHorasData.planificacion.total_suplementarias - totalDeclarado.supl }}</b> h. suplementarias
+              Disponible: <b>{{ hhmm(misHorasData.planificacion.total_extraordinarias - totalDeclarado.extra) }}</b> extraordinarias,
+              <b>{{ hhmm(misHorasData.planificacion.total_suplementarias - totalDeclarado.supl) }}</b> suplementarias
             </p>
           </div>
           <button
@@ -206,8 +206,8 @@
               class="border-b hover:bg-gray-50">
               <td class="px-6 py-3">{{ formatFecha(reg.fecha) }}</td>
               <td class="px-6 py-3">{{ reg.descripcion || '-' }}</td>
-              <td class="px-6 py-3 text-right">{{ reg.horas_extraordinarias > 0 ? reg.horas_extraordinarias : '-' }}</td>
-              <td class="px-6 py-3 text-right">{{ reg.horas_suplementarias > 0 ? reg.horas_suplementarias : '-' }}</td>
+              <td class="px-6 py-3 text-right">{{ hhmm(reg.horas_extraordinarias) }}</td>
+              <td class="px-6 py-3 text-right">{{ hhmm(reg.horas_suplementarias) }}</td>
               <td class="px-6 py-3">
                 <span :class="{
                   'bg-blue-100 text-blue-800':     reg.estado === 'EN REVISION',
@@ -364,12 +364,12 @@
           <div class="text-xs flex flex-wrap gap-4 mt-1">
             <span>
               H. Extraordinarias:
-              <b>{{ grupo.registros.filter(r=>r.estado==='APROBADO').reduce((s,r)=>s+parseFloat(r.horas_extraordinarias||0),0).toFixed(2) }} h</b>
+              <b>{{ hhmm(grupo.registros.filter(r=>r.estado==='APROBADO').reduce((s,r)=>s+parseFloat(r.horas_extraordinarias||0),0)) }}</b>
               <span v-if="esTHNomina"> → <b>${{ grupo.registros.filter(r=>r.estado==='APROBADO').reduce((s,r)=>s+parseFloat(r.valor_extraordinarias||0),0).toFixed(2) }}</b></span>
             </span>
             <span>
               H. Suplementarias:
-              <b>{{ grupo.registros.filter(r=>r.estado==='APROBADO').reduce((s,r)=>s+parseFloat(r.horas_suplementarias||0),0).toFixed(2) }} h</b>
+              <b>{{ hhmm(grupo.registros.filter(r=>r.estado==='APROBADO').reduce((s,r)=>s+parseFloat(r.horas_suplementarias||0),0)) }}</b>
               <span v-if="esTHNomina"> → <b>${{ grupo.registros.filter(r=>r.estado==='APROBADO').reduce((s,r)=>s+parseFloat(r.valor_suplementarias||0),0).toFixed(2) }}</b></span>
             </span>
             <span v-if="esTHNomina" class="text-green-300 font-bold">
@@ -393,8 +393,8 @@
             <tr v-for="reg in grupo.registros" :key="reg.id" class="border-b hover:bg-gray-50">
               <td class="px-4 py-2">{{ formatFecha(reg.fecha) }}</td>
               <td class="px-4 py-2 text-gray-600">{{ reg.descripcion || '-' }}</td>
-              <td class="px-4 py-2 text-right">{{ reg.horas_extraordinarias > 0 ? reg.horas_extraordinarias : '-' }}</td>
-              <td class="px-4 py-2 text-right">{{ reg.horas_suplementarias > 0 ? reg.horas_suplementarias : '-' }}</td>
+              <td class="px-4 py-2 text-right">{{ hhmm(reg.horas_extraordinarias) }}</td>
+              <td class="px-4 py-2 text-right">{{ hhmm(reg.horas_suplementarias) }}</td>
               <td class="px-4 py-2">
                 <span :class="{
                   'bg-blue-100 text-blue-800':     reg.estado === 'EN REVISION',
@@ -429,8 +429,8 @@
 
       <!-- Totales generales (TH NOMINA) -->
       <div v-if="esTHNomina && equipoHoras.length" class="bg-gray-100 rounded-xl p-4 flex justify-end gap-8 text-sm font-semibold">
-        <span>Total H. Extraordinarias: <b>{{ totalEquipoHoras.extra.toFixed(2) }}</b> h</span>
-        <span>Total H. Suplementarias: <b>{{ totalEquipoHoras.supl.toFixed(2) }}</b> h</span>
+        <span>Total H. Extraordinarias: <b>{{ hhmm(totalEquipoHoras.extra) }}</b></span>
+        <span>Total H. Suplementarias: <b>{{ hhmm(totalEquipoHoras.supl) }}</b></span>
         <span class="text-green-700">Total a Pagar: <b>${{ totalEquipoHoras.valor.toFixed(2) }}</b></span>
       </div>
     </div>
@@ -484,11 +484,11 @@
         <div class="bg-gray-100 rounded-lg p-3 text-sm mb-4">
           <div class="flex justify-between">
             <span>Total H. Extraordinarias:</span>
-            <strong>{{ totalModalExtra }} h</strong>
+            <strong>{{ hhmm(totalModalExtra) }}</strong>
           </div>
           <div class="flex justify-between mt-1">
             <span>Total H. Suplementarias:</span>
-            <strong>{{ totalModalSupl }} h</strong>
+            <strong>{{ hhmm(totalModalSupl) }}</strong>
           </div>
         </div>
 
@@ -550,19 +550,19 @@
           <p class="font-medium text-green-800 mb-1">Desglose calculado:</p>
           <div class="flex justify-between text-green-700">
             <span>H. Extraordinarias:</span>
-            <strong>{{ modalRegistro.preview.horas_extraordinarias }} h</strong>
+            <strong>{{ hhmm(modalRegistro.preview.horas_extraordinarias) }}</strong>
           </div>
           <div class="flex justify-between text-green-700">
             <span>H. Suplementarias:</span>
-            <strong>{{ modalRegistro.preview.horas_suplementarias }} h</strong>
+            <strong>{{ hhmm(modalRegistro.preview.horas_suplementarias) }}</strong>
           </div>
         </div>
 
         <!-- Disponible -->
         <div class="bg-blue-50 rounded-lg p-3 text-xs text-blue-700 mb-4">
           Disponible este mes:
-          <b>{{ misHorasData.planificacion?.total_extraordinarias - totalDeclarado.extra }}</b> h. extraordinarias,
-          <b>{{ misHorasData.planificacion?.total_suplementarias - totalDeclarado.supl }}</b> h. suplementarias
+          <b>{{ hhmm((misHorasData.planificacion?.total_extraordinarias || 0) - totalDeclarado.extra) }}</b> extraordinarias,
+          <b>{{ hhmm((misHorasData.planificacion?.total_suplementarias || 0) - totalDeclarado.supl) }}</b> suplementarias
         </div>
 
         <div v-if="errorModal" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">
@@ -662,10 +662,10 @@
         <div v-if="modalEditarReg.preview" class="bg-green-50 border border-green-200 rounded-lg p-3 text-sm mb-3">
           <p class="font-medium text-green-800 mb-1">Desglose calculado:</p>
           <div class="flex justify-between text-green-700">
-            <span>H. Extraordinarias:</span><strong>{{ modalEditarReg.preview.horas_extraordinarias }} h</strong>
+            <span>H. Extraordinarias:</span><strong>{{ hhmm(modalEditarReg.preview.horas_extraordinarias) }}</strong>
           </div>
           <div class="flex justify-between text-green-700">
-            <span>H. Suplementarias:</span><strong>{{ modalEditarReg.preview.horas_suplementarias }} h</strong>
+            <span>H. Suplementarias:</span><strong>{{ hhmm(modalEditarReg.preview.horas_suplementarias) }}</strong>
           </div>
         </div>
         <div v-if="errorModal" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">{{ errorModal }}</div>
@@ -846,6 +846,16 @@ const totalEquipoHoras = computed(() => {
 })
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+function hhmm(decimal) {
+  const total = Math.round(parseFloat(decimal || 0) * 60)
+  const h = Math.floor(total / 60)
+  const m = total % 60
+  if (h === 0 && m === 0) return '-'
+  if (m === 0) return `${h}h`
+  if (h === 0) return `${m}m`
+  return `${h}h ${m}m`
+}
+
 function mesNombre(v) {
   return MESES.find(m => m.v === v)?.l ?? v
 }
