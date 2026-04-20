@@ -320,25 +320,23 @@
 
     <!-- ══════════════════ TAB: REGISTROS DEL EQUIPO ══════════════════ -->
     <div v-if="tabActiva === 'equipo-horas'">
-      <div class="flex gap-4 mb-4 items-end">
+      <!-- Filtros -->
+      <div class="flex gap-3 mb-4 items-end flex-wrap">
         <div>
           <label class="block text-xs text-gray-500 mb-1">Mes</label>
-          <select v-model="filtro.mes" @change="cargarEquipoHoras"
-            class="border rounded-lg px-3 py-2 text-sm">
+          <select v-model="filtro.mes" @change="cargarEquipoHoras" class="border rounded-lg px-3 py-2 text-sm">
             <option v-for="m in meses" :key="m.v" :value="m.v">{{ m.l }}</option>
           </select>
         </div>
         <div>
           <label class="block text-xs text-gray-500 mb-1">Año</label>
-          <select v-model="filtro.anio" @change="cargarEquipoHoras"
-            class="border rounded-lg px-3 py-2 text-sm">
+          <select v-model="filtro.anio" @change="cargarEquipoHoras" class="border rounded-lg px-3 py-2 text-sm">
             <option v-for="a in anios" :key="a" :value="a">{{ a }}</option>
           </select>
         </div>
         <div>
           <label class="block text-xs text-gray-500 mb-1">Estado</label>
-          <select v-model="filtroEstadoReg" @change="cargarEquipoHoras"
-            class="border rounded-lg px-3 py-2 text-sm">
+          <select v-model="filtroEstadoReg" @change="cargarEquipoHoras" class="border rounded-lg px-3 py-2 text-sm">
             <option value="">Todos</option>
             <option value="EN REVISION">En Revisión</option>
             <option value="PENDIENTE">Pendiente</option>
@@ -346,94 +344,84 @@
             <option value="NEGADO">Negado</option>
           </select>
         </div>
+        <div class="flex-1 min-w-[200px]">
+          <label class="block text-xs text-gray-500 mb-1">Buscar empleado</label>
+          <input v-model="filtroEmpleado" type="text" placeholder="Nombre o apellido..."
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#579186] outline-none" />
+        </div>
       </div>
 
-      <div class="bg-white rounded-xl shadow overflow-hidden">
+      <!-- Sin resultados -->
+      <div v-if="!equipoHorasAgrupado.length" class="bg-white rounded-xl shadow p-8 text-center text-gray-400 text-sm">
+        No hay registros para este mes
+      </div>
+
+      <!-- Grupos por empleado -->
+      <div v-for="grupo in equipoHorasAgrupado" :key="grupo.id_emp" class="bg-white rounded-xl shadow overflow-hidden mb-4">
+        <!-- Cabecera del empleado -->
+        <div class="bg-[#00372e] text-white px-6 py-3 flex justify-between items-center">
+          <span class="font-semibold text-sm">{{ grupo.nombre }}</span>
+          <div class="text-xs flex gap-4">
+            <span>H. Extra: <b>{{ grupo.registros.filter(r=>r.estado!=='NEGADO').reduce((s,r)=>s+parseFloat(r.horas_extraordinarias||0),0).toFixed(2) }}</b></span>
+            <span>H. Supl: <b>{{ grupo.registros.filter(r=>r.estado!=='NEGADO').reduce((s,r)=>s+parseFloat(r.horas_suplementarias||0),0).toFixed(2) }}</b></span>
+            <span v-if="esTHNomina">Total: <b>${{ grupo.registros.filter(r=>r.estado==='APROBADO'&&r.valor_total!==undefined).reduce((s,r)=>s+parseFloat(r.valor_total||0),0).toFixed(2) }}</b></span>
+          </div>
+        </div>
+
         <table class="w-full text-sm">
           <thead class="bg-gray-50 border-b">
             <tr>
-              <th class="text-left px-6 py-3 text-gray-600 font-medium">Empleado</th>
-              <th class="text-left px-6 py-3 text-gray-600 font-medium">Fecha</th>
-              <th class="text-left px-6 py-3 text-gray-600 font-medium">Descripción</th>
-              <th class="text-right px-6 py-3 text-gray-600 font-medium">H. Extra.</th>
-              <th class="text-right px-6 py-3 text-gray-600 font-medium">H. Supl.</th>
-              <th class="text-left px-6 py-3 text-gray-600 font-medium">Estado</th>
-              <th class="text-left px-6 py-3 text-gray-600 font-medium">Acciones</th>
+              <th class="text-left px-4 py-2 text-gray-600 font-medium">Fecha</th>
+              <th class="text-left px-4 py-2 text-gray-600 font-medium">Descripción</th>
+              <th class="text-right px-4 py-2 text-gray-600 font-medium">H. Extra.</th>
+              <th class="text-right px-4 py-2 text-gray-600 font-medium">H. Supl.</th>
+              <th class="text-left px-4 py-2 text-gray-600 font-medium">Estado</th>
+              <th class="text-left px-4 py-2 text-gray-600 font-medium">Acciones</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-if="!equipoHoras.length">
-              <td colspan="7" class="px-6 py-8 text-center text-gray-400">
-                No hay registros para este mes
-              </td>
-            </tr>
-            <tr v-for="reg in equipoHoras" :key="reg.id"
-              class="border-b hover:bg-gray-50">
-              <td class="px-6 py-3 font-medium">
-                {{ reg.empleado?.apellido_emp }} {{ reg.empleado?.nombre_emp }}
-              </td>
-              <td class="px-6 py-3">{{ formatFecha(reg.fecha) }}</td>
-              <td class="px-6 py-3 text-gray-600">{{ reg.descripcion || '-' }}</td>
-              <td class="px-6 py-3 text-right">{{ reg.horas_extraordinarias > 0 ? reg.horas_extraordinarias : '-' }}</td>
-              <td class="px-6 py-3 text-right">{{ reg.horas_suplementarias > 0 ? reg.horas_suplementarias : '-' }}</td>
-              <td class="px-6 py-3">
+            <tr v-for="reg in grupo.registros" :key="reg.id" class="border-b hover:bg-gray-50">
+              <td class="px-4 py-2">{{ formatFecha(reg.fecha) }}</td>
+              <td class="px-4 py-2 text-gray-600">{{ reg.descripcion || '-' }}</td>
+              <td class="px-4 py-2 text-right">{{ reg.horas_extraordinarias > 0 ? reg.horas_extraordinarias : '-' }}</td>
+              <td class="px-4 py-2 text-right">{{ reg.horas_suplementarias > 0 ? reg.horas_suplementarias : '-' }}</td>
+              <td class="px-4 py-2">
                 <span :class="{
                   'bg-blue-100 text-blue-800':     reg.estado === 'EN REVISION',
                   'bg-yellow-100 text-yellow-800': reg.estado === 'PENDIENTE',
                   'bg-green-100 text-green-800':   reg.estado === 'APROBADO',
                   'bg-red-100 text-red-800':        reg.estado === 'NEGADO',
-                }" class="px-2 py-0.5 rounded-full text-xs font-medium">
-                  {{ reg.estado }}
-                </span>
-                <!-- Desglose monetario solo para APROBADO y TH NOMINA -->
+                }" class="px-2 py-0.5 rounded-full text-xs font-medium">{{ reg.estado }}</span>
                 <div v-if="reg.estado === 'APROBADO' && esTHNomina && reg.valor_total !== undefined"
-                  class="mt-1 text-xs text-gray-500 space-y-0.5">
-                  <div>Extra: <b>${{ reg.valor_extraordinarias }}</b></div>
-                  <div>Supl: <b>${{ reg.valor_suplementarias }}</b></div>
+                  class="mt-1 text-xs space-y-0.5">
+                  <div class="text-gray-500">Extra: <b>${{ reg.valor_extraordinarias }}</b> | Supl: <b>${{ reg.valor_suplementarias }}</b></div>
                   <div class="font-semibold text-green-700">Total: ${{ reg.valor_total }}</div>
                 </div>
               </td>
-              <td class="px-6 py-3 flex gap-2 flex-wrap">
-                <!-- TH NOMINA: revisa EN REVISION -->
+              <td class="px-4 py-2 flex gap-2 flex-wrap">
                 <button v-if="reg.estado === 'EN REVISION' && esTHNomina"
                   @click="aprobarRevision(reg.id)"
-                  class="text-xs text-blue-700 hover:text-blue-900 font-medium">
-                  Aprobar revisión
-                </button>
+                  class="text-xs text-blue-700 hover:text-blue-900 font-medium">Aprobar revisión</button>
                 <button v-if="reg.estado === 'EN REVISION' && esTHNomina"
                   @click="abrirModalDevolverRegistro(reg)"
-                  class="text-xs text-orange-600 hover:text-orange-800 font-medium">
-                  Devolver
-                </button>
-                <!-- Supervisor: confirma/niega PENDIENTE -->
+                  class="text-xs text-orange-600 hover:text-orange-800 font-medium">Devolver</button>
                 <button v-if="reg.estado === 'PENDIENTE' && !esTHNomina"
                   @click="confirmarRegistro(reg.id)"
-                  class="text-xs text-green-700 hover:text-green-900 font-medium">
-                  Confirmar
-                </button>
+                  class="text-xs text-green-700 hover:text-green-900 font-medium">Confirmar</button>
                 <button v-if="reg.estado === 'PENDIENTE' && !esTHNomina"
                   @click="abrirModalNegarRegistro(reg)"
-                  class="text-xs text-red-600 hover:text-red-800 font-medium">
-                  Negar
-                </button>
+                  class="text-xs text-red-600 hover:text-red-800 font-medium">Negar</button>
               </td>
-            </tr>
-            <!-- Fila de totales para TH NOMINA -->
-            <tr v-if="esTHNomina && equipoHoras.length" class="bg-gray-100 font-semibold border-t-2 border-gray-300">
-              <td colspan="3" class="px-6 py-3 text-right text-gray-700">TOTAL</td>
-              <td class="px-6 py-3 text-right">
-                {{ equipoHoras.filter(r => r.estado !== 'NEGADO').reduce((s, r) => s + parseFloat(r.horas_extraordinarias || 0), 0).toFixed(2) }}
-              </td>
-              <td class="px-6 py-3 text-right">
-                {{ equipoHoras.filter(r => r.estado !== 'NEGADO').reduce((s, r) => s + parseFloat(r.horas_suplementarias || 0), 0).toFixed(2) }}
-              </td>
-              <td class="px-6 py-3 text-green-700">
-                ${{ equipoHoras.filter(r => r.estado === 'APROBADO' && r.valor_total !== undefined).reduce((s, r) => s + parseFloat(r.valor_total || 0), 0).toFixed(2) }}
-              </td>
-              <td></td>
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <!-- Totales generales (TH NOMINA) -->
+      <div v-if="esTHNomina && equipoHoras.length" class="bg-gray-100 rounded-xl p-4 flex justify-end gap-8 text-sm font-semibold">
+        <span>Total H. Extraordinarias: <b>{{ totalEquipoHoras.extra.toFixed(2) }}</b> h</span>
+        <span>Total H. Suplementarias: <b>{{ totalEquipoHoras.supl.toFixed(2) }}</b> h</span>
+        <span class="text-green-700">Total a Pagar: <b>${{ totalEquipoHoras.valor.toFixed(2) }}</b></span>
       </div>
     </div>
 
@@ -778,7 +766,8 @@ const tabsVisibles = computed(() =>
 const tabActiva = ref("mi-plan")
 
 const filtro = ref({ mes: new Date().getMonth() + 1, anio: anioActual })
-const filtroEstadoReg = ref("")
+const filtroEstadoReg  = ref("")
+const filtroEmpleado   = ref("")
 
 // ── Estado ──────────────────────────────────────────────────────────────────
 const miPlan         = ref(null)
@@ -812,6 +801,37 @@ const totalDeclarado = computed(() => {
   return {
     extra: regs.reduce((s, r) => s + (parseFloat(r.horas_extraordinarias) || 0), 0),
     supl:  regs.reduce((s, r) => s + (parseFloat(r.horas_suplementarias)  || 0), 0),
+  }
+})
+
+const equipoHorasAgrupado = computed(() => {
+  const busq = filtroEmpleado.value.toLowerCase().trim()
+  const registros = equipoHoras.value.filter(r => {
+    if (!busq) return true
+    const nombre = `${r.empleado?.apellido_emp} ${r.empleado?.nombre_emp}`.toLowerCase()
+    return nombre.includes(busq)
+  })
+  const grupos = {}
+  for (const reg of registros) {
+    const key = reg.id_emp
+    if (!grupos[key]) {
+      grupos[key] = {
+        id_emp: key,
+        nombre: `${reg.empleado?.apellido_emp} ${reg.empleado?.nombre_emp}`,
+        registros: [],
+      }
+    }
+    grupos[key].registros.push(reg)
+  }
+  return Object.values(grupos)
+})
+
+const totalEquipoHoras = computed(() => {
+  const todos = equipoHoras.value
+  return {
+    extra: todos.filter(r => r.estado !== 'NEGADO').reduce((s, r) => s + parseFloat(r.horas_extraordinarias || 0), 0),
+    supl:  todos.filter(r => r.estado !== 'NEGADO').reduce((s, r) => s + parseFloat(r.horas_suplementarias  || 0), 0),
+    valor: todos.filter(r => r.estado === 'APROBADO' && r.valor_total !== undefined).reduce((s, r) => s + parseFloat(r.valor_total || 0), 0),
   }
 })
 
