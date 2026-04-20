@@ -78,6 +78,7 @@ Route::middleware("auth:sanctum")->group(function () {
 
     // Departamentos
     Route::get("/departamentos", [EmpleadoController::class, "departamentos"]);
+    Route::get("/empleados/partidas-vacantes", [EmpleadoController::class, "partidasVacantes"]);
 
     // Empleados
     Route::get("/empleados",         [EmpleadoController::class, "index"]);

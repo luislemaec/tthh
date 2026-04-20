@@ -165,8 +165,12 @@
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Partida Individual *</label>
-            <input v-model="form.partida_individual" type="number" min="1" required
+            <input v-model="form.partida_individual" list="lista-partidas-vacantes" type="text" required
+              placeholder="Ingrese o seleccione una partida vacante"
               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+            <datalist id="lista-partidas-vacantes">
+              <option v-for="p in partidasVacantes" :key="p" :value="p" />
+            </datalist>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Fondos de Reserva</label>
@@ -232,8 +236,9 @@ const router = useRouter()
 const esEdicion     = computed(() => !!route.params.id)
 const guardando     = ref(false)
 const error         = ref("")
-const departamentos = ref([])
-const jornadas      = ref([])
+const departamentos    = ref([])
+const jornadas         = ref([])
+const partidasVacantes = ref([])
 
 const form = ref({
   nombres:        "",
@@ -313,10 +318,14 @@ const guardar = async () => {
 }
 
 onMounted(async () => {
-  const { data: deps } = await api.get("/departamentos")
-  departamentos.value = deps
-  const { data: jors } = await api.get("/admin/jornadas")
-  jornadas.value = jors
+  const [{ data: deps }, { data: jors }, { data: partidas }] = await Promise.all([
+    api.get("/departamentos"),
+    api.get("/admin/jornadas"),
+    api.get("/empleados/partidas-vacantes"),
+  ])
+  departamentos.value    = deps
+  jornadas.value         = jors
+  partidasVacantes.value = partidas
 
   if (esEdicion.value) {
     const { data } = await api.get("/empleados/" + route.params.id)

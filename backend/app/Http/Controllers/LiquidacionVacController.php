@@ -27,10 +27,11 @@ class LiquidacionVacController extends Controller
     ];
 
     private const MOTIVOS_POR_MODALIDAD = [
-        'Nombramiento definitivo'    => ['INICIO_COMISION', 'FIN_COMISION_RETORNO'],
-        'Comisión de servicios'      => ['COMISION_ENTRANTE', 'FIN_COMISION_SALIDA'],
-        'Contrato ocasional'         => ['DESVINCULACION'],
-        'Nombramiento provisional'   => ['DESVINCULACION'],
+        'Nombramiento definitivo'       => ['INICIO_COMISION', 'FIN_COMISION_RETORNO'],
+        'Comisión de servicios'         => ['COMISION_ENTRANTE', 'FIN_COMISION_SALIDA'],
+        'Contrato ocasional'            => ['DESVINCULACION'],
+        'Nombramiento provisional'      => ['DESVINCULACION'],
+        'Libre Nombramiento y Remoción' => ['DESVINCULACION'],
     ];
 
     // Motivos que requieren cargar días de certificado externo

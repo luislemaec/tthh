@@ -344,4 +344,15 @@ class EmpleadoController extends Controller
         $deps = Departamento::orderBy("nombre_depto")->get(["id_depto", "nombre_depto"]);
         return response()->json($deps);
     }
+
+    public function partidasVacantes()
+    {
+        $partidas = Empleado::where('estado_puesto', 'VACANTE')
+            ->whereNotNull('partida_individual')
+            ->orderBy('partida_individual')
+            ->pluck('partida_individual')
+            ->unique()
+            ->values();
+        return response()->json($partidas);
+    }
 }
