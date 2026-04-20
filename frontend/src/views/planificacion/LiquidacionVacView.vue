@@ -66,22 +66,22 @@
         <div class="grid grid-cols-4 gap-3 text-center">
           <div class="bg-blue-50 rounded-lg p-3">
             <p class="text-xs text-gray-500 mb-1">Saldo Inicial</p>
-            <p class="text-xl font-bold text-blue-700">{{ saldo.saldo_inicial }}</p>
+            <p class="text-xl font-bold text-blue-700">{{ Number(saldo.saldo_inicial).toFixed(2) }}</p>
             <p class="text-xs text-gray-400">días</p>
           </div>
           <div class="bg-teal-50 rounded-lg p-3">
             <p class="text-xs text-gray-500 mb-1">Acumulado</p>
-            <p class="text-xl font-bold text-teal-700">{{ saldo.acumulado }}</p>
+            <p class="text-xl font-bold text-teal-700">{{ Number(saldo.acumulado).toFixed(2) }}</p>
             <p class="text-xs text-gray-400">días</p>
           </div>
           <div class="bg-amber-50 rounded-lg p-3">
             <p class="text-xs text-gray-500 mb-1">Tomados</p>
-            <p class="text-xl font-bold text-amber-700">{{ saldo.tomados }}</p>
+            <p class="text-xl font-bold text-amber-700">{{ Number(saldo.tomados).toFixed(2) }}</p>
             <p class="text-xs text-gray-400">días</p>
           </div>
           <div class="bg-green-50 rounded-lg p-3 border-2 border-green-300">
             <p class="text-xs text-gray-500 mb-1">Saldo Total</p>
-            <p class="text-2xl font-bold text-green-700">{{ saldo.saldo_liquidado }}</p>
+            <p class="text-2xl font-bold text-green-700">{{ Number(saldo.saldo_liquidado).toFixed(2) }}</p>
             <p class="text-xs text-gray-400">días</p>
           </div>
         </div>
