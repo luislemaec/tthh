@@ -2,7 +2,7 @@
   <div>
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-2xl font-bold text-gray-800">Solicitudes de Materiales</h1>
-      <button @click="abrirCrear" class="bg-amber-700 text-white px-4 py-2 rounded-lg text-sm hover:bg-amber-800">
+      <button @click="abrirCrear" class="text-white px-4 py-2 rounded-lg text-sm hover:opacity-90" style="background-color:#4a5e3a;">
         + Nueva solicitud
       </button>
     </div>
@@ -94,46 +94,82 @@
 
     <!-- Modal crear solicitud -->
     <div v-if="modalCrear.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-xl p-6 max-h-[90vh] overflow-y-auto">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-3xl p-6 max-h-[95vh] overflow-y-auto">
         <h2 class="text-lg font-bold mb-4">Nueva Solicitud de Materiales</h2>
-        <div class="mb-3">
+
+        <div class="mb-4">
           <label class="block text-xs text-gray-600 mb-1">Justificación</label>
           <textarea v-model="modalCrear.form.justificacion" rows="2" maxlength="500"
-            class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none"></textarea>
+            class="w-full border rounded px-3 py-2 text-sm focus:ring-2 outline-none"></textarea>
         </div>
-        <div class="border-t pt-4">
-          <div class="flex justify-between items-center mb-3">
-            <p class="text-sm font-semibold text-gray-700">Artículos solicitados</p>
-            <button @click="agregarDetalle" class="text-xs text-amber-700 hover:text-amber-900 font-medium">+ Agregar</button>
-          </div>
-          <div v-for="(det, i) in modalCrear.form.detalles" :key="i" class="border rounded-lg p-3 bg-gray-50 mb-2">
-            <div class="flex justify-between mb-2">
-              <span class="text-xs text-gray-500">Artículo {{ i + 1 }}</span>
-              <button @click="modalCrear.form.detalles.splice(i, 1)" class="text-red-400 text-xs">✕</button>
-            </div>
-            <div class="grid grid-cols-3 gap-2">
-              <div class="col-span-2">
-                <label class="block text-xs text-gray-500 mb-1">Artículo *</label>
-                <select v-model="det.articulo_id" class="w-full border rounded px-2 py-1.5 text-sm focus:ring-1 focus:ring-amber-300 outline-none">
-                  <option value="">Seleccionar...</option>
-                  <option v-for="a in articulosActivos" :key="a.id" :value="a.id">
-                    {{ a.nombre }} ({{ a.stock_actual }} {{ a.unidad_medida }})
-                  </option>
-                </select>
-              </div>
+
+        <!-- Buscador artículos -->
+        <div class="mb-3 relative">
+          <label class="block text-xs text-gray-600 mb-1">Buscar artículo por código o descripción</label>
+          <input v-model="busquedaArticulo" @input="filtrarArticulos" type="text"
+            placeholder="Escribe código o nombre del artículo..."
+            class="w-full border rounded px-3 py-2 text-sm focus:ring-2 outline-none" />
+          <div v-if="articulosFiltrados.length && busquedaArticulo"
+            class="absolute z-10 bg-white border rounded-lg shadow-lg w-full mt-1 max-h-48 overflow-y-auto">
+            <div v-for="a in articulosFiltrados" :key="a.id"
+              @click="agregarDetalle(a)"
+              class="px-4 py-2 text-sm hover:bg-gray-100 cursor-pointer flex justify-between items-center">
               <div>
-                <label class="block text-xs text-gray-500 mb-1">Cantidad *</label>
-                <input v-model="det.cantidad_solicitada" type="number" step="1" min="1"
-                  class="w-full border rounded px-2 py-1.5 text-sm focus:ring-1 focus:ring-amber-300 outline-none" />
+                <span class="font-mono text-xs text-gray-400 mr-2">{{ a.codigo }}</span>
+                <span class="font-medium">{{ a.nombre }}</span>
+                <span v-if="a.marca" class="text-gray-400 text-xs ml-1">({{ a.marca }})</span>
               </div>
+              <span class="text-xs" :class="a.stock_actual > 0 ? 'text-green-600' : 'text-red-500'">
+                Stock: {{ a.stock_actual }} {{ a.unidad_medida }}
+              </span>
             </div>
           </div>
         </div>
-        <p v-if="errorModal" class="text-red-600 text-sm mt-3">{{ errorModal }}</p>
-        <div class="flex justify-end gap-3 mt-5">
+
+        <!-- Tabla ítems -->
+        <div class="border rounded-lg overflow-hidden mb-4">
+          <table class="w-full text-sm">
+            <thead class="text-white" style="background-color:#4a5e3a;">
+              <tr>
+                <th class="text-left px-3 py-2 font-medium">Código</th>
+                <th class="text-left px-3 py-2 font-medium">Artículo</th>
+                <th class="text-left px-3 py-2 font-medium">Marca</th>
+                <th class="text-right px-3 py-2 font-medium">Stock disp.</th>
+                <th class="text-right px-3 py-2 font-medium w-28">Cantidad</th>
+                <th class="w-8"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="!modalCrear.form.detalles.length">
+                <td colspan="6" class="text-center py-6 text-gray-400 italic">
+                  Busca un artículo arriba para agregarlo
+                </td>
+              </tr>
+              <tr v-for="(det, i) in modalCrear.form.detalles" :key="i" class="border-t hover:bg-gray-50">
+                <td class="px-3 py-1.5 font-mono text-xs text-gray-500">{{ det.codigo }}</td>
+                <td class="px-3 py-1.5 font-medium">{{ det.nombre }}</td>
+                <td class="px-3 py-1.5 text-gray-400 text-xs">{{ det.marca || '-' }}</td>
+                <td class="px-3 py-1.5 text-right text-xs" :class="det.stock_actual > 0 ? 'text-green-600' : 'text-red-500'">
+                  {{ det.stock_actual }} {{ det.unidad_medida }}
+                </td>
+                <td class="px-3 py-1.5">
+                  <input v-model="det.cantidad_solicitada" type="number" step="1" min="1"
+                    class="w-full border rounded px-2 py-1 text-sm text-right focus:ring-1 outline-none" />
+                </td>
+                <td class="px-3 py-1.5 text-center">
+                  <button @click="modalCrear.form.detalles.splice(i, 1)" class="text-red-400 hover:text-red-600 text-xs font-bold">✕</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p v-if="errorModal" class="text-red-600 text-sm mb-3">{{ errorModal }}</p>
+        <div class="flex justify-end gap-3">
           <button @click="modalCrear.show = false" class="px-4 py-2 text-sm text-gray-600">Cancelar</button>
           <button @click="guardarSolicitud" :disabled="guardando"
-            class="bg-amber-700 text-white px-5 py-2 rounded-lg text-sm hover:bg-amber-800 disabled:opacity-50">
+            class="text-white px-5 py-2 rounded-lg text-sm hover:opacity-90 disabled:opacity-50"
+            style="background-color:#4a5e3a;">
             {{ guardando ? 'Enviando...' : 'Enviar solicitud' }}
           </button>
         </div>
@@ -197,15 +233,24 @@ const articulos    = ref([])
 const filtroEstado = ref('')
 const guardando    = ref(false)
 const errorModal   = ref('')
+const busquedaArticulo   = ref('')
+const articulosFiltrados = ref([])
 
-const miId         = computed(() => auth.empleado?.id_emp)
-const esBienes     = computed(() => auth.tieneRol('BIENES'))
+const miId              = computed(() => auth.empleado?.id_emp)
+const esBienes          = computed(() => auth.tieneRol('BIENES'))
 const esSupervisorLocal = ref(false)
 
-const articulosActivos = computed(() => articulos.value.filter(a => a.estado === 'ACTIVO'))
-
-const modalCrear   = ref({ show: false, form: { justificacion: '', detalles: [] } })
+const modalCrear    = ref({ show: false, form: { justificacion: '', detalles: [] } })
 const modalDespacho = ref({ show: false, solicitud: null, detalles: [], observacion: '' })
+
+function filtrarArticulos() {
+  const q = busquedaArticulo.value.toLowerCase().trim()
+  if (!q) { articulosFiltrados.value = []; return }
+  articulosFiltrados.value = articulos.value
+    .filter(a => a.estado === 'ACTIVO' &&
+      (a.codigo.toLowerCase().includes(q) || a.nombre.toLowerCase().includes(q) || (a.marca || '').toLowerCase().includes(q))
+    ).slice(0, 10)
+}
 
 function estadoClase(estado) {
   return {
@@ -235,11 +280,23 @@ onMounted(async () => {
 
 function abrirCrear() {
   modalCrear.value = { show: true, form: { justificacion: '', detalles: [] } }
+  busquedaArticulo.value = ''
+  articulosFiltrados.value = []
   errorModal.value = ''
 }
 
-function agregarDetalle() {
-  modalCrear.value.form.detalles.push({ articulo_id: '', cantidad_solicitada: 1 })
+function agregarDetalle(a) {
+  const yaExiste = modalCrear.value.form.detalles.find(d => d.articulo_id === a.id)
+  if (yaExiste) { yaExiste.cantidad_solicitada++; }
+  else {
+    modalCrear.value.form.detalles.push({
+      articulo_id: a.id, codigo: a.codigo, nombre: a.nombre,
+      marca: a.marca, unidad_medida: a.unidad_medida, stock_actual: a.stock_actual,
+      cantidad_solicitada: 1,
+    })
+  }
+  busquedaArticulo.value = ''
+  articulosFiltrados.value = []
 }
 
 async function guardarSolicitud() {

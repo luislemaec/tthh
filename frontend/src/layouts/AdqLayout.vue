@@ -3,10 +3,10 @@
 
     <!-- Sidebar Adquisiciones -->
     <aside :class="['text-white transition-all duration-300 flex flex-col', sidebarOpen ? 'w-64' : 'w-16']"
-           style="background-color: #78350f;">
+           style="background-color: #4a5e3a;">
 
       <!-- Logo -->
-      <div class="flex items-center gap-3 p-3 h-16 flex-shrink-0" style="border-bottom: 1px solid #92400e;">
+      <div class="flex items-center gap-3 p-3 h-16 flex-shrink-0" style="border-bottom: 1px solid #3b4a2e;">
         <img src="@/assets/LOGOS-CONSEJOBLANCOH.png" alt="Logo"
              class="flex-shrink-0 object-contain"
              :class="sidebarOpen ? 'h-10 w-auto' : 'h-8 w-8'" />
@@ -18,8 +18,9 @@
       <!-- Menú -->
       <nav class="flex-1 overflow-y-auto py-3 space-y-0.5">
         <router-link v-for="item in menuItems" :key="item.to" :to="item.to"
-          class="flex items-center gap-3 px-4 py-2.5 text-sm transition-all duration-200 hover:bg-amber-700"
-          :class="$route.path.startsWith(item.to) ? 'bg-amber-700 font-semibold' : 'text-amber-100'"
+          class="flex items-center gap-3 px-4 py-2.5 text-sm transition-all duration-200"
+          :style="$route.path.startsWith(item.to) ? 'background-color:#3b4a2e' : ''"
+          :class="$route.path.startsWith(item.to) ? 'font-semibold text-white' : 'text-green-100 hover:bg-[#3b4a2e]'"
           active-class="">
           <component :is="'svg'" class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="item.icon" />
@@ -33,9 +34,9 @@
       </nav>
 
       <!-- Footer -->
-      <div class="p-4 flex-shrink-0 space-y-2" style="border-top: 1px solid #92400e;">
+      <div class="p-4 flex-shrink-0 space-y-2" style="border-top: 1px solid #3b4a2e;">
         <router-link to="/launcher"
-          class="flex items-center gap-3 text-sm w-full hover:text-white transition text-amber-200">
+          class="flex items-center gap-3 text-sm w-full hover:text-white transition text-green-200">
           <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
@@ -43,7 +44,7 @@
           <span v-show="sidebarOpen">Inicio</span>
         </router-link>
         <button @click="handleLogout"
-          class="flex items-center gap-3 text-sm w-full hover:text-white transition text-amber-200">
+          class="flex items-center gap-3 text-sm w-full hover:text-white transition text-green-200">
           <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
@@ -56,7 +57,7 @@
     <!-- Contenido -->
     <div class="flex-1 flex flex-col overflow-hidden">
       <header class="bg-white h-16 flex items-center justify-between px-6"
-              style="border-bottom: 2px solid #d97706;">
+              style="border-bottom: 2px solid #5c7348;">
         <button @click="sidebarOpen = !sidebarOpen" class="text-gray-500 hover:text-gray-700">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
@@ -64,7 +65,7 @@
         </button>
         <div class="flex items-center gap-4">
           <span class="text-sm text-gray-600">{{ auth.empleado?.apellido_emp }} {{ auth.empleado?.nombre_emp }}</span>
-          <div class="w-9 h-9 rounded-full text-white flex items-center justify-center text-sm font-bold bg-amber-700">
+          <div class="w-9 h-9 rounded-full text-white flex items-center justify-center text-sm font-bold" style="background-color:#4a5e3a;">
             {{ iniciales }}
           </div>
         </div>
