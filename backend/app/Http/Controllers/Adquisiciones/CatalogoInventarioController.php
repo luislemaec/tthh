@@ -24,7 +24,11 @@ class CatalogoInventarioController extends Controller
             $query->where('nivel1', $nivel1);
         }
 
-        $items = $query->orderBy('nivel2')->paginate(50);
+        $items = $query
+            ->join('adq.catalogo_nivel1 as n1', 'adq.catalogo_inventario.nivel1', '=', 'n1.nivel1')
+            ->select('adq.catalogo_inventario.*', 'n1.descripcion as descripcion_nivel1')
+            ->orderBy('adq.catalogo_inventario.nivel2')
+            ->paginate(50);
         return response()->json($items);
     }
 
@@ -76,11 +80,9 @@ class CatalogoInventarioController extends Controller
 
     public function nivel1s()
     {
-        $items = DB::table('adq.catalogo_inventario')
-            ->select('nivel1')
-            ->distinct()
+        $items = DB::table('adq.catalogo_nivel1')
             ->orderBy('nivel1')
-            ->pluck('nivel1');
+            ->get(['nivel1', 'descripcion']);
         return response()->json($items);
     }
 }

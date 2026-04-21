@@ -13,9 +13,9 @@
       <input v-model="busqueda" @input="cargar" type="text" placeholder="Buscar por código o descripción..."
         class="border rounded-lg px-3 py-2 text-sm w-72 focus:ring-2 focus:ring-amber-300 outline-none" />
       <select v-model="filtroNivel1" @change="cargar"
-        class="border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none">
-        <option value="">Todos los niveles 1</option>
-        <option v-for="n in nivel1s" :key="n" :value="n">{{ n }}</option>
+        class="border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none w-72">
+        <option value="">Todas las categorías</option>
+        <option v-for="n in nivel1s" :key="n.nivel1" :value="n.nivel1">{{ n.nivel1 }} — {{ n.descripcion }}</option>
       </select>
     </div>
 
@@ -23,23 +23,25 @@
       <table class="w-full text-sm">
         <thead class="bg-gray-50 border-b">
           <tr>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium w-16">Nivel 1</th>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium w-24">Nivel 2</th>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium">Descripción</th>
+            <th class="text-left px-4 py-3 text-gray-600 font-medium w-16">Niv. 1</th>
+            <th class="text-left px-4 py-3 text-gray-600 font-medium w-24">Niv. 2</th>
+            <th class="text-left px-4 py-3 text-gray-600 font-medium">Categoría (Nivel 1)</th>
+            <th class="text-left px-4 py-3 text-gray-600 font-medium">Descripción (Nivel 2)</th>
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Asociación Presupuestaria</th>
             <th class="text-left px-4 py-3 text-gray-600 font-medium w-24">Acciones</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="cargando">
-            <td colspan="5" class="text-center py-8 text-gray-400">Cargando...</td>
+            <td colspan="6" class="text-center py-8 text-gray-400">Cargando...</td>
           </tr>
           <tr v-else-if="!items.length">
-            <td colspan="5" class="text-center py-8 text-gray-400">Sin resultados</td>
+            <td colspan="6" class="text-center py-8 text-gray-400">Sin resultados</td>
           </tr>
           <tr v-for="item in items" :key="item.nivel2" class="border-b hover:bg-gray-50">
             <td class="px-4 py-3 font-mono font-bold text-amber-700">{{ item.nivel1 }}</td>
             <td class="px-4 py-3 font-mono text-xs">{{ item.nivel2 }}</td>
+            <td class="px-4 py-3 text-xs text-gray-500">{{ item.descripcion_nivel1 }}</td>
             <td class="px-4 py-3">{{ item.descripcion }}</td>
             <td class="px-4 py-3 text-xs text-gray-500">{{ item.asociacion_presupuestaria || '-' }}</td>
             <td class="px-4 py-3 flex gap-2">
