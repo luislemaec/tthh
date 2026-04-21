@@ -69,7 +69,7 @@
 
     <!-- Info usuario -->
     <div class="mt-10 text-center text-green-200 text-sm">
-      <p>{{ auth.empleado?.apellido_emp }} {{ auth.empleado?.nombre_emp }}</p>
+      <p>{{ store.empleado?.apellido_emp }} {{ store.empleado?.nombre_emp }}</p>
       <button @click="logout" class="mt-2 text-green-300 hover:text-white underline text-xs">
         Cerrar sesión
       </button>
