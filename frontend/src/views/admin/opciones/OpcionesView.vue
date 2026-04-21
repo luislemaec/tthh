@@ -2,7 +2,7 @@
   <div>
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-2xl font-bold text-gray-800">Opciones de Menu</h1>
-      <button @click="abrirModalNuevo" class="bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-800 transition text-sm">
+      <button @click="abrirModalNuevo" class="bg-[#00372e] text-white px-4 py-2 rounded-lg hover:bg-blue-800 transition text-sm">
         + Nueva Opcion
       </button>
     </div>
@@ -31,7 +31,7 @@
             <td class="px-4 py-3 font-medium">{{ opcion.descripcion }}</td>
             <td class="px-4 py-3 text-gray-500">{{ opcion.url }}</td>
             <td class="px-4 py-3">
-              <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs font-medium">{{ opcion.categoria }}</span>
+              <span class="bg-blue-100 text-[#0b5447] px-2 py-1 rounded-full text-xs font-medium">{{ opcion.categoria }}</span>
             </td>
             <td class="px-4 py-3 text-gray-500">{{ opcion.orden_categoria }}-{{ opcion.secuencia }}</td>
             <td class="px-4 py-3">
@@ -41,7 +41,7 @@
             </td>
             <td class="px-4 py-3">
               <div class="flex gap-2">
-                <button @click="editarOpcion(opcion)" class="text-blue-600 hover:text-blue-800 text-xs font-medium">Editar</button>
+                <button @click="editarOpcion(opcion)" class="text-[#0b5447] hover:text-blue-800 text-xs font-medium">Editar</button>
                 <button @click="toggleEstado(opcion)" class="text-yellow-600 hover:text-yellow-800 text-xs font-medium">
                   {{ opcion.estado ? "Desactivar" : "Activar" }}
                 </button>
@@ -60,32 +60,32 @@
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">ID *</label>
               <input v-model="modal.form.id" type="text" maxlength="10" placeholder="Ej: OPC007"
-                class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#579186] outline-none"
                 :disabled="modal.editando" required />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Descripcion *</label>
               <input v-model="modal.form.descripcion" type="text" maxlength="50"
-                class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none" required />
+                class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#579186] outline-none" required />
             </div>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">URL *</label>
             <input v-model="modal.form.url" type="text" maxlength="50" placeholder="Ej: admin/jornadas"
-              class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none" required />
+              class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#579186] outline-none" required />
           </div>
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Categoria *</label>
               <input v-model="modal.form.categoria" type="text" maxlength="20" list="cat-list"
-                class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none" required />
+                class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#579186] outline-none" required />
               <datalist id="cat-list">
                 <option v-for="cat in categorias" :key="cat" :value="cat" />
               </datalist>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Padre</label>
-              <select v-model="modal.form.padre" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
+              <select v-model="modal.form.padre" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#579186] outline-none">
                 <option value="">Sin padre</option>
                 <option v-for="op in opciones" :key="op.id" :value="op.id">{{ op.descripcion }}</option>
               </select>
@@ -95,18 +95,18 @@
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Orden Categoria *</label>
               <input v-model="modal.form.orden_categoria" type="number" min="1"
-                class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none" required />
+                class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#579186] outline-none" required />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Secuencia *</label>
               <input v-model="modal.form.secuencia" type="number" min="1"
-                class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none" required />
+                class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#579186] outline-none" required />
             </div>
           </div>
           <div v-if="error" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">{{ error }}</div>
           <div class="flex justify-end gap-3 pt-2">
             <button type="button" @click="cerrarModal" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancelar</button>
-            <button type="submit" :disabled="guardando" class="bg-blue-700 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-800 disabled:opacity-50">
+            <button type="submit" :disabled="guardando" class="bg-[#00372e] text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-800 disabled:opacity-50">
               {{ guardando ? "Guardando..." : "Guardar" }}
             </button>
           </div>

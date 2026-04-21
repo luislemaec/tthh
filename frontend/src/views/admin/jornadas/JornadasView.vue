@@ -4,7 +4,7 @@
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-2xl font-bold text-gray-800">Jornadas Laborales</h1>
       <button @click="abrirModalNuevo"
-        class="bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-800 transition text-sm">
+        class="bg-[#00372e] text-white px-4 py-2 rounded-lg hover:bg-blue-800 transition text-sm">
         + Nueva Jornada
       </button>
     </div>
@@ -19,6 +19,8 @@
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Horas Máximas</th>
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Horas Normales</th>
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Recargo %</th>
+            <th class="text-left px-6 py-3 text-gray-600 font-medium">H. Extra. %</th>
+            <th class="text-left px-6 py-3 text-gray-600 font-medium">H. Supl. %</th>
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Acciones</th>
           </tr>
         </thead>
@@ -40,9 +42,11 @@
             <td class="px-6 py-3">{{ jornada.jornada_ordinaria_maxima ?? "-" }}</td>
             <td class="px-6 py-3">{{ jornada.normal ?? "-" }}</td>
             <td class="px-6 py-3">{{ jornada.recargo ?? "-" }}</td>
+            <td class="px-6 py-3">{{ jornada.porc_extraordinaria ?? "-" }}</td>
+            <td class="px-6 py-3">{{ jornada.porc_suplementaria ?? "-" }}</td>
             <td class="px-6 py-3 flex gap-3">
               <button @click="editarJornada(jornada)"
-                class="text-blue-600 hover:text-blue-800 text-xs font-medium">
+                class="text-[#0b5447] hover:text-blue-800 text-xs font-medium">
                 Editar
               </button>
               <button @click="eliminarJornada(jornada.id_jornada)"
@@ -67,7 +71,7 @@
               ID Jornada
             </label>
             <input v-model="modal.form.id_jornada" type="number"
-              class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+              class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#579186] outline-none"
               :disabled="modal.editando" required />
             <p class="text-xs text-gray-400 mt-1">
               Número único que identifica la jornada
@@ -80,7 +84,7 @@
             </label>
             <input v-model="modal.form.descripcion" type="text" maxlength="50"
               placeholder="Ej: Jornada Completa"
-              class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+              class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#579186] outline-none"
               required />
           </div>
 
@@ -91,7 +95,7 @@
               </label>
               <input v-model="modal.form.jornada_ordinaria_maxima" type="number"
                 placeholder="Ej: 8"
-                class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none" />
+                class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#579186] outline-none" />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">
@@ -99,7 +103,7 @@
               </label>
               <input v-model="modal.form.normal" type="number"
                 placeholder="Ej: 8"
-                class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none" />
+                class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#579186] outline-none" />
             </div>
           </div>
 
@@ -110,7 +114,7 @@
               </label>
               <input v-model="modal.form.recargo" type="number" step="0.01"
                 placeholder="Ej: 25.00"
-                class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none" />
+                class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#579186] outline-none" />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">
@@ -118,7 +122,26 @@
               </label>
               <input v-model="modal.form.porc_25" type="number"
                 placeholder="Ej: 25"
-                class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none" />
+                class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#579186] outline-none" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">
+                H. Extraordinarias %
+              </label>
+              <input v-model="modal.form.porc_extraordinaria" type="number" step="0.01"
+                placeholder="Ej: 50 (CdT) / 25 (LOSEP)"
+                class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#579186] outline-none" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">
+                H. Suplementarias %
+              </label>
+              <input v-model="modal.form.porc_suplementaria" type="number" step="0.01"
+                placeholder="Ej: 100 (CdT) / 60 (LOSEP)"
+                class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#579186] outline-none" />
             </div>
           </div>
 
@@ -134,7 +157,7 @@
               Cancelar
             </button>
             <button type="submit" :disabled="guardando"
-              class="bg-blue-700 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-800 disabled:opacity-50">
+              class="bg-[#00372e] text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-800 disabled:opacity-50">
               {{ guardando ? "Guardando..." : "Guardar" }}
             </button>
           </div>
@@ -194,6 +217,8 @@ function abrirModalNuevo() {
       normal: "",
       recargo: "",
       porc_25: "",
+      porc_extraordinaria: "",
+      porc_suplementaria: "",
     }
   }
 }

@@ -3,9 +3,19 @@
     <div class="flex items-center justify-between">
       <h1 class="text-2xl font-bold text-gray-800">Departamentos</h1>
       <button @click="abrirModal()"
-        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium">
+        class="bg-[#0b5447] text-white px-4 py-2 rounded-lg hover:bg-[#00372e] text-sm font-medium">
         + Nuevo Departamento
       </button>
+    </div>
+
+    <!-- Filtro estado -->
+    <div class="flex gap-3">
+      <button @click="filtroEstado = 'ACTIVO'"
+        :class="filtroEstado === 'ACTIVO' ? 'bg-[#0b5447] text-white' : 'bg-white text-gray-600 border'"
+        class="px-4 py-1.5 rounded-lg text-sm font-medium">Activos</button>
+      <button @click="filtroEstado = 'INACTIVO'"
+        :class="filtroEstado === 'INACTIVO' ? 'bg-gray-600 text-white' : 'bg-white text-gray-600 border'"
+        class="px-4 py-1.5 rounded-lg text-sm font-medium">Inactivos</button>
     </div>
 
     <!-- Tabla -->
@@ -15,26 +25,41 @@
           <tr>
             <th class="text-left px-6 py-3 text-gray-600 font-medium">#</th>
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Nombre</th>
+            <th class="text-left px-6 py-3 text-gray-600 font-medium">Área Padre</th>
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Centro de Costo</th>
-            <th class="text-left px-6 py-3 text-gray-600 font-medium">Empleados</th>
+            <th class="text-left px-6 py-3 text-gray-600 font-medium">Estado</th>
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Acciones</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="cargando">
-            <td colspan="5" class="text-center py-8 text-gray-400">Cargando...</td>
+            <td colspan="6" class="text-center py-8 text-gray-400">Cargando...</td>
           </tr>
-          <tr v-else-if="departamentos.length === 0">
-            <td colspan="5" class="text-center py-8 text-gray-400">No hay departamentos registrados.</td>
+          <tr v-else-if="departamentosFiltrados.length === 0">
+            <td colspan="6" class="text-center py-8 text-gray-400">No hay departamentos registrados.</td>
           </tr>
-          <tr v-for="dep in departamentos" :key="dep.id_depto" class="border-b hover:bg-gray-50">
+          <tr v-for="dep in departamentosFiltrados" :key="dep.id_depto"
+            class="border-b hover:bg-gray-50"
+            :class="dep.estado === 'INACTIVO' ? 'opacity-60' : ''">
             <td class="px-6 py-3 text-gray-500">{{ dep.id_depto }}</td>
-            <td class="px-6 py-3 font-medium text-gray-800">{{ dep.nombre_depto }}</td>
+            <td class="px-6 py-3 font-medium text-gray-800">
+              <span v-if="dep.padre_id" class="text-gray-400 mr-1">↳</span>
+              {{ dep.nombre_depto }}
+            </td>
+            <td class="px-6 py-3 text-gray-500 text-xs">{{ dep.padre?.nombre_depto || '—' }}</td>
             <td class="px-6 py-3 text-gray-600">{{ dep.centro_de_costo || '—' }}</td>
-            <td class="px-6 py-3 text-gray-600">{{ dep.empleados_count ?? '—' }}</td>
+            <td class="px-6 py-3">
+              <span :class="dep.estado === 'ACTIVO' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'"
+                class="px-2 py-0.5 rounded-full text-xs font-medium">
+                {{ dep.estado }}
+              </span>
+            </td>
             <td class="px-6 py-3 flex gap-3">
               <button @click="abrirModal(dep)" class="text-yellow-600 hover:underline text-xs">Editar</button>
-              <button @click="eliminar(dep.id_depto)" class="text-red-600 hover:underline text-xs">Eliminar</button>
+              <button v-if="dep.estado === 'ACTIVO'" @click="inactivar(dep.id_depto)"
+                class="text-red-600 hover:underline text-xs">Inactivar</button>
+              <button v-else @click="activar(dep.id_depto)"
+                class="text-green-600 hover:underline text-xs">Activar</button>
             </td>
           </tr>
         </tbody>
@@ -51,13 +76,24 @@
         <div>
           <label class="block text-sm font-medium text-gray-600 mb-1">Nombre *</label>
           <input v-model="form.nombre_depto" type="text" placeholder="Ej: RECURSOS HUMANOS"
-            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Área Padre</label>
+          <select v-model="form.padre_id"
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
+            <option :value="null">— Sin área padre (nivel raíz) —</option>
+            <option v-for="dep in padresDisponibles" :key="dep.id_depto" :value="dep.id_depto">
+              {{ dep.nombre_depto }}
+            </option>
+          </select>
         </div>
 
         <div>
           <label class="block text-sm font-medium text-gray-600 mb-1">Centro de Costo</label>
           <input v-model="form.centro_de_costo" type="text" placeholder="Ej: RRH"
-            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
         </div>
 
         <div v-if="error" class="text-red-600 text-sm bg-red-50 rounded p-2">{{ error }}</div>
@@ -66,7 +102,7 @@
           <button @click="modal = false"
             class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
           <button @click="guardar" :disabled="guardando"
-            class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-50">
+            class="px-4 py-2 rounded-lg bg-[#0b5447] text-white text-sm hover:bg-[#00372e] disabled:opacity-50">
             {{ guardando ? 'Guardando...' : 'Guardar' }}
           </button>
         </div>
@@ -76,15 +112,25 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import api from '@/services/api'
 
-const departamentos = ref([])
-const cargando      = ref(false)
-const modal         = ref(false)
-const guardando     = ref(false)
-const error         = ref('')
-const form          = ref({ id_depto: null, nombre_depto: '', centro_de_costo: '' })
+const departamentos  = ref([])
+const cargando       = ref(false)
+const modal          = ref(false)
+const guardando      = ref(false)
+const error          = ref('')
+const filtroEstado   = ref('ACTIVO')
+const form           = ref({ id_depto: null, nombre_depto: '', centro_de_costo: '', padre_id: null })
+
+const departamentosFiltrados = computed(() =>
+  departamentos.value.filter(d => d.estado === filtroEstado.value)
+)
+
+// Solo departamentos activos como opciones de padre, excluyendo el que se edita
+const padresDisponibles = computed(() =>
+  departamentos.value.filter(d => d.estado === 'ACTIVO' && d.id_depto !== form.value.id_depto)
+)
 
 const cargar = async () => {
   cargando.value = true
@@ -96,8 +142,8 @@ const cargar = async () => {
 const abrirModal = (dep = null) => {
   error.value = ''
   form.value = dep
-    ? { id_depto: dep.id_depto, nombre_depto: dep.nombre_depto, centro_de_costo: dep.centro_de_costo }
-    : { id_depto: null, nombre_depto: '', centro_de_costo: '' }
+    ? { id_depto: dep.id_depto, nombre_depto: dep.nombre_depto, centro_de_costo: dep.centro_de_costo, padre_id: dep.padre_id ?? null }
+    : { id_depto: null, nombre_depto: '', centro_de_costo: '', padre_id: null }
   modal.value = true
 }
 
@@ -120,13 +166,23 @@ const guardar = async () => {
   }
 }
 
-const eliminar = async (id) => {
-  if (!confirm('¿Seguro que deseas eliminar este departamento?')) return
+const inactivar = async (id) => {
+  if (!confirm('¿Seguro que deseas inactivar este departamento?')) return
   try {
-    await api.delete(`/admin/departamentos/${id}`)
+    await api.patch(`/admin/departamentos/${id}/inactivar`)
     cargar()
   } catch (e) {
-    alert(e.response?.data?.message || 'Error al eliminar.')
+    alert(e.response?.data?.message || 'Error al inactivar.')
+  }
+}
+
+const activar = async (id) => {
+  if (!confirm('¿Seguro que deseas activar este departamento?')) return
+  try {
+    await api.patch(`/admin/departamentos/${id}/activar`)
+    cargar()
+  } catch (e) {
+    alert(e.response?.data?.message || 'Error al activar.')
   }
 }
 

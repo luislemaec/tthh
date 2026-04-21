@@ -5,7 +5,7 @@
       <h1 class="text-2xl font-bold text-gray-800">Calendario Laboral</h1>
       <div class="flex gap-2">
         <select v-model="anioSeleccionado" @change="cargar"
-          class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
           <option v-for="a in anios" :key="a" :value="a">{{ a }}</option>
         </select>
         <button @click="cargarFeriados"
@@ -13,7 +13,7 @@
           Cargar Feriados Ecuador
         </button>
         <button @click="abrirModal()"
-          class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium">
+          class="bg-[#0b5447] text-white px-4 py-2 rounded-lg hover:bg-[#00372e] text-sm font-medium">
           + Nueva Fecha
         </button>
       </div>
@@ -63,7 +63,7 @@
             <td class="px-6 py-3 text-gray-600">{{ f.hora_hasta }}</td>
             <td class="px-6 py-3 text-gray-600">{{ f.ubicacion }}</td>
             <td class="px-6 py-3 flex gap-2">
-              <button @click="abrirModal(f)" class="text-blue-600 hover:underline text-xs">Editar</button>
+              <button @click="abrirModal(f)" class="text-[#0b5447] hover:underline text-xs">Editar</button>
               <button @click="eliminar(f.fecha, f.ubicacion)" class="text-red-600 hover:underline text-xs">Eliminar</button>
             </td>
           </tr>
@@ -81,13 +81,13 @@
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Fecha *</label>
             <input v-model="form.fecha" type="date"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]"
               :disabled="form.editando" required />
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Tipo *</label>
             <select v-model="form.tipo"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
               <option value="FERIADO">FERIADO</option>
               <option value="FIN SEMANA">FIN SEMANA</option>
               <option value="ESPECIAL">ESPECIAL</option>
@@ -98,12 +98,12 @@
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Factor *</label>
             <input v-model="form.factor" type="number" step="0.01" min="1"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Color</label>
             <select v-model="form.color"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
               <option value="red">Rojo (Feriado)</option>
               <option value="blue">Azul (Especial)</option>
               <option value="gray">Gris (Fin Semana)</option>
@@ -116,25 +116,25 @@
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Hora Desde *</label>
             <input v-model="form.hora_desde" type="time"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Hora Hasta *</label>
             <input v-model="form.hora_hasta" type="time"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-600 mb-1">Ubicacion *</label>
           <input v-model="form.ubicacion" type="text"
-            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
         </div>
         <div v-if="error" class="text-red-600 text-sm bg-red-50 rounded p-2">{{ error }}</div>
         <div class="flex justify-end gap-3 pt-2">
           <button @click="modal = false"
             class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
           <button @click="guardar" :disabled="guardando"
-            class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-50">
+            class="px-4 py-2 rounded-lg bg-[#0b5447] text-white text-sm hover:bg-[#00372e] disabled:opacity-50">
             {{ guardando ? "Guardando..." : "Guardar" }}
           </button>
         </div>
@@ -250,7 +250,7 @@ const cargarFeriados = async () => {
 
 onMounted(() => {
   const actual = new Date().getFullYear()
-  anios.value = [actual - 1, actual, actual + 1]
+  anios.value = [actual - 1, actual, actual + 1, actual + 2, actual + 3]
   cargar()
 })
 </script>

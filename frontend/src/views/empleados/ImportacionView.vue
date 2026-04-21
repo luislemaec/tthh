@@ -20,7 +20,7 @@
           <p class="text-4xl mb-3">📁</p>
           <p class="text-gray-500 text-sm mb-3">Arrastra tu archivo CSV aqui o haz clic para seleccionar</p>
           <button @click="inputArchivo.click()"
-            class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700">
+            class="bg-[#0b5447] text-white px-4 py-2 rounded-lg text-sm hover:bg-[#00372e]">
             Seleccionar archivo
           </button>
         </div>
@@ -33,7 +33,7 @@
       </div>
 
       <button @click="verPreview" :disabled="!archivo || cargandoPreview"
-        class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium">
+        class="w-full bg-[#0b5447] text-white py-3 rounded-lg hover:bg-[#00372e] disabled:opacity-50 font-medium">
         {{ cargandoPreview ? "Analizando archivo..." : "Ver Vista Previa" }}
       </button>
     </div>
@@ -88,7 +88,7 @@
                 <span v-if="f._existe" class="bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full text-xs">
                   Actualizar
                 </span>
-                <span v-else class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs">
+                <span v-else class="bg-blue-100 text-[#0b5447] px-2 py-0.5 rounded-full text-xs">
                   Nuevo
                 </span>
               </td>
@@ -100,8 +100,8 @@
       <!-- Resumen -->
       <div class="grid grid-cols-3 gap-4 pt-2">
         <div class="bg-blue-50 rounded-lg p-4 text-center">
-          <p class="text-2xl font-bold text-blue-700">{{ nuevos }}</p>
-          <p class="text-sm text-blue-600">Nuevos empleados</p>
+          <p class="text-2xl font-bold text-[#0b5447]">{{ nuevos }}</p>
+          <p class="text-sm text-[#0b5447]">Nuevos empleados</p>
         </div>
         <div class="bg-yellow-50 rounded-lg p-4 text-center">
           <p class="text-2xl font-bold text-yellow-700">{{ existentes }}</p>

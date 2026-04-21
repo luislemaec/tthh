@@ -12,6 +12,11 @@ use App\Http\Controllers\PermisosController;
 use App\Http\Controllers\SupervisorController;
 use App\Http\Controllers\VacacionesController;
 use App\Http\Controllers\ImportacionController;
+use App\Http\Controllers\PeriodoPlanificacionController;
+use App\Http\Controllers\PlanificacionVacController;
+use App\Http\Controllers\ReportePlanificacionController;
+use App\Http\Controllers\LiquidacionVacController;
+use App\Http\Controllers\HorasExtrasController;
 use Illuminate\Support\Facades\Route;
 
 // Rutas PÚBLICAS
@@ -34,6 +39,8 @@ Route::middleware("auth:sanctum")->group(function () {
     // Administración
     Route::prefix("admin")->group(function () {
         Route::apiResource("departamentos", \App\Http\Controllers\Admin\DepartamentoController::class);
+        Route::patch("departamentos/{id}/inactivar", [\App\Http\Controllers\Admin\DepartamentoController::class, "inactivar"]);
+        Route::patch("departamentos/{id}/activar",   [\App\Http\Controllers\Admin\DepartamentoController::class, "activar"]);
         Route::apiResource("razones",       \App\Http\Controllers\Admin\RazonController::class);
         Route::apiResource("turnos",        \App\Http\Controllers\Admin\TurnoController::class);
         Route::post("turnos/{id}/horarios", [\App\Http\Controllers\Admin\TurnoController::class, "guardarHorarios"]);
@@ -55,6 +62,11 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post("configuracion",                    [\App\Http\Controllers\Admin\ConfiguracionController::class, "store"]);
         Route::put("configuracion/{concepto}",          [\App\Http\Controllers\Admin\ConfiguracionController::class, "update"]);
         Route::delete("configuracion/{concepto}",       [\App\Http\Controllers\Admin\ConfiguracionController::class, "destroy"]);
+
+        // Aportes IESS
+        Route::get("aportes-iess",          [\App\Http\Controllers\Admin\AportesIessController::class, "index"]);
+        Route::get("aportes-iess/vigentes", [\App\Http\Controllers\Admin\AportesIessController::class, "vigentes"]);
+        Route::post("aportes-iess",         [\App\Http\Controllers\Admin\AportesIessController::class, "store"]);
     });
 
     // Opciones de menú
@@ -66,6 +78,7 @@ Route::middleware("auth:sanctum")->group(function () {
 
     // Departamentos
     Route::get("/departamentos", [EmpleadoController::class, "departamentos"]);
+    Route::get("/empleados/partidas-vacantes", [EmpleadoController::class, "partidasVacantes"]);
 
     // Empleados
     Route::get("/empleados",         [EmpleadoController::class, "index"]);
@@ -74,10 +87,23 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::put("/empleados/{id}",    [EmpleadoController::class, "update"]);
     Route::delete("/empleados/{id}", [EmpleadoController::class, "destroy"]);
 
+    Route::post("/empleados/importar-distributivo", [EmpleadoController::class, "importarDistributivo"]);
+    Route::post("/empleados/{id}/reset-password",  [EmpleadoController::class, "resetPassword"]);
+    Route::post("/cambiar-password",               [EmpleadoController::class, "cambiarPassword"]);
+
     // Asignación de roles a empleados
     Route::get("/empleados/{id_emp}/roles",             [RolController::class, "rolesEmpleado"]);
     Route::post("/empleados/{id_emp}/roles",            [RolController::class, "asignarRolEmpleado"]);
     Route::delete("/empleados/{id_emp}/roles/{id_rol}", [RolController::class, "quitarRolEmpleado"]);
+
+    // Acciones de Personal
+    Route::get("/acciones-personal",                    [\App\Http\Controllers\AccionPersonalController::class, "index"]);
+    Route::post("/acciones-personal",                   [\App\Http\Controllers\AccionPersonalController::class, "store"]);
+    Route::get("/acciones-personal/{id}",               [\App\Http\Controllers\AccionPersonalController::class, "show"]);
+    Route::patch("/acciones-personal/{id}/estado",      [\App\Http\Controllers\AccionPersonalController::class, "cambiarEstado"]);
+    Route::get("/acciones-personal/{id}/pdf",              [\App\Http\Controllers\AccionPersonalController::class, "pdf"]);
+    Route::post("/acciones-personal/{id}/subir-firmado",   [\App\Http\Controllers\AccionPersonalController::class, "subirFirmado"]);
+    Route::get("/acciones-personal/{id}/descargar-firmado",[\App\Http\Controllers\AccionPersonalController::class, "descargarFirmado"]);
 
     // Supervisores
     Route::get("/supervisores",                          [SupervisorController::class, "index"]);
@@ -117,6 +143,56 @@ Route::middleware("auth:sanctum")->group(function () {
     // Reportes
     Route::get("/reportes/atrasos",               [ReportesController::class, "atrasos"]);
     Route::get("/reportes/marcaciones-faltantes", [ReportesController::class, "marcacionesFaltantes"]);
+
+    // Períodos de planificación (TH admin)
+    Route::get("/admin/periodos-planificacion",          [PeriodoPlanificacionController::class, "index"]);
+    Route::get("/admin/periodos-planificacion/activo",   [PeriodoPlanificacionController::class, "activo"]);
+    Route::post("/admin/periodos-planificacion",         [PeriodoPlanificacionController::class, "store"]);
+    Route::put("/admin/periodos-planificacion/{id}",     [PeriodoPlanificacionController::class, "update"]);
+    Route::delete("/admin/periodos-planificacion/{id}",  [PeriodoPlanificacionController::class, "destroy"]);
+
+    // Planificación de vacaciones
+    Route::get("/planificacion/mi-planificacion",        [PlanificacionVacController::class, "miPlanificacion"]);
+    Route::post("/planificacion",                        [PlanificacionVacController::class, "store"]);
+    Route::get("/planificacion",                         [PlanificacionVacController::class, "index"]);
+    Route::patch("/planificacion/{id}/aprobar",          [PlanificacionVacController::class, "aprobar"]);
+    Route::patch("/planificacion/{id}/negar",            [PlanificacionVacController::class, "negar"]);
+    Route::delete("/planificacion/{id}",                 [PlanificacionVacController::class, "destroy"]);
+    Route::patch("/planificacion/{id}/replanificar",     [PlanificacionVacController::class, "replanificar"]);
+
+    // Reporte planificación de vacaciones (TH)
+    Route::get("/reporte-planificacion/{anio}/estado",            [ReportePlanificacionController::class, "estado"]);
+    Route::get("/reporte-planificacion/{anio}/pdf",               [ReportePlanificacionController::class, "generarPdf"]);
+    Route::post("/reporte-planificacion/{anio}/subir-firmado",    [ReportePlanificacionController::class, "subirFirmado"]);
+    Route::get("/reporte-planificacion/{anio}/descargar-firmado", [ReportePlanificacionController::class, "descargarFirmado"]);
+
+    // Liquidación / comisión de vacaciones (solo TH)
+    Route::get("/liquidacion/buscar",                         [LiquidacionVacController::class, "buscar"]);
+    Route::get("/liquidacion/{id_emp}",                       [LiquidacionVacController::class, "consultar"]);
+    Route::post("/liquidacion/{id_emp}/registrar",            [LiquidacionVacController::class, "registrar"]);
+    Route::get("/liquidacion/certificado/{historico_id}",     [LiquidacionVacController::class, "generarCertificado"]);
+
+    // Horas Extras
+    Route::get("/horas-extras/calcular",                                         [HorasExtrasController::class, "calcular"]);
+    Route::get("/horas-extras/mi-rol",                                           [HorasExtrasController::class, "miRol"]);
+    Route::get("/horas-extras/mi-planificacion",                          [HorasExtrasController::class, "miPlanificacion"]);
+    Route::post("/horas-extras/planificacion",                            [HorasExtrasController::class, "store"]);
+    Route::put("/horas-extras/planificacion/{id}",                        [HorasExtrasController::class, "update"]);
+    Route::delete("/horas-extras/planificacion/{id}",                     [HorasExtrasController::class, "destroy"]);
+    Route::get("/horas-extras/planificacion",                             [HorasExtrasController::class, "index"]);
+    Route::patch("/horas-extras/planificacion/{id}/autorizar",               [HorasExtrasController::class, "autorizar"]);
+    Route::patch("/horas-extras/planificacion/{id}/aprobar",              [HorasExtrasController::class, "aprobar"]);
+    Route::patch("/horas-extras/planificacion/{id}/negar",                [HorasExtrasController::class, "negar"]);
+    Route::get("/horas-extras/planificacion/{id}/pdf",                    [HorasExtrasController::class, "pdf"]);
+    Route::post("/horas-extras/planificacion/{id}/subir-firmado",         [HorasExtrasController::class, "subirFirmado"]);
+    Route::get("/horas-extras/planificacion/{id}/descargar-firmado",      [HorasExtrasController::class, "descargarFirmado"]);
+    Route::get("/horas-extras/mis-registros",                             [HorasExtrasController::class, "misHoras"]);
+    Route::post("/horas-extras/registro",                                 [HorasExtrasController::class, "registrar"]);
+    Route::get("/horas-extras/equipo-registros",                          [HorasExtrasController::class, "equipoHoras"]);
+    Route::put("/horas-extras/registro/{id}",                             [HorasExtrasController::class, "actualizarRegistro"]);
+    Route::patch("/horas-extras/registro/{id}/revisar",                   [HorasExtrasController::class, "revisarRegistro"]);
+    Route::patch("/horas-extras/registro/{id}/confirmar",                 [HorasExtrasController::class, "confirmar"]);
+    Route::patch("/horas-extras/registro/{id}/negar",                     [HorasExtrasController::class, "negarRegistro"]);
 
     // Vacaciones
     Route::get("/vacaciones/mi-rol",            [VacacionesController::class, "miRol"]);

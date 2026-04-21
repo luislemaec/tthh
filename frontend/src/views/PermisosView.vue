@@ -4,11 +4,11 @@
       <h1 class="text-2xl font-bold text-gray-800">Permisos</h1>
       <div class="flex gap-2">
         <button v-if="esSupervisorOAdmin" @click="abrirEstadistica"
-          class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium">
+          class="bg-[#0b5447] text-white px-4 py-2 rounded-lg hover:bg-[#00372e] text-sm font-medium">
           📊 Estadística
         </button>
         <button @click="abrirModalNuevo"
-          class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium">
+          class="bg-[#0b5447] text-white px-4 py-2 rounded-lg hover:bg-[#00372e] text-sm font-medium">
           + Solicitar Permiso
         </button>
       </div>
@@ -17,17 +17,31 @@
     <!-- Filtros -->
     <div class="bg-white rounded-xl shadow p-4 flex flex-wrap gap-3">
       <select v-model="filtros.estado" @change="cargar"
-        class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
         <option value="">Todos los estados</option>
         <option value="PENDIENTE">Pendiente</option>
         <option value="APROBADO">Aprobado</option>
         <option value="NEGADO">Negado</option>
         <option value="ELIMINADO">Eliminado</option>
       </select>
+      <label class="flex items-center gap-2 cursor-pointer select-none text-sm text-gray-700 border rounded-lg px-3 py-2 hover:bg-gray-50"
+        :class="filtros.descontable === 'SI' ? 'border-[#579186] bg-[#f0faf8]' : ''">
+        <input type="checkbox" :checked="filtros.descontable === 'SI'"
+          @change="filtros.descontable = filtros.descontable === 'SI' ? '' : 'SI'; cargar()"
+          class="accent-[#0b5447]" />
+        Descontables
+      </label>
+      <label class="flex items-center gap-2 cursor-pointer select-none text-sm text-gray-700 border rounded-lg px-3 py-2 hover:bg-gray-50"
+        :class="filtros.descontable === 'NO' ? 'border-[#579186] bg-[#f0faf8]' : ''">
+        <input type="checkbox" :checked="filtros.descontable === 'NO'"
+          @change="filtros.descontable = filtros.descontable === 'NO' ? '' : 'NO'; cargar()"
+          class="accent-[#0b5447]" />
+        No descontables
+      </label>
       <input v-model="filtros.fecha_desde" type="date" @change="cargar"
-        class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
       <input v-model="filtros.fecha_hasta" type="date" @change="cargar"
-        class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
       <button @click="limpiarFiltros"
         class="border rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-50">
         Limpiar
@@ -41,6 +55,7 @@
           <tr>
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Empleado</th>
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Razon</th>
+            <th class="text-left px-4 py-3 text-gray-600 font-medium">Tipo</th>
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Desde</th>
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Hasta</th>
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Todo el dia</th>
@@ -60,6 +75,13 @@
               {{ p.empleado?.apellido_emp }}, {{ p.empleado?.nombre_emp }}
             </td>
             <td class="px-4 py-3 text-gray-600">{{ p.razon_permiso?.descripcion?.trim() || p.razon }}</td>
+            <td class="px-4 py-3">
+              <span v-if="p.tipo_horario" :class="colorTipoHorario(p.tipo_horario)"
+                class="px-2 py-0.5 rounded-full text-xs font-medium">
+                {{ p.tipo_horario }}
+              </span>
+              <span v-else class="text-gray-300 text-xs">—</span>
+            </td>
             <td class="px-4 py-3 text-gray-600">{{ p.fecha_desde?.substring(0, 10) }}</td>
             <td class="px-4 py-3 text-gray-600">{{ p.fecha_hasta?.substring(0, 10) }}</td>
             <td class="px-4 py-3 text-center">
@@ -75,7 +97,7 @@
             <td class="px-4 py-3">
               <div class="flex gap-2">
                 <button @click="verPermiso(p)"
-                  class="text-blue-600 hover:underline text-xs font-medium">Ver</button>
+                  class="text-[#0b5447] hover:underline text-xs font-medium">Ver</button>
                 <template v-if="esSupervisorOAdmin && p.estado_permiso === 'PENDIENTE' && p.empleado?.id_emp !== auth.empleado?.id_emp">
                   <button @click="aprobar(p.secuencial_clave)"
                     class="text-green-600 hover:underline text-xs font-medium">Aprobar</button>
@@ -108,14 +130,39 @@
       <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-lg space-y-4">
         <h2 class="text-lg font-semibold text-gray-700">Solicitar Permiso</h2>
         <div class="space-y-4">
+          <div class="space-y-2">
+            <label class="block text-sm font-medium text-gray-600">Descontable *</label>
+            <div class="flex gap-6">
+              <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
+                <input type="radio" v-model="filtroDescontableForm" value="SI"
+                  @change="formNuevo.sec_permiso = ''" class="accent-[#0b5447]" />
+                SI
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
+                <input type="radio" v-model="filtroDescontableForm" value="NO"
+                  @change="formNuevo.sec_permiso = ''" class="accent-[#0b5447]" />
+                NO
+              </label>
+            </div>
+          </div>
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Razon *</label>
             <select v-model="formNuevo.sec_permiso"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
               <option value="">Seleccionar razon...</option>
-              <option v-for="r in razones" :key="r.secuencial" :value="r.secuencial">
+              <option v-for="r in razonesFiltradas" :key="r.secuencial" :value="r.secuencial">
                 {{ r.descripcion.trim() }}
               </option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Tipo de permiso *</label>
+            <select v-model="formNuevo.tipo_horario"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
+              <option value="">Seleccionar tipo...</option>
+              <option value="ENTRADA">Entrada — atraso a la entrada</option>
+              <option value="ENTRE JORNADA">Entre jornada — lunch, cita médica, etc.</option>
+              <option value="SALIDA">Salida — salida anticipada</option>
             </select>
           </div>
           <div class="flex items-center gap-2">
@@ -127,37 +174,37 @@
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Fecha Desde *</label>
               <input v-model="formNuevo.fecha_desde" type="date"
-                class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Fecha Hasta *</label>
               <input v-model="formNuevo.fecha_hasta" type="date"
-                class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
             </div>
           </div>
           <div v-if="formNuevo.todo_dia !== 'SI'" class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Hora Desde *</label>
               <input v-model="formNuevo.hora_desde" type="time"
-                class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Hora Hasta *</label>
               <input v-model="formNuevo.hora_hasta" type="time"
-                class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
             </div>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Observaciones</label>
             <textarea v-model="formNuevo.observaciones" rows="3" maxlength="250"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]"></textarea>
           </div>
           <div v-if="errorNuevo" class="text-red-600 text-sm bg-red-50 rounded p-2">{{ errorNuevo }}</div>
           <div class="flex justify-end gap-3 pt-2">
             <button type="button" @click="modalNuevo = false"
               class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
             <button type="button" @click="guardarPermiso" :disabled="guardando"
-              class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-50">
+              class="px-4 py-2 rounded-lg bg-[#0b5447] text-white text-sm hover:bg-[#00372e] disabled:opacity-50">
               {{ guardando ? "Enviando..." : "Solicitar" }}
             </button>
           </div>
@@ -215,6 +262,17 @@
             <dt class="text-gray-500">Descontable</dt>
             <dd class="font-medium">{{ permisoSeleccionado?.descontable }}</dd>
           </div>
+          <div>
+            <dt class="text-gray-500">Tipo de permiso</dt>
+            <dd>
+              <span v-if="permisoSeleccionado?.tipo_horario"
+                :class="colorTipoHorario(permisoSeleccionado?.tipo_horario)"
+                class="px-2 py-0.5 rounded-full text-xs font-medium">
+                {{ permisoSeleccionado?.tipo_horario }}
+              </span>
+              <span v-else class="text-gray-400">—</span>
+            </dd>
+          </div>
           <div class="col-span-2">
             <dt class="text-gray-500">Observaciones</dt>
             <dd class="font-medium">{{ permisoSeleccionado?.observaciones || "—" }}</dd>
@@ -240,7 +298,7 @@
         <div>
           <label class="block text-sm font-medium text-gray-600 mb-1">Motivo de negacion</label>
           <textarea v-model="motivoNegacion" rows="3" maxlength="120"
-            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]"></textarea>
         </div>
         <div class="flex justify-end gap-3">
           <button @click="modalNegar = false"
@@ -260,7 +318,7 @@
         <div>
           <label class="block text-sm font-medium text-gray-600 mb-1">Motivo de eliminación <span class="text-red-500">*</span></label>
           <textarea v-model="motivoEliminacion" rows="3" maxlength="120"
-            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]"></textarea>
           <p v-if="errorEliminar" class="text-red-500 text-xs mt-1">{{ errorEliminar }}</p>
         </div>
         <div class="flex justify-end gap-3">
@@ -291,7 +349,7 @@
             <input v-model="statFechas.hasta" type="date" class="border rounded-lg px-3 py-2 text-sm" />
           </div>
           <button @click="cargarEstadistica" :disabled="cargandoStat"
-            class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50">
+            class="bg-[#0b5447] text-white px-4 py-2 rounded-lg text-sm hover:bg-[#00372e] disabled:opacity-50">
             {{ cargandoStat ? "Buscando..." : "Buscar" }}
           </button>
         </div>
@@ -302,7 +360,7 @@
               <th class="text-center px-4 py-3 text-green-600">Aprobados</th>
               <th class="text-center px-4 py-3 text-red-500">Negados</th>
               <th class="text-center px-4 py-3 text-gray-500">Eliminados</th>
-              <th class="text-center px-4 py-3 text-blue-600">Total</th>
+              <th class="text-center px-4 py-3 text-[#0b5447]">Total</th>
             </tr>
           </thead>
           <tbody>
@@ -324,7 +382,7 @@
                 <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-xs">{{ s.eliminados }}</span>
               </td>
               <td class="px-4 py-3 text-center">
-                <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs font-bold">{{ s.total }}</span>
+                <span class="bg-blue-100 text-[#0b5447] px-2 py-1 rounded-full text-xs font-bold">{{ s.total }}</span>
               </td>
             </tr>
             <tr v-if="estadisticas.length > 0" class="bg-gray-50 font-semibold">
@@ -332,7 +390,7 @@
               <td class="px-4 py-3 text-center text-green-600">{{ estadisticas.reduce((a, s) => a + s.aprobados, 0) }}</td>
               <td class="px-4 py-3 text-center text-red-500">{{ estadisticas.reduce((a, s) => a + s.negados, 0) }}</td>
               <td class="px-4 py-3 text-center text-gray-500">{{ estadisticas.reduce((a, s) => a + s.eliminados, 0) }}</td>
-              <td class="px-4 py-3 text-center text-blue-600">{{ estadisticas.reduce((a, s) => a + s.total, 0) }}</td>
+              <td class="px-4 py-3 text-center text-[#0b5447]">{{ estadisticas.reduce((a, s) => a + s.total, 0) }}</td>
             </tr>
           </tbody>
         </table>
@@ -371,13 +429,19 @@ const pagina              = ref(1)
 const totalPaginas        = ref(1)
 const miRol               = ref({ es_supervisor: false, es_admin_th: false })
 
-const filtros = ref({ estado: "", fecha_desde: "", fecha_hasta: "" })
+const filtros = ref({ estado: "", fecha_desde: "", fecha_hasta: "", descontable: "" })
 
 const formNuevo = ref({
-  sec_permiso: "", fecha_desde: "", fecha_hasta: "",
+  sec_permiso: "", tipo_horario: "", fecha_desde: "", fecha_hasta: "",
   hora_desde: "08:00", hora_hasta: "17:00",
   todo_dia: "NO", observaciones: "",
 })
+
+const filtroDescontableForm = ref("SI")
+
+const razonesFiltradas = computed(() =>
+  razones.value.filter(r => r.descontable === filtroDescontableForm.value)
+)
 
 const esSupervisorOAdmin = computed(() =>
   miRol.value.es_supervisor || miRol.value.es_admin_th
@@ -410,8 +474,9 @@ const cargar = async () => {
 
 const abrirModalNuevo = async () => {
   errorNuevo.value = ""
+  filtroDescontableForm.value = "SI"
   formNuevo.value = {
-    sec_permiso: "", fecha_desde: "", fecha_hasta: "",
+    sec_permiso: "", tipo_horario: "", fecha_desde: "", fecha_hasta: "",
     hora_desde: "08:00", hora_hasta: "17:00",
     todo_dia: "NO", observaciones: "",
   }
@@ -423,7 +488,8 @@ const abrirModalNuevo = async () => {
 }
 
 const guardarPermiso = async () => {
-  if (!formNuevo.value.sec_permiso) { errorNuevo.value = "Selecciona una razon"; return }
+  if (!formNuevo.value.sec_permiso)   { errorNuevo.value = "Selecciona una razon"; return }
+  if (!formNuevo.value.tipo_horario)  { errorNuevo.value = "Selecciona el tipo de permiso"; return }
   guardando.value  = true
   errorNuevo.value = ""
   try {
@@ -493,8 +559,17 @@ const confirmarEliminar = async () => {
   }
 }
 
+const colorTipoHorario = (tipo) => {
+  const colores = {
+    "ENTRADA":       "bg-green-100 text-green-700",
+    "ENTRE JORNADA": "bg-blue-100 text-[#0b5447]",
+    "SALIDA":        "bg-orange-100 text-orange-700",
+  }
+  return colores[tipo] || "bg-gray-100 text-gray-700"
+}
+
 const limpiarFiltros = () => {
-  filtros.value = { estado: "", fecha_desde: "", fecha_hasta: "" }
+  filtros.value = { estado: "", fecha_desde: "", fecha_hasta: "", descontable: "" }
   pagina.value  = 1
   cargar()
 }

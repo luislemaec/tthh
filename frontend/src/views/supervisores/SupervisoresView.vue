@@ -3,7 +3,7 @@
     <div class="flex items-center justify-between">
       <h1 class="text-2xl font-bold text-gray-800">Supervisores por Area</h1>
       <button @click="abrirModal"
-        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium">
+        class="bg-[#0b5447] text-white px-4 py-2 rounded-lg hover:bg-[#00372e] text-sm font-medium">
         + Asignar Supervisor
       </button>
     </div>
@@ -29,7 +29,7 @@
           </tr>
           <tr v-for="s in supervisores" :key="s.id" class="border-b hover:bg-gray-50">
             <td class="px-4 py-3 font-medium">{{ s.departamento?.nombre_depto }}</td>
-            <td class="px-4 py-3 font-medium text-blue-700">
+            <td class="px-4 py-3 font-medium text-[#0b5447]">
               {{ s.supervisor?.apellido_emp }}, {{ s.supervisor?.nombre_emp }}
             </td>
             <td class="px-4 py-3 text-gray-500">
@@ -39,7 +39,7 @@
             <td class="px-4 py-3">
               <div class="flex gap-2">
                 <button @click="editar(s)"
-                  class="text-blue-600 hover:underline text-xs font-medium">Editar</button>
+                  class="text-[#0b5447] hover:underline text-xs font-medium">Editar</button>
                 <button @click="eliminar(s.id)"
                   class="text-red-500 hover:underline text-xs font-medium">Eliminar</button>
               </div>
@@ -60,7 +60,7 @@
         <div>
           <label class="block text-sm font-medium text-gray-600 mb-1">Area / Departamento *</label>
           <select v-model="form.id_depto" required :disabled="form.editando"
-            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
             <option value="">Seleccionar area...</option>
             <option v-for="d in departamentos" :key="d.id_depto" :value="d.id_depto">
               {{ d.nombre_depto }}
@@ -73,7 +73,7 @@
           <label class="block text-sm font-medium text-gray-600 mb-1">Supervisor *</label>
           <input v-model="buscarSup" type="text" placeholder="Buscar por nombre o cedula..."
             @input="filtrarEmpleados"
-            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           <div v-if="resultadosSup.length" class="border rounded-lg mt-1 max-h-48 overflow-y-auto shadow-md">
             <div v-for="e in resultadosSup" :key="e.id_emp"
               @click="seleccionarSupervisor(e)"
@@ -95,7 +95,7 @@
             Cancelar
           </button>
           <button @click="guardar" :disabled="guardando"
-            class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-50">
+            class="px-4 py-2 rounded-lg bg-[#0b5447] text-white text-sm hover:bg-[#00372e] disabled:opacity-50">
             {{ guardando ? "Guardando..." : "Guardar" }}
           </button>
         </div>

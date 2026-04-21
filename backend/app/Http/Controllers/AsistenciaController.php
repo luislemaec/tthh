@@ -188,44 +188,54 @@ class AsistenciaController extends Controller
             ->get()
             ->keyBy(fn($c) => substr($c->fecha, 0, 10));
 
-        // Minutos de permisos aprobados por día
-        $permisos = DB::table("dbo.d2_permiso")
+        // Minutos de permisos aprobados por día y tipo_horario
+        $permisosRaw = DB::table("dbo.d2_permiso")
             ->where("id_emp", $emp->id_emp)
             ->where("estado_permiso", "APROBADO")
+            ->whereNotNull("tipo_horario")
             ->whereBetween(DB::raw("DATE(fecha_desde)"), [$desde, $hasta])
-            ->selectRaw("DATE(fecha_desde) as dia, SUM(EXTRACT(EPOCH FROM (hora_hasta::timestamp - hora_desde::timestamp)) / 60) as minutos")
-            ->groupByRaw("DATE(fecha_desde)")
-            ->get()
-            ->keyBy("dia");
+            ->selectRaw("DATE(fecha_desde) as dia, tipo_horario, SUM(EXTRACT(EPOCH FROM (hora_hasta::timestamp - hora_desde::timestamp)) / 60) as minutos")
+            ->groupByRaw("DATE(fecha_desde), tipo_horario")
+            ->get();
 
-        // Mapa de atraso por concepto
-        $atrasosPorConcepto = [
-            "ENTRADA"           => "atraso_entrada",
-            "ENTRADA DEL LUNCH" => "atraso_lunch",
-            "SALIDA"            => "atraso_salida",
+        // Indexar: [dia][tipo_horario] => minutos
+        $permisos = [];
+        foreach ($permisosRaw as $p) {
+            $permisos[$p->dia][$p->tipo_horario] = (float)$p->minutos;
+        }
+
+        // Mapa concepto → campo cuadre y tipo_horario del permiso
+        $conceptoMap = [
+            "ENTRADA"           => ["campo" => "atraso_entrada", "tipo" => "ENTRADA"],
+            "ENTRADA DEL LUNCH" => ["campo" => "atraso_lunch",   "tipo" => "ENTRE JORNADA"],
+            "SALIDA"            => ["campo" => "atraso_salida",  "tipo" => "SALIDA"],
         ];
 
         $resultado = [];
         foreach ($marcaciones as $m) {
-            $dia         = substr($m->fecha_hora, 0, 10);
-            $cuadre      = $cuadres[$dia] ?? null;
-            $campoAtraso = $atrasosPorConcepto[$m->concepto] ?? null;
-            $atraso      = ($cuadre && $campoAtraso) ? (int)($cuadre->$campoAtraso ?? 0) : 0;
+            $dia    = substr($m->fecha_hora, 0, 10);
+            $cuadre = $cuadres[$dia] ?? null;
+            $map    = $conceptoMap[$m->concepto] ?? null;
+            $atraso = ($cuadre && $map) ? (int)($cuadre->{$map["campo"]} ?? 0) : 0;
 
-            // Minutos justificados ese día
-            $minJustificados = isset($permisos[$dia]) ? (float)$permisos[$dia]->minutos : 0;
+            // Minutos justificados específicamente para este concepto
+            $minJustificados    = $map ? ($permisos[$dia][$map["tipo"]] ?? 0) : 0;
             $tieneJustificacion = $minJustificados > 0;
 
             // Aplicar filtro
-            if ($tipo === "justificados" && ($atraso <= 0 || !$tieneJustificacion)) continue;
-            if ($tipo === "injustificados" && ($atraso <= 0 || $tieneJustificacion)) continue;
+            if ($tipo === "justificados"   && ($atraso <= 0 || !$tieneJustificacion)) continue;
+            if ($tipo === "injustificados" && ($atraso <= 0 || $tieneJustificacion))  continue;
 
             $resultado[] = [
-                "fecha"         => $dia,
-                "concepto"      => $m->concepto,
-                "hora"          => substr($m->fecha_hora, 11, 5),
-                "atraso"        => $atraso,
-                "justificado"   => $atraso > 0 ? ($tieneJustificacion ? ($minJustificados >= $atraso ? "TOTAL" : "PARCIAL") : "NO") : null,
+                "fecha"       => $dia,
+                "concepto"    => $m->concepto,
+                "hora"        => substr($m->fecha_hora, 11, 5),
+                "atraso"      => $atraso,
+                "justificado" => $atraso > 0
+                    ? ($tieneJustificacion
+                        ? ($minJustificados >= $atraso ? "TOTAL" : "PARCIAL")
+                        : "NO")
+                    : null,
             ];
         }
 

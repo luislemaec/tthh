@@ -16,7 +16,10 @@ export const useAuthStore = defineStore('auth', () => {
 
   // Menú agrupado por categoría
   const menuAgrupado = computed(() => {
+    const vistas = new Set()
     return menu.value.reduce((acc, item) => {
+      if (vistas.has(item.url)) return acc
+      vistas.add(item.url)
       if (!acc[item.categoria]) acc[item.categoria] = []
       acc[item.categoria].push(item)
       return acc

@@ -80,6 +80,9 @@ class PermisosController extends Controller
         if ($request->filled("fecha_hasta")) {
             $query->whereDate("fecha_hasta", "<=", $request->fecha_hasta);
         }
+        if ($request->filled("descontable")) {
+            $query->where("descontable", $request->descontable);
+        }
 
         return response()->json($query->paginate($request->get("per_page", 15)));
     }
@@ -106,6 +109,7 @@ class PermisosController extends Controller
             "todo_dia"      => "nullable|string",
             "observaciones" => "nullable|string|max:250",
             "concepto"      => "nullable|string|max:20",
+            "tipo_horario"  => "required|in:ENTRADA,ENTRE JORNADA,SALIDA",
         ]);
 
         $emp   = $request->user();
@@ -170,6 +174,7 @@ class PermisosController extends Controller
             "terminal"       => $request->ip(),
             "transmitio"     => "NO",
             "descontable"    => $razon->descontable === "SI" ? "SI" : "NO",
+            "tipo_horario"   => $request->tipo_horario,
             "origen"         => "WEB",
             "disminuir_dias" => 0,
             "secuencial"     => 0,

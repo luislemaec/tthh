@@ -18,32 +18,32 @@
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Nombres *</label>
             <input v-model="form.nombres" type="text" required
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Apellidos *</label>
             <input v-model="form.apellidos" type="text" required
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Cedula *</label>
             <input v-model="form.cedula" type="text" required maxlength="10"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Telefono</label>
             <input v-model="form.telefono" type="text"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
           <div class="sm:col-span-2">
             <label class="block text-sm font-medium text-gray-600 mb-1">Email</label>
             <input v-model="form.email" type="email"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
           <div class="sm:col-span-2">
             <label class="block text-sm font-medium text-gray-600 mb-1">Direccion</label>
             <input v-model="form.direccion" type="text"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
         </div>
       </div>
@@ -55,7 +55,7 @@
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Departamento *</label>
             <select v-model="form.departamento_id" required
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
               <option value="">Seleccionar...</option>
               <option v-for="d in departamentos" :key="d.id_depto" :value="d.id_depto">
                 {{ d.nombre_depto }}
@@ -63,26 +63,27 @@
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-600 mb-1">Cargo</label>
-            <input v-model="form.cargo_empleado" type="text" placeholder="Ej: Analista de Sistemas"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <label class="block text-sm font-medium text-gray-600 mb-1">Cargo *</label>
+            <input v-model="form.cargo_empleado" type="text" placeholder="Ej: Analista de Sistemas" required
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Tipo de Contrato</label>
             <select v-model="form.tipo_contrato"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
               <option value="">Seleccionar...</option>
               <option value="LOSEP">LOSEP</option>
               <option value="CODIGO DEL TRABAJO">CÓDIGO DEL TRABAJO</option>
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-600 mb-1">Modalidad Laboral</label>
-            <select v-model="form.modalidad_laboral"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <label class="block text-sm font-medium text-gray-600 mb-1">Modalidad Laboral *</label>
+            <select v-model="form.modalidad_laboral" required
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
               <option value="">Seleccionar...</option>
               <option value="Nombramiento Definitivo">Nombramiento Definitivo</option>
               <option value="Nombramiento Provisional">Nombramiento Provisional</option>
+              <option value="Libre Nombramiento y Remoción">Libre Nombramiento y Remoción</option>
               <option value="Contrato Ocasional">Contrato Ocasional</option>
               <option value="Comisión de Servicios">Comisión de Servicios</option>
             </select>
@@ -90,7 +91,7 @@
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Jornada Laboral</label>
             <select v-model="form.id_jornada"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
               <option value="">Seleccionar...</option>
               <option v-for="j in jornadas" :key="j.id_jornada" :value="j.id_jornada">
                 {{ j.descripcion }} ({{ j.normal }}h)
@@ -100,7 +101,7 @@
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Estado</label>
             <select v-model="form.estado"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
               <option value="ACTIVO">Activo</option>
               <option value="INACTIVO">Inactivo</option>
             </select>
@@ -115,22 +116,91 @@
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Fecha de Ingreso *</label>
             <input v-model="form.fecha_ingreso" type="date" required
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
           <div v-if="form.estado === 'INACTIVO'">
            <label class="block text-sm font-medium text-gray-600 mb-1">Fecha de Salida *</label>
             <input v-model="form.fecha_salida" type="date"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-600 mb-1">Salario Base</label>
-            <input v-model="form.salario" type="number" step="0.01" min="0"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <label class="block text-sm font-medium text-gray-600 mb-1">Salario Base *</label>
+            <input v-model="form.salario" type="number" step="0.01" min="0" required
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Datos del Puesto -->
+      <div class="bg-white rounded-xl shadow p-6 space-y-4">
+        <h2 class="text-lg font-semibold text-gray-700 border-b pb-2">Datos del Puesto</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Grupo Ocupacional *</label>
+            <input v-model="form.grupo_ocupacional" type="text" placeholder="Ej: SERVIDOR PUBLICO 7" required
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-600 mb-1">Nivel</label>
-            <input v-model="form.nivel" type="number" min="1"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <label class="block text-sm font-medium text-gray-600 mb-1">Grado *</label>
+            <input v-model="form.nivel" type="number" min="1" required
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Proceso Institucional *</label>
+            <select v-model="form.proceso_institucional" required
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
+              <option value="">Seleccionar...</option>
+              <option value="SUSTANTIVO">SUSTANTIVO</option>
+              <option value="ADJETIVO">ADJETIVO</option>
+              <option value="GOBERNANTE">GOBERNANTE</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Estado del Puesto</label>
+            <select v-model="form.estado_puesto"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
+              <option value="OCUPADO">OCUPADO</option>
+              <option value="VACANTE">VACANTE</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Partida Individual *</label>
+            <input v-model="form.partida_individual" list="lista-partidas-vacantes" type="text" required
+              placeholder="Ingrese o seleccione una partida vacante"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+            <datalist id="lista-partidas-vacantes">
+              <option v-for="p in partidasVacantes" :key="p" :value="p" />
+            </datalist>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Fondos de Reserva</label>
+            <select v-model="form.acumula_fondos_reserva"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
+              <option :value="0">No tiene derecho</option>
+              <option :value="1">Cobra mensualmente</option>
+              <option :value="2">Acumula</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Décimo Tercero</label>
+            <select v-model="form.acumula_decimo_tercero"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
+              <option :value="true">Acumula</option>
+              <option :value="false">No acumula</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Décimo Cuarto</label>
+            <select v-model="form.acumula_decimo_cuarto"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
+              <option :value="true">Acumula</option>
+              <option :value="false">No acumula</option>
+            </select>
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-sm font-medium text-gray-600 mb-1">Partida Presupuestaria *</label>
+            <input v-model="form.partida_presupuestaria" type="text" placeholder="Ej: 202622000000000..." required
+              class="w-full border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
         </div>
       </div>
@@ -147,7 +217,7 @@
           Cancelar
         </router-link>
         <button type="submit" :disabled="guardando"
-          class="px-5 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+          class="px-5 py-2 rounded-lg bg-[#0b5447] text-white text-sm font-medium hover:bg-[#00372e] disabled:opacity-50">
           {{ guardando ? "Guardando..." : (esEdicion ? "Actualizar" : "Crear Empleado") }}
         </button>
       </div>
@@ -166,8 +236,9 @@ const router = useRouter()
 const esEdicion     = computed(() => !!route.params.id)
 const guardando     = ref(false)
 const error         = ref("")
-const departamentos = ref([])
-const jornadas      = ref([])
+const departamentos    = ref([])
+const jornadas         = ref([])
+const partidasVacantes = ref([])
 
 const form = ref({
   nombres:        "",
@@ -185,7 +256,16 @@ const form = ref({
   fecha_ingreso:  "",
   fecha_salida:   "",
   salario:        "",
-  nivel:          "",
+  // Datos del puesto
+  nivel:                   "",
+  grupo_ocupacional:       "",
+  proceso_institucional:   "",
+  estado_puesto:           "OCUPADO",
+  partida_individual:      "",
+  partida_presupuestaria:  "",
+  acumula_fondos_reserva:  0,
+  acumula_decimo_tercero:  false,
+  acumula_decimo_cuarto:   false,
 })
 
 const guardar = async () => {
@@ -209,6 +289,14 @@ const guardar = async () => {
       modalidad_laboral: form.value.modalidad_laboral,
       id_jornada:        form.value.id_jornada || null,
       email:             form.value.email,
+      grupo_ocupacional:       form.value.grupo_ocupacional      || null,
+      proceso_institucional:   form.value.proceso_institucional  || null,
+      estado_puesto:           form.value.estado_puesto,
+      partida_individual:      form.value.partida_individual     || null,
+      partida_presupuestaria:  form.value.partida_presupuestaria || null,
+      acumula_fondos_reserva:  form.value.acumula_fondos_reserva,
+      acumula_decimo_tercero:  form.value.acumula_decimo_tercero,
+      acumula_decimo_cuarto:   form.value.acumula_decimo_cuarto,
     }
 
     if (esEdicion.value) {
@@ -230,10 +318,14 @@ const guardar = async () => {
 }
 
 onMounted(async () => {
-  const { data: deps } = await api.get("/departamentos")
-  departamentos.value = deps
-  const { data: jors } = await api.get("/admin/jornadas")
-  jornadas.value = jors
+  const [{ data: deps }, { data: jors }, { data: partidas }] = await Promise.all([
+    api.get("/departamentos"),
+    api.get("/admin/jornadas"),
+    api.get("/empleados/partidas-vacantes"),
+  ])
+  departamentos.value    = deps
+  jornadas.value         = jors
+  partidasVacantes.value = partidas
 
   if (esEdicion.value) {
     const { data } = await api.get("/empleados/" + route.params.id)
@@ -253,6 +345,15 @@ onMounted(async () => {
     form.value.modalidad_laboral = data.modalidad_laboral?.trim() || ""
     form.value.id_jornada        = data.id_jornada                || ""
     form.value.email             = data.emails?.[0]?.mail         || ""
+    // Datos del puesto
+    form.value.grupo_ocupacional      = data.grupo_ocupacional      || ""
+    form.value.proceso_institucional  = data.proceso_institucional  || ""
+    form.value.estado_puesto          = data.estado_puesto          || "OCUPADO"
+    form.value.partida_individual     = data.partida_individual     || ""
+    form.value.partida_presupuestaria = data.partida_presupuestaria || ""
+    form.value.acumula_fondos_reserva = data.acumula_fondos_reserva ?? 0
+    form.value.acumula_decimo_tercero = data.acumula_decimo_tercero ?? false
+    form.value.acumula_decimo_cuarto  = data.acumula_decimo_cuarto  ?? false
   }
 })
 </script>

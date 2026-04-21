@@ -17,14 +17,27 @@ class VacacionesController extends Controller
     {
         $tasas = [
             "LOSEP"              => 2.50,
-            "CODIGO DEL TRABAJO" => 1.15,
+            "CODIGO DEL TRABAJO" => 1.25,
         ];
         $tasa = $tasas[trim($emp->tipo_contrato)] ?? 0;
 
         $fechaCorteConfig = Configuracion::find("FECHA_CORTE_VACACIONES");
         $fechaCorte       = $fechaCorteConfig ? Carbon::parse($fechaCorteConfig->valor) : Carbon::today();
 
-        $diasAcumulados = round(max(0, $fechaCorte->diffInDays(Carbon::today())) / 30 * $tasa, 2);
+        // Si el empleado ingresó después de la fecha de corte, acumula desde su ingreso
+        if ($emp->fecha_ingreso && Carbon::parse($emp->fecha_ingreso)->gt($fechaCorte)) {
+            $fechaCorte = Carbon::parse($emp->fecha_ingreso);
+        }
+
+        // Si el empleado está inactivo con fecha de salida, acumula hasta esa fecha
+        $estaInactivo   = strtoupper(trim($emp->estado)) === 'INACTIVO';
+        $fechaHasta     = ($estaInactivo && $emp->fecha_salida)
+            ? Carbon::parse($emp->fecha_salida)
+            : Carbon::today();
+
+        // Base 360 días: días transcurridos / 360 × tasa anual (tasa × 12)
+        $diasCalendario = max(0, $fechaCorte->diffInDays($fechaHasta));
+        $diasAcumulados = round($diasCalendario / 360 * ($tasa * 12), 2);
         $saldoInicial   = (float) ($cabecera->dias_adicionales  ?? 0);
         $tomados        = (float) ($cabecera->total_dias_tomados ?? 0);
         $disponibles    = round($saldoInicial + $diasAcumulados - $tomados, 2);

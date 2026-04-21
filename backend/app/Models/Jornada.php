@@ -17,5 +17,7 @@ class Jornada extends Model
         "recargo",
         "normal",
         "porc_25",
+        "porc_extraordinaria",
+        "porc_suplementaria",
     ];
 }
