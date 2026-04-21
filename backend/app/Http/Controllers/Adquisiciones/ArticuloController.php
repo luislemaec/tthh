@@ -33,7 +33,7 @@ class ArticuloController extends Controller
         ]);
 
         $articulo = Articulo::create($request->only([
-            'codigo', 'nombre', 'descripcion', 'unidad_medida', 'categoria',
+            'codigo', 'nombre', 'descripcion', 'unidad_medida', 'categoria', 'marca',
         ]));
 
         return response()->json($articulo, 201);
@@ -54,7 +54,7 @@ class ArticuloController extends Controller
         ]);
 
         $articulo->update($request->only([
-            'codigo', 'nombre', 'descripcion', 'unidad_medida', 'categoria',
+            'codigo', 'nombre', 'descripcion', 'unidad_medida', 'categoria', 'marca',
         ]));
 
         return response()->json($articulo);

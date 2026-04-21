@@ -9,7 +9,7 @@ class Articulo extends Model
     protected $table = 'adq.articulo';
 
     protected $fillable = [
-        'codigo', 'nombre', 'descripcion', 'unidad_medida', 'categoria',
+        'codigo', 'nombre', 'descripcion', 'unidad_medida', 'categoria', 'marca',
         'stock_actual', 'stock_maximo_historico', 'estado',
     ];
 

@@ -33,6 +33,7 @@
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Código</th>
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Nombre</th>
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Categoría</th>
+            <th class="text-left px-4 py-3 text-gray-600 font-medium">Marca</th>
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Unidad</th>
             <th class="text-right px-4 py-3 text-gray-600 font-medium">Stock actual</th>
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Estado</th>
@@ -47,6 +48,7 @@
             <td class="px-4 py-3 font-mono text-xs">{{ a.codigo }}</td>
             <td class="px-4 py-3 font-medium">{{ a.nombre }}</td>
             <td class="px-4 py-3 text-gray-500">{{ a.categoria || '-' }}</td>
+            <td class="px-4 py-3 text-gray-500">{{ a.marca || '-' }}</td>
             <td class="px-4 py-3 text-gray-500">{{ a.unidad_medida || '-' }}</td>
             <td class="px-4 py-3 text-right">
               <span :class="a.bajo_minimo ? 'text-red-600 font-bold' : 'text-gray-800'">
@@ -97,6 +99,12 @@
             <label class="block text-xs text-gray-600 mb-1">Categoría</label>
             <input v-model="modal.form.categoria" type="text" maxlength="100"
               placeholder="ej: Papelería, Limpieza, Informática"
+              class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">Marca</label>
+            <input v-model="modal.form.marca" type="text" maxlength="100"
+              placeholder="ej: HP, BIC, 3M"
               class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none" />
           </div>
           <div>
@@ -178,12 +186,12 @@ async function cargarConfig() {
 onMounted(async () => { await Promise.all([cargar(), cargarConfig()]) })
 
 function abrirModalCrear() {
-  modal.value = { show: true, editando: false, id: null, form: { codigo: '', nombre: '', descripcion: '', unidad_medida: '', categoria: '' } }
+  modal.value = { show: true, editando: false, id: null, form: { codigo: '', nombre: '', descripcion: '', unidad_medida: '', categoria: '', marca: '' } }
   errorModal.value = ''
 }
 
 function abrirEditar(a) {
-  modal.value = { show: true, editando: true, id: a.id, form: { codigo: a.codigo, nombre: a.nombre, descripcion: a.descripcion, unidad_medida: a.unidad_medida, categoria: a.categoria } }
+  modal.value = { show: true, editando: true, id: a.id, form: { codigo: a.codigo, nombre: a.nombre, descripcion: a.descripcion, unidad_medida: a.unidad_medida, categoria: a.categoria, marca: a.marca } }
   errorModal.value = ''
 }
 
