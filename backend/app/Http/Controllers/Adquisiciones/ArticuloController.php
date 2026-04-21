@@ -33,7 +33,7 @@ class ArticuloController extends Controller
         ]);
 
         $articulo = Articulo::create($request->only([
-            'codigo', 'nombre', 'descripcion', 'unidad_medida', 'categoria', 'marca',
+            'codigo', 'nombre', 'descripcion', 'unidad_medida', 'categoria', 'marca', 'nivel1', 'nivel2',
         ]));
 
         return response()->json($articulo, 201);
@@ -54,7 +54,7 @@ class ArticuloController extends Controller
         ]);
 
         $articulo->update($request->only([
-            'codigo', 'nombre', 'descripcion', 'unidad_medida', 'categoria', 'marca',
+            'codigo', 'nombre', 'descripcion', 'unidad_medida', 'categoria', 'marca', 'nivel1', 'nivel2',
         ]));
 
         return response()->json($articulo);
@@ -81,6 +81,20 @@ class ArticuloController extends Controller
             ->values();
 
         return response()->json($alertas);
+    }
+
+    public function buscarCatalogo(Request $request)
+    {
+        $q = $request->get('q', '');
+        $items = DB::table('adq.catalogo_inventario')
+            ->where(function ($query) use ($q) {
+                $query->where('nivel2', 'ilike', "%$q%")
+                      ->orWhere('descripcion', 'ilike', "%$q%");
+            })
+            ->orderBy('descripcion')
+            ->limit(20)
+            ->get(['nivel1', 'nivel2', 'descripcion']);
+        return response()->json($items);
     }
 
     public function configuracion()

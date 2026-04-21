@@ -215,6 +215,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get('articulos',                             [ArticuloController::class, 'index']);
         Route::post('articulos',                            [ArticuloController::class, 'store']);
         Route::get('articulos/alertas',                     [ArticuloController::class, 'alertas']);
+        Route::get('articulos/catalogo',                    [ArticuloController::class, 'buscarCatalogo']);
         Route::get('articulos/{id}',                        [ArticuloController::class, 'show']);
         Route::put('articulos/{id}',                        [ArticuloController::class, 'update']);
         Route::patch('articulos/{id}/inactivar',            [ArticuloController::class, 'inactivar']);

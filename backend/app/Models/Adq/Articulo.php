@@ -10,6 +10,7 @@ class Articulo extends Model
 
     protected $fillable = [
         'codigo', 'nombre', 'descripcion', 'unidad_medida', 'categoria', 'marca',
+        'nivel1', 'nivel2',
         'stock_actual', 'stock_maximo_historico', 'estado',
     ];
 
