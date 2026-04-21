@@ -211,6 +211,13 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::patch('proveedores/{id}/inactivar',          [ProveedorController::class, 'inactivar']);
         Route::patch('proveedores/{id}/activar',            [ProveedorController::class, 'activar']);
 
+        // Catálogo Inventario MF
+        Route::get('catalogo-inventario',                   [\App\Http\Controllers\Adquisiciones\CatalogoInventarioController::class, 'index']);
+        Route::get('catalogo-inventario/nivel1s',           [\App\Http\Controllers\Adquisiciones\CatalogoInventarioController::class, 'nivel1s']);
+        Route::post('catalogo-inventario',                  [\App\Http\Controllers\Adquisiciones\CatalogoInventarioController::class, 'store']);
+        Route::put('catalogo-inventario/{nivel2}',          [\App\Http\Controllers\Adquisiciones\CatalogoInventarioController::class, 'update']);
+        Route::delete('catalogo-inventario/{nivel2}',       [\App\Http\Controllers\Adquisiciones\CatalogoInventarioController::class, 'destroy']);
+
         // Artículos / Inventario
         Route::get('articulos',                             [ArticuloController::class, 'index']);
         Route::post('articulos',                            [ArticuloController::class, 'store']);

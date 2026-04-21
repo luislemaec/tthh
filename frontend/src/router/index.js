@@ -64,6 +64,7 @@ const routes = [
       { path: 'articulos',   name: 'AdqArticulos',   component: () => import('@/views/adquisiciones/ArticulosView.vue') },
       { path: 'ordenes',     name: 'AdqOrdenes',     component: () => import('@/views/adquisiciones/OrdenesCompraView.vue') },
       { path: 'solicitudes', name: 'AdqSolicitudes', component: () => import('@/views/adquisiciones/SolicitudesView.vue') },
+      { path: 'catalogo',    name: 'AdqCatalogo',    component: () => import('@/views/adquisiciones/CatalogoInventarioView.vue') },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: '/' },
