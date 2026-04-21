@@ -12,23 +12,21 @@ class CatalogoInventarioController extends Controller
         $q = $request->get('q', '');
         $nivel1 = $request->get('nivel1', '');
 
-        $query = DB::table('adq.catalogo_inventario');
+        $query = DB::table('adq.catalogo_inventario as ci')
+            ->join('adq.catalogo_nivel1 as n1', 'ci.nivel1', '=', 'n1.nivel1')
+            ->select('ci.*', 'n1.descripcion as descripcion_nivel1');
 
         if ($q) {
             $query->where(function ($qb) use ($q) {
-                $qb->where('nivel2', 'ilike', "%$q%")
-                   ->orWhere('descripcion', 'ilike', "%$q%");
+                $qb->where('ci.nivel2', 'ilike', "%$q%")
+                   ->orWhere('ci.descripcion', 'ilike', "%$q%");
             });
         }
         if ($nivel1) {
-            $query->where('nivel1', $nivel1);
+            $query->where('ci.nivel1', $nivel1);
         }
 
-        $items = $query
-            ->join('adq.catalogo_nivel1 as n1', 'adq.catalogo_inventario.nivel1', '=', 'n1.nivel1')
-            ->select('adq.catalogo_inventario.*', 'n1.descripcion as descripcion_nivel1')
-            ->orderBy('adq.catalogo_inventario.nivel2')
-            ->paginate(50);
+        $items = $query->orderBy('ci.nivel2')->paginate(50);
         return response()->json($items);
     }
 
