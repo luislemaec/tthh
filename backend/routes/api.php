@@ -17,6 +17,11 @@ use App\Http\Controllers\PlanificacionVacController;
 use App\Http\Controllers\ReportePlanificacionController;
 use App\Http\Controllers\LiquidacionVacController;
 use App\Http\Controllers\HorasExtrasController;
+use App\Http\Controllers\Adquisiciones\AdqDashboardController;
+use App\Http\Controllers\Adquisiciones\ProveedorController;
+use App\Http\Controllers\Adquisiciones\ArticuloController;
+use App\Http\Controllers\Adquisiciones\OrdenCompraController;
+use App\Http\Controllers\Adquisiciones\SolicitudMaterialController;
 use Illuminate\Support\Facades\Route;
 
 // Rutas PÚBLICAS
@@ -193,6 +198,46 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::patch("/horas-extras/registro/{id}/revisar",                   [HorasExtrasController::class, "revisarRegistro"]);
     Route::patch("/horas-extras/registro/{id}/confirmar",                 [HorasExtrasController::class, "confirmar"]);
     Route::patch("/horas-extras/registro/{id}/negar",                     [HorasExtrasController::class, "negarRegistro"]);
+
+    // ── Adquisiciones ─────────────────────────────────────────────────────────
+    Route::prefix('adquisiciones')->group(function () {
+        Route::get('dashboard',                             [AdqDashboardController::class, 'index']);
+
+        // Proveedores
+        Route::get('proveedores',                           [ProveedorController::class, 'index']);
+        Route::post('proveedores',                          [ProveedorController::class, 'store']);
+        Route::get('proveedores/{id}',                      [ProveedorController::class, 'show']);
+        Route::put('proveedores/{id}',                      [ProveedorController::class, 'update']);
+        Route::patch('proveedores/{id}/inactivar',          [ProveedorController::class, 'inactivar']);
+        Route::patch('proveedores/{id}/activar',            [ProveedorController::class, 'activar']);
+
+        // Artículos / Inventario
+        Route::get('articulos',                             [ArticuloController::class, 'index']);
+        Route::post('articulos',                            [ArticuloController::class, 'store']);
+        Route::get('articulos/alertas',                     [ArticuloController::class, 'alertas']);
+        Route::get('articulos/{id}',                        [ArticuloController::class, 'show']);
+        Route::put('articulos/{id}',                        [ArticuloController::class, 'update']);
+        Route::patch('articulos/{id}/inactivar',            [ArticuloController::class, 'inactivar']);
+        Route::get('configuracion',                         [ArticuloController::class, 'configuracion']);
+        Route::put('configuracion',                         [ArticuloController::class, 'actualizarConfiguracion']);
+
+        // Órdenes de compra
+        Route::get('ordenes',                               [OrdenCompraController::class, 'index']);
+        Route::post('ordenes',                              [OrdenCompraController::class, 'store']);
+        Route::get('ordenes/{id}',                          [OrdenCompraController::class, 'show']);
+        Route::patch('ordenes/{id}/enviar',                 [OrdenCompraController::class, 'enviar']);
+        Route::patch('ordenes/{id}/recibir',                [OrdenCompraController::class, 'recibir']);
+        Route::delete('ordenes/{id}',                       [OrdenCompraController::class, 'destroy']);
+
+        // Solicitudes de materiales
+        Route::get('solicitudes',                           [SolicitudMaterialController::class, 'index']);
+        Route::post('solicitudes',                          [SolicitudMaterialController::class, 'store']);
+        Route::get('solicitudes/{id}',                      [SolicitudMaterialController::class, 'show']);
+        Route::patch('solicitudes/{id}/aprobar',            [SolicitudMaterialController::class, 'aprobar']);
+        Route::patch('solicitudes/{id}/negar',              [SolicitudMaterialController::class, 'negar']);
+        Route::patch('solicitudes/{id}/despachar',          [SolicitudMaterialController::class, 'despachar']);
+        Route::delete('solicitudes/{id}',                   [SolicitudMaterialController::class, 'destroy']);
+    });
 
     // Vacaciones
     Route::get("/vacaciones/mi-rol",            [VacacionesController::class, "miRol"]);

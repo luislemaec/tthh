@@ -9,6 +9,12 @@ const routes = [
     meta: { guest: true },
   },
   {
+    path: '/launcher',
+    name: 'Launcher',
+    component: () => import('@/views/LauncherView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/',
     component: () => import('@/layouts/MainLayout.vue'),
     meta: { requiresAuth: true },
@@ -46,6 +52,20 @@ const routes = [
       { path: 'horas-extras', name: 'HorasExtras', component: () => import('@/views/horasextras/HorasExtrasView.vue') },
     ],
   },
+  // ── Adquisiciones ──────────────────────────────────────────────────────────
+  {
+    path: '/adquisiciones',
+    component: () => import('@/layouts/AdqLayout.vue'),
+    meta: { requiresAuth: true },
+    children: [
+      { path: '', redirect: '/adquisiciones/dashboard' },
+      { path: 'dashboard',   name: 'AdqDashboard',   component: () => import('@/views/adquisiciones/AdqDashboardView.vue') },
+      { path: 'proveedores', name: 'AdqProveedores', component: () => import('@/views/adquisiciones/ProveedoresView.vue') },
+      { path: 'articulos',   name: 'AdqArticulos',   component: () => import('@/views/adquisiciones/ArticulosView.vue') },
+      { path: 'ordenes',     name: 'AdqOrdenes',     component: () => import('@/views/adquisiciones/OrdenesCompraView.vue') },
+      { path: 'solicitudes', name: 'AdqSolicitudes', component: () => import('@/views/adquisiciones/SolicitudesView.vue') },
+    ],
+  },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]
 
@@ -57,7 +77,7 @@ const router = createRouter({
 router.beforeEach((to, _from, next) => {
   const auth = useAuthStore()
   if (to.meta.requiresAuth && !auth.isAuthenticated) return next('/login')
-  if (to.meta.guest && auth.isAuthenticated) return next('/')
+  if (to.meta.guest && auth.isAuthenticated) return next('/launcher')
   if (to.meta.rol && !auth.roles.includes(to.meta.rol.toUpperCase())) return next('/')
   next()
 })

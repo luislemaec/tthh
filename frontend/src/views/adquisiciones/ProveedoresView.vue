@@ -1,0 +1,208 @@
+<template>
+  <div>
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-2xl font-bold text-gray-800">Proveedores</h1>
+      <button @click="abrirCrear" class="bg-amber-700 text-white px-4 py-2 rounded-lg text-sm hover:bg-amber-800">
+        + Nuevo proveedor
+      </button>
+    </div>
+
+    <div class="flex gap-3 mb-4">
+      <input v-model="busqueda" type="text" placeholder="Buscar por RUC o nombre..."
+        class="border rounded-lg px-3 py-2 text-sm w-72 focus:ring-2 focus:ring-amber-300 outline-none" />
+      <select v-model="filtroEstado" class="border rounded-lg px-3 py-2 text-sm">
+        <option value="">Todos</option>
+        <option value="ACTIVO">Activos</option>
+        <option value="INACTIVO">Inactivos</option>
+      </select>
+    </div>
+
+    <div class="bg-white rounded-xl shadow overflow-hidden">
+      <table class="w-full text-sm">
+        <thead class="bg-gray-50 border-b">
+          <tr>
+            <th class="text-left px-4 py-3 text-gray-600 font-medium">RUC</th>
+            <th class="text-left px-4 py-3 text-gray-600 font-medium">Nombre</th>
+            <th class="text-left px-4 py-3 text-gray-600 font-medium">Contacto</th>
+            <th class="text-left px-4 py-3 text-gray-600 font-medium">Email</th>
+            <th class="text-left px-4 py-3 text-gray-600 font-medium">Catálogo</th>
+            <th class="text-left px-4 py-3 text-gray-600 font-medium">Estado</th>
+            <th class="text-left px-4 py-3 text-gray-600 font-medium">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-if="!proveedoresFiltrados.length">
+            <td colspan="7" class="text-center py-8 text-gray-400">Sin proveedores</td>
+          </tr>
+          <tr v-for="p in proveedoresFiltrados" :key="p.id" class="border-b hover:bg-gray-50">
+            <td class="px-4 py-3 font-mono text-xs">{{ p.ruc }}</td>
+            <td class="px-4 py-3 font-medium">{{ p.nombre }}</td>
+            <td class="px-4 py-3 text-gray-500">{{ p.contacto || '-' }}</td>
+            <td class="px-4 py-3 text-gray-500">{{ p.email || '-' }}</td>
+            <td class="px-4 py-3 text-gray-500">{{ p.catalogo?.length || 0 }} ítem(s)</td>
+            <td class="px-4 py-3">
+              <span :class="p.estado === 'ACTIVO' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'"
+                class="px-2 py-0.5 rounded-full text-xs font-medium">{{ p.estado }}</span>
+            </td>
+            <td class="px-4 py-3 flex gap-2">
+              <button @click="abrirEditar(p)" class="text-xs text-blue-600 hover:text-blue-800">Editar</button>
+              <button v-if="p.estado === 'ACTIVO'" @click="inactivar(p.id)" class="text-xs text-red-500 hover:text-red-700">Inactivar</button>
+              <button v-else @click="activar(p.id)" class="text-xs text-green-600 hover:text-green-800">Activar</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Modal proveedor -->
+    <div v-if="modal.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
+        <h2 class="text-lg font-bold mb-4">{{ modal.editando ? 'Editar' : 'Nuevo' }} Proveedor</h2>
+
+        <div class="grid grid-cols-2 gap-3 mb-3">
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">RUC *</label>
+            <input v-model="modal.form.ruc" type="text" maxlength="20"
+              class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">Teléfono</label>
+            <input v-model="modal.form.telefono" type="text" maxlength="20"
+              class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none" />
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="block text-xs text-gray-600 mb-1">Nombre *</label>
+          <input v-model="modal.form.nombre" type="text" maxlength="200"
+            class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none" />
+        </div>
+        <div class="grid grid-cols-2 gap-3 mb-3">
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">Contacto</label>
+            <input v-model="modal.form.contacto" type="text" maxlength="100"
+              class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">Email</label>
+            <input v-model="modal.form.email" type="email" maxlength="100"
+              class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none" />
+          </div>
+        </div>
+        <div class="mb-4">
+          <label class="block text-xs text-gray-600 mb-1">Dirección</label>
+          <input v-model="modal.form.direccion" type="text" maxlength="300"
+            class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none" />
+        </div>
+
+        <!-- Catálogo -->
+        <div class="border-t pt-4">
+          <div class="flex justify-between items-center mb-3">
+            <p class="text-sm font-semibold text-gray-700">Catálogo de productos/servicios</p>
+            <button @click="agregarCatalogo" class="text-xs text-amber-700 hover:text-amber-900 font-medium">+ Agregar ítem</button>
+          </div>
+          <div v-for="(item, i) in modal.form.catalogo" :key="i" class="border rounded-lg p-3 bg-gray-50 mb-2">
+            <div class="flex justify-between items-start mb-2">
+              <span class="text-xs text-gray-500 font-medium">Ítem {{ i + 1 }}</span>
+              <button @click="modal.form.catalogo.splice(i, 1)" class="text-red-400 hover:text-red-600 text-xs">✕</button>
+            </div>
+            <div class="grid grid-cols-3 gap-2">
+              <div class="col-span-2">
+                <label class="block text-xs text-gray-500 mb-1">Descripción *</label>
+                <input v-model="item.descripcion" type="text" maxlength="300"
+                  class="w-full border rounded px-2 py-1.5 text-sm focus:ring-1 focus:ring-amber-300 outline-none" />
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">Unidad</label>
+                <input v-model="item.unidad_medida" type="text" maxlength="50"
+                  class="w-full border rounded px-2 py-1.5 text-sm focus:ring-1 focus:ring-amber-300 outline-none" />
+              </div>
+              <div class="col-span-3">
+                <label class="block text-xs text-gray-500 mb-1">Precio referencial ($)</label>
+                <input v-model="item.precio_referencial" type="number" step="0.01" min="0"
+                  class="w-40 border rounded px-2 py-1.5 text-sm focus:ring-1 focus:ring-amber-300 outline-none" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p v-if="errorModal" class="text-red-600 text-sm mt-3">{{ errorModal }}</p>
+        <div class="flex justify-end gap-3 mt-5">
+          <button @click="modal.show = false" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancelar</button>
+          <button @click="guardar" :disabled="guardando"
+            class="bg-amber-700 text-white px-5 py-2 rounded-lg text-sm hover:bg-amber-800 disabled:opacity-50">
+            {{ guardando ? 'Guardando...' : 'Guardar' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import api from '@/services/api'
+
+const proveedores  = ref([])
+const busqueda     = ref('')
+const filtroEstado = ref('ACTIVO')
+const guardando    = ref(false)
+const errorModal   = ref('')
+const modal = ref({ show: false, editando: false, id: null, form: { ruc: '', nombre: '', direccion: '', contacto: '', email: '', telefono: '', catalogo: [] } })
+
+const proveedoresFiltrados = computed(() =>
+  proveedores.value.filter(p => {
+    const q = busqueda.value.toLowerCase()
+    const coincide = !q || p.nombre.toLowerCase().includes(q) || p.ruc.includes(q)
+    return coincide && (!filtroEstado.value || p.estado === filtroEstado.value)
+  })
+)
+
+async function cargar() {
+  const { data } = await api.get('/adquisiciones/proveedores')
+  proveedores.value = data
+}
+
+onMounted(cargar)
+
+function abrirCrear() {
+  modal.value = { show: true, editando: false, id: null, form: { ruc: '', nombre: '', direccion: '', contacto: '', email: '', telefono: '', catalogo: [] } }
+  errorModal.value = ''
+}
+
+function abrirEditar(p) {
+  modal.value = { show: true, editando: true, id: p.id, form: { ruc: p.ruc, nombre: p.nombre, direccion: p.direccion, contacto: p.contacto, email: p.email, telefono: p.telefono, catalogo: (p.catalogo || []).map(c => ({ ...c })) } }
+  errorModal.value = ''
+}
+
+function agregarCatalogo() {
+  modal.value.form.catalogo.push({ descripcion: '', unidad_medida: '', precio_referencial: 0 })
+}
+
+async function guardar() {
+  errorModal.value = ''
+  if (!modal.value.form.ruc || !modal.value.form.nombre) { errorModal.value = 'RUC y nombre son requeridos.'; return }
+  guardando.value = true
+  try {
+    if (modal.value.editando) {
+      await api.put(`/adquisiciones/proveedores/${modal.value.id}`, modal.value.form)
+    } else {
+      await api.post('/adquisiciones/proveedores', modal.value.form)
+    }
+    modal.value.show = false
+    await cargar()
+  } catch (e) {
+    errorModal.value = e.response?.data?.message || 'Error al guardar'
+  } finally { guardando.value = false }
+}
+
+async function inactivar(id) {
+  if (!confirm('¿Inactivar este proveedor?')) return
+  await api.patch(`/adquisiciones/proveedores/${id}/inactivar`)
+  await cargar()
+}
+
+async function activar(id) {
+  await api.patch(`/adquisiciones/proveedores/${id}/activar`)
+  await cargar()
+}
+</script>
