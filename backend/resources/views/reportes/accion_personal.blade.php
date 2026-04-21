@@ -192,7 +192,7 @@
 {{-- MOTIVACIÓN --}}
 <div style="border:1px solid #000; padding:3px 5px; margin-bottom:3px;">
   <div class="lbl">MOTIVACIÓN: <span style="font-weight:normal;">(adjuntar anexo si lo posee)</span></div>
-  <div style="min-height:52px; font-size:8pt; word-wrap:break-word; overflow:hidden; margin-top:2px; white-space:pre-wrap;">{{ $accion->motivacion ?? '' }}</div>
+  <div style="min-height:52px; font-size:8pt; word-wrap:break-word; overflow:hidden; margin-top:2px; white-space:pre-wrap; text-align:justify;">{{ $accion->motivacion ?? '' }}</div>
 </div>
 
 {{-- SITUACIÓN ACTUAL vs PROPUESTA --}}
@@ -348,13 +348,17 @@
           <div style="font-size:7.5pt; margin-top:2px;">PUESTO: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">{{ $creadorPuesto }}</span></div>
         </div>
       </td>
+      @php
+        $cargoAccion = strtoupper(trim($accion->actual_cargo ?? $accion->propuesto_cargo ?? ''));
+        $esDirectorTH = str_contains($cargoAccion, 'DIRECTOR') && str_contains($cargoAccion, 'TALENTO HUMANO');
+      @endphp
       <td style="width:33.3%; border-right:1px solid #000; padding:0; vertical-align:top;">
         <div class="gray" style="text-align:center; font-weight:bold; font-size:7.5pt; padding:2px; border-bottom:1px solid #000;">RESPONSABLE DE REVISIÓN</div>
         <div style="padding:5px 6px;">
           <div style="min-height:55px;"></div>
           <div style="font-size:7.5pt;">FIRMA: <span style="border-bottom:1px solid #000; display:inline-block; width:68%;">&nbsp;</span></div>
-          <div style="font-size:7.5pt; margin-top:2px;">NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">{{ $directorTH }}</span></div>
-          <div style="font-size:7.5pt; margin-top:2px;">PUESTO: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">DIRECTOR DE ADMINISTRACIÓN DEL TALENTO HUMANO</span></div>
+          <div style="font-size:7.5pt; margin-top:2px;">NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">{{ $esDirectorTH ? '' : $directorTH }}</span></div>
+          <div style="font-size:7.5pt; margin-top:2px;">PUESTO: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">{{ $esDirectorTH ? '' : 'DIRECTOR DE ADMINISTRACIÓN DEL TALENTO HUMANO' }}</span></div>
         </div>
       </td>
       <td style="width:33.4%; padding:0; vertical-align:top;">
