@@ -12,21 +12,27 @@ class CatalogoInventarioController extends Controller
         $q = $request->get('q', '');
         $nivel1 = $request->get('nivel1', '');
 
-        $query = DB::table('adq.catalogo_inventario as ci')
-            ->join('adq.catalogo_nivel1 as n1', 'ci.nivel1', '=', 'n1.nivel1')
-            ->select('ci.*', 'n1.descripcion as descripcion_nivel1');
+        $query = DB::table('adq.catalogo_inventario')
+            ->leftJoin('adq.catalogo_nivel1', 'adq.catalogo_inventario.nivel1', '=', 'adq.catalogo_nivel1.nivel1')
+            ->select(
+                'adq.catalogo_inventario.nivel1',
+                'adq.catalogo_inventario.nivel2',
+                'adq.catalogo_inventario.descripcion',
+                'adq.catalogo_inventario.asociacion_presupuestaria',
+                'adq.catalogo_nivel1.descripcion as descripcion_nivel1'
+            );
 
         if ($q) {
             $query->where(function ($qb) use ($q) {
-                $qb->where('ci.nivel2', 'ilike', "%$q%")
-                   ->orWhere('ci.descripcion', 'ilike', "%$q%");
+                $qb->where('adq.catalogo_inventario.nivel2', 'ilike', "%$q%")
+                   ->orWhere('adq.catalogo_inventario.descripcion', 'ilike', "%$q%");
             });
         }
         if ($nivel1) {
-            $query->where('ci.nivel1', $nivel1);
+            $query->where('adq.catalogo_inventario.nivel1', $nivel1);
         }
 
-        $items = $query->orderBy('ci.nivel2')->paginate(50);
+        $items = $query->orderBy('adq.catalogo_inventario.nivel2')->paginate(50);
         return response()->json($items);
     }
 
