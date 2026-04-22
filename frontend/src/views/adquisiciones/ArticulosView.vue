@@ -69,7 +69,7 @@
           <tr v-if="!articulosFiltrados.length">
             <td colspan="15" class="text-center py-8 text-gray-400">Sin artículos</td>
           </tr>
-          <tr v-for="a in articulosFiltrados" :key="a.id" class="border-b hover:bg-amber-50">
+          <tr v-for="a in articulosPaginados" :key="a.id" class="border-b hover:bg-amber-50">
             <td class="px-3 py-2 text-gray-400 whitespace-nowrap">{{ a.id }}</td>
             <td class="px-3 py-2 font-mono whitespace-nowrap">{{ a.codigo }}</td>
             <td class="px-3 py-2 text-gray-500 whitespace-nowrap">{{ a.nivel1 || '-' }}</td>
@@ -110,6 +110,34 @@
           </tr>
         </tbody>
       </table>
+
+      <!-- Paginador -->
+      <div class="flex items-center justify-between px-4 py-3 border-t text-sm text-gray-600 flex-wrap gap-2">
+        <div class="flex items-center gap-2">
+          <span>Filas por página:</span>
+          <select v-model="porPagina" @change="paginaActual = 1"
+            class="border rounded px-2 py-1 text-sm">
+            <option :value="25">25</option>
+            <option :value="50">50</option>
+            <option :value="100">100</option>
+          </select>
+        </div>
+        <span class="text-gray-500">
+          {{ (paginaActual - 1) * porPagina + 1 }}–{{ Math.min(paginaActual * porPagina, articulosFiltrados.length) }}
+          de {{ articulosFiltrados.length }}
+        </span>
+        <div class="flex items-center gap-1">
+          <button @click="paginaActual = 1" :disabled="paginaActual === 1"
+            class="px-2 py-1 rounded border disabled:opacity-40 hover:bg-gray-50 text-xs">«</button>
+          <button @click="paginaActual--" :disabled="paginaActual === 1"
+            class="px-3 py-1 rounded border disabled:opacity-40 hover:bg-gray-50">‹</button>
+          <span class="px-3 py-1 font-medium">{{ paginaActual }} / {{ totalPaginas }}</span>
+          <button @click="paginaActual++" :disabled="paginaActual === totalPaginas"
+            class="px-3 py-1 rounded border disabled:opacity-40 hover:bg-gray-50">›</button>
+          <button @click="paginaActual = totalPaginas" :disabled="paginaActual === totalPaginas"
+            class="px-2 py-1 rounded border disabled:opacity-40 hover:bg-gray-50 text-xs">»</button>
+        </div>
+      </div>
     </div>
 
     <!-- Modal crear/editar -->
@@ -262,7 +290,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import api from '@/services/api'
 
 const articulos        = ref([])
@@ -276,6 +304,8 @@ const nivel1s          = ref([])
 const catalogo         = ref([])
 const ivasActivos      = ref([])
 const unidades         = ref([])
+const paginaActual     = ref(1)
+const porPagina        = ref(25)
 
 const modal      = ref({ show: false, editando: false, id: null, form: {} })
 const modalConfig = ref({ show: false, porcentaje: 20 })
@@ -295,6 +325,15 @@ const articulosFiltrados = computed(() => {
     return coincide && pasaFisico
   })
 })
+
+const totalPaginas = computed(() => Math.max(1, Math.ceil(articulosFiltrados.value.length / porPagina.value)))
+
+const articulosPaginados = computed(() => {
+  const inicio = (paginaActual.value - 1) * porPagina.value
+  return articulosFiltrados.value.slice(inicio, inicio + porPagina.value)
+})
+
+watch([busqueda, filtroEstado, filtroFisico], () => { paginaActual.value = 1 })
 
 const nivel2sFiltrados = computed(() => {
   if (!modal.value.form.nivel1) return []
