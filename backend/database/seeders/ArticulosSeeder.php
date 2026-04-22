@@ -50,6 +50,9 @@ class ArticulosSeeder extends Seeder
             $marca        = $this->limpiar($marca);
             $nivel1       = trim($nivel1 ?? '') ?: null;
             $nivel2       = trim($nivel2 ?? '') ?: null;
+            // Normalizar a 6 dígitos con cero a la izquierda
+            if ($nivel2) $nivel2 = str_pad($nivel2, 6, '0', STR_PAD_LEFT);
+            if ($nivel1) $nivel1 = str_pad($nivel1, 2, '0', STR_PAD_LEFT);
 
             // Detectar fila desalineada (nombre con comas sin comillas)
             if ($nivel1 !== null && strlen($nivel1) > 2) {
