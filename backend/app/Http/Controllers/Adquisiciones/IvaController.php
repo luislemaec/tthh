@@ -52,12 +52,4 @@ class IvaController extends Controller
         return response()->json($iva);
     }
 
-    public function unidadesMedida()
-    {
-        $unidades = DB::table('adq.unidad_medida')
-            ->where('activo', true)
-            ->orderBy('nombre')
-            ->get(['id', 'nombre', 'abreviatura']);
-        return response()->json($unidades);
-    }
 }

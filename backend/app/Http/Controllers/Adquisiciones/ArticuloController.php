@@ -30,10 +30,11 @@ class ArticuloController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'codigo'       => 'required|string|max:30|unique:pgsql.adq.articulo,codigo',
-            'nombre'       => 'required|string|max:200',
-            'unidad_medida' => 'nullable|string|max:50',
-            'iva_id'       => 'nullable|exists:pgsql.adq.iva,id',
+            'codigo'        => 'required|string|max:30|unique:pgsql.adq.articulo,codigo',
+            'nombre'        => 'required|string|max:200',
+            'unidad_medida' => 'nullable|string|max:60',
+            'iva_id'        => 'nullable|exists:pgsql.adq.iva,id',
+            'estado_fisico' => 'nullable|in:BUENO,MALO,INSERVIBLE',
         ]);
 
         // Auto-rellenar item_presupuestario desde el catálogo si viene nivel2
@@ -45,7 +46,7 @@ class ArticuloController extends Controller
         }
 
         $articulo = Articulo::create(array_merge(
-            $request->only(['codigo', 'nombre', 'descripcion', 'unidad_medida', 'categoria', 'marca', 'nivel1', 'nivel2', 'precio_unitario', 'iva_id']),
+            $request->only(['codigo', 'nombre', 'descripcion', 'unidad_medida', 'categoria', 'marca', 'nivel1', 'nivel2', 'precio_unitario', 'iva_id', 'estado_fisico']),
             ['item_presupuestario' => $itemPresupuestario]
         ));
 
@@ -62,9 +63,11 @@ class ArticuloController extends Controller
         $articulo = Articulo::findOrFail($id);
 
         $request->validate([
-            'codigo' => 'required|string|max:30|unique:pgsql.adq.articulo,codigo,' . $id,
-            'nombre' => 'required|string|max:200',
-            'iva_id' => 'nullable|exists:pgsql.adq.iva,id',
+            'codigo'        => 'required|string|max:30|unique:pgsql.adq.articulo,codigo,' . $id,
+            'nombre'        => 'required|string|max:200',
+            'unidad_medida' => 'nullable|string|max:60',
+            'iva_id'        => 'nullable|exists:pgsql.adq.iva,id',
+            'estado_fisico' => 'nullable|in:BUENO,MALO,INSERVIBLE',
         ]);
 
         $itemPresupuestario = $request->item_presupuestario;
@@ -75,7 +78,7 @@ class ArticuloController extends Controller
         }
 
         $articulo->update(array_merge(
-            $request->only(['codigo', 'nombre', 'descripcion', 'unidad_medida', 'categoria', 'marca', 'nivel1', 'nivel2', 'precio_unitario', 'iva_id']),
+            $request->only(['codigo', 'nombre', 'descripcion', 'unidad_medida', 'categoria', 'marca', 'nivel1', 'nivel2', 'precio_unitario', 'iva_id', 'estado_fisico']),
             ['item_presupuestario' => $itemPresupuestario ?? $articulo->item_presupuestario]
         ));
 

@@ -24,6 +24,12 @@
         <option value="ACTIVO">Activos</option>
         <option value="INACTIVO">Inactivos</option>
       </select>
+      <select v-model="filtroFisico" class="border rounded-lg px-3 py-2 text-sm">
+        <option value="">Todas las condiciones</option>
+        <option value="BUENO">Bueno</option>
+        <option value="MALO">Malo</option>
+        <option value="INSERVIBLE">Inservible</option>
+      </select>
     </div>
 
     <div class="bg-white rounded-xl shadow overflow-hidden overflow-x-auto">
@@ -43,12 +49,13 @@
             <th class="text-right px-3 py-3 text-gray-600 font-medium">IVA $</th>
             <th class="text-right px-3 py-3 text-gray-600 font-medium">Total</th>
             <th class="text-left px-3 py-3 text-gray-600 font-medium">Estado</th>
+            <th class="text-left px-3 py-3 text-gray-600 font-medium">Condición</th>
             <th class="text-left px-3 py-3 text-gray-600 font-medium">Acciones</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="!articulosFiltrados.length">
-            <td colspan="14" class="text-center py-8 text-gray-400">Sin artículos</td>
+            <td colspan="15" class="text-center py-8 text-gray-400">Sin artículos</td>
           </tr>
           <tr v-for="a in articulosFiltrados" :key="a.id" class="border-b hover:bg-gray-50">
             <td class="px-3 py-2 text-gray-400">{{ a.id }}</td>
@@ -71,6 +78,15 @@
             <td class="px-3 py-2">
               <span :class="a.estado === 'ACTIVO' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'"
                 class="px-2 py-0.5 rounded-full font-medium">{{ a.estado }}</span>
+            </td>
+            <td class="px-3 py-2">
+              <span :class="{
+                'bg-green-100 text-green-700':  a.estado_fisico === 'BUENO',
+                'bg-yellow-100 text-yellow-700': a.estado_fisico === 'MALO',
+                'bg-red-100 text-red-700':      a.estado_fisico === 'INSERVIBLE',
+              }" class="px-2 py-0.5 rounded-full font-medium">
+                {{ a.estado_fisico || 'BUENO' }}
+              </span>
             </td>
             <td class="px-3 py-2 flex gap-2">
               <button @click="abrirEditar(a)" class="text-blue-600 hover:text-blue-800">Editar</button>
@@ -183,6 +199,16 @@
                 class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none" />
             </div>
           </div>
+
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">Condición del Artículo</label>
+            <select v-model="modal.form.estado_fisico"
+              class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none">
+              <option value="BUENO">Bueno</option>
+              <option value="MALO">Malo</option>
+              <option value="INSERVIBLE">Inservible</option>
+            </select>
+          </div>
         </div>
 
         <p v-if="errorModal" class="text-red-600 text-sm mt-3">{{ errorModal }}</p>
@@ -228,6 +254,7 @@ import api from '@/services/api'
 const articulos        = ref([])
 const busqueda         = ref('')
 const filtroEstado     = ref('')
+const filtroFisico     = ref('')
 const porcentajeMinimo = ref(20)
 const guardando        = ref(false)
 const errorModal       = ref('')
@@ -248,9 +275,10 @@ const articulosFiltrados = computed(() => {
       a.nivel1?.toLowerCase().includes(q) ||
       a.nivel2?.toLowerCase().includes(q) ||
       a.item_presupuestario?.toLowerCase().includes(q)
-    if (filtroEstado.value === 'alerta') return coincide && a.bajo_minimo
-    if (filtroEstado.value) return coincide && a.estado === filtroEstado.value
-    return coincide
+    const pasaFisico = !filtroFisico.value || (a.estado_fisico || 'BUENO') === filtroFisico.value
+    if (filtroEstado.value === 'alerta') return coincide && pasaFisico && a.bajo_minimo
+    if (filtroEstado.value) return coincide && pasaFisico && a.estado === filtroEstado.value
+    return coincide && pasaFisico
   })
 })
 
@@ -304,7 +332,7 @@ const formVacio = () => ({
   codigo: '', nombre: '', descripcion: '', unidad_medida: '',
   nivel1: '', nivel2: '', item_presupuestario: '',
   precio_unitario: 0, iva_id: null,
-  categoria: '', marca: '',
+  categoria: '', marca: '', estado_fisico: 'BUENO',
 })
 
 function abrirModalCrear() {
@@ -322,6 +350,7 @@ function abrirEditar(a) {
       precio_unitario: parseFloat(a.precio_unitario || 0),
       iva_id: a.iva_id || null,
       categoria: a.categoria || '', marca: a.marca || '',
+      estado_fisico: a.estado_fisico || 'BUENO',
     }
   }
   errorModal.value = ''
