@@ -50,6 +50,13 @@ class ArticulosSeeder extends Seeder
             $marca        = $this->limpiar($marca);
             $nivel1       = trim($nivel1 ?? '') ?: null;
             $nivel2       = trim($nivel2 ?? '') ?: null;
+
+            // Detectar fila desalineada (nombre con comas sin comillas)
+            if ($nivel1 !== null && strlen($nivel1) > 2) {
+                $this->command->warn("Fila desalineada, omitida — codigo: $codigo nombre con comas sin comillas");
+                $omitidos++;
+                continue;
+            }
             $precio       = (float)($precio_unitario ?? 0);
             $stock        = (int)($stock_actual ?? 0);
             $ivaPct       = (float)($iva_porcentaje ?? 0);
