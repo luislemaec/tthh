@@ -9,6 +9,9 @@ class OrdenCompra extends Model
 
     protected $fillable = [
         'proveedor_id', 'fecha', 'estado', 'observacion',
+        'tipo_ingreso', 'proceso_contratacion', 'tipo_documento',
+        'numero_documento', 'fecha_documento',
+        'subtotal', 'iva_valor', 'total',
         'usuario_registro', 'usuario_recepcion', 'fecha_recepcion',
     ];
 

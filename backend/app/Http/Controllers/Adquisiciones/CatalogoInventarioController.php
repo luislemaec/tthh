@@ -32,7 +32,8 @@ class CatalogoInventarioController extends Controller
             $query->where('adq.catalogo_inventario.nivel1', $nivel1);
         }
 
-        $items = $query->orderBy('adq.catalogo_inventario.nivel2')->paginate(50);
+        $perPage = min((int)($request->get('por_pagina', 50)), 1000);
+        $items = $query->orderBy('adq.catalogo_inventario.nivel2')->paginate($perPage);
         return response()->json($items);
     }
 

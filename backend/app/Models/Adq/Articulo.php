@@ -10,9 +10,15 @@ class Articulo extends Model
 
     protected $fillable = [
         'codigo', 'nombre', 'descripcion', 'unidad_medida', 'categoria', 'marca',
-        'nivel1', 'nivel2',
+        'nivel1', 'nivel2', 'item_presupuestario',
+        'precio_unitario', 'iva_id',
         'stock_actual', 'stock_maximo_historico', 'estado',
     ];
+
+    public function iva()
+    {
+        return $this->belongsTo(Iva::class, 'iva_id');
+    }
 
     public function getBajoMinimoAttribute(): bool
     {

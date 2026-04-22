@@ -14,9 +14,13 @@ class ArticuloController extends Controller
             ->where('concepto', 'porcentaje_stock_minimo')
             ->value('valor') ?? 20);
 
-        $articulos = Articulo::orderBy('nombre')->get()->map(function ($a) use ($porcentaje) {
-            $a->bajo_minimo = $a->stock_maximo_historico > 0 &&
+        $articulos = Articulo::with('iva')->orderBy('nombre')->get()->map(function ($a) use ($porcentaje) {
+            $a->bajo_minimo  = $a->stock_maximo_historico > 0 &&
                 $a->stock_actual <= ($a->stock_maximo_historico * $porcentaje / 100);
+            $ivaPct          = $a->iva ? (float)$a->iva->porcentaje : 0;
+            $a->iva_porcentaje = $ivaPct;
+            $a->iva_valor    = round((float)$a->precio_unitario * $ivaPct / 100, 4);
+            $a->precio_total = round((float)$a->precio_unitario + $a->iva_valor, 4);
             return $a;
         });
 
@@ -29,19 +33,28 @@ class ArticuloController extends Controller
             'codigo'       => 'required|string|max:30|unique:pgsql.adq.articulo,codigo',
             'nombre'       => 'required|string|max:200',
             'unidad_medida' => 'nullable|string|max:50',
-            'categoria'    => 'nullable|string|max:100',
+            'iva_id'       => 'nullable|exists:pgsql.adq.iva,id',
         ]);
 
-        $articulo = Articulo::create($request->only([
-            'codigo', 'nombre', 'descripcion', 'unidad_medida', 'categoria', 'marca', 'nivel1', 'nivel2',
-        ]));
+        // Auto-rellenar item_presupuestario desde el catálogo si viene nivel2
+        $itemPresupuestario = $request->item_presupuestario;
+        if ($request->nivel2 && !$itemPresupuestario) {
+            $itemPresupuestario = DB::table('adq.catalogo_inventario')
+                ->where('nivel2', $request->nivel2)
+                ->value('asociacion_presupuestaria');
+        }
 
-        return response()->json($articulo, 201);
+        $articulo = Articulo::create(array_merge(
+            $request->only(['codigo', 'nombre', 'descripcion', 'unidad_medida', 'categoria', 'marca', 'nivel1', 'nivel2', 'precio_unitario', 'iva_id']),
+            ['item_presupuestario' => $itemPresupuestario]
+        ));
+
+        return response()->json($articulo->load('iva'), 201);
     }
 
     public function show($id)
     {
-        return response()->json(Articulo::findOrFail($id));
+        return response()->json(Articulo::with('iva')->findOrFail($id));
     }
 
     public function update(Request $request, $id)
@@ -51,13 +64,22 @@ class ArticuloController extends Controller
         $request->validate([
             'codigo' => 'required|string|max:30|unique:pgsql.adq.articulo,codigo,' . $id,
             'nombre' => 'required|string|max:200',
+            'iva_id' => 'nullable|exists:pgsql.adq.iva,id',
         ]);
 
-        $articulo->update($request->only([
-            'codigo', 'nombre', 'descripcion', 'unidad_medida', 'categoria', 'marca', 'nivel1', 'nivel2',
-        ]));
+        $itemPresupuestario = $request->item_presupuestario;
+        if ($request->nivel2 && !$itemPresupuestario) {
+            $itemPresupuestario = DB::table('adq.catalogo_inventario')
+                ->where('nivel2', $request->nivel2)
+                ->value('asociacion_presupuestaria');
+        }
 
-        return response()->json($articulo);
+        $articulo->update(array_merge(
+            $request->only(['codigo', 'nombre', 'descripcion', 'unidad_medida', 'categoria', 'marca', 'nivel1', 'nivel2', 'precio_unitario', 'iva_id']),
+            ['item_presupuestario' => $itemPresupuestario ?? $articulo->item_presupuestario]
+        ));
+
+        return response()->json($articulo->load('iva'));
     }
 
     public function inactivar($id)
@@ -93,7 +115,7 @@ class ArticuloController extends Controller
             })
             ->orderBy('descripcion')
             ->limit(20)
-            ->get(['nivel1', 'nivel2', 'descripcion']);
+            ->get(['nivel1', 'nivel2', 'descripcion', 'asociacion_presupuestaria']);
         return response()->json($items);
     }
 

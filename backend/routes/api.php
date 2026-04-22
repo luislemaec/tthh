@@ -229,12 +229,18 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get('configuracion',                         [ArticuloController::class, 'configuracion']);
         Route::put('configuracion',                         [ArticuloController::class, 'actualizarConfiguracion']);
 
-        // Órdenes de compra
+        // IVA
+        Route::get('iva',                                   [\App\Http\Controllers\Adquisiciones\IvaController::class, 'index']);
+        Route::post('iva',                                  [\App\Http\Controllers\Adquisiciones\IvaController::class, 'store']);
+        Route::put('iva/{id}',                              [\App\Http\Controllers\Adquisiciones\IvaController::class, 'update']);
+        Route::patch('iva/{id}/toggle',                     [\App\Http\Controllers\Adquisiciones\IvaController::class, 'toggle']);
+
+        // Ingresos de Bienes (antes órdenes de compra)
         Route::get('ordenes',                               [OrdenCompraController::class, 'index']);
         Route::post('ordenes',                              [OrdenCompraController::class, 'store']);
         Route::get('ordenes/{id}',                          [OrdenCompraController::class, 'show']);
-        Route::patch('ordenes/{id}/enviar',                 [OrdenCompraController::class, 'enviar']);
-        Route::patch('ordenes/{id}/recibir',                [OrdenCompraController::class, 'recibir']);
+        Route::put('ordenes/{id}',                          [OrdenCompraController::class, 'update']);
+        Route::patch('ordenes/{id}/confirmar',              [OrdenCompraController::class, 'confirmar']);
         Route::delete('ordenes/{id}',                       [OrdenCompraController::class, 'destroy']);
 
         // Solicitudes de materiales
