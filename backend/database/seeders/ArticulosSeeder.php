@@ -1,71 +1,100 @@
 <?php
+
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
-/**
- * Carga artículos desde CSV del usuario.
- * CSV esperado (con encabezado): nivel1,nivel2,descripcion,unidad_medida
- * Colocar el archivo en: storage/app/articulos.csv
- *
- * Uso: php artisan db:seed --class=ArticulosSeeder
- */
 class ArticulosSeeder extends Seeder
 {
     public function run(): void
     {
-        $path = storage_path('app/articulos.csv');
+        $iva15 = DB::table('adq.iva')->where('porcentaje', 15)->value('id');
+        $iva0  = DB::table('adq.iva')->where('porcentaje', 0)->value('id');
 
+        $path = storage_path('app/articulos.csv');
         if (!file_exists($path)) {
             $this->command->error("Archivo no encontrado: $path");
+            $this->command->info("Coloca el CSV en: backend/storage/app/articulos.csv");
             return;
         }
 
         $handle = fopen($path, 'r');
-        fgetcsv($handle); // saltar encabezado
+        fgetcsv($handle); // saltar cabecera
 
         $insertados = 0;
         $omitidos   = 0;
+        $yaVistos   = [];
 
         while (($row = fgetcsv($handle)) !== false) {
-            if (count($row) < 3) continue;
+            if (count($row) < 10) continue;
 
-            $nivel1       = trim($row[0]);
-            $nivel2       = trim($row[1]);
-            $descripcion  = trim($row[2]);
-            $unidad       = isset($row[3]) ? trim($row[3]) : null;
+            [$codigo, $nombre, $descripcion, $unidad_medida, $nivel1, $nivel2,
+             $categoria, $marca, $precio_unitario, $iva_porcentaje, $stock_actual, $estado_fisico]
+             = array_pad($row, 12, null);
 
-            // Verificar que el nivel2 existe en el catálogo
-            $existe = DB::table('adq.catalogo_inventario')->where('nivel2', $nivel2)->exists();
-            if (!$existe) {
-                $this->command->warn("nivel2 '$nivel2' no encontrado en catálogo, omitido.");
+            $codigo = trim($codigo ?? '');
+            if (!$codigo) continue;
+
+            // Ignorar duplicados dentro del mismo CSV
+            if (isset($yaVistos[$codigo])) { $omitidos++; continue; }
+            $yaVistos[$codigo] = true;
+
+            // Ignorar si ya existe en la BD
+            if (DB::table('adq.articulo')->where('codigo', $codigo)->exists()) {
                 $omitidos++;
                 continue;
             }
 
-            // Evitar duplicados por nivel2
-            if (DB::table('adq.articulo')->where('nivel2', $nivel2)->exists()) {
-                $omitidos++;
-                continue;
+            $descripcion  = $this->limpiar($descripcion);
+            $marca        = $this->limpiar($marca);
+            $nivel1       = trim($nivel1 ?? '') ?: null;
+            $nivel2       = trim($nivel2 ?? '') ?: null;
+            $precio       = (float)($precio_unitario ?? 0);
+            $stock        = (int)($stock_actual ?? 0);
+            $ivaPct       = (float)($iva_porcentaje ?? 0);
+            $ivaId        = ($ivaPct >= 14) ? $iva15 : $iva0;
+            $ef           = trim($estado_fisico ?? 'BUENO') ?: 'BUENO';
+            if (!in_array($ef, ['BUENO', 'MALO', 'INSERVIBLE'])) $ef = 'BUENO';
+
+            // Auto-completar ítem presupuestario desde el catálogo
+            $itemPresup = null;
+            if ($nivel2) {
+                $itemPresup = DB::table('adq.catalogo_inventario')
+                    ->where('nivel2', $nivel2)
+                    ->value('asociacion_presupuestaria');
             }
 
             DB::table('adq.articulo')->insert([
-                'codigo'               => $nivel2,
-                'nombre'               => $descripcion,
-                'nivel1'               => $nivel1,
-                'nivel2'               => $nivel2,
-                'unidad_medida'        => $unidad,
-                'stock_actual'         => 0,
-                'stock_maximo_historico' => 0,
-                'estado'               => 'ACTIVO',
-                'created_at'           => now(),
-                'updated_at'           => now(),
+                'codigo'                 => $codigo,
+                'nombre'                 => trim($nombre),
+                'descripcion'            => $descripcion,
+                'unidad_medida'          => trim($unidad_medida ?? '') ?: null,
+                'nivel1'                 => $nivel1,
+                'nivel2'                 => $nivel2,
+                'item_presupuestario'    => $itemPresup,
+                'categoria'              => trim($categoria ?? '') ?: null,
+                'marca'                  => $marca,
+                'precio_unitario'        => $precio,
+                'iva_id'                 => $ivaId,
+                'stock_actual'           => $stock,
+                'stock_maximo_historico' => $stock,
+                'estado'                 => 'ACTIVO',
+                'estado_fisico'          => $ef,
+                'created_at'             => now(),
+                'updated_at'             => now(),
             ]);
+
             $insertados++;
         }
 
         fclose($handle);
-        $this->command->info("Artículos cargados: $insertados. Omitidos: $omitidos.");
+        $this->command->info("Artículos insertados: $insertados | Omitidos/duplicados: $omitidos");
+    }
+
+    private function limpiar(?string $valor): ?string
+    {
+        $v = trim($valor ?? '');
+        return ($v === '' || strtolower($v) === 'ninguna') ? null : $v;
     }
 }
