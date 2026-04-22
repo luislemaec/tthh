@@ -46,7 +46,7 @@
           <tr v-if="!proveedoresFiltrados.length">
             <td colspan="7" class="text-center py-8 text-gray-400">Sin proveedores</td>
           </tr>
-          <tr v-for="p in proveedoresFiltrados" :key="p.id" class="border-b hover:bg-amber-50">
+          <tr v-for="p in proveedoresPaginados" :key="p.id" class="border-b hover:bg-amber-50">
             <td class="px-4 py-3 font-mono text-xs whitespace-nowrap">{{ p.ruc }}</td>
             <td class="px-4 py-3 font-medium">{{ p.nombre }}</td>
             <td class="px-4 py-3 text-gray-500">{{ p.contacto || '-' }}</td>
@@ -64,6 +64,35 @@
           </tr>
         </tbody>
       </table>
+
+      <!-- Paginador -->
+      <div class="flex items-center justify-between px-4 py-3 border-t text-sm text-gray-600 flex-wrap gap-2">
+        <div class="flex items-center gap-2">
+          <span>Filas por página:</span>
+          <select v-model="porPagina" @change="paginaActual = 1" class="border rounded px-2 py-1 text-sm">
+            <option :value="10">10</option>
+            <option :value="25">25</option>
+            <option :value="50">50</option>
+            <option :value="100">100</option>
+            <option :value="99999">Todos</option>
+          </select>
+        </div>
+        <span class="text-gray-500">
+          {{ Math.min((paginaActual - 1) * porPagina + 1, proveedoresFiltrados.length) }}–{{ Math.min(paginaActual * porPagina, proveedoresFiltrados.length) }}
+          de {{ proveedoresFiltrados.length }}
+        </span>
+        <div class="flex items-center gap-1">
+          <button @click="paginaActual = 1" :disabled="paginaActual === 1"
+            class="px-2 py-1 rounded border disabled:opacity-40 hover:bg-gray-50 text-xs">«</button>
+          <button @click="paginaActual--" :disabled="paginaActual === 1"
+            class="px-3 py-1 rounded border disabled:opacity-40 hover:bg-gray-50">‹</button>
+          <span class="px-3 py-1 font-medium">{{ paginaActual }} / {{ totalPaginas }}</span>
+          <button @click="paginaActual++" :disabled="paginaActual === totalPaginas"
+            class="px-3 py-1 rounded border disabled:opacity-40 hover:bg-gray-50">›</button>
+          <button @click="paginaActual = totalPaginas" :disabled="paginaActual === totalPaginas"
+            class="px-2 py-1 rounded border disabled:opacity-40 hover:bg-gray-50 text-xs">»</button>
+        </div>
+      </div>
     </div>
 
     <!-- Modal proveedor -->
@@ -151,7 +180,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import api from '@/services/api'
 
 const proveedores  = ref([])
@@ -159,6 +188,8 @@ const busqueda     = ref('')
 const filtroEstado = ref('ACTIVO')
 const guardando    = ref(false)
 const errorModal   = ref('')
+const paginaActual = ref(1)
+const porPagina    = ref(25)
 const modal = ref({ show: false, editando: false, id: null, form: { ruc: '', nombre: '', direccion: '', contacto: '', email: '', telefono: '', catalogo: [] } })
 
 const proveedoresFiltrados = computed(() =>
@@ -168,6 +199,15 @@ const proveedoresFiltrados = computed(() =>
     return coincide && (!filtroEstado.value || p.estado === filtroEstado.value)
   })
 )
+
+const totalPaginas = computed(() => Math.max(1, Math.ceil(proveedoresFiltrados.value.length / porPagina.value)))
+
+const proveedoresPaginados = computed(() => {
+  const inicio = (paginaActual.value - 1) * porPagina.value
+  return proveedoresFiltrados.value.slice(inicio, inicio + porPagina.value)
+})
+
+watch([busqueda, filtroEstado], () => { paginaActual.value = 1 })
 
 async function cargar() {
   const { data } = await api.get('/adquisiciones/proveedores')

@@ -66,13 +66,30 @@
       </table>
 
       <!-- Paginación -->
-      <div v-if="paginacion.last_page > 1" class="flex justify-between items-center px-4 py-3 border-t text-sm text-gray-600">
-        <span>{{ paginacion.from }}–{{ paginacion.to }} de {{ paginacion.total }}</span>
-        <div class="flex gap-2">
-          <button :disabled="paginacion.current_page === 1" @click="pagina--; cargar()"
+      <div class="flex items-center justify-between px-4 py-3 border-t text-sm text-gray-600 flex-wrap gap-2">
+        <div class="flex items-center gap-2">
+          <span>Filas por página:</span>
+          <select v-model="porPagina" @change="pagina = 1; cargar()" class="border rounded px-2 py-1 text-sm">
+            <option :value="10">10</option>
+            <option :value="25">25</option>
+            <option :value="50">50</option>
+            <option :value="100">100</option>
+            <option :value="99999">Todos</option>
+          </select>
+        </div>
+        <span class="text-gray-500">
+          {{ paginacion.from || 0 }}–{{ paginacion.to || 0 }} de {{ paginacion.total || 0 }}
+        </span>
+        <div class="flex items-center gap-1">
+          <button @click="pagina = 1; cargar()" :disabled="paginacion.current_page === 1"
+            class="px-2 py-1 rounded border disabled:opacity-40 hover:bg-gray-50 text-xs">«</button>
+          <button @click="pagina--; cargar()" :disabled="paginacion.current_page === 1"
             class="px-3 py-1 rounded border disabled:opacity-40 hover:bg-gray-50">‹</button>
-          <button :disabled="paginacion.current_page === paginacion.last_page" @click="pagina++; cargar()"
+          <span class="px-3 py-1 font-medium">{{ paginacion.current_page || 1 }} / {{ paginacion.last_page || 1 }}</span>
+          <button @click="pagina++; cargar()" :disabled="paginacion.current_page === paginacion.last_page"
             class="px-3 py-1 rounded border disabled:opacity-40 hover:bg-gray-50">›</button>
+          <button @click="pagina = paginacion.last_page; cargar()" :disabled="paginacion.current_page === paginacion.last_page"
+            class="px-2 py-1 rounded border disabled:opacity-40 hover:bg-gray-50 text-xs">»</button>
         </div>
       </div>
     </div>
@@ -128,6 +145,7 @@ const nivel1s    = ref([])
 const busqueda   = ref('')
 const filtroNivel1 = ref('')
 const pagina     = ref(1)
+const porPagina  = ref(25)
 const paginacion = ref({})
 const cargando   = ref(false)
 const guardando  = ref(false)
@@ -138,8 +156,9 @@ const modal = ref({ show: false, editando: false, form: {} })
 async function cargar() {
   cargando.value = true
   try {
+    const perPage = porPagina.value >= 99999 ? 99999 : porPagina.value
     const { data } = await api.get('/adquisiciones/catalogo-inventario', {
-      params: { q: busqueda.value, nivel1: filtroNivel1.value, page: pagina.value }
+      params: { q: busqueda.value, nivel1: filtroNivel1.value, page: pagina.value, por_pagina: perPage }
     })
     items.value      = data.data
     paginacion.value = data
