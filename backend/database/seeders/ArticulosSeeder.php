@@ -68,12 +68,19 @@ class ArticulosSeeder extends Seeder
             $ef           = trim($estado_fisico ?? 'BUENO') ?: 'BUENO';
             if (!in_array($ef, ['BUENO', 'MALO', 'INSERVIBLE'])) $ef = 'BUENO';
 
-            // Auto-completar ítem presupuestario desde el catálogo
+            // Validar nivel2 contra el catálogo — si no existe, ignorarlo
             $itemPresup = null;
             if ($nivel2) {
-                $itemPresup = DB::table('adq.catalogo_inventario')
+                $catalogo = DB::table('adq.catalogo_inventario')
                     ->where('nivel2', $nivel2)
-                    ->value('asociacion_presupuestaria');
+                    ->first(['asociacion_presupuestaria']);
+                if ($catalogo) {
+                    $itemPresup = $catalogo->asociacion_presupuestaria;
+                } else {
+                    $this->command->warn("nivel2 '$nivel2' no está en catálogo — artículo $codigo se carga sin nivel2");
+                    $nivel1 = null;
+                    $nivel2 = null;
+                }
             }
 
             DB::table('adq.articulo')->insert([
