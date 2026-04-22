@@ -229,6 +229,9 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get('configuracion',                         [ArticuloController::class, 'configuracion']);
         Route::put('configuracion',                         [ArticuloController::class, 'actualizarConfiguracion']);
 
+        // Unidades de medida
+        Route::get('unidades-medida',                       [\App\Http\Controllers\Adquisiciones\IvaController::class, 'unidadesMedida']);
+
         // IVA
         Route::get('iva',                                   [\App\Http\Controllers\Adquisiciones\IvaController::class, 'index']);
         Route::post('iva',                                  [\App\Http\Controllers\Adquisiciones\IvaController::class, 'store']);

@@ -214,7 +214,7 @@
                   <td class="px-2 py-1">
                     <select v-model="det.iva_id" @change="onIvaChange(det)"
                       class="w-full border rounded px-1.5 py-1 text-right focus:ring-1 outline-none text-xs">
-                      <option :value="null">0%</option>
+                      <option value="">Sin IVA</option>
                       <option v-for="iva in ivasActivos" :key="iva.id" :value="iva.id">
                         {{ iva.porcentaje }}%
                       </option>
@@ -383,8 +383,9 @@ function recalcularLinea(det) {
 }
 
 function onIvaChange(det) {
-  if (!det.iva_id) {
+  if (!det.iva_id || det.iva_id === '') {
     det._iva_pct = 0
+    det.iva_id   = null
   } else {
     const iva = ivasActivos.value.find(i => i.id === det.iva_id)
     det._iva_pct = iva ? parseFloat(iva.porcentaje) : 0

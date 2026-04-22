@@ -7,23 +7,25 @@
       </button>
     </div>
 
-    <div class="bg-white rounded-xl shadow overflow-hidden max-w-xl">
+    <div class="bg-white rounded-xl shadow overflow-hidden max-w-2xl">
       <table class="w-full text-sm">
         <thead class="bg-gray-50 border-b">
           <tr>
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Descripción</th>
             <th class="text-right px-4 py-3 text-gray-600 font-medium">Porcentaje</th>
+            <th class="text-left px-4 py-3 text-gray-600 font-medium">Vigente desde</th>
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Estado</th>
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Acciones</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="!tasas.length">
-            <td colspan="4" class="text-center py-8 text-gray-400">Sin tasas registradas</td>
+            <td colspan="5" class="text-center py-8 text-gray-400">Sin tasas registradas</td>
           </tr>
           <tr v-for="t in tasas" :key="t.id" class="border-b hover:bg-gray-50">
             <td class="px-4 py-3 font-medium">{{ t.descripcion }}</td>
-            <td class="px-4 py-3 text-right font-mono">{{ t.porcentaje }}%</td>
+            <td class="px-4 py-3 text-right font-mono font-bold">{{ t.porcentaje }}%</td>
+            <td class="px-4 py-3 text-gray-500 text-xs">{{ t.fecha_vigencia || '—' }}</td>
             <td class="px-4 py-3">
               <span :class="t.activo ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'"
                 class="px-2 py-0.5 rounded-full text-xs font-medium">
@@ -32,7 +34,8 @@
             </td>
             <td class="px-4 py-3 flex gap-3">
               <button @click="abrirEditar(t)" class="text-xs text-blue-600 hover:text-blue-800">Editar</button>
-              <button @click="toggle(t)" class="text-xs" :class="t.activo ? 'text-red-500 hover:text-red-700' : 'text-green-600 hover:text-green-800'">
+              <button @click="toggle(t)" class="text-xs"
+                :class="t.activo ? 'text-red-500 hover:text-red-700' : 'text-green-600 hover:text-green-800'">
                 {{ t.activo ? 'Desactivar' : 'Activar' }}
               </button>
             </td>
@@ -55,6 +58,12 @@
             <label class="block text-xs text-gray-600 mb-1">Porcentaje (%) *</label>
             <input v-model="modal.form.porcentaje" type="number" min="0" max="100" step="0.01"
               class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">Vigente desde</label>
+            <input v-model="modal.form.fecha_vigencia" type="date"
+              class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none" />
+            <p class="text-xs text-gray-400 mt-1">Fecha en que entró en vigencia esta tasa</p>
           </div>
         </div>
         <p v-if="error" class="text-red-600 text-sm mt-3">{{ error }}</p>
@@ -87,24 +96,34 @@ async function cargar() {
 onMounted(cargar)
 
 function abrirCrear() {
-  modal.value = { show: true, editando: false, id: null, form: { descripcion: '', porcentaje: '' } }
+  modal.value = { show: true, editando: false, id: null, form: { descripcion: '', porcentaje: '', fecha_vigencia: '' } }
   error.value = ''
 }
 
 function abrirEditar(t) {
-  modal.value = { show: true, editando: true, id: t.id, form: { descripcion: t.descripcion, porcentaje: t.porcentaje } }
+  modal.value = {
+    show: true, editando: true, id: t.id,
+    form: { descripcion: t.descripcion, porcentaje: t.porcentaje, fecha_vigencia: t.fecha_vigencia || '' }
+  }
   error.value = ''
 }
 
 async function guardar() {
   error.value = ''
-  if (!modal.value.form.descripcion || modal.value.form.porcentaje === '') { error.value = 'Todos los campos son requeridos.'; return }
+  if (!modal.value.form.descripcion || modal.value.form.porcentaje === '') {
+    error.value = 'Descripción y porcentaje son requeridos.'; return
+  }
   guardando.value = true
   try {
+    const payload = {
+      descripcion:    modal.value.form.descripcion,
+      porcentaje:     modal.value.form.porcentaje,
+      fecha_vigencia: modal.value.form.fecha_vigencia || null,
+    }
     if (modal.value.editando) {
-      await api.put(`/adquisiciones/iva/${modal.value.id}`, modal.value.form)
+      await api.put(`/adquisiciones/iva/${modal.value.id}`, payload)
     } else {
-      await api.post('/adquisiciones/iva', modal.value.form)
+      await api.post('/adquisiciones/iva', payload)
     }
     modal.value.show = false
     await cargar()

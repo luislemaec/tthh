@@ -96,9 +96,13 @@
             </div>
             <div>
               <label class="block text-xs text-gray-600 mb-1">Unidad de medida</label>
-              <input v-model="modal.form.unidad_medida" type="text" maxlength="50"
-                placeholder="ej: unidades, resmas, cajas"
-                class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none" />
+              <select v-model="modal.form.unidad_medida"
+                class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none">
+                <option value="">Seleccionar...</option>
+                <option v-for="u in unidades" :key="u.id" :value="u.nombre">
+                  {{ u.nombre }} ({{ u.abreviatura }})
+                </option>
+              </select>
             </div>
           </div>
 
@@ -157,7 +161,7 @@
               <label class="block text-xs text-gray-600 mb-1">Tasa IVA</label>
               <select v-model="modal.form.iva_id"
                 class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none">
-                <option :value="null">Sin IVA (0%)</option>
+                <option value="">Seleccionar...</option>
                 <option v-for="iva in ivasActivos" :key="iva.id" :value="iva.id">
                   {{ iva.descripcion }} ({{ iva.porcentaje }}%)
                 </option>
@@ -230,6 +234,7 @@ const errorModal       = ref('')
 const nivel1s          = ref([])
 const catalogo         = ref([])
 const ivasActivos      = ref([])
+const unidades         = ref([])
 
 const modal      = ref({ show: false, editando: false, id: null, form: {} })
 const modalConfig = ref({ show: false, porcentaje: 20 })
@@ -279,14 +284,16 @@ async function cargarConfig() {
 }
 
 async function cargarCatalogo() {
-  const [n1, cat, iv] = await Promise.all([
+  const [n1, cat, iv, um] = await Promise.all([
     api.get('/adquisiciones/catalogo-inventario/nivel1s'),
     api.get('/adquisiciones/catalogo-inventario', { params: { por_pagina: 1000 } }),
     api.get('/adquisiciones/iva'),
+    api.get('/adquisiciones/unidades-medida'),
   ])
   nivel1s.value    = n1.data
   catalogo.value   = cat.data?.data || cat.data
   ivasActivos.value = iv.data.filter(i => i.activo)
+  unidades.value   = um.data
 }
 
 onMounted(async () => {
