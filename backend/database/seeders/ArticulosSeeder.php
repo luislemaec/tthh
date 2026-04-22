@@ -57,10 +57,14 @@ class ArticulosSeeder extends Seeder
                 $omitidos++;
                 continue;
             }
-            $precio       = (float)($precio_unitario ?? 0);
+            $precioConIva = (float)($precio_unitario ?? 0);
             $stock        = (int)($stock_actual ?? 0);
             $ivaPct       = (float)($iva_porcentaje ?? 0);
             $ivaId        = ($ivaPct >= 14) ? $iva15 : $iva0;
+            // El CSV trae precio con IVA incluido → calcular precio sin IVA
+            $precio = $ivaPct > 0
+                ? round($precioConIva / (1 + $ivaPct / 100), 4)
+                : $precioConIva;
             $ef           = trim($estado_fisico ?? 'BUENO') ?: 'BUENO';
             if (!in_array($ef, ['BUENO', 'MALO', 'INSERVIBLE'])) $ef = 'BUENO';
 
