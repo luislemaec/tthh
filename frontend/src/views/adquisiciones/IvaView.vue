@@ -7,22 +7,34 @@
       </button>
     </div>
 
+    <!-- Contador -->
+    <div class="mb-3">
+      <span v-if="tasas.length > 0"
+        class="inline-block bg-green-100 text-green-800 text-xs font-semibold px-3 py-1 rounded-full border border-green-300">
+        {{ tasas.length }} tasa{{ tasas.length !== 1 ? 's' : '' }} registrada{{ tasas.length !== 1 ? 's' : '' }}
+      </span>
+      <span v-else
+        class="inline-block bg-red-100 text-red-700 text-xs font-semibold px-3 py-1 rounded-full border border-red-300">
+        Sin tasas registradas
+      </span>
+    </div>
+
     <div class="bg-white rounded-xl shadow overflow-hidden max-w-2xl">
       <table class="w-full text-sm">
-        <thead class="bg-gray-50 border-b">
-          <tr>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium">Descripción</th>
-            <th class="text-right px-4 py-3 text-gray-600 font-medium">Porcentaje</th>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium">Vigente desde</th>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium">Estado</th>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium">Acciones</th>
+        <thead>
+          <tr style="background-color: #4a5e3a;">
+            <th class="text-left px-4 py-3 text-white font-semibold">Descripción</th>
+            <th class="text-right px-4 py-3 text-white font-semibold">Porcentaje</th>
+            <th class="text-left px-4 py-3 text-white font-semibold">Vigente desde</th>
+            <th class="text-left px-4 py-3 text-white font-semibold">Estado</th>
+            <th class="text-left px-4 py-3 text-white font-semibold">Acciones</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="!tasas.length">
             <td colspan="5" class="text-center py-8 text-gray-400">Sin tasas registradas</td>
           </tr>
-          <tr v-for="t in tasas" :key="t.id" class="border-b hover:bg-gray-50">
+          <tr v-for="t in tasas" :key="t.id" class="border-b hover:bg-amber-50">
             <td class="px-4 py-3 font-medium">{{ t.descripcion }}</td>
             <td class="px-4 py-3 text-right font-mono font-bold">{{ t.porcentaje }}%</td>
             <td class="px-4 py-3 text-gray-500 text-xs">{{ t.fecha_vigencia || '—' }}</td>
@@ -33,7 +45,7 @@
               </span>
             </td>
             <td class="px-4 py-3 flex gap-3">
-              <button @click="abrirEditar(t)" class="text-xs text-blue-600 hover:text-blue-800">Editar</button>
+              <button @click="abrirEditar(t)" class="text-xs text-blue-600 hover:text-blue-800 font-medium">Editar</button>
               <button @click="toggle(t)" class="text-xs"
                 :class="t.activo ? 'text-red-500 hover:text-red-700' : 'text-green-600 hover:text-green-800'">
                 {{ t.activo ? 'Desactivar' : 'Activar' }}

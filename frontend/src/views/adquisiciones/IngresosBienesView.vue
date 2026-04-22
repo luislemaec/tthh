@@ -8,7 +8,7 @@
     </div>
 
     <!-- Filtros -->
-    <div class="flex gap-3 mb-4">
+    <div class="flex gap-3 mb-3 flex-wrap">
       <select v-model="filtroEstado" @change="cargar" class="border rounded-lg px-3 py-2 text-sm">
         <option value="">Todos los estados</option>
         <option value="BORRADOR">Borrador</option>
@@ -21,48 +21,60 @@
       </select>
     </div>
 
+    <!-- Contador -->
+    <div class="mb-3">
+      <span v-if="ordenes.length > 0"
+        class="inline-block bg-green-100 text-green-800 text-xs font-semibold px-3 py-1 rounded-full border border-green-300">
+        Se encontraron {{ ordenes.length }} ingreso{{ ordenes.length !== 1 ? 's' : '' }}
+      </span>
+      <span v-else
+        class="inline-block bg-red-100 text-red-700 text-xs font-semibold px-3 py-1 rounded-full border border-red-300">
+        No se encontraron ingresos registrados
+      </span>
+    </div>
+
     <!-- Lista -->
-    <div class="bg-white rounded-xl shadow overflow-hidden">
+    <div class="bg-white rounded-xl shadow overflow-x-auto">
       <table class="w-full text-sm">
-        <thead class="bg-gray-50 border-b">
-          <tr>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium">#</th>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium">Tipo</th>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium">Documento</th>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium">Proveedor</th>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium">Fecha Doc.</th>
-            <th class="text-right px-4 py-3 text-gray-600 font-medium">Subtotal</th>
-            <th class="text-right px-4 py-3 text-gray-600 font-medium">IVA</th>
-            <th class="text-right px-4 py-3 text-gray-600 font-medium">Total</th>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium">Estado</th>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium">Acciones</th>
+        <thead>
+          <tr style="background-color: #4a5e3a;">
+            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">#</th>
+            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Tipo</th>
+            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Documento</th>
+            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Proveedor</th>
+            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Fecha Doc.</th>
+            <th class="text-right px-4 py-3 text-white font-semibold whitespace-nowrap">Subtotal</th>
+            <th class="text-right px-4 py-3 text-white font-semibold whitespace-nowrap">IVA</th>
+            <th class="text-right px-4 py-3 text-white font-semibold whitespace-nowrap">Total</th>
+            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Estado</th>
+            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Acciones</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="!ordenes.length">
             <td colspan="10" class="text-center py-8 text-gray-400">Sin ingresos registrados</td>
           </tr>
-          <tr v-for="o in ordenes" :key="o.id" class="border-b hover:bg-gray-50">
-            <td class="px-4 py-3 text-gray-400 text-xs">{{ o.id }}</td>
-            <td class="px-4 py-3">
+          <tr v-for="o in ordenes" :key="o.id" class="border-b hover:bg-amber-50">
+            <td class="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">{{ o.id }}</td>
+            <td class="px-4 py-3 whitespace-nowrap">
               <span :class="o.tipo_ingreso === 'COMPRA' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'"
                 class="px-2 py-0.5 rounded-full text-xs font-medium">{{ o.tipo_ingreso }}</span>
             </td>
-            <td class="px-4 py-3">
+            <td class="px-4 py-3 whitespace-nowrap">
               <div class="text-xs text-gray-500">{{ o.tipo_documento || '-' }}</div>
               <div class="font-mono text-xs">{{ o.numero_documento || '-' }}</div>
             </td>
             <td class="px-4 py-3 text-gray-700">{{ o.proveedor?.nombre || '-' }}</td>
-            <td class="px-4 py-3 text-gray-500 text-xs">{{ o.fecha_documento || '-' }}</td>
-            <td class="px-4 py-3 text-right font-mono text-xs">${{ fmt(o.subtotal) }}</td>
-            <td class="px-4 py-3 text-right font-mono text-xs">${{ fmt(o.iva_valor) }}</td>
-            <td class="px-4 py-3 text-right font-mono font-semibold">${{ fmt(o.total) }}</td>
-            <td class="px-4 py-3">
+            <td class="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{{ o.fecha_documento || '-' }}</td>
+            <td class="px-4 py-3 text-right font-mono text-xs whitespace-nowrap">${{ fmt(o.subtotal) }}</td>
+            <td class="px-4 py-3 text-right font-mono text-xs whitespace-nowrap">${{ fmt(o.iva_valor) }}</td>
+            <td class="px-4 py-3 text-right font-mono font-semibold whitespace-nowrap">${{ fmt(o.total) }}</td>
+            <td class="px-4 py-3 whitespace-nowrap">
               <span :class="o.estado === 'BORRADOR' ? 'bg-gray-100 text-gray-600' : 'bg-green-100 text-green-700'"
                 class="px-2 py-0.5 rounded-full text-xs font-medium">{{ o.estado }}</span>
             </td>
-            <td class="px-4 py-3 flex gap-2 flex-wrap">
-              <button @click="verDetalle(o)" class="text-xs text-blue-600 hover:text-blue-800">Ver</button>
+            <td class="px-4 py-3 whitespace-nowrap flex gap-2">
+              <button @click="verDetalle(o)" class="text-xs text-blue-600 hover:text-blue-800 font-medium">Ver</button>
               <button v-if="o.estado === 'BORRADOR'" @click="confirmar(o.id)"
                 class="text-xs text-green-600 hover:text-green-800 font-medium">Confirmar</button>
               <button v-if="o.estado === 'BORRADOR'" @click="eliminar(o.id)"

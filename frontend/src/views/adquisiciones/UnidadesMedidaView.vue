@@ -7,21 +7,33 @@
       </button>
     </div>
 
+    <!-- Contador -->
+    <div class="mb-3">
+      <span v-if="unidades.length > 0"
+        class="inline-block bg-green-100 text-green-800 text-xs font-semibold px-3 py-1 rounded-full border border-green-300">
+        {{ unidades.length }} unidad{{ unidades.length !== 1 ? 'es' : '' }} registrada{{ unidades.length !== 1 ? 's' : '' }}
+      </span>
+      <span v-else
+        class="inline-block bg-red-100 text-red-700 text-xs font-semibold px-3 py-1 rounded-full border border-red-300">
+        Sin unidades registradas
+      </span>
+    </div>
+
     <div class="bg-white rounded-xl shadow overflow-hidden max-w-xl">
       <table class="w-full text-sm">
-        <thead class="bg-gray-50 border-b">
-          <tr>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium">Nombre</th>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium">Abreviatura</th>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium">Estado</th>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium">Acciones</th>
+        <thead>
+          <tr style="background-color: #4a5e3a;">
+            <th class="text-left px-4 py-3 text-white font-semibold">Nombre</th>
+            <th class="text-left px-4 py-3 text-white font-semibold">Abreviatura</th>
+            <th class="text-left px-4 py-3 text-white font-semibold">Estado</th>
+            <th class="text-left px-4 py-3 text-white font-semibold">Acciones</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="!unidades.length">
             <td colspan="4" class="text-center py-8 text-gray-400">Sin unidades registradas</td>
           </tr>
-          <tr v-for="u in unidades" :key="u.id" class="border-b hover:bg-gray-50">
+          <tr v-for="u in unidades" :key="u.id" class="border-b hover:bg-amber-50">
             <td class="px-4 py-3 font-medium">{{ u.nombre }}</td>
             <td class="px-4 py-3 font-mono text-gray-600">{{ u.abreviatura }}</td>
             <td class="px-4 py-3">
@@ -31,7 +43,7 @@
               </span>
             </td>
             <td class="px-4 py-3 flex gap-3">
-              <button @click="abrirEditar(u)" class="text-xs text-blue-600 hover:text-blue-800">Editar</button>
+              <button @click="abrirEditar(u)" class="text-xs text-blue-600 hover:text-blue-800 font-medium">Editar</button>
               <button @click="toggle(u)" class="text-xs"
                 :class="u.activo ? 'text-red-500 hover:text-red-700' : 'text-green-600 hover:text-green-800'">
                 {{ u.activo ? 'Inactivar' : 'Activar' }}

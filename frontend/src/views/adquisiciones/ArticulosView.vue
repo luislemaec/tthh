@@ -15,11 +15,11 @@
     </div>
 
     <!-- Filtros -->
-    <div class="flex gap-3 mb-4 flex-wrap">
+    <div class="flex gap-3 mb-3 flex-wrap">
       <input v-model="busqueda" type="text" placeholder="Buscar por nombre, código o nivel..."
         class="border rounded-lg px-3 py-2 text-sm w-64 focus:ring-2 focus:ring-amber-300 outline-none" />
       <select v-model="filtroEstado" class="border rounded-lg px-3 py-2 text-sm">
-        <option value="">Todos</option>
+        <option value="">Todos los estados</option>
         <option value="alerta">Solo alertas de stock</option>
         <option value="ACTIVO">Activos</option>
         <option value="INACTIVO">Inactivos</option>
@@ -32,66 +32,80 @@
       </select>
     </div>
 
-    <div class="bg-white rounded-xl shadow overflow-hidden overflow-x-auto">
-      <table class="w-full text-xs">
-        <thead class="bg-gray-50 border-b">
-          <tr>
-            <th class="text-left px-3 py-3 text-gray-600 font-medium">#</th>
-            <th class="text-left px-3 py-3 text-gray-600 font-medium">Código</th>
-            <th class="text-left px-3 py-3 text-gray-600 font-medium">Niv.1</th>
-            <th class="text-left px-3 py-3 text-gray-600 font-medium">Niv.2</th>
-            <th class="text-left px-3 py-3 text-gray-600 font-medium">Ítem Presup.</th>
-            <th class="text-left px-3 py-3 text-gray-600 font-medium">Descripción</th>
-            <th class="text-left px-3 py-3 text-gray-600 font-medium">Unidad</th>
-            <th class="text-right px-3 py-3 text-gray-600 font-medium">Stock</th>
-            <th class="text-right px-3 py-3 text-gray-600 font-medium">Precio s/IVA</th>
-            <th class="text-right px-3 py-3 text-gray-600 font-medium">IVA%</th>
-            <th class="text-right px-3 py-3 text-gray-600 font-medium">IVA $</th>
-            <th class="text-right px-3 py-3 text-gray-600 font-medium">Total</th>
-            <th class="text-left px-3 py-3 text-gray-600 font-medium">Estado</th>
-            <th class="text-left px-3 py-3 text-gray-600 font-medium">Condición</th>
-            <th class="text-left px-3 py-3 text-gray-600 font-medium">Acciones</th>
+    <!-- Contador de resultados -->
+    <div class="mb-3">
+      <span v-if="articulosFiltrados.length > 0"
+        class="inline-block bg-green-100 text-green-800 text-xs font-semibold px-3 py-1 rounded-full border border-green-300">
+        Se encontraron {{ articulosFiltrados.length }} de {{ articulos.length }} artículos
+      </span>
+      <span v-else
+        class="inline-block bg-red-100 text-red-700 text-xs font-semibold px-3 py-1 rounded-full border border-red-300">
+        No se encontraron artículos (0 de {{ articulos.length }})
+      </span>
+    </div>
+
+    <div class="bg-white rounded-xl shadow overflow-x-auto">
+      <table class="text-xs" style="min-width: 1200px; width: 100%;">
+        <thead>
+          <tr style="background-color: #4a5e3a;">
+            <th class="text-left px-3 py-3 text-white font-semibold whitespace-nowrap">#</th>
+            <th class="text-left px-3 py-3 text-white font-semibold whitespace-nowrap">Código</th>
+            <th class="text-left px-3 py-3 text-white font-semibold whitespace-nowrap">Niv.1</th>
+            <th class="text-left px-3 py-3 text-white font-semibold whitespace-nowrap">Niv.2</th>
+            <th class="text-left px-3 py-3 text-white font-semibold whitespace-nowrap">Ítem Presup.</th>
+            <th class="text-left px-3 py-3 text-white font-semibold whitespace-nowrap">Descripción</th>
+            <th class="text-left px-3 py-3 text-white font-semibold whitespace-nowrap">Unidad</th>
+            <th class="text-right px-3 py-3 text-white font-semibold whitespace-nowrap">Stock</th>
+            <th class="text-right px-3 py-3 text-white font-semibold whitespace-nowrap">Precio s/IVA</th>
+            <th class="text-right px-3 py-3 text-white font-semibold whitespace-nowrap">IVA%</th>
+            <th class="text-right px-3 py-3 text-white font-semibold whitespace-nowrap">IVA $</th>
+            <th class="text-right px-3 py-3 text-white font-semibold whitespace-nowrap">Total</th>
+            <th class="text-left px-3 py-3 text-white font-semibold whitespace-nowrap">Estado</th>
+            <th class="text-left px-3 py-3 text-white font-semibold whitespace-nowrap">Condición</th>
+            <th class="text-left px-3 py-3 text-white font-semibold whitespace-nowrap sticky right-0" style="background-color: #4a5e3a;">Acciones</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="!articulosFiltrados.length">
             <td colspan="15" class="text-center py-8 text-gray-400">Sin artículos</td>
           </tr>
-          <tr v-for="a in articulosFiltrados" :key="a.id" class="border-b hover:bg-gray-50">
-            <td class="px-3 py-2 text-gray-400">{{ a.id }}</td>
-            <td class="px-3 py-2 font-mono">{{ a.codigo }}</td>
-            <td class="px-3 py-2 text-gray-500">{{ a.nivel1 || '-' }}</td>
-            <td class="px-3 py-2 text-gray-500">{{ a.nivel2 || '-' }}</td>
-            <td class="px-3 py-2 text-gray-500 max-w-[120px] truncate" :title="a.item_presupuestario">
+          <tr v-for="a in articulosFiltrados" :key="a.id" class="border-b hover:bg-amber-50">
+            <td class="px-3 py-2 text-gray-400 whitespace-nowrap">{{ a.id }}</td>
+            <td class="px-3 py-2 font-mono whitespace-nowrap">{{ a.codigo }}</td>
+            <td class="px-3 py-2 text-gray-500 whitespace-nowrap">{{ a.nivel1 || '-' }}</td>
+            <td class="px-3 py-2 text-gray-500 whitespace-nowrap">{{ a.nivel2 || '-' }}</td>
+            <td class="px-3 py-2 text-gray-500 whitespace-nowrap max-w-[130px] truncate" :title="a.item_presupuestario">
               {{ a.item_presupuestario || '-' }}
             </td>
-            <td class="px-3 py-2 font-medium max-w-[200px]">{{ a.nombre }}</td>
-            <td class="px-3 py-2 text-gray-500">{{ a.unidad_medida || '-' }}</td>
-            <td class="px-3 py-2 text-right">
+            <td class="px-3 py-2 font-medium max-w-[220px]">{{ a.nombre }}</td>
+            <td class="px-3 py-2 text-gray-500 whitespace-nowrap">{{ a.unidad_medida || '-' }}</td>
+            <td class="px-3 py-2 text-right whitespace-nowrap">
               <span :class="a.bajo_minimo ? 'text-red-600 font-bold' : 'text-gray-800'">{{ a.stock_actual }}</span>
               <span v-if="a.bajo_minimo" class="ml-1 bg-red-100 text-red-600 px-1 py-0.5 rounded-full">⚠</span>
             </td>
-            <td class="px-3 py-2 text-right font-mono">${{ fmt(a.precio_unitario) }}</td>
-            <td class="px-3 py-2 text-right">{{ a.iva_porcentaje || 0 }}%</td>
-            <td class="px-3 py-2 text-right font-mono">${{ fmt(a.iva_valor) }}</td>
-            <td class="px-3 py-2 text-right font-mono font-semibold">${{ fmt(a.precio_total) }}</td>
-            <td class="px-3 py-2">
+            <td class="px-3 py-2 text-right font-mono whitespace-nowrap">${{ fmt(a.precio_unitario) }}</td>
+            <td class="px-3 py-2 text-right whitespace-nowrap">{{ a.iva_porcentaje || 0 }}%</td>
+            <td class="px-3 py-2 text-right font-mono whitespace-nowrap">${{ fmt(a.iva_valor) }}</td>
+            <td class="px-3 py-2 text-right font-mono font-semibold whitespace-nowrap">${{ fmt(a.precio_total) }}</td>
+            <td class="px-3 py-2 whitespace-nowrap">
               <span :class="a.estado === 'ACTIVO' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'"
                 class="px-2 py-0.5 rounded-full font-medium">{{ a.estado }}</span>
             </td>
-            <td class="px-3 py-2">
+            <td class="px-3 py-2 whitespace-nowrap">
               <span :class="{
-                'bg-green-100 text-green-700':  a.estado_fisico === 'BUENO',
+                'bg-green-100 text-green-700':   a.estado_fisico === 'BUENO',
                 'bg-yellow-100 text-yellow-700': a.estado_fisico === 'MALO',
-                'bg-red-100 text-red-700':      a.estado_fisico === 'INSERVIBLE',
+                'bg-red-100 text-red-700':       a.estado_fisico === 'INSERVIBLE',
               }" class="px-2 py-0.5 rounded-full font-medium">
                 {{ a.estado_fisico || 'BUENO' }}
               </span>
             </td>
-            <td class="px-3 py-2 flex gap-2">
-              <button @click="abrirEditar(a)" class="text-blue-600 hover:text-blue-800">Editar</button>
-              <button v-if="a.estado === 'ACTIVO'" @click="inactivar(a.id)"
-                class="text-red-500 hover:text-red-700">Inactivar</button>
+            <td class="px-3 py-2 whitespace-nowrap sticky right-0 bg-white border-l border-gray-100">
+              <div class="flex gap-2">
+                <button @click="abrirEditar(a)" class="text-blue-600 hover:text-blue-800 font-medium">Editar</button>
+                <button v-if="a.estado === 'ACTIVO'" @click="inactivar(a.id)"
+                  class="text-red-500 hover:text-red-700">Inactivar</button>
+              </div>
             </td>
           </tr>
         </tbody>

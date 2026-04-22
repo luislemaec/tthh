@@ -7,45 +7,57 @@
       </button>
     </div>
 
-    <div class="flex gap-3 mb-4">
+    <div class="flex gap-3 mb-3 flex-wrap">
       <input v-model="busqueda" type="text" placeholder="Buscar por RUC o nombre..."
         class="border rounded-lg px-3 py-2 text-sm w-72 focus:ring-2 focus:ring-amber-300 outline-none" />
       <select v-model="filtroEstado" class="border rounded-lg px-3 py-2 text-sm">
-        <option value="">Todos</option>
+        <option value="">Todos los estados</option>
         <option value="ACTIVO">Activos</option>
         <option value="INACTIVO">Inactivos</option>
       </select>
     </div>
 
-    <div class="bg-white rounded-xl shadow overflow-hidden">
+    <!-- Contador -->
+    <div class="mb-3">
+      <span v-if="proveedoresFiltrados.length > 0"
+        class="inline-block bg-green-100 text-green-800 text-xs font-semibold px-3 py-1 rounded-full border border-green-300">
+        Se encontraron {{ proveedoresFiltrados.length }} de {{ proveedores.length }} proveedores
+      </span>
+      <span v-else
+        class="inline-block bg-red-100 text-red-700 text-xs font-semibold px-3 py-1 rounded-full border border-red-300">
+        No se encontraron proveedores (0 de {{ proveedores.length }})
+      </span>
+    </div>
+
+    <div class="bg-white rounded-xl shadow overflow-x-auto">
       <table class="w-full text-sm">
-        <thead class="bg-gray-50 border-b">
-          <tr>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium">RUC</th>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium">Nombre</th>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium">Contacto</th>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium">Email</th>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium">Catálogo</th>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium">Estado</th>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium">Acciones</th>
+        <thead>
+          <tr style="background-color: #4a5e3a;">
+            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">RUC</th>
+            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Nombre</th>
+            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Contacto</th>
+            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Email</th>
+            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Catálogo</th>
+            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Estado</th>
+            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Acciones</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="!proveedoresFiltrados.length">
             <td colspan="7" class="text-center py-8 text-gray-400">Sin proveedores</td>
           </tr>
-          <tr v-for="p in proveedoresFiltrados" :key="p.id" class="border-b hover:bg-gray-50">
-            <td class="px-4 py-3 font-mono text-xs">{{ p.ruc }}</td>
+          <tr v-for="p in proveedoresFiltrados" :key="p.id" class="border-b hover:bg-amber-50">
+            <td class="px-4 py-3 font-mono text-xs whitespace-nowrap">{{ p.ruc }}</td>
             <td class="px-4 py-3 font-medium">{{ p.nombre }}</td>
             <td class="px-4 py-3 text-gray-500">{{ p.contacto || '-' }}</td>
             <td class="px-4 py-3 text-gray-500">{{ p.email || '-' }}</td>
-            <td class="px-4 py-3 text-gray-500">{{ p.catalogo?.length || 0 }} ítem(s)</td>
-            <td class="px-4 py-3">
+            <td class="px-4 py-3 text-gray-500 whitespace-nowrap">{{ p.catalogo?.length || 0 }} ítem(s)</td>
+            <td class="px-4 py-3 whitespace-nowrap">
               <span :class="p.estado === 'ACTIVO' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'"
                 class="px-2 py-0.5 rounded-full text-xs font-medium">{{ p.estado }}</span>
             </td>
-            <td class="px-4 py-3 flex gap-2">
-              <button @click="abrirEditar(p)" class="text-xs text-blue-600 hover:text-blue-800">Editar</button>
+            <td class="px-4 py-3 whitespace-nowrap flex gap-2">
+              <button @click="abrirEditar(p)" class="text-xs text-blue-600 hover:text-blue-800 font-medium">Editar</button>
               <button v-if="p.estado === 'ACTIVO'" @click="inactivar(p.id)" class="text-xs text-red-500 hover:text-red-700">Inactivar</button>
               <button v-else @click="activar(p.id)" class="text-xs text-green-600 hover:text-green-800">Activar</button>
             </td>

@@ -9,7 +9,7 @@
     </div>
 
     <!-- Filtros -->
-    <div class="flex gap-3 mb-4">
+    <div class="flex gap-3 mb-3 flex-wrap">
       <input v-model="busqueda" @input="cargar" type="text" placeholder="Buscar por código o descripción..."
         class="border rounded-lg px-3 py-2 text-sm w-72 focus:ring-2 focus:ring-amber-300 outline-none" />
       <select v-model="filtroNivel1" @change="cargar"
@@ -19,16 +19,29 @@
       </select>
     </div>
 
-    <div class="bg-white rounded-xl shadow overflow-hidden">
+    <!-- Contador -->
+    <div class="mb-3">
+      <span v-if="paginacion.total > 0"
+        class="inline-block bg-green-100 text-green-800 text-xs font-semibold px-3 py-1 rounded-full border border-green-300">
+        Se encontraron {{ paginacion.total }} ítems
+        <template v-if="paginacion.last_page > 1"> — página {{ paginacion.current_page }} de {{ paginacion.last_page }}</template>
+      </span>
+      <span v-else-if="!cargando"
+        class="inline-block bg-red-100 text-red-700 text-xs font-semibold px-3 py-1 rounded-full border border-red-300">
+        No se encontraron ítems en el catálogo
+      </span>
+    </div>
+
+    <div class="bg-white rounded-xl shadow overflow-x-auto">
       <table class="w-full text-sm">
-        <thead class="bg-gray-50 border-b">
-          <tr>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium w-16">Niv. 1</th>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium w-24">Niv. 2</th>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium">Categoría (Nivel 1)</th>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium">Descripción (Nivel 2)</th>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium">Asociación Presupuestaria</th>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium w-24">Acciones</th>
+        <thead>
+          <tr style="background-color: #4a5e3a;">
+            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap w-16">Niv. 1</th>
+            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap w-24">Niv. 2</th>
+            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Categoría (Nivel 1)</th>
+            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Descripción (Nivel 2)</th>
+            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Asociación Presupuestaria</th>
+            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap w-24">Acciones</th>
           </tr>
         </thead>
         <tbody>
@@ -38,14 +51,14 @@
           <tr v-else-if="!items.length">
             <td colspan="6" class="text-center py-8 text-gray-400">Sin resultados</td>
           </tr>
-          <tr v-for="item in items" :key="item.nivel2" class="border-b hover:bg-gray-50">
-            <td class="px-4 py-3 font-mono font-bold text-amber-700">{{ item.nivel1 }}</td>
-            <td class="px-4 py-3 font-mono text-xs">{{ item.nivel2 }}</td>
+          <tr v-for="item in items" :key="item.nivel2" class="border-b hover:bg-amber-50">
+            <td class="px-4 py-3 font-mono font-bold text-amber-700 whitespace-nowrap">{{ item.nivel1 }}</td>
+            <td class="px-4 py-3 font-mono text-xs whitespace-nowrap">{{ item.nivel2 }}</td>
             <td class="px-4 py-3 text-xs text-gray-500">{{ item.descripcion_nivel1 }}</td>
             <td class="px-4 py-3">{{ item.descripcion }}</td>
             <td class="px-4 py-3 text-xs text-gray-500">{{ item.asociacion_presupuestaria || '-' }}</td>
-            <td class="px-4 py-3 flex gap-2">
-              <button @click="abrirEditar(item)" class="text-xs text-blue-600 hover:text-blue-800">Editar</button>
+            <td class="px-4 py-3 whitespace-nowrap flex gap-2">
+              <button @click="abrirEditar(item)" class="text-xs text-blue-600 hover:text-blue-800 font-medium">Editar</button>
               <button @click="eliminar(item.nivel2)" class="text-xs text-red-500 hover:text-red-700">Eliminar</button>
             </td>
           </tr>
