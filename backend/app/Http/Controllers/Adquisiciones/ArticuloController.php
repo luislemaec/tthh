@@ -5,6 +5,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Adq\Articulo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class ArticuloController extends Controller
 {
@@ -21,6 +22,7 @@ class ArticuloController extends Controller
             $a->iva_porcentaje = $ivaPct;
             $a->iva_valor    = round((float)$a->precio_unitario * $ivaPct / 100, 4);
             $a->precio_total = round((float)$a->precio_unitario + $a->iva_valor, 4);
+            $a->imagen_url   = $a->imagen ? Storage::disk('public')->url($a->imagen) : null;
             return $a;
         });
 
@@ -83,6 +85,21 @@ class ArticuloController extends Controller
         ));
 
         return response()->json($articulo->load('iva'));
+    }
+
+    public function subirImagen(Request $request, $id)
+    {
+        $request->validate(['imagen' => 'required|image|max:2048']);
+        $articulo = Articulo::findOrFail($id);
+
+        if ($articulo->imagen) {
+            Storage::disk('public')->delete($articulo->imagen);
+        }
+
+        $path = $request->file('imagen')->store('articulos', 'public');
+        $articulo->update(['imagen' => $path]);
+
+        return response()->json(['imagen_url' => Storage::disk('public')->url($path)]);
     }
 
     public function inactivar($id)

@@ -226,6 +226,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get('articulos/{id}',                        [ArticuloController::class, 'show']);
         Route::put('articulos/{id}',                        [ArticuloController::class, 'update']);
         Route::patch('articulos/{id}/inactivar',            [ArticuloController::class, 'inactivar']);
+        Route::post('articulos/{id}/imagen',                [ArticuloController::class, 'subirImagen']);
         Route::get('configuracion',                         [ArticuloController::class, 'configuracion']);
         Route::put('configuracion',                         [ArticuloController::class, 'actualizarConfiguracion']);
 

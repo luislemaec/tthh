@@ -143,11 +143,25 @@
     </div>
 
     <!-- Modal crear/editar -->
-    <div v-if="modal.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl p-6 max-h-[95vh] overflow-y-auto">
-        <h2 class="text-lg font-bold mb-4">{{ modal.editando ? 'Editar' : 'Nuevo' }} Artículo</h2>
-        <div class="space-y-3">
+    <div v-if="modal.show" class="fixed inset-0 bg-black/50 flex items-start justify-center z-50 p-4 overflow-y-auto">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl p-6 my-4">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-bold">{{ modal.editando ? 'Editar' : 'Nuevo' }} Artículo</h2>
+        </div>
 
+        <!-- Nav pestañas -->
+        <div class="flex border-b mb-5">
+          <button v-for="tab in tabsModal" :key="tab.key" @click="tabModal = tab.key"
+            :class="tabModal === tab.key
+              ? 'border-b-2 font-semibold text-white px-5 py-2 text-sm -mb-px'
+              : 'px-5 py-2 text-sm text-gray-500 hover:text-gray-700'"
+            :style="tabModal === tab.key ? 'border-color:#92400e; background-color:#92400e; border-radius:6px 6px 0 0;' : ''">
+            {{ tab.label }}
+          </button>
+        </div>
+
+        <!-- ── TAB CATÁLOGO MEF ── -->
+        <div v-show="tabModal === 'catalogo'" class="space-y-3">
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-xs text-gray-600 mb-1">Código *</label>
@@ -159,39 +173,30 @@
               <select v-model="modal.form.unidad_medida"
                 class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none">
                 <option value="">Seleccionar...</option>
-                <option v-for="u in unidades" :key="u.id" :value="u.nombre">
-                  {{ u.nombre }} ({{ u.abreviatura }})
-                </option>
+                <option v-for="u in unidades" :key="u.id" :value="u.nombre">{{ u.nombre }} ({{ u.abreviatura }})</option>
               </select>
             </div>
           </div>
 
-          <!-- Nivel 1 -->
           <div>
             <label class="block text-xs text-gray-600 mb-1">Nivel 1 (Categoría MF)</label>
             <select v-model="modal.form.nivel1" @change="onNivel1Change"
               class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none">
               <option value="">Sin categoría</option>
-              <option v-for="n in nivel1s" :key="n.nivel1" :value="n.nivel1">
-                {{ n.nivel1 }} — {{ n.descripcion }}
-              </option>
+              <option v-for="n in nivel1s" :key="n.nivel1" :value="n.nivel1">{{ n.nivel1 }} — {{ n.descripcion }}</option>
             </select>
           </div>
 
-          <!-- Nivel 2 -->
           <div>
             <label class="block text-xs text-gray-600 mb-1">Nivel 2 (Subcategoría MF)</label>
             <select v-model="modal.form.nivel2" @change="onNivel2Change"
               class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none"
               :disabled="!modal.form.nivel1">
               <option value="">Sin subcategoría</option>
-              <option v-for="n in nivel2sFiltrados" :key="n.nivel2" :value="n.nivel2">
-                {{ n.nivel2 }} — {{ n.descripcion }}
-              </option>
+              <option v-for="n in nivel2sFiltrados" :key="n.nivel2" :value="n.nivel2">{{ n.nivel2 }} — {{ n.descripcion }}</option>
             </select>
           </div>
 
-          <!-- Ítem presupuestario (auto) -->
           <div>
             <label class="block text-xs text-gray-600 mb-1">Ítem Presupuestario (auto desde catálogo)</label>
             <input v-model="modal.form.item_presupuestario" type="text" maxlength="150"
@@ -211,6 +216,25 @@
               class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none"></textarea>
           </div>
 
+          <!-- Imagen -->
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">Imagen del bien (opcional)</label>
+            <div class="flex gap-4 items-start">
+              <div v-if="imagenPreview" class="flex-shrink-0">
+                <img :src="imagenPreview" class="w-24 h-24 object-cover rounded-lg border" />
+                <button @click="quitarImagen" class="block text-xs text-red-500 hover:text-red-700 mt-1 text-center w-full">Quitar</button>
+              </div>
+              <div class="flex-1">
+                <input ref="inputImagen" type="file" accept="image/*" @change="onImagenChange"
+                  class="w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-medium file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100 cursor-pointer" />
+                <p class="text-xs text-gray-400 mt-1">JPG, PNG o WEBP. Máx 2 MB.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── TAB BIEN ── -->
+        <div v-show="tabModal === 'bien'" class="space-y-3">
           <div>
             <label class="block text-xs text-gray-600 mb-1">Tasa IVA</label>
             <select v-model="modal.form.iva_id"
@@ -219,6 +243,16 @@
               <option v-for="iva in ivasActivos" :key="iva.id" :value="iva.id">
                 {{ iva.descripcion }} ({{ iva.porcentaje }}%)
               </option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">Condición del Artículo</label>
+            <select v-model="modal.form.estado_fisico"
+              class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none">
+              <option value="BUENO">Bueno</option>
+              <option value="MALO">Malo</option>
+              <option value="INSERVIBLE">Inservible</option>
             </select>
           </div>
 
@@ -237,18 +271,14 @@
             </div>
           </div>
 
-          <div>
-            <label class="block text-xs text-gray-600 mb-1">Condición del Artículo</label>
-            <select v-model="modal.form.estado_fisico"
-              class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none">
-              <option value="BUENO">Bueno</option>
-              <option value="MALO">Malo</option>
-              <option value="INSERVIBLE">Inservible</option>
-            </select>
+          <div v-if="modal.editando" class="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+            <p class="text-xs text-amber-700 font-medium mb-0.5">Último precio registrado (sin IVA)</p>
+            <p class="text-xl font-bold font-mono" style="color:#92400e;">${{ fmt(modal.precioActual) }}</p>
+            <p class="text-xs text-amber-600 mt-0.5">Se actualiza automáticamente al confirmar un ingreso.</p>
           </div>
         </div>
 
-        <p v-if="errorModal" class="text-red-600 text-sm mt-3">{{ errorModal }}</p>
+        <p v-if="errorModal" class="text-red-600 text-sm mt-4">{{ errorModal }}</p>
         <div class="flex justify-end gap-3 mt-5">
           <button @click="modal.show = false" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancelar</button>
           <button @click="guardar" :disabled="guardando"
@@ -302,8 +332,16 @@ const unidades         = ref([])
 const paginaActual     = ref(1)
 const porPagina        = ref(25)
 
-const modal      = ref({ show: false, editando: false, id: null, form: {} })
+const modal       = ref({ show: false, editando: false, id: null, form: {}, precioActual: 0 })
 const modalConfig = ref({ show: false, porcentaje: 20 })
+const tabModal    = ref('catalogo')
+const tabsModal   = [
+  { key: 'catalogo', label: 'Catálogo MEF' },
+  { key: 'bien',     label: 'Bien' },
+]
+const imagenFile    = ref(null)
+const imagenPreview = ref(null)
+const inputImagen   = ref(null)
 
 const articulosFiltrados = computed(() => {
   return articulos.value.filter(a => {
@@ -383,14 +421,34 @@ const formVacio = () => ({
   categoria: '', marca: '', estado_fisico: 'BUENO',
 })
 
+function resetImagen() {
+  imagenFile.value    = null
+  imagenPreview.value = null
+  if (inputImagen.value) inputImagen.value.value = ''
+}
+
+function onImagenChange(e) {
+  const file = e.target.files?.[0]
+  if (!file) return
+  imagenFile.value    = file
+  imagenPreview.value = URL.createObjectURL(file)
+}
+
+function quitarImagen() {
+  resetImagen()
+}
+
 function abrirModalCrear() {
-  modal.value = { show: true, editando: false, id: null, form: formVacio() }
+  modal.value = { show: true, editando: false, id: null, form: formVacio(), precioActual: 0 }
+  tabModal.value  = 'catalogo'
   errorModal.value = ''
+  resetImagen()
 }
 
 function abrirEditar(a) {
   modal.value = {
     show: true, editando: true, id: a.id,
+    precioActual: parseFloat(a.precio_unitario || 0),
     form: {
       codigo: a.codigo, nombre: a.nombre, descripcion: a.descripcion,
       unidad_medida: a.unidad_medida, nivel1: a.nivel1 || '', nivel2: a.nivel2 || '',
@@ -401,7 +459,10 @@ function abrirEditar(a) {
       estado_fisico: a.estado_fisico || 'BUENO',
     }
   }
+  tabModal.value   = 'catalogo'
   errorModal.value = ''
+  resetImagen()
+  imagenPreview.value = a.imagen_url || null
 }
 
 async function guardar() {
@@ -416,11 +477,22 @@ async function guardar() {
     if (!payload.nivel2) payload.nivel2 = null
     if (!payload.iva_id) payload.iva_id = null
 
+    let articuloId = modal.value.id
     if (modal.value.editando) {
-      await api.put(`/adquisiciones/articulos/${modal.value.id}`, payload)
+      await api.put(`/adquisiciones/articulos/${articuloId}`, payload)
     } else {
-      await api.post('/adquisiciones/articulos', payload)
+      const { data } = await api.post('/adquisiciones/articulos', payload)
+      articuloId = data.id
     }
+
+    if (imagenFile.value) {
+      const fd = new FormData()
+      fd.append('imagen', imagenFile.value)
+      await api.post(`/adquisiciones/articulos/${articuloId}/imagen`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+    }
+
     modal.value.show = false
     await cargar()
   } catch (e) {
