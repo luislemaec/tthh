@@ -227,7 +227,7 @@
                     <th class="text-left px-3 py-2 font-semibold whitespace-nowrap">Niv.2</th>
                     <th class="text-left px-3 py-2 font-semibold">Descripción</th>
                     <th class="text-right px-3 py-2 font-semibold whitespace-nowrap">Cantidad</th>
-                    <th class="text-right px-3 py-2 font-semibold whitespace-nowrap">Precio s/IVA</th>
+                    <th class="text-right px-3 py-2 font-semibold whitespace-nowrap">Precio <span class="font-normal opacity-70 text-xs">(c/IVA o s/IVA)</span></th>
                     <th class="text-right px-3 py-2 font-semibold whitespace-nowrap">IVA %</th>
                     <th class="text-right px-3 py-2 font-semibold whitespace-nowrap">Subtotal</th>
                     <th class="text-right px-3 py-2 font-semibold whitespace-nowrap">IVA $</th>
@@ -250,11 +250,18 @@
                         class="w-24 border rounded px-2 py-1 text-right focus:ring-1 outline-none text-xs" />
                     </td>
                     <td class="px-3 py-1.5">
-                      <div class="relative">
-                        <span class="absolute left-1.5 top-1/2 -translate-y-1/2 text-gray-400">$</span>
-                        <input v-model.number="det.precio_unitario" type="number" step="0.0001" min="0"
-                          @input="recalcularLinea(det)"
-                          class="w-28 border rounded pl-4 pr-1 py-1 text-right focus:ring-1 outline-none text-xs" />
+                      <div class="flex flex-col gap-1">
+                        <button @click="det.precio_incluye_iva = !det.precio_incluye_iva; recalcularLinea(det)"
+                          class="text-xs px-1.5 py-0.5 rounded font-medium whitespace-nowrap self-start"
+                          :style="det.precio_incluye_iva ? 'background:#4a5e3a;color:white' : 'background:#e5e7eb;color:#6b7280'">
+                          {{ det.precio_incluye_iva ? 'c/IVA' : 's/IVA' }}
+                        </button>
+                        <div class="relative">
+                          <span class="absolute left-1.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
+                          <input v-model.number="det.precio_unitario" type="number" step="0.00001" min="0"
+                            @input="recalcularLinea(det)"
+                            class="w-28 border rounded pl-4 pr-1 py-1 text-right focus:ring-1 outline-none text-xs" />
+                        </div>
                       </div>
                     </td>
                     <td class="px-3 py-1.5">
@@ -452,12 +459,24 @@ function fmt(v) {
 }
 
 function recalcularLinea(det) {
-  const sub = Math.round((det.cantidad || 0) * (det.precio_unitario || 0) * 100000) / 100000
+  const qty    = det.cantidad || 0
+  const precio = det.precio_unitario || 0
   const ivaPct = det._iva_pct || 0
-  const ivaVal = Math.round(sub * ivaPct / 100 * 100000) / 100000
-  det._subtotal   = sub
-  det._iva_valor  = ivaVal
-  det._total_linea = Math.round((sub + ivaVal) * 100000) / 100000
+
+  if (det.precio_incluye_iva && ivaPct > 0) {
+    const total  = Math.round(qty * precio * 100000) / 100000
+    const sub    = Math.round(total / (1 + ivaPct / 100) * 100000) / 100000
+    const ivaVal = Math.round((total - sub) * 100000) / 100000
+    det._subtotal    = sub
+    det._iva_valor   = ivaVal
+    det._total_linea = total
+  } else {
+    const sub    = Math.round(qty * precio * 100000) / 100000
+    const ivaVal = Math.round(sub * ivaPct / 100 * 100000) / 100000
+    det._subtotal    = sub
+    det._iva_valor   = ivaVal
+    det._total_linea = Math.round((sub + ivaVal) * 100000) / 100000
+  }
 }
 
 function onIvaChange(det) {
@@ -491,18 +510,19 @@ function agregarArticulo(a) {
     const sub    = Math.round(1 * precio * 100000) / 100000
     const ivaVal = Math.round(sub * ivaPct / 100 * 100000) / 100000
     form.value.detalles.push({
-      articulo_id:    a.id,
-      codigo:         a.codigo,
-      nombre:         a.nombre,
-      nivel1:         a.nivel1,
-      nivel2:         a.nivel2,
-      cantidad:       1,
-      precio_unitario: precio,
-      iva_id:         a.iva_id || null,
-      _iva_pct:       ivaPct,
-      _subtotal:      sub,
-      _iva_valor:     ivaVal,
-      _total_linea:   sub + ivaVal,
+      articulo_id:       a.id,
+      codigo:            a.codigo,
+      nombre:            a.nombre,
+      nivel1:            a.nivel1,
+      nivel2:            a.nivel2,
+      cantidad:          1,
+      precio_unitario:   precio,
+      precio_incluye_iva: false,
+      iva_id:            a.iva_id || null,
+      _iva_pct:          ivaPct,
+      _subtotal:         sub,
+      _iva_valor:        ivaVal,
+      _total_linea:      sub + ivaVal,
     })
   }
   busquedaArticulo.value = ''
@@ -645,10 +665,11 @@ async function guardar() {
     fecha_documento:      form.value.fecha_documento || null,
     observacion:          form.value.observacion || null,
     detalles: form.value.detalles.map(d => ({
-      articulo_id:     d.articulo_id,
-      cantidad:        d.cantidad,
-      precio_unitario: d.precio_unitario,
-      iva_id:          d.iva_id || null,
+      articulo_id:        d.articulo_id,
+      cantidad:           d.cantidad,
+      precio_unitario:    d.precio_unitario,
+      precio_incluye_iva: d.precio_incluye_iva ? 1 : 0,
+      iva_id:             d.iva_id || null,
     })),
   }
 

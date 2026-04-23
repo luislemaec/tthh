@@ -248,9 +248,20 @@ class OrdenCompraController extends Controller
                 $ivaPct = $iva ? (float) $iva->porcentaje : 0;
             }
 
-            $subtotal   = round((float)$det['cantidad'] * (float)$det['precio_unitario'], 5);
-            $ivaValor   = round($subtotal * $ivaPct / 100, 5);
-            $totalLinea = round($subtotal + $ivaValor, 5);
+            $precioIngresado = (float) $det['precio_unitario'];
+            $incluyeIva      = !empty($det['precio_incluye_iva']);
+
+            if ($incluyeIva && $ivaPct > 0) {
+                $totalLinea   = round((float) $det['cantidad'] * $precioIngresado, 5);
+                $subtotal     = round($totalLinea / (1 + $ivaPct / 100), 5);
+                $ivaValor     = round($totalLinea - $subtotal, 5);
+                $precioSinIva = round($precioIngresado / (1 + $ivaPct / 100), 5);
+            } else {
+                $subtotal     = round((float) $det['cantidad'] * $precioIngresado, 5);
+                $ivaValor     = round($subtotal * $ivaPct / 100, 5);
+                $totalLinea   = round($subtotal + $ivaValor, 5);
+                $precioSinIva = $precioIngresado;
+            }
 
             $subtotalTotal += $subtotal;
             $ivaTotal      += $ivaValor;
@@ -258,7 +269,7 @@ class OrdenCompraController extends Controller
             $items[] = [
                 'articulo_id'    => $det['articulo_id'],
                 'cantidad'       => $det['cantidad'],
-                'precio_unitario' => $det['precio_unitario'],
+                'precio_unitario' => $precioSinIva,
                 'iva_id'         => $ivaId,
                 'iva_porcentaje' => $ivaPct,
                 'subtotal'       => $subtotal,
