@@ -77,6 +77,8 @@
               <button @click="verDetalle(o)" class="text-xs text-blue-600 hover:text-blue-800 font-medium">Ver</button>
               <button v-if="o.estado === 'RECIBIDO'" @click="descargarPdf(o.id)"
                 class="text-xs text-purple-600 hover:text-purple-800 font-medium">PDF</button>
+              <button v-if="o.estado === 'RECIBIDO'" @click="abrirReverso(o.id)"
+                class="text-xs text-orange-600 hover:text-orange-800 font-medium">Reversar</button>
               <button v-if="o.estado === 'BORRADOR'" @click="abrirEditar(o)"
                 class="text-xs text-amber-600 hover:text-amber-800 font-medium">Editar</button>
               <button v-if="o.estado === 'BORRADOR'" @click="confirmar(o.id)"
@@ -142,35 +144,27 @@
           </div>
 
           <!-- Proveedor (autocomplete) -->
-          <div class="md:col-span-2 relative">
+          <div class="md:col-span-2">
             <label class="block text-xs text-gray-600 mb-1">Proveedor{{ form.tipo_ingreso === 'COMPRA' ? ' *' : '' }}</label>
-            <input v-if="!proveedorSeleccionado" v-model="busquedaProveedor"
-              @input="filtrarProveedores" @keydown.escape="sugerenciasProveedor = []"
-              type="text" placeholder="Buscar por RUC o nombre..."
-              class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none" />
-            <div v-if="sugerenciasProveedor.length"
-              class="absolute z-30 bg-white border rounded-lg shadow-lg w-full mt-1 max-h-48 overflow-y-auto">
-              <div v-for="p in sugerenciasProveedor" :key="p.id"
-                @click="seleccionarProveedor(p)"
-                class="px-3 py-2 text-sm hover:bg-amber-50 cursor-pointer border-b last:border-0">
-                <div class="font-medium text-gray-800">{{ p.nombre }}</div>
-                <div class="text-xs text-gray-400 font-mono">RUC: {{ p.ruc }}</div>
+            <div class="flex gap-2 relative">
+              <div class="relative flex-1">
+                <input v-model="busquedaProveedor"
+                  @input="filtrarProveedores" @keydown.escape="sugerenciasProveedor = []"
+                  type="text" placeholder="Buscar por RUC o nombre..."
+                  class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none" />
+                <div v-if="sugerenciasProveedor.length"
+                  class="absolute z-30 bg-white border rounded-lg shadow-lg w-full mt-1 max-h-48 overflow-y-auto">
+                  <div v-for="p in sugerenciasProveedor" :key="p.id"
+                    @click="seleccionarProveedor(p)"
+                    class="px-3 py-2 text-sm hover:bg-amber-50 cursor-pointer border-b last:border-0">
+                    <div class="font-medium text-gray-800">{{ p.nombre }}</div>
+                    <div class="text-xs text-gray-400 font-mono">RUC: {{ p.ruc }}</div>
+                  </div>
+                </div>
               </div>
-            </div>
-            <!-- Tarjeta del proveedor seleccionado -->
-            <div v-if="proveedorSeleccionado"
-              class="border border-green-300 bg-green-50 rounded-lg px-3 py-2 text-xs">
-              <div class="flex justify-between items-start">
-                <span class="font-semibold text-green-800 text-sm">{{ proveedorSeleccionado.nombre }}</span>
-                <button @click="limpiarProveedor" class="text-red-400 hover:text-red-600 font-bold text-base leading-none ml-2">✕</button>
-              </div>
-              <div class="mt-1 grid grid-cols-2 gap-x-4 gap-y-0.5 text-gray-600">
-                <div><span class="font-medium">RUC:</span> {{ proveedorSeleccionado.ruc }}</div>
-                <div v-if="proveedorSeleccionado.telefono"><span class="font-medium">Tel:</span> {{ proveedorSeleccionado.telefono }}</div>
-                <div v-if="proveedorSeleccionado.email"><span class="font-medium">Email:</span> {{ proveedorSeleccionado.email }}</div>
-                <div v-if="proveedorSeleccionado.contacto"><span class="font-medium">Contacto:</span> {{ proveedorSeleccionado.contacto }}</div>
-                <div v-if="proveedorSeleccionado.direccion" class="col-span-2"><span class="font-medium">Dirección:</span> {{ proveedorSeleccionado.direccion }}</div>
-              </div>
+              <input :value="proveedorSeleccionado?.ruc || ''"
+                type="text" placeholder="RUC" readonly
+                class="w-36 border rounded px-3 py-2 text-sm bg-gray-50 text-gray-600 font-mono" />
             </div>
           </div>
 
@@ -365,6 +359,29 @@
         </div>
       </div>
     </div>
+
+    <!-- ══ MODAL REVERSO ══ -->
+    <div v-if="modalReverso.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+        <h2 class="text-lg font-bold mb-1">Reversar Ingreso</h2>
+        <p class="text-sm text-gray-500 mb-4">El stock y precio promedio de los artículos serán revertidos al estado anterior.</p>
+        <div>
+          <label class="block text-xs text-gray-600 mb-1">Motivo del reverso *</label>
+          <textarea v-model="modalReverso.motivo" rows="3" maxlength="500"
+            placeholder="Describa el motivo por el que se reversa este ingreso..."
+            class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-orange-300 outline-none resize-none"></textarea>
+          <p class="text-xs text-gray-400 text-right mt-0.5">{{ modalReverso.motivo.length }}/500</p>
+        </div>
+        <p v-if="modalReverso.error" class="text-red-600 text-sm mt-2">{{ modalReverso.error }}</p>
+        <div class="flex justify-end gap-3 mt-4">
+          <button @click="modalReverso.show = false" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancelar</button>
+          <button @click="confirmarReverso" :disabled="modalReverso.guardando"
+            class="bg-orange-600 text-white px-5 py-2 rounded-lg text-sm hover:bg-orange-700 disabled:opacity-50">
+            {{ modalReverso.guardando ? 'Reversando...' : 'Confirmar Reverso' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -388,6 +405,7 @@ const proveedorSeleccionado = ref(null)
 
 const modalForm    = ref({ show: false, editando: false, id: null })
 const modalDetalle = ref({ show: false, orden: null })
+const modalReverso = ref({ show: false, id: null, motivo: '', error: '', guardando: false })
 
 const formInicial = () => ({
   tipo_ingreso: 'COMPRA',
@@ -495,6 +513,11 @@ onMounted(async () => {
 })
 
 function filtrarProveedores() {
+  // Si el usuario escribe de nuevo, limpia la selección anterior
+  if (proveedorSeleccionado.value) {
+    form.value.proveedor_id = ''
+    proveedorSeleccionado.value = null
+  }
   const q = busquedaProveedor.value.toLowerCase().trim()
   if (!q) { sugerenciasProveedor.value = []; return }
   sugerenciasProveedor.value = proveedoresActivos.value
@@ -503,16 +526,10 @@ function filtrarProveedores() {
 }
 
 function seleccionarProveedor(p) {
-  form.value.proveedor_id  = p.id
+  form.value.proveedor_id   = p.id
   proveedorSeleccionado.value = p
-  busquedaProveedor.value  = ''
+  busquedaProveedor.value   = p.nombre
   sugerenciasProveedor.value = []
-}
-
-function limpiarProveedor() {
-  form.value.proveedor_id  = ''
-  proveedorSeleccionado.value = null
-  busquedaProveedor.value  = ''
 }
 
 async function descargarPdf(id) {
@@ -641,6 +658,29 @@ async function confirmar(id) {
   } catch (e) {
     alert(e.response?.data?.message || 'Error al confirmar')
   }
+}
+
+function abrirReverso(id) {
+  modalReverso.value = { show: true, id, motivo: '', error: '', guardando: false }
+}
+
+async function confirmarReverso() {
+  modalReverso.value.error = ''
+  if (!modalReverso.value.motivo.trim()) {
+    modalReverso.value.error = 'Debe ingresar el motivo del reverso.'; return
+  }
+  modalReverso.value.guardando = true
+  try {
+    await api.patch(`/adquisiciones/ordenes/${modalReverso.value.id}/reversar`, {
+      motivo_reverso: modalReverso.value.motivo,
+    })
+    modalReverso.value.show = false
+    await cargar()
+  } catch (e) {
+    modalReverso.value.error = e.response?.data?.message ||
+      Object.values(e.response?.data?.errors || {}).flat().join(' ') ||
+      'Error al reversar'
+  } finally { modalReverso.value.guardando = false }
 }
 
 async function eliminar(id) {

@@ -139,15 +139,16 @@ class OrdenCompraController extends Controller
 
         DB::transaction(function () use ($orden, $request) {
             foreach ($orden->detalles as $det) {
-                $articulo  = Articulo::findOrFail($det->articulo_id);
-                $nuevoStock = $articulo->stock_actual + $det->cantidad;
-
-                // Precio promedio: (precio_anterior + nuevo_precio) / 2
+                $articulo       = Articulo::findOrFail($det->articulo_id);
                 $precioAnterior = (float) $articulo->precio_unitario;
                 $nuevoPrecio    = (float) $det->precio_unitario;
+                $nuevoStock     = $articulo->stock_actual + $det->cantidad;
                 $precioPromedio = $precioAnterior > 0
                     ? round(($precioAnterior + $nuevoPrecio) / 2, 4)
                     : $nuevoPrecio;
+
+                // Guardar precio anterior en el detalle para poder reversar
+                $det->update(['precio_anterior' => $precioAnterior]);
 
                 $articulo->update([
                     'stock_actual'           => $nuevoStock,
@@ -160,6 +161,47 @@ class OrdenCompraController extends Controller
                 'estado'            => 'RECIBIDO',
                 'usuario_recepcion' => $request->user()->id_emp,
                 'fecha_recepcion'   => now(),
+            ]);
+        });
+
+        return response()->json($orden->load(['proveedor', 'detalles.articulo']));
+    }
+
+    public function reversar(Request $request, $id)
+    {
+        $orden = OrdenCompra::with('detalles')->findOrFail($id);
+        if ($orden->estado !== 'RECIBIDO') {
+            return response()->json(['message' => 'Solo se puede reversar un ingreso en estado RECIBIDO.'], 422);
+        }
+
+        $request->validate([
+            'motivo_reverso' => 'required|string|min:5|max:500',
+        ], [
+            'motivo_reverso.required' => 'Debe ingresar el motivo del reverso.',
+            'motivo_reverso.min'      => 'El motivo debe tener al menos 5 caracteres.',
+        ]);
+
+        DB::transaction(function () use ($orden, $request) {
+            foreach ($orden->detalles as $det) {
+                $articulo       = Articulo::findOrFail($det->articulo_id);
+                $nuevoStock     = max(0, $articulo->stock_actual - $det->cantidad);
+                $precioAnterior = $det->precio_anterior !== null
+                    ? (float) $det->precio_anterior
+                    : (float) $articulo->precio_unitario;
+
+                $articulo->update([
+                    'stock_actual'    => $nuevoStock,
+                    'precio_unitario' => $precioAnterior,
+                ]);
+            }
+
+            $orden->update([
+                'estado'            => 'BORRADOR',
+                'usuario_recepcion' => null,
+                'fecha_recepcion'   => null,
+                'motivo_reverso'    => $request->motivo_reverso,
+                'usuario_reverso'   => $request->user()->id_emp,
+                'fecha_reverso'     => now(),
             ]);
         });
 

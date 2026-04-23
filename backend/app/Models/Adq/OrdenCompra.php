@@ -13,6 +13,8 @@ class OrdenCompra extends Model
         'numero_documento', 'fecha_documento',
         'subtotal', 'iva_valor', 'total',
         'usuario_registro', 'usuario_recepcion', 'fecha_recepcion',
+        'numero_secuencial', 'anio',
+        'motivo_reverso', 'usuario_reverso', 'fecha_reverso',
     ];
 
     public function proveedor()

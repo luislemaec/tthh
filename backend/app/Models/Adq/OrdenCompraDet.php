@@ -10,6 +10,7 @@ class OrdenCompraDet extends Model
     protected $fillable = [
         'orden_id', 'articulo_id', 'cantidad', 'precio_unitario',
         'iva_id', 'iva_porcentaje', 'subtotal', 'iva_valor', 'total_linea',
+        'precio_anterior',
     ];
 
     public function articulo()

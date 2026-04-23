@@ -247,6 +247,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get('ordenes/{id}',                          [OrdenCompraController::class, 'show']);
         Route::put('ordenes/{id}',                          [OrdenCompraController::class, 'update']);
         Route::patch('ordenes/{id}/confirmar',              [OrdenCompraController::class, 'confirmar']);
+        Route::patch('ordenes/{id}/reversar',               [OrdenCompraController::class, 'reversar']);
         Route::get('ordenes/{id}/pdf',                      [OrdenCompraController::class, 'pdf']);
         Route::delete('ordenes/{id}',                       [OrdenCompraController::class, 'destroy']);
 
