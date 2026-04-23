@@ -142,19 +142,22 @@ class OrdenCompraController extends Controller
                 $articulo       = Articulo::findOrFail($det->articulo_id);
                 $precioAnterior = (float) $articulo->precio_unitario;
                 $nuevoPrecio    = (float) $det->precio_unitario;
-                $nuevoStock     = $articulo->stock_actual + $det->cantidad;
                 $precioPromedio = $precioAnterior > 0
                     ? round(($precioAnterior + $nuevoPrecio) / 2, 4)
                     : $nuevoPrecio;
 
-                // Guardar precio anterior en el detalle para poder reversar
-                $det->update(['precio_anterior' => $precioAnterior]);
+                DB::table('adq.orden_compra_det')
+                    ->where('id', $det->id)
+                    ->update(['precio_anterior' => $precioAnterior]);
 
-                $articulo->update([
-                    'stock_actual'           => $nuevoStock,
-                    'stock_maximo_historico' => max($articulo->stock_maximo_historico, $nuevoStock),
-                    'precio_unitario'        => $precioPromedio,
-                ]);
+                DB::table('adq.articulo')
+                    ->where('id', $det->articulo_id)
+                    ->update([
+                        'stock_actual'           => DB::raw("stock_actual + {$det->cantidad}"),
+                        'stock_maximo_historico' => DB::raw("GREATEST(stock_maximo_historico, stock_actual + {$det->cantidad})"),
+                        'precio_unitario'        => $precioPromedio,
+                        'updated_at'             => now(),
+                    ]);
             }
 
             $orden->update([
@@ -184,15 +187,17 @@ class OrdenCompraController extends Controller
         DB::transaction(function () use ($orden, $request) {
             foreach ($orden->detalles as $det) {
                 $articulo       = Articulo::findOrFail($det->articulo_id);
-                $nuevoStock     = max(0, $articulo->stock_actual - $det->cantidad);
                 $precioAnterior = $det->precio_anterior !== null
                     ? (float) $det->precio_anterior
                     : (float) $articulo->precio_unitario;
 
-                $articulo->update([
-                    'stock_actual'    => $nuevoStock,
-                    'precio_unitario' => $precioAnterior,
-                ]);
+                DB::table('adq.articulo')
+                    ->where('id', $det->articulo_id)
+                    ->update([
+                        'stock_actual'    => DB::raw("GREATEST(0, stock_actual - {$det->cantidad})"),
+                        'precio_unitario' => $precioAnterior,
+                        'updated_at'      => now(),
+                    ]);
             }
 
             $orden->update([
