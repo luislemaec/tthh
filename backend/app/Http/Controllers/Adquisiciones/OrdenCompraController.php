@@ -6,6 +6,7 @@ use App\Models\Adq\Articulo;
 use App\Models\Adq\Iva;
 use App\Models\Adq\OrdenCompra;
 use App\Models\Adq\OrdenCompraDet;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -151,6 +152,17 @@ class OrdenCompraController extends Controller
         });
 
         return response()->json($orden->load(['proveedor', 'detalles.articulo']));
+    }
+
+    public function pdf($id)
+    {
+        $orden = OrdenCompra::with(['proveedor', 'detalles.articulo'])->findOrFail($id);
+        if ($orden->estado !== 'RECIBIDO') {
+            return response()->json(['message' => 'El PDF solo está disponible para ingresos confirmados.'], 422);
+        }
+        $pdf = Pdf::loadView('reportes.ingreso_bodega', compact('orden'))
+            ->setPaper('letter', 'portrait');
+        return $pdf->download("ingreso-bodega-{$orden->id}.pdf");
     }
 
     public function destroy($id)

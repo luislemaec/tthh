@@ -75,6 +75,8 @@
             </td>
             <td class="px-4 py-3 whitespace-nowrap flex gap-2">
               <button @click="verDetalle(o)" class="text-xs text-blue-600 hover:text-blue-800 font-medium">Ver</button>
+              <button v-if="o.estado === 'RECIBIDO'" @click="descargarPdf(o.id)"
+                class="text-xs text-purple-600 hover:text-purple-800 font-medium">PDF</button>
               <button v-if="o.estado === 'BORRADOR'" @click="confirmar(o.id)"
                 class="text-xs text-green-600 hover:text-green-800 font-medium">Confirmar</button>
               <button v-if="o.estado === 'BORRADOR'" @click="eliminar(o.id)"
@@ -137,13 +139,26 @@
               class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none" />
           </div>
 
-          <!-- Proveedor -->
-          <div>
+          <!-- Proveedor (autocomplete) -->
+          <div class="relative">
             <label class="block text-xs text-gray-600 mb-1">Proveedor{{ form.tipo_ingreso === 'COMPRA' ? ' *' : '' }}</label>
-            <select v-model="form.proveedor_id" class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none">
-              <option value="">Sin proveedor</option>
-              <option v-for="p in proveedoresActivos" :key="p.id" :value="p.id">{{ p.nombre }}</option>
-            </select>
+            <input v-model="busquedaProveedor" @input="filtrarProveedores" @keydown.escape="sugerenciasProveedor = []"
+              type="text" placeholder="Buscar por RUC o nombre..."
+              class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none" />
+            <div v-if="sugerenciasProveedor.length"
+              class="absolute z-30 bg-white border rounded-lg shadow-lg w-full mt-1 max-h-48 overflow-y-auto">
+              <div v-for="p in sugerenciasProveedor" :key="p.id"
+                @click="seleccionarProveedor(p)"
+                class="px-3 py-2 text-sm hover:bg-gray-100 cursor-pointer">
+                <div class="font-medium text-gray-800">{{ p.nombre }}</div>
+                <div class="text-xs text-gray-400 font-mono">RUC: {{ p.ruc }}</div>
+              </div>
+            </div>
+            <div v-if="form.proveedor_id && proveedorSeleccionado"
+              class="mt-1 flex items-center gap-2 text-xs text-green-700 bg-green-50 rounded px-2 py-1">
+              <span>✓ {{ proveedorSeleccionado.nombre }}</span>
+              <button @click="limpiarProveedor" class="text-red-400 hover:text-red-600 ml-auto">✕</button>
+            </div>
           </div>
 
           <!-- Observación -->
@@ -352,8 +367,11 @@ const errorForm      = ref('')
 const proveedores    = ref([])
 const articulos      = ref([])
 const ivasActivos    = ref([])
-const busquedaArticulo  = ref('')
+const busquedaArticulo   = ref('')
 const articulosSugeridos = ref([])
+const busquedaProveedor  = ref('')
+const sugerenciasProveedor = ref([])
+const proveedorSeleccionado = ref(null)
 
 const modalForm    = ref({ show: false })
 const modalDetalle = ref({ show: false, orden: null })
@@ -463,11 +481,49 @@ onMounted(async () => {
   await cargar()
 })
 
+function filtrarProveedores() {
+  const q = busquedaProveedor.value.toLowerCase().trim()
+  if (!q) { sugerenciasProveedor.value = []; return }
+  sugerenciasProveedor.value = proveedoresActivos.value
+    .filter(p => p.nombre.toLowerCase().includes(q) || p.ruc.includes(q))
+    .slice(0, 10)
+}
+
+function seleccionarProveedor(p) {
+  form.value.proveedor_id  = p.id
+  proveedorSeleccionado.value = p
+  busquedaProveedor.value  = ''
+  sugerenciasProveedor.value = []
+}
+
+function limpiarProveedor() {
+  form.value.proveedor_id  = ''
+  proveedorSeleccionado.value = null
+  busquedaProveedor.value  = ''
+}
+
+async function descargarPdf(id) {
+  try {
+    const { data } = await api.get(`/adquisiciones/ordenes/${id}/pdf`, { responseType: 'blob' })
+    const url  = window.URL.createObjectURL(new Blob([data], { type: 'application/pdf' }))
+    const link = document.createElement('a')
+    link.href  = url
+    link.setAttribute('download', `ingreso-bodega-${id}.pdf`)
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+  } catch { alert('Error al generar el PDF') }
+}
+
 function abrirCrear() {
   form.value = formInicial()
   form.value.fecha_documento = new Date().toISOString().split('T')[0]
   busquedaArticulo.value = ''
   articulosSugeridos.value = []
+  busquedaProveedor.value = ''
+  sugerenciasProveedor.value = []
+  proveedorSeleccionado.value = null
   errorForm.value = ''
   modalForm.value = { show: true }
 }
