@@ -211,22 +211,15 @@
               class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none"></textarea>
           </div>
 
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-xs text-gray-600 mb-1">Precio unitario (sin IVA) $</label>
-              <input v-model.number="modal.form.precio_unitario" type="number" step="0.0001" min="0"
-                class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none" />
-            </div>
-            <div>
-              <label class="block text-xs text-gray-600 mb-1">Tasa IVA</label>
-              <select v-model="modal.form.iva_id"
-                class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none">
-                <option value="">Seleccionar...</option>
-                <option v-for="iva in ivasActivos" :key="iva.id" :value="iva.id">
-                  {{ iva.descripcion }} ({{ iva.porcentaje }}%)
-                </option>
-              </select>
-            </div>
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">Tasa IVA</label>
+            <select v-model="modal.form.iva_id"
+              class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none">
+              <option value="">Seleccionar...</option>
+              <option v-for="iva in ivasActivos" :key="iva.id" :value="iva.id">
+                {{ iva.descripcion }} ({{ iva.porcentaje }}%)
+              </option>
+            </select>
           </div>
 
           <div class="grid grid-cols-2 gap-3">
