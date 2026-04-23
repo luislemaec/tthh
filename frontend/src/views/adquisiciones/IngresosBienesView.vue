@@ -77,6 +77,8 @@
               <button @click="verDetalle(o)" class="text-xs text-blue-600 hover:text-blue-800 font-medium">Ver</button>
               <button v-if="o.estado === 'RECIBIDO'" @click="descargarPdf(o.id)"
                 class="text-xs text-purple-600 hover:text-purple-800 font-medium">PDF</button>
+              <button v-if="o.estado === 'BORRADOR'" @click="abrirEditar(o)"
+                class="text-xs text-amber-600 hover:text-amber-800 font-medium">Editar</button>
               <button v-if="o.estado === 'BORRADOR'" @click="confirmar(o.id)"
                 class="text-xs text-green-600 hover:text-green-800 font-medium">Confirmar</button>
               <button v-if="o.estado === 'BORRADOR'" @click="eliminar(o.id)"
@@ -89,8 +91,8 @@
 
     <!-- ══ MODAL CREAR / EDITAR ══ -->
     <div v-if="modalForm.show" class="fixed inset-0 bg-black/50 flex items-start justify-center z-50 p-4 overflow-y-auto">
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-6xl p-6 my-4">
-        <h2 class="text-lg font-bold mb-4">Nuevo Ingreso de Bienes</h2>
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-7xl p-6 my-4">
+        <h2 class="text-lg font-bold mb-4">{{ modalForm.editando ? 'Editar Ingreso #' + modalForm.id : 'Nuevo Ingreso de Bienes' }}</h2>
 
         <!-- Cabecera del ingreso -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5 p-4 bg-gray-50 rounded-lg">
@@ -140,24 +142,35 @@
           </div>
 
           <!-- Proveedor (autocomplete) -->
-          <div class="relative">
+          <div class="md:col-span-2 relative">
             <label class="block text-xs text-gray-600 mb-1">Proveedor{{ form.tipo_ingreso === 'COMPRA' ? ' *' : '' }}</label>
-            <input v-model="busquedaProveedor" @input="filtrarProveedores" @keydown.escape="sugerenciasProveedor = []"
+            <input v-if="!proveedorSeleccionado" v-model="busquedaProveedor"
+              @input="filtrarProveedores" @keydown.escape="sugerenciasProveedor = []"
               type="text" placeholder="Buscar por RUC o nombre..."
               class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none" />
             <div v-if="sugerenciasProveedor.length"
               class="absolute z-30 bg-white border rounded-lg shadow-lg w-full mt-1 max-h-48 overflow-y-auto">
               <div v-for="p in sugerenciasProveedor" :key="p.id"
                 @click="seleccionarProveedor(p)"
-                class="px-3 py-2 text-sm hover:bg-gray-100 cursor-pointer">
+                class="px-3 py-2 text-sm hover:bg-amber-50 cursor-pointer border-b last:border-0">
                 <div class="font-medium text-gray-800">{{ p.nombre }}</div>
                 <div class="text-xs text-gray-400 font-mono">RUC: {{ p.ruc }}</div>
               </div>
             </div>
-            <div v-if="form.proveedor_id && proveedorSeleccionado"
-              class="mt-1 flex items-center gap-2 text-xs text-green-700 bg-green-50 rounded px-2 py-1">
-              <span>✓ {{ proveedorSeleccionado.nombre }}</span>
-              <button @click="limpiarProveedor" class="text-red-400 hover:text-red-600 ml-auto">✕</button>
+            <!-- Tarjeta del proveedor seleccionado -->
+            <div v-if="proveedorSeleccionado"
+              class="border border-green-300 bg-green-50 rounded-lg px-3 py-2 text-xs">
+              <div class="flex justify-between items-start">
+                <span class="font-semibold text-green-800 text-sm">{{ proveedorSeleccionado.nombre }}</span>
+                <button @click="limpiarProveedor" class="text-red-400 hover:text-red-600 font-bold text-base leading-none ml-2">✕</button>
+              </div>
+              <div class="mt-1 grid grid-cols-2 gap-x-4 gap-y-0.5 text-gray-600">
+                <div><span class="font-medium">RUC:</span> {{ proveedorSeleccionado.ruc }}</div>
+                <div v-if="proveedorSeleccionado.telefono"><span class="font-medium">Tel:</span> {{ proveedorSeleccionado.telefono }}</div>
+                <div v-if="proveedorSeleccionado.email"><span class="font-medium">Email:</span> {{ proveedorSeleccionado.email }}</div>
+                <div v-if="proveedorSeleccionado.contacto"><span class="font-medium">Contacto:</span> {{ proveedorSeleccionado.contacto }}</div>
+                <div v-if="proveedorSeleccionado.direccion" class="col-span-2"><span class="font-medium">Dirección:</span> {{ proveedorSeleccionado.direccion }}</div>
+              </div>
             </div>
           </div>
 
@@ -373,7 +386,7 @@ const busquedaProveedor  = ref('')
 const sugerenciasProveedor = ref([])
 const proveedorSeleccionado = ref(null)
 
-const modalForm    = ref({ show: false })
+const modalForm    = ref({ show: false, editando: false, id: null })
 const modalDetalle = ref({ show: false, orden: null })
 
 const formInicial = () => ({
@@ -525,7 +538,50 @@ function abrirCrear() {
   sugerenciasProveedor.value = []
   proveedorSeleccionado.value = null
   errorForm.value = ''
-  modalForm.value = { show: true }
+  modalForm.value = { show: true, editando: false, id: null }
+}
+
+async function abrirEditar(o) {
+  const { data } = await api.get(`/adquisiciones/ordenes/${o.id}`)
+  form.value = {
+    tipo_ingreso:         data.tipo_ingreso,
+    proceso_contratacion: data.proceso_contratacion || '',
+    tipo_documento:       data.tipo_documento || '',
+    proveedor_id:         data.proveedor_id || '',
+    numero_documento:     data.numero_documento || '',
+    fecha_documento:      data.fecha_documento || '',
+    observacion:          data.observacion || '',
+    detalles: data.detalles.map(d => {
+      const ivaPct = parseFloat(d.iva_porcentaje || 0)
+      const sub    = parseFloat(d.subtotal || 0)
+      const ivaVal = parseFloat(d.iva_valor || 0)
+      return {
+        articulo_id:     d.articulo_id,
+        codigo:          d.articulo?.codigo,
+        nombre:          d.articulo?.nombre,
+        nivel1:          d.articulo?.nivel1,
+        nivel2:          d.articulo?.nivel2,
+        cantidad:        parseFloat(d.cantidad),
+        precio_unitario: parseFloat(d.precio_unitario),
+        iva_id:          d.iva_id || null,
+        _iva_pct:        ivaPct,
+        _subtotal:       sub,
+        _iva_valor:      ivaVal,
+        _total_linea:    parseFloat(d.total_linea || 0),
+      }
+    }),
+  }
+  if (data.proveedor) {
+    proveedorSeleccionado.value = data.proveedor
+  } else {
+    proveedorSeleccionado.value = null
+  }
+  busquedaArticulo.value = ''
+  articulosSugeridos.value = []
+  busquedaProveedor.value = ''
+  sugerenciasProveedor.value = []
+  errorForm.value = ''
+  modalForm.value = { show: true, editando: true, id: o.id }
 }
 
 function verDetalle(o) {
@@ -537,6 +593,9 @@ async function guardar() {
   if (!form.value.tipo_ingreso) { errorForm.value = 'Seleccione el tipo de ingreso.'; return }
   if (form.value.tipo_ingreso === 'COMPRA' && !form.value.proceso_contratacion) {
     errorForm.value = 'Seleccione el proceso de contratación.'; return
+  }
+  if (form.value.tipo_documento === 'FACTURA' && !form.value.numero_documento) {
+    errorForm.value = 'El número de factura es obligatorio cuando el tipo de documento es FACTURA.'; return
   }
   if (!form.value.detalles.length) { errorForm.value = 'Agregue al menos un artículo.'; return }
 
@@ -558,7 +617,11 @@ async function guardar() {
 
   guardando.value = true
   try {
-    await api.post('/adquisiciones/ordenes', payload)
+    if (modalForm.value.editando) {
+      await api.put(`/adquisiciones/ordenes/${modalForm.value.id}`, payload)
+    } else {
+      await api.post('/adquisiciones/ordenes', payload)
+    }
     modalForm.value.show = false
     await cargar()
   } catch (e) {

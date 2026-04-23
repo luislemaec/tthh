@@ -71,7 +71,7 @@
   <tr>
     <td style="width:50%;">
       <span class="info-label">Secuencial Ingreso No.:</span>
-      <strong>{{ $orden->id }}</strong>
+      <strong>{{ $orden->numero_secuencial ?? $orden->id }}</strong>
     </td>
     <td colspan="2">
       <span class="info-label">eSBYE:</span>

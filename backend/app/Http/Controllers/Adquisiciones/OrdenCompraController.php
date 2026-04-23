@@ -26,14 +26,15 @@ class OrdenCompraController extends Controller
 
     public function store(Request $request)
     {
-        $esCompra = $request->tipo_ingreso !== 'DONACION';
+        $esCompra    = $request->tipo_ingreso !== 'DONACION';
+        $esFactura   = $request->tipo_documento === 'FACTURA';
 
         $request->validate([
             'tipo_ingreso'          => 'required|in:COMPRA,DONACION',
             'proceso_contratacion'  => $esCompra ? 'required|in:CATALOGO ELECTRONICO,SUBASTA INVERSA ELECTRONICA,CAJA CHICA' : 'nullable',
             'tipo_documento'        => 'nullable|in:FACTURA,NOTA DE ENTREGA',
             'proveedor_id'          => 'nullable|exists:pgsql.adq.proveedor,id',
-            'numero_documento'      => 'nullable|string|max:50',
+            'numero_documento'      => $esFactura ? 'required|string|max:50' : 'nullable|string|max:50',
             'fecha_documento'       => 'nullable|date',
             'observacion'           => 'nullable|string',
             'detalles'              => 'required|array|min:1',
@@ -41,7 +42,13 @@ class OrdenCompraController extends Controller
             'detalles.*.cantidad'        => 'required|numeric|min:0.01',
             'detalles.*.precio_unitario' => 'required|numeric|min:0',
             'detalles.*.iva_id'          => 'nullable|exists:pgsql.adq.iva,id',
+        ], [
+            'numero_documento.required' => 'El número de factura es obligatorio cuando el tipo de documento es FACTURA.',
         ]);
+
+        $anio       = now()->year;
+        $ultimo     = DB::table('adq.orden_compra')->where('anio', $anio)->max('numero_secuencial') ?? 0;
+        $secuencial = $ultimo + 1;
 
         $detallesCalc = $this->calcularDetalles($request->detalles);
 
@@ -59,6 +66,8 @@ class OrdenCompraController extends Controller
             'iva_valor'             => $detallesCalc['iva_valor'],
             'total'                 => $detallesCalc['total'],
             'usuario_registro'      => $request->user()->id_emp,
+            'numero_secuencial'     => $secuencial,
+            'anio'                  => $anio,
         ]);
 
         foreach ($detallesCalc['detalles'] as $det) {
@@ -80,19 +89,22 @@ class OrdenCompraController extends Controller
             return response()->json(['message' => 'Solo se puede editar un ingreso en BORRADOR.'], 422);
         }
 
-        $esCompra = $request->tipo_ingreso !== 'DONACION';
+        $esCompra  = $request->tipo_ingreso !== 'DONACION';
+        $esFactura = $request->tipo_documento === 'FACTURA';
         $request->validate([
             'tipo_ingreso'          => 'required|in:COMPRA,DONACION',
             'proceso_contratacion'  => $esCompra ? 'required|in:CATALOGO ELECTRONICO,SUBASTA INVERSA ELECTRONICA,CAJA CHICA' : 'nullable',
             'tipo_documento'        => 'nullable|in:FACTURA,NOTA DE ENTREGA',
             'proveedor_id'          => 'nullable|exists:pgsql.adq.proveedor,id',
-            'numero_documento'      => 'nullable|string|max:50',
+            'numero_documento'      => $esFactura ? 'required|string|max:50' : 'nullable|string|max:50',
             'fecha_documento'       => 'nullable|date',
             'detalles'              => 'required|array|min:1',
             'detalles.*.articulo_id'     => 'required|exists:pgsql.adq.articulo,id',
             'detalles.*.cantidad'        => 'required|numeric|min:0.01',
             'detalles.*.precio_unitario' => 'required|numeric|min:0',
             'detalles.*.iva_id'          => 'nullable|exists:pgsql.adq.iva,id',
+        ], [
+            'numero_documento.required' => 'El número de factura es obligatorio cuando el tipo de documento es FACTURA.',
         ]);
 
         $detallesCalc = $this->calcularDetalles($request->detalles);
