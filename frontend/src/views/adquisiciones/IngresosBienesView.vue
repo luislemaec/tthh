@@ -216,7 +216,7 @@
               </div>
             </div>
           </div>
-          <!-- Tabla bienes -->
+          <!-- Tabla bienes + monetario unificada -->
           <div class="border rounded-lg overflow-hidden">
             <div class="overflow-x-auto">
               <table class="w-full text-xs">
@@ -226,13 +226,18 @@
                     <th class="text-left px-3 py-2 font-semibold whitespace-nowrap">Niv.1</th>
                     <th class="text-left px-3 py-2 font-semibold whitespace-nowrap">Niv.2</th>
                     <th class="text-left px-3 py-2 font-semibold">Descripción</th>
-                    <th class="text-right px-3 py-2 font-semibold w-28 whitespace-nowrap">Cantidad</th>
+                    <th class="text-right px-3 py-2 font-semibold whitespace-nowrap">Cantidad</th>
+                    <th class="text-right px-3 py-2 font-semibold whitespace-nowrap">Precio s/IVA</th>
+                    <th class="text-right px-3 py-2 font-semibold whitespace-nowrap">IVA %</th>
+                    <th class="text-right px-3 py-2 font-semibold whitespace-nowrap">Subtotal</th>
+                    <th class="text-right px-3 py-2 font-semibold whitespace-nowrap">IVA $</th>
+                    <th class="text-right px-3 py-2 font-semibold whitespace-nowrap">Total</th>
                     <th class="w-8"></th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-if="!form.detalles.length">
-                    <td colspan="6" class="text-center py-8 text-gray-400 italic">Busca un artículo arriba para agregarlo</td>
+                    <td colspan="11" class="text-center py-8 text-gray-400 italic">Busca un artículo arriba para agregarlo</td>
                   </tr>
                   <tr v-for="(det, i) in form.detalles" :key="i" class="border-t hover:bg-amber-50">
                     <td class="px-3 py-1.5 font-mono text-gray-500 whitespace-nowrap">{{ det.codigo }}</td>
@@ -242,69 +247,38 @@
                     <td class="px-3 py-1.5">
                       <input v-model.number="det.cantidad" type="number" step="0.01" min="0.01"
                         @input="recalcularLinea(det)"
-                        class="w-full border rounded px-2 py-1 text-right focus:ring-1 outline-none text-xs" />
+                        class="w-24 border rounded px-2 py-1 text-right focus:ring-1 outline-none text-xs" />
                     </td>
-                    <td class="px-2 py-1.5 text-center">
-                      <button @click="form.detalles.splice(i, 1)" class="text-red-400 hover:text-red-600 font-bold text-base leading-none">✕</button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        <!-- ── TAB MONETARIO ── -->
-        <div v-show="tabActiva === 'monetario'">
-          <div class="border rounded-lg overflow-hidden">
-            <div class="overflow-x-auto">
-              <table class="w-full text-xs">
-                <thead style="background-color:#4a5e3a;" class="text-white">
-                  <tr>
-                    <th class="text-left px-3 py-2 font-semibold whitespace-nowrap">Código</th>
-                    <th class="text-left px-3 py-2 font-semibold">Descripción</th>
-                    <th class="text-right px-3 py-2 font-semibold whitespace-nowrap">Cant.</th>
-                    <th class="text-right px-3 py-2 font-semibold whitespace-nowrap w-28">Precio s/IVA</th>
-                    <th class="text-right px-3 py-2 font-semibold whitespace-nowrap w-24">IVA %</th>
-                    <th class="text-right px-3 py-2 font-semibold whitespace-nowrap">Subtotal</th>
-                    <th class="text-right px-3 py-2 font-semibold whitespace-nowrap">IVA $</th>
-                    <th class="text-right px-3 py-2 font-semibold whitespace-nowrap">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-if="!form.detalles.length">
-                    <td colspan="8" class="text-center py-8 text-gray-400 italic">Agrega artículos en la pestaña Bienes</td>
-                  </tr>
-                  <tr v-for="(det, i) in form.detalles" :key="i" class="border-t hover:bg-amber-50">
-                    <td class="px-3 py-1.5 font-mono text-gray-500 whitespace-nowrap">{{ det.codigo }}</td>
-                    <td class="px-3 py-1.5 font-medium">{{ det.nombre }}</td>
-                    <td class="px-3 py-1.5 text-right whitespace-nowrap">{{ det.cantidad }}</td>
                     <td class="px-3 py-1.5">
                       <div class="relative">
                         <span class="absolute left-1.5 top-1/2 -translate-y-1/2 text-gray-400">$</span>
                         <input v-model.number="det.precio_unitario" type="number" step="0.0001" min="0"
                           @input="recalcularLinea(det)"
-                          class="w-full border rounded pl-4 pr-1 py-1 text-right focus:ring-1 outline-none text-xs" />
+                          class="w-28 border rounded pl-4 pr-1 py-1 text-right focus:ring-1 outline-none text-xs" />
                       </div>
                     </td>
                     <td class="px-3 py-1.5">
                       <select v-model="det.iva_id" @change="onIvaChange(det)"
-                        class="w-full border rounded px-1.5 py-1 text-right focus:ring-1 outline-none text-xs">
-                        <option value="">Sin IVA</option>
+                        class="w-20 border rounded px-1.5 py-1 text-right focus:ring-1 outline-none text-xs">
+                        <option value="">0%</option>
                         <option v-for="iva in ivasActivos" :key="iva.id" :value="iva.id">{{ iva.porcentaje }}%</option>
                       </select>
                     </td>
                     <td class="px-3 py-1.5 text-right font-mono whitespace-nowrap">${{ fmt(det._subtotal) }}</td>
                     <td class="px-3 py-1.5 text-right font-mono whitespace-nowrap">${{ fmt(det._iva_valor) }}</td>
                     <td class="px-3 py-1.5 text-right font-mono font-semibold whitespace-nowrap">${{ fmt(det._total_linea) }}</td>
+                    <td class="px-2 py-1.5 text-center">
+                      <button @click="form.detalles.splice(i, 1)" class="text-red-400 hover:text-red-600 font-bold text-base leading-none">✕</button>
+                    </td>
                   </tr>
                 </tbody>
                 <tfoot v-if="form.detalles.length" style="background-color:#f0f4ed;" class="border-t-2">
                   <tr>
-                    <td colspan="5" class="px-3 py-2 text-right font-semibold text-gray-600">TOTALES:</td>
+                    <td colspan="7" class="px-3 py-2 text-right font-semibold text-gray-600">TOTALES:</td>
                     <td class="px-3 py-2 text-right font-bold font-mono">${{ fmt(totales.subtotal) }}</td>
                     <td class="px-3 py-2 text-right font-bold font-mono">${{ fmt(totales.iva) }}</td>
                     <td class="px-3 py-2 text-right font-bold font-mono text-sm" style="color:#4a5e3a;">${{ fmt(totales.total) }}</td>
+                    <td></td>
                   </tr>
                 </tfoot>
               </table>
@@ -442,9 +416,8 @@ const proveedorSeleccionado = ref(null)
 
 const tabActiva = ref('datos')
 const tabs = [
-  { key: 'datos',     label: 'Datos' },
-  { key: 'bienes',    label: 'Bienes' },
-  { key: 'monetario', label: 'Monetario' },
+  { key: 'datos',  label: 'Datos' },
+  { key: 'bienes', label: 'Bienes' },
 ]
 
 const modalForm    = ref({ show: false, editando: false, id: null })
