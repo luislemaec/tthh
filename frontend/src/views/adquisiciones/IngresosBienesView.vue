@@ -94,189 +94,226 @@
     <!-- ══ MODAL CREAR / EDITAR ══ -->
     <div v-if="modalForm.show" class="fixed inset-0 bg-black/50 flex items-start justify-center z-50 p-4 overflow-y-auto">
       <div class="bg-white rounded-xl shadow-xl w-full max-w-7xl p-6 my-4">
-        <h2 class="text-lg font-bold mb-4">{{ modalForm.editando ? 'Editar Ingreso #' + modalForm.id : 'Nuevo Ingreso de Bienes' }}</h2>
 
-        <!-- Cabecera del ingreso -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5 p-4 bg-gray-50 rounded-lg">
-          <!-- Tipo ingreso -->
-          <div>
-            <label class="block text-xs text-gray-600 mb-1">Tipo de Ingreso *</label>
-            <select v-model="form.tipo_ingreso" class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none">
-              <option value="COMPRA">COMPRA</option>
-              <option value="DONACION">DONACIÓN</option>
-            </select>
-          </div>
+        <!-- Título + pestañas -->
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-bold">{{ modalForm.editando ? 'Editar Ingreso #' + modalForm.id : 'Nuevo Ingreso de Bienes' }}</h2>
+        </div>
 
-          <!-- Proceso contratación (solo COMPRA) -->
-          <div v-if="form.tipo_ingreso === 'COMPRA'">
-            <label class="block text-xs text-gray-600 mb-1">Proceso de Contratación *</label>
-            <select v-model="form.proceso_contratacion" class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none">
-              <option value="">Seleccionar...</option>
-              <option value="CATALOGO ELECTRONICO">CATÁLOGO ELECTRÓNICO</option>
-              <option value="SUBASTA INVERSA ELECTRONICA">SUBASTA INVERSA ELECTRÓNICA</option>
-              <option value="CAJA CHICA">CAJA CHICA</option>
-            </select>
-          </div>
+        <!-- Nav pestañas -->
+        <div class="flex border-b mb-5">
+          <button v-for="tab in tabs" :key="tab.key" @click="tabActiva = tab.key"
+            :class="tabActiva === tab.key
+              ? 'border-b-2 font-semibold text-white px-5 py-2 text-sm -mb-px'
+              : 'px-5 py-2 text-sm text-gray-500 hover:text-gray-700'"
+            :style="tabActiva === tab.key ? 'border-color:#4a5e3a; background-color:#4a5e3a; border-radius:6px 6px 0 0;' : ''">
+            {{ tab.label }}
+            <span v-if="tab.key === 'bienes' && form.detalles.length"
+              class="ml-1.5 bg-white text-xs font-bold rounded-full px-1.5"
+              :style="tabActiva === 'bienes' ? 'color:#4a5e3a' : 'color:#4a5e3a; background-color:#e5e7eb'">
+              {{ form.detalles.length }}
+            </span>
+          </button>
+        </div>
 
-          <!-- Tipo documento -->
-          <div>
-            <label class="block text-xs text-gray-600 mb-1">Tipo Documento</label>
-            <select v-model="form.tipo_documento" class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none">
-              <option value="">Sin documento</option>
-              <option value="FACTURA">FACTURA</option>
-              <option value="NOTA DE ENTREGA">NOTA DE ENTREGA</option>
-            </select>
-          </div>
-
-          <!-- Número documento -->
-          <div>
-            <label class="block text-xs text-gray-600 mb-1">Número Documento</label>
-            <input v-model="form.numero_documento" type="text" maxlength="50"
-              placeholder="ej: 001-001-000001234"
-              class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none" />
-          </div>
-
-          <!-- Fecha documento -->
-          <div>
-            <label class="block text-xs text-gray-600 mb-1">Fecha Documento</label>
-            <input v-model="form.fecha_documento" type="date"
-              class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none" />
-          </div>
-
-          <!-- Proveedor (autocomplete) -->
-          <div class="md:col-span-2">
-            <label class="block text-xs text-gray-600 mb-1">Proveedor{{ form.tipo_ingreso === 'COMPRA' ? ' *' : '' }}</label>
-            <div class="flex gap-2 relative">
-              <div class="relative flex-1">
-                <input v-model="busquedaProveedor"
-                  @input="filtrarProveedores" @keydown.escape="sugerenciasProveedor = []"
-                  type="text" placeholder="Buscar por RUC o nombre..."
-                  class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none" />
-                <div v-if="sugerenciasProveedor.length"
-                  class="absolute z-30 bg-white border rounded-lg shadow-lg w-full mt-1 max-h-48 overflow-y-auto">
-                  <div v-for="p in sugerenciasProveedor" :key="p.id"
-                    @click="seleccionarProveedor(p)"
-                    class="px-3 py-2 text-sm hover:bg-amber-50 cursor-pointer border-b last:border-0">
-                    <div class="font-medium text-gray-800">{{ p.nombre }}</div>
-                    <div class="text-xs text-gray-400 font-mono">RUC: {{ p.ruc }}</div>
+        <!-- ── TAB DATOS ── -->
+        <div v-show="tabActiva === 'datos'">
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 bg-gray-50 rounded-lg">
+            <div>
+              <label class="block text-xs text-gray-600 mb-1">Tipo de Ingreso *</label>
+              <select v-model="form.tipo_ingreso" class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none">
+                <option value="COMPRA">COMPRA</option>
+                <option value="DONACION">DONACIÓN</option>
+              </select>
+            </div>
+            <div v-if="form.tipo_ingreso === 'COMPRA'">
+              <label class="block text-xs text-gray-600 mb-1">Proceso de Contratación *</label>
+              <select v-model="form.proceso_contratacion" class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none">
+                <option value="">Seleccionar...</option>
+                <option value="CATALOGO ELECTRONICO">CATÁLOGO ELECTRÓNICO</option>
+                <option value="SUBASTA INVERSA ELECTRONICA">SUBASTA INVERSA ELECTRÓNICA</option>
+                <option value="CAJA CHICA">CAJA CHICA</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs text-gray-600 mb-1">Tipo Documento</label>
+              <select v-model="form.tipo_documento" class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none">
+                <option value="">Sin documento</option>
+                <option value="FACTURA">FACTURA</option>
+                <option value="NOTA DE ENTREGA">NOTA DE ENTREGA</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs text-gray-600 mb-1">
+                Número Documento{{ form.tipo_documento === 'FACTURA' ? ' *' : '' }}
+              </label>
+              <input v-model="form.numero_documento" type="text" maxlength="50"
+                placeholder="ej: 001-001-000001234"
+                class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none" />
+            </div>
+            <div>
+              <label class="block text-xs text-gray-600 mb-1">Fecha Documento</label>
+              <input v-model="form.fecha_documento" type="date"
+                class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none" />
+            </div>
+            <!-- Proveedor -->
+            <div class="md:col-span-2 relative">
+              <label class="block text-xs text-gray-600 mb-1">Proveedor{{ form.tipo_ingreso === 'COMPRA' ? ' *' : '' }}</label>
+              <div class="flex gap-2">
+                <div class="relative flex-1">
+                  <input v-model="busquedaProveedor"
+                    @input="filtrarProveedores" @keydown.escape="sugerenciasProveedor = []"
+                    type="text" placeholder="Buscar por RUC o nombre..."
+                    class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none" />
+                  <div v-if="sugerenciasProveedor.length"
+                    class="absolute z-30 bg-white border rounded-lg shadow-lg w-full mt-1 max-h-48 overflow-y-auto">
+                    <div v-for="p in sugerenciasProveedor" :key="p.id"
+                      @click="seleccionarProveedor(p)"
+                      class="px-3 py-2 text-sm hover:bg-amber-50 cursor-pointer border-b last:border-0">
+                      <div class="font-medium text-gray-800">{{ p.nombre }}</div>
+                      <div class="text-xs text-gray-400 font-mono">RUC: {{ p.ruc }}</div>
+                    </div>
                   </div>
                 </div>
+                <div class="w-40">
+                  <label class="block text-xs text-gray-600 mb-1">RUC</label>
+                  <input :value="proveedorSeleccionado?.ruc || ''" type="text" readonly
+                    class="w-full border rounded px-3 py-2 text-sm bg-gray-50 text-gray-600 font-mono" />
+                </div>
               </div>
-              <input :value="proveedorSeleccionado?.ruc || ''"
-                type="text" placeholder="RUC" readonly
-                class="w-36 border rounded px-3 py-2 text-sm bg-gray-50 text-gray-600 font-mono" />
+            </div>
+            <div class="md:col-span-3">
+              <label class="block text-xs text-gray-600 mb-1">Observación</label>
+              <input v-model="form.observacion" type="text"
+                class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none" />
             </div>
           </div>
+        </div>
 
-          <!-- Observación -->
-          <div class="md:col-span-2">
-            <label class="block text-xs text-gray-600 mb-1">Observación</label>
-            <input v-model="form.observacion" type="text"
+        <!-- ── TAB BIENES ── -->
+        <div v-show="tabActiva === 'bienes'">
+          <!-- Buscador -->
+          <div class="mb-3 relative">
+            <label class="block text-xs text-gray-600 mb-1">Buscar artículo por código o descripción</label>
+            <input v-model="busquedaArticulo" @input="filtrarArticulos" @keydown.escape="articulosSugeridos = []"
+              type="text" placeholder="Escribe para buscar..."
               class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none" />
-          </div>
-        </div>
-
-        <!-- Buscador de artículos -->
-        <div class="mb-3 relative">
-          <label class="block text-xs text-gray-600 mb-1">Agregar artículo (buscar por código o descripción)</label>
-          <input v-model="busquedaArticulo" @input="filtrarArticulos" @keydown.escape="articulosSugeridos = []" type="text"
-            placeholder="Escribe para buscar..."
-            class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none" />
-          <div v-if="articulosSugeridos.length"
-            class="absolute z-20 bg-white border rounded-lg shadow-lg w-full mt-1 max-h-52 overflow-y-auto">
-            <div v-for="a in articulosSugeridos" :key="a.id"
-              @click="agregarArticulo(a)"
-              class="px-4 py-2 text-sm hover:bg-gray-100 cursor-pointer">
-              <div class="flex justify-between items-center">
-                <div>
-                  <span class="font-mono text-xs text-gray-400 mr-2">{{ a.codigo }}</span>
-                  <span class="font-medium">{{ a.nombre }}</span>
+            <div v-if="articulosSugeridos.length"
+              class="absolute z-20 bg-white border rounded-lg shadow-lg w-full mt-1 max-h-52 overflow-y-auto">
+              <div v-for="a in articulosSugeridos" :key="a.id" @click="agregarArticulo(a)"
+                class="px-4 py-2 text-sm hover:bg-gray-100 cursor-pointer border-b last:border-0">
+                <div class="flex justify-between items-center">
+                  <div>
+                    <span class="font-mono text-xs text-gray-400 mr-2">{{ a.codigo }}</span>
+                    <span class="font-medium">{{ a.nombre }}</span>
+                  </div>
+                  <div class="text-xs text-gray-500 text-right">
+                    <div>Stock: {{ a.stock_actual }}</div>
+                    <div>${{ fmt(a.precio_unitario) }} | {{ a.iva_porcentaje }}% IVA</div>
+                  </div>
                 </div>
-                <div class="text-xs text-gray-500 text-right">
-                  <div>Stock: {{ a.stock_actual }}</div>
-                  <div>${{ fmt(a.precio_unitario) }} | {{ a.iva_porcentaje }}% IVA</div>
-                </div>
+                <div class="text-xs text-gray-400 mt-0.5">{{ a.nivel1 }} / {{ a.nivel2 }}</div>
               </div>
-              <div class="text-xs text-gray-400 mt-0.5">{{ a.nivel1 }} / {{ a.nivel2 }}</div>
+            </div>
+          </div>
+          <!-- Tabla bienes -->
+          <div class="border rounded-lg overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs">
+                <thead style="background-color:#4a5e3a;" class="text-white">
+                  <tr>
+                    <th class="text-left px-3 py-2 font-semibold whitespace-nowrap">Código</th>
+                    <th class="text-left px-3 py-2 font-semibold whitespace-nowrap">Niv.1</th>
+                    <th class="text-left px-3 py-2 font-semibold whitespace-nowrap">Niv.2</th>
+                    <th class="text-left px-3 py-2 font-semibold">Descripción</th>
+                    <th class="text-right px-3 py-2 font-semibold w-28 whitespace-nowrap">Cantidad</th>
+                    <th class="w-8"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-if="!form.detalles.length">
+                    <td colspan="6" class="text-center py-8 text-gray-400 italic">Busca un artículo arriba para agregarlo</td>
+                  </tr>
+                  <tr v-for="(det, i) in form.detalles" :key="i" class="border-t hover:bg-amber-50">
+                    <td class="px-3 py-1.5 font-mono text-gray-500 whitespace-nowrap">{{ det.codigo }}</td>
+                    <td class="px-3 py-1.5 text-gray-500 whitespace-nowrap">{{ det.nivel1 || '-' }}</td>
+                    <td class="px-3 py-1.5 text-gray-500 whitespace-nowrap">{{ det.nivel2 || '-' }}</td>
+                    <td class="px-3 py-1.5 font-medium">{{ det.nombre }}</td>
+                    <td class="px-3 py-1.5">
+                      <input v-model.number="det.cantidad" type="number" step="0.01" min="0.01"
+                        @input="recalcularLinea(det)"
+                        class="w-full border rounded px-2 py-1 text-right focus:ring-1 outline-none text-xs" />
+                    </td>
+                    <td class="px-2 py-1.5 text-center">
+                      <button @click="form.detalles.splice(i, 1)" class="text-red-400 hover:text-red-600 font-bold text-base leading-none">✕</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
 
-        <!-- Tabla de detalle estilo Excel -->
-        <div class="border rounded-lg overflow-hidden mb-4">
-          <div class="overflow-x-auto">
-            <table class="w-full text-xs">
-              <thead style="background-color:#4a5e3a;" class="text-white">
-                <tr>
-                  <th class="text-left px-2 py-2 font-medium w-24">Código</th>
-                  <th class="text-left px-2 py-2 font-medium w-16">Niv.1</th>
-                  <th class="text-left px-2 py-2 font-medium w-20">Niv.2</th>
-                  <th class="text-left px-2 py-2 font-medium">Descripción</th>
-                  <th class="text-right px-2 py-2 font-medium w-20">Cantidad</th>
-                  <th class="text-right px-2 py-2 font-medium w-24">Precio</th>
-                  <th class="text-right px-2 py-2 font-medium w-20">IVA%</th>
-                  <th class="text-right px-2 py-2 font-medium w-24">Subtotal</th>
-                  <th class="text-right px-2 py-2 font-medium w-20">IVA $</th>
-                  <th class="text-right px-2 py-2 font-medium w-24">Total</th>
-                  <th class="w-6"></th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-if="!form.detalles.length">
-                  <td colspan="11" class="text-center py-8 text-gray-400 italic">
-                    Busca un artículo arriba para agregarlo al ingreso
-                  </td>
-                </tr>
-                <tr v-for="(det, i) in form.detalles" :key="i" class="border-t hover:bg-gray-50">
-                  <td class="px-2 py-1 font-mono text-gray-500">{{ det.codigo }}</td>
-                  <td class="px-2 py-1 text-gray-500">{{ det.nivel1 || '-' }}</td>
-                  <td class="px-2 py-1 text-gray-500">{{ det.nivel2 || '-' }}</td>
-                  <td class="px-2 py-1 font-medium">{{ det.nombre }}</td>
-                  <td class="px-2 py-1">
-                    <input v-model.number="det.cantidad" type="number" step="0.01" min="0.01"
-                      @input="recalcularLinea(det)"
-                      class="w-full border rounded px-1.5 py-1 text-right focus:ring-1 outline-none text-xs" />
-                  </td>
-                  <td class="px-2 py-1">
-                    <div class="relative">
-                      <span class="absolute left-1.5 top-1/2 -translate-y-1/2 text-gray-400">$</span>
-                      <input v-model.number="det.precio_unitario" type="number" step="0.0001" min="0"
-                        @input="recalcularLinea(det)"
-                        class="w-full border rounded pl-4 pr-1 py-1 text-right focus:ring-1 outline-none text-xs" />
-                    </div>
-                  </td>
-                  <td class="px-2 py-1">
-                    <select v-model="det.iva_id" @change="onIvaChange(det)"
-                      class="w-full border rounded px-1.5 py-1 text-right focus:ring-1 outline-none text-xs">
-                      <option value="">Sin IVA</option>
-                      <option v-for="iva in ivasActivos" :key="iva.id" :value="iva.id">
-                        {{ iva.porcentaje }}%
-                      </option>
-                    </select>
-                  </td>
-                  <td class="px-2 py-1 text-right font-mono">${{ fmt(det._subtotal) }}</td>
-                  <td class="px-2 py-1 text-right font-mono">${{ fmt(det._iva_valor) }}</td>
-                  <td class="px-2 py-1 text-right font-mono font-semibold">${{ fmt(det._total_linea) }}</td>
-                  <td class="px-2 py-1 text-center">
-                    <button @click="form.detalles.splice(i, 1)" class="text-red-400 hover:text-red-600 font-bold">✕</button>
-                  </td>
-                </tr>
-              </tbody>
-              <tfoot v-if="form.detalles.length" class="bg-gray-50 border-t-2">
-                <tr>
-                  <td colspan="7" class="px-2 py-2 text-right font-semibold text-gray-600 text-xs">SUBTOTAL:</td>
-                  <td class="px-2 py-2 text-right font-bold font-mono">${{ fmt(totales.subtotal) }}</td>
-                  <td class="px-2 py-2 text-right font-bold font-mono">${{ fmt(totales.iva) }}</td>
-                  <td class="px-2 py-2 text-right font-bold font-mono text-sm" style="color:#4a5e3a;">${{ fmt(totales.total) }}</td>
-                  <td></td>
-                </tr>
-              </tfoot>
-            </table>
+        <!-- ── TAB MONETARIO ── -->
+        <div v-show="tabActiva === 'monetario'">
+          <div class="border rounded-lg overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs">
+                <thead style="background-color:#4a5e3a;" class="text-white">
+                  <tr>
+                    <th class="text-left px-3 py-2 font-semibold whitespace-nowrap">Código</th>
+                    <th class="text-left px-3 py-2 font-semibold">Descripción</th>
+                    <th class="text-right px-3 py-2 font-semibold whitespace-nowrap">Cant.</th>
+                    <th class="text-right px-3 py-2 font-semibold whitespace-nowrap w-28">Precio s/IVA</th>
+                    <th class="text-right px-3 py-2 font-semibold whitespace-nowrap w-24">IVA %</th>
+                    <th class="text-right px-3 py-2 font-semibold whitespace-nowrap">Subtotal</th>
+                    <th class="text-right px-3 py-2 font-semibold whitespace-nowrap">IVA $</th>
+                    <th class="text-right px-3 py-2 font-semibold whitespace-nowrap">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-if="!form.detalles.length">
+                    <td colspan="8" class="text-center py-8 text-gray-400 italic">Agrega artículos en la pestaña Bienes</td>
+                  </tr>
+                  <tr v-for="(det, i) in form.detalles" :key="i" class="border-t hover:bg-amber-50">
+                    <td class="px-3 py-1.5 font-mono text-gray-500 whitespace-nowrap">{{ det.codigo }}</td>
+                    <td class="px-3 py-1.5 font-medium">{{ det.nombre }}</td>
+                    <td class="px-3 py-1.5 text-right whitespace-nowrap">{{ det.cantidad }}</td>
+                    <td class="px-3 py-1.5">
+                      <div class="relative">
+                        <span class="absolute left-1.5 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                        <input v-model.number="det.precio_unitario" type="number" step="0.0001" min="0"
+                          @input="recalcularLinea(det)"
+                          class="w-full border rounded pl-4 pr-1 py-1 text-right focus:ring-1 outline-none text-xs" />
+                      </div>
+                    </td>
+                    <td class="px-3 py-1.5">
+                      <select v-model="det.iva_id" @change="onIvaChange(det)"
+                        class="w-full border rounded px-1.5 py-1 text-right focus:ring-1 outline-none text-xs">
+                        <option value="">Sin IVA</option>
+                        <option v-for="iva in ivasActivos" :key="iva.id" :value="iva.id">{{ iva.porcentaje }}%</option>
+                      </select>
+                    </td>
+                    <td class="px-3 py-1.5 text-right font-mono whitespace-nowrap">${{ fmt(det._subtotal) }}</td>
+                    <td class="px-3 py-1.5 text-right font-mono whitespace-nowrap">${{ fmt(det._iva_valor) }}</td>
+                    <td class="px-3 py-1.5 text-right font-mono font-semibold whitespace-nowrap">${{ fmt(det._total_linea) }}</td>
+                  </tr>
+                </tbody>
+                <tfoot v-if="form.detalles.length" style="background-color:#f0f4ed;" class="border-t-2">
+                  <tr>
+                    <td colspan="5" class="px-3 py-2 text-right font-semibold text-gray-600">TOTALES:</td>
+                    <td class="px-3 py-2 text-right font-bold font-mono">${{ fmt(totales.subtotal) }}</td>
+                    <td class="px-3 py-2 text-right font-bold font-mono">${{ fmt(totales.iva) }}</td>
+                    <td class="px-3 py-2 text-right font-bold font-mono text-sm" style="color:#4a5e3a;">${{ fmt(totales.total) }}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
           </div>
         </div>
 
-        <p v-if="errorForm" class="text-red-600 text-sm mb-3">{{ errorForm }}</p>
-        <div class="flex justify-end gap-3">
+        <p v-if="errorForm" class="text-red-600 text-sm mt-4">{{ errorForm }}</p>
+        <div class="flex justify-end gap-3 mt-4">
           <button @click="modalForm.show = false" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancelar</button>
           <button @click="guardar" :disabled="guardando"
             class="text-white px-5 py-2 rounded-lg text-sm hover:opacity-90 disabled:opacity-50"
@@ -402,6 +439,13 @@ const articulosSugeridos = ref([])
 const busquedaProveedor  = ref('')
 const sugerenciasProveedor = ref([])
 const proveedorSeleccionado = ref(null)
+
+const tabActiva = ref('datos')
+const tabs = [
+  { key: 'datos',     label: 'Datos' },
+  { key: 'bienes',    label: 'Bienes' },
+  { key: 'monetario', label: 'Monetario' },
+]
 
 const modalForm    = ref({ show: false, editando: false, id: null })
 const modalDetalle = ref({ show: false, orden: null })
@@ -555,6 +599,7 @@ function abrirCrear() {
   sugerenciasProveedor.value = []
   proveedorSeleccionado.value = null
   errorForm.value = ''
+  tabActiva.value = 'datos'
   modalForm.value = { show: true, editando: false, id: null }
 }
 
@@ -590,14 +635,16 @@ async function abrirEditar(o) {
   }
   if (data.proveedor) {
     proveedorSeleccionado.value = data.proveedor
+    busquedaProveedor.value = data.proveedor.nombre
   } else {
     proveedorSeleccionado.value = null
+    busquedaProveedor.value = ''
   }
   busquedaArticulo.value = ''
   articulosSugeridos.value = []
-  busquedaProveedor.value = ''
   sugerenciasProveedor.value = []
   errorForm.value = ''
+  tabActiva.value = 'datos'
   modalForm.value = { show: true, editando: true, id: o.id }
 }
 
