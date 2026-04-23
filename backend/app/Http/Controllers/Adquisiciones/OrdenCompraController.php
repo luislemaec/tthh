@@ -248,9 +248,9 @@ class OrdenCompraController extends Controller
                 $ivaPct = $iva ? (float) $iva->porcentaje : 0;
             }
 
-            $subtotal  = round((float)$det['cantidad'] * (float)$det['precio_unitario'], 2);
-            $ivaValor  = round($subtotal * $ivaPct / 100, 2);
-            $totalLinea = $subtotal + $ivaValor;
+            $subtotal   = round((float)$det['cantidad'] * (float)$det['precio_unitario'], 4);
+            $ivaValor   = round($subtotal * $ivaPct / 100, 4);
+            $totalLinea = round($subtotal + $ivaValor, 4);
 
             $subtotalTotal += $subtotal;
             $ivaTotal      += $ivaValor;
@@ -269,9 +269,9 @@ class OrdenCompraController extends Controller
 
         return [
             'detalles' => $items,
-            'subtotal' => round($subtotalTotal, 2),
-            'iva_valor' => round($ivaTotal, 2),
-            'total'    => round($subtotalTotal + $ivaTotal, 2),
+            'subtotal' => round($subtotalTotal, 4),
+            'iva_valor' => round($ivaTotal, 4),
+            'total'    => round($subtotalTotal + $ivaTotal, 4),
         ];
     }
 }
