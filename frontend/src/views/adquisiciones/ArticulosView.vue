@@ -155,7 +155,7 @@
             :class="tabModal === tab.key
               ? 'border-b-2 font-semibold text-white px-5 py-2 text-sm -mb-px'
               : 'px-5 py-2 text-sm text-gray-500 hover:text-gray-700'"
-            :style="tabModal === tab.key ? 'border-color:#92400e; background-color:#92400e; border-radius:6px 6px 0 0;' : ''">
+            :style="tabModal === tab.key ? 'border-color:#4a5e3a; background-color:#4a5e3a; border-radius:6px 6px 0 0;' : ''">
             {{ tab.label }}
           </button>
         </div>
