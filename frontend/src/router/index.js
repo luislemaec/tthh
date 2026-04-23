@@ -67,6 +67,7 @@ const routes = [
       { path: 'catalogo',    name: 'AdqCatalogo',    component: () => import('@/views/adquisiciones/CatalogoInventarioView.vue') },
       { path: 'iva',             name: 'AdqIva',            component: () => import('@/views/adquisiciones/IvaView.vue') },
       { path: 'unidades-medida', name: 'AdqUnidadesMedida', component: () => import('@/views/adquisiciones/UnidadesMedidaView.vue') },
+      { path: 'egresos',        name: 'AdqEgresos',        component: () => import('@/views/adquisiciones/EgresosBienesView.vue') },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: '/' },

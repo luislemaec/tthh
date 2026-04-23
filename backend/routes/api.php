@@ -252,6 +252,18 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get('ordenes/{id}/pdf',                      [OrdenCompraController::class, 'pdf']);
         Route::delete('ordenes/{id}',                       [OrdenCompraController::class, 'destroy']);
 
+        // Egresos de bienes
+        Route::get('egresos',                               [\App\Http\Controllers\Adquisiciones\EgresoController::class, 'index']);
+        Route::post('egresos',                              [\App\Http\Controllers\Adquisiciones\EgresoController::class, 'store']);
+        Route::get('egresos/{id}',                          [\App\Http\Controllers\Adquisiciones\EgresoController::class, 'show']);
+        Route::put('egresos/{id}',                          [\App\Http\Controllers\Adquisiciones\EgresoController::class, 'update']);
+        Route::patch('egresos/{id}/confirmar',              [\App\Http\Controllers\Adquisiciones\EgresoController::class, 'confirmar']);
+        Route::patch('egresos/{id}/reversar',               [\App\Http\Controllers\Adquisiciones\EgresoController::class, 'reversar']);
+        Route::get('egresos/{id}/pdf',                      [\App\Http\Controllers\Adquisiciones\EgresoController::class, 'pdf']);
+        Route::delete('egresos/{id}',                       [\App\Http\Controllers\Adquisiciones\EgresoController::class, 'destroy']);
+        Route::get('departamentos-activos',                 [\App\Http\Controllers\Adquisiciones\EgresoController::class, 'departamentos']);
+        Route::get('empleados-activos',                     [\App\Http\Controllers\Adquisiciones\EgresoController::class, 'empleadosPorDepto']);
+
         // Solicitudes de materiales
         Route::get('solicitudes',                           [SolicitudMaterialController::class, 'index']);
         Route::post('solicitudes',                          [SolicitudMaterialController::class, 'store']);
