@@ -118,8 +118,8 @@
       <td style="text-align:center;">{{ $i + 1 }}</td>
       <td style="text-transform:uppercase;">{{ $det->articulo->nombre }}</td>
       <td style="text-align:center;">{{ intval($det->cantidad) == $det->cantidad ? intval($det->cantidad) : $det->cantidad }}</td>
-      <td style="text-align:right; font-family:monospace;">{{ number_format($precioConIva, 4) }}</td>
-      <td style="text-align:right; font-family:monospace;">{{ number_format($det->total_linea, 4) }}</td>
+      <td style="text-align:right; font-family:monospace;">{{ number_format($precioConIva, 5) }}</td>
+      <td style="text-align:right; font-family:monospace;">{{ number_format($det->total_linea, 5) }}</td>
     </tr>
     @endforeach
     @for($i = count($egreso->detalles); $i < 6; $i++)
@@ -129,7 +129,7 @@
       <td colspan="2" style="text-align:right; font-weight:bold; text-transform:uppercase;">Total:</td>
       <td style="text-align:center; font-weight:bold;">{{ $egreso->detalles->sum(fn($d) => intval($d->cantidad)) }}</td>
       <td></td>
-      <td style="text-align:right; font-family:monospace; font-weight:bold;">{{ number_format($egreso->total, 4) }}</td>
+      <td style="text-align:right; font-family:monospace; font-weight:bold;">{{ number_format($egreso->total, 5) }}</td>
     </tr>
   </tbody>
 </table>

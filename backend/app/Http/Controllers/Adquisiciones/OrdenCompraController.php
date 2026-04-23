@@ -143,7 +143,7 @@ class OrdenCompraController extends Controller
                 $precioAnterior = (float) $articulo->precio_unitario;
                 $nuevoPrecio    = (float) $det->precio_unitario;
                 $precioPromedio = $precioAnterior > 0
-                    ? round(($precioAnterior + $nuevoPrecio) / 2, 4)
+                    ? round(($precioAnterior + $nuevoPrecio) / 2, 5)
                     : $nuevoPrecio;
 
                 DB::table('adq.orden_compra_det')
@@ -248,9 +248,9 @@ class OrdenCompraController extends Controller
                 $ivaPct = $iva ? (float) $iva->porcentaje : 0;
             }
 
-            $subtotal   = round((float)$det['cantidad'] * (float)$det['precio_unitario'], 4);
-            $ivaValor   = round($subtotal * $ivaPct / 100, 4);
-            $totalLinea = round($subtotal + $ivaValor, 4);
+            $subtotal   = round((float)$det['cantidad'] * (float)$det['precio_unitario'], 5);
+            $ivaValor   = round($subtotal * $ivaPct / 100, 5);
+            $totalLinea = round($subtotal + $ivaValor, 5);
 
             $subtotalTotal += $subtotal;
             $ivaTotal      += $ivaValor;
@@ -269,9 +269,9 @@ class OrdenCompraController extends Controller
 
         return [
             'detalles' => $items,
-            'subtotal' => round($subtotalTotal, 4),
-            'iva_valor' => round($ivaTotal, 4),
-            'total'    => round($subtotalTotal + $ivaTotal, 4),
+            'subtotal' => round($subtotalTotal, 5),
+            'iva_valor' => round($ivaTotal, 5),
+            'total'    => round($subtotalTotal + $ivaTotal, 5),
         ];
     }
 }

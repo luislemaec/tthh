@@ -133,9 +133,9 @@ class EgresoController extends Controller
                     $ivaPct = $iva ? (float) $iva->porcentaje : 0;
                 }
 
-                $subtotal   = round((float) $det->cantidad * $precioAnterior, 4);
-                $ivaValor   = round($subtotal * $ivaPct / 100, 4);
-                $totalLinea = round($subtotal + $ivaValor, 4);
+                $subtotal   = round((float) $det->cantidad * $precioAnterior, 5);
+                $ivaValor   = round($subtotal * $ivaPct / 100, 5);
+                $totalLinea = round($subtotal + $ivaValor, 5);
 
                 $subtotalTotal += $subtotal;
                 $ivaTotal      += $ivaValor;
@@ -162,9 +162,9 @@ class EgresoController extends Controller
             }
 
             $egreso->update([
-                'subtotal'         => round($subtotalTotal, 4),
-                'iva_valor'        => round($ivaTotal, 4),
-                'total'            => round($subtotalTotal + $ivaTotal, 4),
+                'subtotal'         => round($subtotalTotal, 5),
+                'iva_valor'        => round($ivaTotal, 5),
+                'total'            => round($subtotalTotal + $ivaTotal, 5),
                 'estado'           => 'DESPACHADO',
                 'usuario_despacho' => $request->user()->id_emp,
                 'fecha_despacho'   => now(),
@@ -289,9 +289,9 @@ class EgresoController extends Controller
                 $ivaPct = $iva ? (float) $iva->porcentaje : 0;
             }
 
-            $subtotal   = round((float) $det['cantidad'] * $precio, 4);
-            $ivaValor   = round($subtotal * $ivaPct / 100, 4);
-            $totalLinea = round($subtotal + $ivaValor, 4);
+            $subtotal   = round((float) $det['cantidad'] * $precio, 5);
+            $ivaValor   = round($subtotal * $ivaPct / 100, 5);
+            $totalLinea = round($subtotal + $ivaValor, 5);
 
             $subtotalTotal += $subtotal;
             $ivaTotal      += $ivaValor;
@@ -310,9 +310,9 @@ class EgresoController extends Controller
 
         return [
             'detalles' => $items,
-            'subtotal' => round($subtotalTotal, 4),
-            'iva_valor' => round($ivaTotal, 4),
-            'total'    => round($subtotalTotal + $ivaTotal, 4),
+            'subtotal' => round($subtotalTotal, 5),
+            'iva_valor' => round($ivaTotal, 5),
+            'total'    => round($subtotalTotal + $ivaTotal, 5),
         ];
     }
 }

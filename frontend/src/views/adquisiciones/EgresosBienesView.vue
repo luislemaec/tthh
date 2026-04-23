@@ -367,14 +367,14 @@ const totales = computed(() => {
   return { subtotal, iva, total: subtotal + iva }
 })
 
-function fmt(v) { return parseFloat(v || 0).toFixed(4) }
+function fmt(v) { return parseFloat(v || 0).toFixed(5) }
 
 function recalcularLinea(det) {
-  const sub    = Math.round((det.cantidad || 0) * (det.precio_unitario || 0) * 10000) / 10000
-  const ivaVal = Math.round(sub * (det.iva_porcentaje || 0) / 100 * 10000) / 10000
+  const sub    = Math.round((det.cantidad || 0) * (det.precio_unitario || 0) * 100000) / 100000
+  const ivaVal = Math.round(sub * (det.iva_porcentaje || 0) / 100 * 100000) / 100000
   det._subtotal    = sub
   det._iva_valor   = ivaVal
-  det._total_linea = Math.round((sub + ivaVal) * 10000) / 10000
+  det._total_linea = Math.round((sub + ivaVal) * 100000) / 100000
 }
 
 function filtrarArticulos() {
@@ -394,8 +394,8 @@ function agregarArticulo(a) {
   else {
     const precio = parseFloat(a.precio_unitario || 0)
     const ivaPct = parseFloat(a.iva_porcentaje || 0)
-    const sub    = Math.round(1 * precio * 10000) / 10000
-    const ivaVal = Math.round(sub * ivaPct / 100 * 10000) / 10000
+    const sub    = Math.round(1 * precio * 100000) / 100000
+    const ivaVal = Math.round(sub * ivaPct / 100 * 100000) / 100000
     form.value.detalles.push({
       articulo_id:    a.id,
       codigo:         a.codigo,
