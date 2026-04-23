@@ -48,13 +48,14 @@ After any change, always tell the user:
 - 401 response clears token and redirects to `/login`
 
 ### Role System
-Three roles: `ADMINISTRADOR`, `TALENTO HUMANO`, `SUPERVISOR`. Regular employees have no role.
+Five roles: `ADMINISTRADOR`, `TALENTO HUMANO`, `SUPERVISOR`, `ADQUISICIONES`, `BIENES`. Regular employees have no role.
+- `ADQUISICIONES` and `BIENES` access `/adquisiciones/*` module via `AdqLayout.vue`
 - Backend: checked via `DB::table('dbo.admin_usuario_rol')` joins in controllers (no Laravel policies/gates)
 - Frontend: `auth.tieneRol('NOMBRE')` from Pinia store
 - Menu items are filtered per role from `dbo.admin_opcion`
 
 ### Database Conventions
-- All tables use `dbo` schema prefix (PostgreSQL)
+- HR tables use `dbo` schema; Adquisiciones tables use `adq` schema (same PostgreSQL DB)
 - Employee statuses: `ACTIVO` / `INACTIVO` (soft deletes — never hard delete employees)
 - Request statuses: `PENDIENTE`, `APROBADO`, `NEGADO`, `ELIMINADO`
 - Department 999 (`id_depto = 999`) is excluded from all queries — it's a system/admin placeholder
@@ -99,6 +100,11 @@ Computed on-the-fly in `calcularSaldoDisponible()` / `calcularSaldo()`:
 | `CuadreController` | Attendance reconciliation |
 | `DashboardController` | Dashboard stats |
 | `Admin/*` | Departments, reasons, shifts, schedules, calendar, configuration, IESS contributions |
+| `Adquisiciones/ArticuloController` | Inventory CRUD + image upload + stock alerts |
+| `Adquisiciones/OrdenCompraController` | Ingresos de bienes (BORRADOR→RECIBIDO, updates stock + precio promedio) |
+| `Adquisiciones/EgresoController` | Egresos de bienes (BORRADOR→DESPACHADO, decrements stock) |
+| `Adquisiciones/ProveedorController` | Supplier CRUD |
+| `Adquisiciones/IvaController` | IVA rate CRUD |
 
 ### Acciones de Personal Module
 Table: `dbo.acc_accion_personal`. Supported types and their rules:
@@ -130,12 +136,35 @@ frontend/src/
   router/index.js           # Routes with meta.requiresAuth / meta.rol guards
   stores/auth.js            # Pinia: token, empleado, roles, menu (localStorage)
   services/api.js           # Axios instance (base URL from VITE_API_URL)
-  layouts/MainLayout.vue
+  layouts/MainLayout.vue    # HR module layout
+  layouts/AdqLayout.vue     # Adquisiciones module layout (green sidebar, roles ADQUISICIONES/BIENES)
   views/acciones/           # Acciones de Personal (list + form)
   views/planificacion/      # Vacation planning, liquidation, report
   views/empleados/          # Employee CRUD, detail, import, distributivo
   views/admin/              # Admin panel (roles, departments, shifts, config, etc.)
+  views/adquisiciones/      # Adquisiciones module (articulos, ingresos, egresos, proveedores, IVA)
 ```
+
+### Adquisiciones Module
+
+**Schema:** `adq.*` tables. Key tables:
+- `adq.articulo` — inventory items; `precio_unitario DECIMAL(10,4)`, `stock_actual`, `iva_id`
+- `adq.orden_compra` / `adq.orden_compra_det` — ingresos (BORRADOR→RECIBIDO)
+- `adq.egreso` / `adq.egreso_det` — egresos (BORRADOR→DESPACHADO)
+- `adq.iva` — IVA rates (e.g. 15%, 0%)
+- `adq.catalogo_inventario` — MEF catalog (nivel1/nivel2/item_presupuestario)
+
+**Price rules:**
+- All monetary calculations use `round(..., 4)` — 4 decimal places throughout (subtotal, iva_valor, total_linea, totals)
+- On ingreso confirm: `precio_unitario = (old == 0) ? new : round((old + new) / 2, 4)` (weighted average)
+- On egreso confirm: if `stock_actual` reaches 0, set `precio_unitario = 0`; on reversal restore price only if current price is still 0 and `precio_anterior > 0`
+- Frontend `fmt()` and `recalcularLinea()` also use 4-decimal rounding (`Math.round(... * 10000) / 10000`)
+
+**Stock updates:** Always use `DB::table()->update(['stock_actual' => DB::raw('stock_actual + N')])` — never Eloquent `$model->update()` for stock (unreliable with schema-prefixed tables in PostgreSQL).
+
+**Routes:** All Adquisiciones API routes are under `/api/adquisiciones/*` in `routes/api.php`.
+
+**Images:** Article images stored via `Storage::disk('public')` in `articulos/` folder. Run `php artisan storage:link` once after deploy. URL returned as `imagen_url` in `articulos` API response.
 
 ### Environment
 - `VITE_API_URL` in `frontend/.env` sets the API base URL (default: `http://localhost:8000/api`)
