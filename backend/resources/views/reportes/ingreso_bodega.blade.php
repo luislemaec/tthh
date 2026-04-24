@@ -101,11 +101,11 @@
 {{-- ══ DETALLE ══ --}}
 <table class="det-table" style="margin-top:8px;">
   <colgroup>
-    <col style="width:12%">
-    <col style="width:46%">
-    <col style="width:8%">
-    <col style="width:17%">
-    <col style="width:17%">
+    <col style="width:11%">
+    <col style="width:52%">
+    <col style="width:5%">
+    <col style="width:16%">
+    <col style="width:16%">
   </colgroup>
   <thead>
     <tr>
@@ -126,7 +126,7 @@
       <td style="text-align:right; font-family:monospace;">{{ number_format($det->subtotal, 5) }}</td>
     </tr>
     @endforeach
-    @for($i = count($orden->detalles); $i < 6; $i++)
+    @for($i = count($orden->detalles); $i < 3; $i++)
     <tr><td style="height:16px;">&nbsp;</td><td></td><td></td><td></td><td></td></tr>
     @endfor
   </tbody>
@@ -137,47 +137,51 @@
   $tarifa0  = $orden->detalles->where('iva_porcentaje', 0)->sum('subtotal');
   $tarifa15 = $orden->detalles->where('iva_porcentaje', '>', 0)->sum('subtotal');
 @endphp
-<div class="clearfix" style="margin-top:0;">
-  {{-- Firma izquierda --}}
-  <table style="float:left; width:50%; border-collapse:collapse;">
-    <tr>
-      <td style="border:1px solid #555; padding: 36px 12px 4px 12px; text-align:center;">&nbsp;</td>
-    </tr>
-    <tr>
-      <td style="border:1px solid #555; padding:4px 12px; text-align:center; font-weight:bold;
-                 text-transform:uppercase; font-size:8px; background-color:#e5e7eb;">
-        Recibido por la Unidad de Bienes
-      </td>
-    </tr>
-  </table>
-  {{-- Totales derecha --}}
-  <table class="totales-inner">
-    <tr>
-      <td class="totales-label">Subtotal</td>
-      <td class="totales-valor">{{ number_format($orden->subtotal, 5) }}</td>
-    </tr>
-    <tr>
-      <td class="totales-label">Otros Dsctos.</td>
-      <td class="totales-valor">0.00000</td>
-    </tr>
-    <tr>
-      <td class="totales-label">Tarifa 0%</td>
-      <td class="totales-valor">{{ number_format($tarifa0, 5) }}</td>
-    </tr>
-    <tr>
-      <td class="totales-label">Tarifa 15%</td>
-      <td class="totales-valor">{{ number_format($tarifa15, 5) }}</td>
-    </tr>
-    <tr>
-      <td class="totales-label">15 % IVA</td>
-      <td class="totales-valor">{{ number_format($orden->iva_valor, 5) }}</td>
-    </tr>
-    <tr class="totales-total">
-      <td class="totales-label totales-total">Total</td>
-      <td class="totales-valor totales-total">{{ number_format($orden->total, 5) }}</td>
-    </tr>
-  </table>
-</div>
+<table style="width:100%; margin-top:0; border-collapse:collapse;">
+  <tr style="vertical-align:bottom;">
+    <td style="width:53%; padding-right:6px; vertical-align:bottom;">
+      <table style="width:100%; border-collapse:collapse;">
+        <tr>
+          <td style="border:1px solid #555; padding:36px 12px 4px 12px; text-align:center;">&nbsp;</td>
+        </tr>
+        <tr>
+          <td style="border:1px solid #555; padding:4px 12px; text-align:center; font-weight:bold;
+                     text-transform:uppercase; font-size:8px; background-color:#e5e7eb;">
+            Recibido por la Unidad de Bienes
+          </td>
+        </tr>
+      </table>
+    </td>
+    <td style="width:47%; vertical-align:bottom;">
+      <table style="width:100%; border-collapse:collapse;">
+        <tr>
+          <td class="totales-label">Subtotal</td>
+          <td class="totales-valor">{{ number_format($orden->subtotal, 5) }}</td>
+        </tr>
+        <tr>
+          <td class="totales-label">Otros Dsctos.</td>
+          <td class="totales-valor">0.00000</td>
+        </tr>
+        <tr>
+          <td class="totales-label">Tarifa 0%</td>
+          <td class="totales-valor">{{ number_format($tarifa0, 5) }}</td>
+        </tr>
+        <tr>
+          <td class="totales-label">Tarifa 15%</td>
+          <td class="totales-valor">{{ number_format($tarifa15, 5) }}</td>
+        </tr>
+        <tr>
+          <td class="totales-label">15 % IVA</td>
+          <td class="totales-valor">{{ number_format($orden->iva_valor, 5) }}</td>
+        </tr>
+        <tr>
+          <td class="totales-label totales-total">Total</td>
+          <td class="totales-valor totales-total">{{ number_format($orden->total, 5) }}</td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
 
 </body>
 </html>
