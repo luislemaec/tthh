@@ -15,32 +15,61 @@
     </div>
 
     <!-- Filtros -->
-    <div class="flex gap-3 mb-3 flex-wrap">
-      <input v-model="busqueda" type="text" placeholder="Buscar por nombre, código o nivel..."
-        class="border rounded-lg px-3 py-2 text-sm w-64 focus:ring-2 focus:ring-amber-300 outline-none" />
-      <select v-model="filtroEstado" class="border rounded-lg px-3 py-2 text-sm">
-        <option value="">Todos los estados</option>
-        <option value="alerta">Solo alertas de stock</option>
-        <option value="ACTIVO">Activos</option>
-        <option value="INACTIVO">Inactivos</option>
-      </select>
-      <select v-model="filtroFisico" class="border rounded-lg px-3 py-2 text-sm">
-        <option value="">Todas las condiciones</option>
-        <option value="BUENO">Bueno</option>
-        <option value="MALO">Malo</option>
-        <option value="INSERVIBLE">Inservible</option>
-      </select>
+    <div class="flex gap-3 mb-3 flex-wrap items-end">
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Nivel 1</label>
+        <select v-model="filtroNivel1" @change="filtroNivel2 = ''" class="border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none">
+          <option value="">Todas las categorías</option>
+          <option v-for="n in nivel1s" :key="n.nivel1" :value="n.nivel1">{{ n.nivel1 }} — {{ n.descripcion }}</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Nivel 2</label>
+        <select v-model="filtroNivel2" :disabled="!filtroNivel1" class="border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none">
+          <option value="">Todos los subniveles</option>
+          <option v-for="c in nivel2sParaBuscar" :key="c.nivel2" :value="c.nivel2">{{ c.nivel2 }} — {{ c.descripcion }}</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Texto</label>
+        <input v-model="busqueda" type="text" placeholder="Nombre o código..."
+          class="border rounded-lg px-3 py-2 text-sm w-48 focus:ring-2 focus:ring-amber-300 outline-none" />
+      </div>
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Estado</label>
+        <select v-model="filtroEstado" class="border rounded-lg px-3 py-2 text-sm">
+          <option value="">Todos</option>
+          <option value="alerta">Solo alertas</option>
+          <option value="ACTIVO">Activos</option>
+          <option value="INACTIVO">Inactivos</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Condición</label>
+        <select v-model="filtroFisico" class="border rounded-lg px-3 py-2 text-sm">
+          <option value="">Todas</option>
+          <option value="BUENO">Bueno</option>
+          <option value="MALO">Malo</option>
+          <option value="INSERVIBLE">Inservible</option>
+        </select>
+      </div>
+      <button @click="buscar" class="bg-amber-700 text-white px-5 py-2 rounded-lg text-sm hover:bg-amber-800">
+        Buscar
+      </button>
     </div>
 
     <!-- Contador de resultados -->
     <div class="mb-3">
-      <span v-if="articulosFiltrados.length > 0"
+      <span v-if="!hasBuscado" class="inline-block bg-blue-50 text-blue-700 text-xs font-semibold px-3 py-1 rounded-full border border-blue-200">
+        Seleccione los filtros y presione Buscar
+      </span>
+      <span v-else-if="articulosFiltrados.length > 0"
         class="inline-block bg-green-100 text-green-800 text-xs font-semibold px-3 py-1 rounded-full border border-green-300">
         Se encontraron {{ articulosFiltrados.length }} de {{ articulos.length }} artículos
       </span>
       <span v-else
         class="inline-block bg-red-100 text-red-700 text-xs font-semibold px-3 py-1 rounded-full border border-red-300">
-        No se encontraron artículos (0 de {{ articulos.length }})
+        No se encontraron artículos
       </span>
     </div>
 
@@ -322,6 +351,9 @@ const articulos        = ref([])
 const busqueda         = ref('')
 const filtroEstado     = ref('')
 const filtroFisico     = ref('')
+const filtroNivel1     = ref('')
+const filtroNivel2     = ref('')
+const hasBuscado       = ref(false)
 const porcentajeMinimo = ref(20)
 const guardando        = ref(false)
 const errorModal       = ref('')
@@ -373,6 +405,10 @@ const nivel2sFiltrados = computed(() => {
   return catalogo.value.filter(c => c.nivel1 === modal.value.form.nivel1)
 })
 
+const nivel2sParaBuscar = computed(() =>
+  filtroNivel1.value ? catalogo.value.filter(c => c.nivel1 === filtroNivel1.value) : []
+)
+
 function fmt(v) { return parseFloat(v || 0).toFixed(2) }
 
 function onNivel1Change() {
@@ -387,8 +423,18 @@ function onNivel2Change() {
   modal.value.form.item_presupuestario = item?.asociacion_presupuestaria || ''
 }
 
+async function buscar() {
+  hasBuscado.value = true
+  paginaActual.value = 1
+  await cargar()
+}
+
 async function cargar() {
-  const { data } = await api.get('/adquisiciones/articulos')
+  const params = {}
+  if (filtroNivel1.value) params.nivel1 = filtroNivel1.value
+  if (filtroNivel2.value) params.nivel2 = filtroNivel2.value
+  if (busqueda.value)     params.q      = busqueda.value
+  const { data } = await api.get('/adquisiciones/articulos', { params })
   articulos.value = data
 }
 
@@ -411,7 +457,7 @@ async function cargarCatalogo() {
 }
 
 onMounted(async () => {
-  await Promise.all([cargar(), cargarConfig(), cargarCatalogo()])
+  await Promise.all([cargarConfig(), cargarCatalogo()])
 })
 
 const formVacio = () => ({

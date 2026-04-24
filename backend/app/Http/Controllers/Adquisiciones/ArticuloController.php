@@ -9,13 +9,19 @@ use Illuminate\Support\Facades\Storage;
 
 class ArticuloController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $porcentaje = (float)(DB::table('adq.configuracion')
             ->where('concepto', 'porcentaje_stock_minimo')
             ->value('valor') ?? 20);
 
-        $articulos = Articulo::with('iva')->orderBy('nombre')->get()->map(function ($a) use ($porcentaje) {
+        $query = Articulo::with('iva')->orderBy('nombre');
+        if ($request->nivel1) $query->where('nivel1', $request->nivel1);
+        if ($request->nivel2) $query->where('nivel2', $request->nivel2);
+        if ($request->q)      $query->where(fn($q) => $q->where('nombre', 'ilike', "%{$request->q}%")
+                                                         ->orWhere('codigo', 'ilike', "%{$request->q}%"));
+
+        $articulos = $query->get()->map(function ($a) use ($porcentaje) {
             $a->bajo_minimo  = $a->stock_maximo_historico > 0 &&
                 $a->stock_actual <= ($a->stock_maximo_historico * $porcentaje / 100);
             $ivaPct          = $a->iva ? (float)$a->iva->porcentaje : 0;

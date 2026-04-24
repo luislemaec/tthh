@@ -8,17 +8,24 @@
     </div>
 
     <!-- Filtros -->
-    <div class="flex gap-3 mb-3 flex-wrap">
-      <select v-model="filtroEstado" @change="cargar" class="border rounded-lg px-3 py-2 text-sm">
+    <div class="flex gap-3 mb-3 flex-wrap items-end">
+      <select v-model="filtroEstado" class="border rounded-lg px-3 py-2 text-sm">
         <option value="">Todos los estados</option>
         <option value="BORRADOR">Borrador</option>
         <option value="DESPACHADO">Despachado</option>
       </select>
+      <button @click="buscar" class="text-white px-5 py-2 rounded-lg text-sm hover:opacity-90" style="background-color:#4a5e3a;">
+        Buscar
+      </button>
     </div>
 
     <!-- Contador -->
     <div class="mb-3">
-      <span v-if="egresos.length > 0"
+      <span v-if="!hasBuscado"
+        class="inline-block bg-blue-50 text-blue-700 text-xs font-semibold px-3 py-1 rounded-full border border-blue-200">
+        Seleccione los filtros y presione Buscar
+      </span>
+      <span v-else-if="egresos.length > 0"
         class="inline-block bg-green-100 text-green-800 text-xs font-semibold px-3 py-1 rounded-full border border-green-300">
         Se encontraron {{ egresos.length }} egreso{{ egresos.length !== 1 ? 's' : '' }}
       </span>
@@ -323,6 +330,7 @@ import { ref, computed, onMounted } from 'vue'
 import api from '@/services/api'
 
 const egresos            = ref([])
+const hasBuscado         = ref(false)
 const filtroEstado       = ref('')
 const guardando          = ref(false)
 const errorForm          = ref('')
@@ -426,6 +434,11 @@ function onEmpleadoChange() {
   form.value.empleado_nombre = emp?.nombre_completo || ''
 }
 
+async function buscar() {
+  hasBuscado.value = true
+  await cargar()
+}
+
 async function cargar() {
   const params = {}
   if (filtroEstado.value) params.estado = filtroEstado.value
@@ -442,7 +455,6 @@ onMounted(async () => {
   articulos.value    = a.data
   departamentos.value = d.data
   empleados.value    = emp.data
-  await cargar()
 })
 
 function abrirCrear() {

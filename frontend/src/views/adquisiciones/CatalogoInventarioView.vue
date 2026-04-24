@@ -9,19 +9,31 @@
     </div>
 
     <!-- Filtros -->
-    <div class="flex gap-3 mb-3 flex-wrap">
-      <input v-model="busqueda" @input="cargar" type="text" placeholder="Buscar por código o descripción..."
-        class="border rounded-lg px-3 py-2 text-sm w-72 focus:ring-2 focus:ring-amber-300 outline-none" />
-      <select v-model="filtroNivel1" @change="cargar"
-        class="border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none w-72">
-        <option value="">Todas las categorías</option>
-        <option v-for="n in nivel1s" :key="n.nivel1" :value="n.nivel1">{{ n.nivel1 }} — {{ n.descripcion }}</option>
-      </select>
+    <div class="flex gap-3 mb-3 flex-wrap items-end">
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Categoría (Nivel 1)</label>
+        <select v-model="filtroNivel1" class="border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none w-72">
+          <option value="">Todas las categorías</option>
+          <option v-for="n in nivel1s" :key="n.nivel1" :value="n.nivel1">{{ n.nivel1 }} — {{ n.descripcion }}</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Texto</label>
+        <input v-model="busqueda" type="text" placeholder="Buscar por código o descripción..."
+          class="border rounded-lg px-3 py-2 text-sm w-72 focus:ring-2 focus:ring-amber-300 outline-none" />
+      </div>
+      <button @click="buscar" class="bg-amber-700 text-white px-5 py-2 rounded-lg text-sm hover:bg-amber-800">
+        Buscar
+      </button>
     </div>
 
     <!-- Contador -->
     <div class="mb-3">
-      <span v-if="paginacion.total > 0"
+      <span v-if="!hasBuscado"
+        class="inline-block bg-blue-50 text-blue-700 text-xs font-semibold px-3 py-1 rounded-full border border-blue-200">
+        Seleccione los filtros y presione Buscar
+      </span>
+      <span v-else-if="paginacion.total > 0"
         class="inline-block bg-green-100 text-green-800 text-xs font-semibold px-3 py-1 rounded-full border border-green-300">
         Se encontraron {{ paginacion.total }} ítems
         <template v-if="paginacion.last_page > 1"> — página {{ paginacion.current_page }} de {{ paginacion.last_page }}</template>
@@ -153,6 +165,14 @@ const errorModal = ref('')
 
 const modal = ref({ show: false, editando: false, form: {} })
 
+const hasBuscado = ref(false)
+
+async function buscar() {
+  hasBuscado.value = true
+  pagina.value = 1
+  await cargar()
+}
+
 async function cargar() {
   cargando.value = true
   try {
@@ -172,7 +192,7 @@ async function cargarNivel1s() {
   nivel1s.value = data
 }
 
-onMounted(() => Promise.all([cargar(), cargarNivel1s()]))
+onMounted(() => cargarNivel1s())
 
 function abrirCrear() {
   modal.value = { show: true, editando: false, form: { nivel1: '', nivel2: '', descripcion: '', asociacion_presupuestaria: '' } }
