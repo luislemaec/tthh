@@ -5,7 +5,7 @@
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: DejaVu Sans, sans-serif; font-size: 9px; color: #111; }
-  @page { margin: 12mm 10mm 12mm 10mm; }
+  @page { margin: 12mm 20mm 12mm 20mm; }
 
   table { border-collapse: collapse; width: 100%; }
   td, th { vertical-align: middle; }

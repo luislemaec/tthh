@@ -5,7 +5,7 @@
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: DejaVu Sans, sans-serif; font-size: 9px; color: #111; }
-  @page { margin: 12mm 10mm 12mm 10mm; }
+  @page { margin: 12mm 20mm 12mm 20mm; }
 
   table { border-collapse: collapse; width: 100%; }
   td, th { vertical-align: middle; }
@@ -150,6 +150,19 @@
   $tarifa15 = $orden->detalles->where('iva_porcentaje', '>', 0)->sum('subtotal');
 @endphp
 <div class="clearfix" style="margin-top:0;">
+  {{-- Firma izquierda --}}
+  <table style="float:left; width:50%; border-collapse:collapse;">
+    <tr>
+      <td style="border:1px solid #555; padding: 36px 12px 4px 12px; text-align:center;">&nbsp;</td>
+    </tr>
+    <tr>
+      <td style="border:1px solid #555; padding:4px 12px; text-align:center; font-weight:bold;
+                 text-transform:uppercase; font-size:8px; background-color:#e5e7eb;">
+        Recibido por la Unidad de Bienes
+      </td>
+    </tr>
+  </table>
+  {{-- Totales derecha --}}
   <table class="totales-inner" style="float:right; width:45%; border-collapse:collapse;">
     <tr>
       <td class="totales-label">Subtotal</td>
@@ -177,16 +190,6 @@
     </tr>
   </table>
 </div>
-
-{{-- ══ PIE — espacio para firma digital ══ --}}
-<table style="width:100%; margin-top:20px; border-collapse:collapse;">
-  <tr>
-    <td style="border:1px solid #555; padding: 36px 12px 6px 12px; text-align:center;
-               font-weight:bold; font-size:9px; text-transform:uppercase;">
-      Recibido por la Unidad de Bienes
-    </td>
-  </tr>
-</table>
 
 </body>
 </html>
