@@ -289,9 +289,11 @@ class EgresoController extends Controller
                 $ivaPct = $iva ? (float) $iva->porcentaje : 0;
             }
 
-            $subtotal   = round((float) $det['cantidad'] * $precio, 5);
-            $totalLinea = round($subtotal * (1 + $ivaPct / 100), 5);
-            $ivaValor   = round($totalLinea - $subtotal, 5);
+            $subMicro   = (int) round((float) $det['cantidad'] * $precio * 100000);
+            $ivaMicro   = (int) round($subMicro * $ivaPct / 100);
+            $subtotal   = $subMicro / 100000;
+            $ivaValor   = $ivaMicro / 100000;
+            $totalLinea = ($subMicro + $ivaMicro) / 100000;
 
             $subtotalTotal += $subtotal;
             $ivaTotal      += $ivaValor;
