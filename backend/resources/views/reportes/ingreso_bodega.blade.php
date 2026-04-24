@@ -30,12 +30,11 @@
   }
   .det-table td { border: 1px solid #555; padding: 4px; }
 
-  .totales-wrap { width: 100%; margin-top: 0; }
   .totales-inner { float: right; width: 45%; border-collapse: collapse; }
   .totales-inner td { border: 1px solid #555; padding: 4px 8px; }
   .totales-label { font-weight: bold; text-align: right; font-size: 8px; text-transform: uppercase; background-color: #e5e7eb; }
   .totales-valor { text-align: right; font-family: monospace; width: 90px; }
-  .totales-total  { font-weight: bold; background-color: #d1d5db; }
+  .totales-total { font-weight: bold; background-color: #d1d5db; }
 
   .clearfix::after { content: ""; display: table; clear: both; }
 </style>
@@ -93,8 +92,7 @@
         {{ \Carbon\Carbon::parse($orden->fecha_documento)->day }}
         de {{ ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'][\Carbon\Carbon::parse($orden->fecha_documento)->month - 1] }}
         de {{ \Carbon\Carbon::parse($orden->fecha_documento)->year }}
-      @else
-        —
+      @else —
       @endif
     </td>
   </tr>
@@ -103,25 +101,19 @@
 {{-- ══ DETALLE ══ --}}
 <table class="det-table" style="margin-top:8px;">
   <colgroup>
-    <col style="width:11%">
-    <col style="width:30%">
-    <col style="width:5%">
     <col style="width:12%">
-    <col style="width:6%">
-    <col style="width:12%">
-    <col style="width:12%">
-    <col style="width:12%">
+    <col style="width:46%">
+    <col style="width:8%">
+    <col style="width:17%">
+    <col style="width:17%">
   </colgroup>
   <thead>
     <tr>
       <th>Ítem</th>
       <th>Descripción</th>
       <th>Cant.</th>
-      <th>Precio Unit.<br>(s/IVA)</th>
-      <th>IVA%</th>
-      <th>Subtotal</th>
-      <th>IVA $</th>
-      <th>Total</th>
+      <th>Precio Unitario</th>
+      <th>Valor Total</th>
     </tr>
   </thead>
   <tbody>
@@ -131,20 +123,16 @@
       <td style="text-transform:uppercase;">{{ $det->articulo->nombre }}</td>
       <td style="text-align:center;">{{ intval($det->cantidad) == $det->cantidad ? intval($det->cantidad) : $det->cantidad }}</td>
       <td style="text-align:right; font-family:monospace;">{{ number_format($det->precio_unitario, 5) }}</td>
-      <td style="text-align:center;">{{ number_format($det->iva_porcentaje, 0) }}%</td>
       <td style="text-align:right; font-family:monospace;">{{ number_format($det->subtotal, 5) }}</td>
-      <td style="text-align:right; font-family:monospace;">{{ number_format($det->iva_valor, 5) }}</td>
-      <td style="text-align:right; font-family:monospace;">{{ number_format($det->total_linea, 5) }}</td>
     </tr>
     @endforeach
-    {{-- Filas vacías para rellenar --}}
     @for($i = count($orden->detalles); $i < 6; $i++)
-    <tr><td style="height:16px;">&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td style="height:16px;">&nbsp;</td><td></td><td></td><td></td><td></td></tr>
     @endfor
   </tbody>
 </table>
 
-{{-- ══ TOTALES ══ --}}
+{{-- ══ TOTALES + FIRMA (misma fila) ══ --}}
 @php
   $tarifa0  = $orden->detalles->where('iva_porcentaje', 0)->sum('subtotal');
   $tarifa15 = $orden->detalles->where('iva_porcentaje', '>', 0)->sum('subtotal');
@@ -163,7 +151,7 @@
     </tr>
   </table>
   {{-- Totales derecha --}}
-  <table class="totales-inner" style="float:right; width:45%; border-collapse:collapse;">
+  <table class="totales-inner">
     <tr>
       <td class="totales-label">Subtotal</td>
       <td class="totales-valor">{{ number_format($orden->subtotal, 5) }}</td>

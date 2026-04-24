@@ -29,6 +29,14 @@
     text-transform: uppercase;
   }
   .det-table td { border: 1px solid #555; padding: 4px; }
+
+  .totales-inner { float: right; width: 45%; border-collapse: collapse; }
+  .totales-inner td { border: 1px solid #555; padding: 4px 8px; }
+  .totales-label { font-weight: bold; text-align: right; font-size: 8px; text-transform: uppercase; background-color: #e5e7eb; }
+  .totales-valor { text-align: right; font-family: monospace; width: 90px; }
+  .totales-total { font-weight: bold; background-color: #d1d5db; }
+
+  .clearfix::after { content: ""; display: table; clear: both; }
 </style>
 </head>
 <body>
@@ -86,25 +94,19 @@
 {{-- ══ DETALLE ══ --}}
 <table class="det-table" style="margin-top:8px;">
   <colgroup>
-    <col style="width:5%">
-    <col style="width:33%">
     <col style="width:6%">
-    <col style="width:12%">
-    <col style="width:6%">
-    <col style="width:13%">
-    <col style="width:12%">
-    <col style="width:13%">
+    <col style="width:52%">
+    <col style="width:8%">
+    <col style="width:17%">
+    <col style="width:17%">
   </colgroup>
   <thead>
     <tr>
       <th>Ord.</th>
       <th>Descripción</th>
       <th>Cant.</th>
-      <th>Precio Unit.<br>(s/IVA)</th>
-      <th>IVA%</th>
-      <th>Subtotal</th>
-      <th>IVA $</th>
-      <th>Total</th>
+      <th>Precio Unitario</th>
+      <th>Valor Total</th>
     </tr>
   </thead>
   <tbody>
@@ -114,43 +116,64 @@
       <td style="text-transform:uppercase;">{{ $det->articulo->nombre }}</td>
       <td style="text-align:center;">{{ intval($det->cantidad) == $det->cantidad ? intval($det->cantidad) : $det->cantidad }}</td>
       <td style="text-align:right; font-family:monospace;">{{ number_format($det->precio_unitario, 5) }}</td>
-      <td style="text-align:center;">{{ number_format($det->iva_porcentaje, 0) }}%</td>
       <td style="text-align:right; font-family:monospace;">{{ number_format($det->subtotal, 5) }}</td>
-      <td style="text-align:right; font-family:monospace;">{{ number_format($det->iva_valor, 5) }}</td>
-      <td style="text-align:right; font-family:monospace;">{{ number_format($det->total_linea, 5) }}</td>
     </tr>
     @endforeach
     @for($i = count($egreso->detalles); $i < 6; $i++)
-    <tr><td style="height:16px;">&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td style="height:16px;">&nbsp;</td><td></td><td></td><td></td><td></td></tr>
     @endfor
-    <tr>
-      <td colspan="2" style="text-align:right; font-weight:bold; text-transform:uppercase; font-size:8px;">Total:</td>
-      <td style="text-align:center; font-weight:bold;">{{ $egreso->detalles->sum(fn($d) => intval($d->cantidad)) }}</td>
-      <td></td><td></td>
-      <td style="text-align:right; font-family:monospace; font-weight:bold;">{{ number_format($egreso->subtotal, 5) }}</td>
-      <td style="text-align:right; font-family:monospace; font-weight:bold;">{{ number_format($egreso->iva_valor, 5) }}</td>
-      <td style="text-align:right; font-family:monospace; font-weight:bold;">{{ number_format($egreso->total, 5) }}</td>
-    </tr>
   </tbody>
 </table>
 
-{{-- ══ FIRMAS ══ --}}
-<table style="width:100%; margin-top:24px; border-collapse:collapse;">
-  <tr>
-    <td style="width:50%; border:1px solid #555; padding: 36px 12px 4px 12px; text-align:center;">&nbsp;</td>
-    <td style="width:50%; border:1px solid #555; padding: 36px 12px 4px 12px; text-align:center;">
-      {{ strtoupper($egreso->empleado_nombre ?? '') }}
-    </td>
-  </tr>
-  <tr>
-    <td style="border:1px solid #555; padding:4px 12px; text-align:center; font-weight:bold; text-transform:uppercase; font-size:8px; background-color:#e5e7eb;">
-      Unidad de Bienes
-    </td>
-    <td style="border:1px solid #555; padding:4px 12px; text-align:center; font-weight:bold; text-transform:uppercase; font-size:8px; background-color:#e5e7eb;">
-      Servidor de la Unidad Requirente
-    </td>
-  </tr>
-</table>
+{{-- ══ TOTALES + FIRMAS (misma fila) ══ --}}
+@php
+  $tarifa0  = $egreso->detalles->where('iva_porcentaje', 0)->sum('subtotal');
+  $tarifa15 = $egreso->detalles->where('iva_porcentaje', '>', 0)->sum('subtotal');
+@endphp
+<div class="clearfix" style="margin-top:0;">
+  {{-- Firmas izquierda --}}
+  <table style="float:left; width:50%; border-collapse:collapse;">
+    <tr>
+      <td style="border:1px solid #555; padding: 36px 12px 4px 12px; text-align:center;">&nbsp;</td>
+      <td style="border:1px solid #555; padding: 36px 12px 4px 12px; text-align:center;">
+        {{ strtoupper($egreso->empleado_nombre ?? '') }}
+      </td>
+    </tr>
+    <tr>
+      <td style="border:1px solid #555; padding:4px 8px; text-align:center; font-weight:bold;
+                 text-transform:uppercase; font-size:8px; background-color:#e5e7eb;">
+        Unidad de Bienes
+      </td>
+      <td style="border:1px solid #555; padding:4px 8px; text-align:center; font-weight:bold;
+                 text-transform:uppercase; font-size:8px; background-color:#e5e7eb;">
+        Servidor Requirente
+      </td>
+    </tr>
+  </table>
+  {{-- Totales derecha --}}
+  <table class="totales-inner">
+    <tr>
+      <td class="totales-label">Subtotal</td>
+      <td class="totales-valor">{{ number_format($egreso->subtotal, 5) }}</td>
+    </tr>
+    <tr>
+      <td class="totales-label">Tarifa 0%</td>
+      <td class="totales-valor">{{ number_format($tarifa0, 5) }}</td>
+    </tr>
+    <tr>
+      <td class="totales-label">Tarifa 15%</td>
+      <td class="totales-valor">{{ number_format($tarifa15, 5) }}</td>
+    </tr>
+    <tr>
+      <td class="totales-label">15 % IVA</td>
+      <td class="totales-valor">{{ number_format($egreso->iva_valor, 5) }}</td>
+    </tr>
+    <tr class="totales-total">
+      <td class="totales-label totales-total">Total</td>
+      <td class="totales-valor totales-total">{{ number_format($egreso->total, 5) }}</td>
+    </tr>
+  </table>
+</div>
 
 </body>
 </html>
