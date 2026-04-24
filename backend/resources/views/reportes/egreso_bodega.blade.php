@@ -5,7 +5,7 @@
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: DejaVu Sans, sans-serif; font-size: 9px; color: #111; }
-  @page { margin: 15mm 12mm 15mm 12mm; }
+  @page { margin: 12mm 10mm 12mm 10mm; }
 
   table { border-collapse: collapse; width: 100%; }
   td, th { vertical-align: middle; }
@@ -29,14 +29,6 @@
     text-transform: uppercase;
   }
   .det-table td { border: 1px solid #555; padding: 4px; }
-
-  .firma-table { margin-top: 30px; border-collapse: collapse; width: 100%; }
-  .firma-table td { border: 1px solid #555; padding: 30px 12px 8px 12px; text-align: center;
-                    font-weight: bold; text-transform: uppercase; font-size: 9px; }
-  .firma-nombre td { border: 1px solid #555; padding: 4px 12px; text-align: center; font-size: 9px; }
-  .firma-rol td { border: 1px solid #555; padding: 4px 12px; text-align: center;
-                  font-weight: bold; text-transform: uppercase; font-size: 8px;
-                  background-color: #e5e7eb; }
 </style>
 </head>
 <body>
@@ -94,53 +86,59 @@
 {{-- ══ DETALLE ══ --}}
 <table class="det-table" style="margin-top:8px;">
   <colgroup>
+    <col style="width:5%">
+    <col style="width:33%">
     <col style="width:6%">
-    <col style="width:48%">
-    <col style="width:10%">
-    <col style="width:18%">
-    <col style="width:18%">
+    <col style="width:12%">
+    <col style="width:6%">
+    <col style="width:13%">
+    <col style="width:12%">
+    <col style="width:13%">
   </colgroup>
   <thead>
     <tr>
       <th>Ord.</th>
       <th>Descripción</th>
-      <th>Cantidad</th>
-      <th>Precio Unitario<br>(Incluido el IVA)</th>
+      <th>Cant.</th>
+      <th>Precio Unit.<br>(s/IVA)</th>
+      <th>IVA%</th>
+      <th>Subtotal</th>
+      <th>IVA $</th>
       <th>Total</th>
     </tr>
   </thead>
   <tbody>
     @foreach($egreso->detalles as $i => $det)
-    @php
-      $precioConIva = $det->cantidad > 0 ? round($det->total_linea / $det->cantidad, 4) : 0;
-    @endphp
     <tr>
       <td style="text-align:center;">{{ $i + 1 }}</td>
       <td style="text-transform:uppercase;">{{ $det->articulo->nombre }}</td>
       <td style="text-align:center;">{{ intval($det->cantidad) == $det->cantidad ? intval($det->cantidad) : $det->cantidad }}</td>
-      <td style="text-align:right; font-family:monospace;">{{ number_format($precioConIva, 5) }}</td>
+      <td style="text-align:right; font-family:monospace;">{{ number_format($det->precio_unitario, 5) }}</td>
+      <td style="text-align:center;">{{ number_format($det->iva_porcentaje, 0) }}%</td>
+      <td style="text-align:right; font-family:monospace;">{{ number_format($det->subtotal, 5) }}</td>
+      <td style="text-align:right; font-family:monospace;">{{ number_format($det->iva_valor, 5) }}</td>
       <td style="text-align:right; font-family:monospace;">{{ number_format($det->total_linea, 5) }}</td>
     </tr>
     @endforeach
     @for($i = count($egreso->detalles); $i < 6; $i++)
-    <tr><td style="height:16px;">&nbsp;</td><td></td><td></td><td></td><td></td></tr>
+    <tr><td style="height:16px;">&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
     @endfor
     <tr>
-      <td colspan="2" style="text-align:right; font-weight:bold; text-transform:uppercase;">Total:</td>
+      <td colspan="2" style="text-align:right; font-weight:bold; text-transform:uppercase; font-size:8px;">Total:</td>
       <td style="text-align:center; font-weight:bold;">{{ $egreso->detalles->sum(fn($d) => intval($d->cantidad)) }}</td>
-      <td></td>
+      <td></td><td></td>
+      <td style="text-align:right; font-family:monospace; font-weight:bold;">{{ number_format($egreso->subtotal, 5) }}</td>
+      <td style="text-align:right; font-family:monospace; font-weight:bold;">{{ number_format($egreso->iva_valor, 5) }}</td>
       <td style="text-align:right; font-family:monospace; font-weight:bold;">{{ number_format($egreso->total, 5) }}</td>
     </tr>
   </tbody>
 </table>
 
 {{-- ══ FIRMAS ══ --}}
-<table class="firma-table" style="margin-top:30px;">
+<table style="width:100%; margin-top:24px; border-collapse:collapse;">
   <tr>
-    <td style="width:50%; border:1px solid #555; padding: 30px 12px 4px 12px; text-align:center;">
-      &nbsp;
-    </td>
-    <td style="width:50%; border:1px solid #555; padding: 30px 12px 4px 12px; text-align:center;">
+    <td style="width:50%; border:1px solid #555; padding: 36px 12px 4px 12px; text-align:center;">&nbsp;</td>
+    <td style="width:50%; border:1px solid #555; padding: 36px 12px 4px 12px; text-align:center;">
       {{ strtoupper($egreso->empleado_nombre ?? '') }}
     </td>
   </tr>

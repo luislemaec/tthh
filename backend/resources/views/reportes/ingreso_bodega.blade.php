@@ -5,7 +5,7 @@
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: DejaVu Sans, sans-serif; font-size: 9px; color: #111; }
-  @page { margin: 15mm 12mm 15mm 12mm; }
+  @page { margin: 12mm 10mm 12mm 10mm; }
 
   table { border-collapse: collapse; width: 100%; }
   td, th { vertical-align: middle; }
@@ -36,9 +36,6 @@
   .totales-label { font-weight: bold; text-align: right; font-size: 8px; text-transform: uppercase; background-color: #e5e7eb; }
   .totales-valor { text-align: right; font-family: monospace; width: 90px; }
   .totales-total  { font-weight: bold; background-color: #d1d5db; }
-
-  .pie { margin-top: 24px; border: 1px solid #555; text-align: center;
-         font-weight: bold; font-size: 9px; text-transform: uppercase; padding: 6px; }
 
   .clearfix::after { content: ""; display: table; clear: both; }
 </style>
@@ -106,19 +103,25 @@
 {{-- ══ DETALLE ══ --}}
 <table class="det-table" style="margin-top:8px;">
   <colgroup>
+    <col style="width:11%">
+    <col style="width:30%">
+    <col style="width:5%">
     <col style="width:12%">
-    <col style="width:45%">
-    <col style="width:8%">
-    <col style="width:17%">
-    <col style="width:18%">
+    <col style="width:6%">
+    <col style="width:12%">
+    <col style="width:12%">
+    <col style="width:12%">
   </colgroup>
   <thead>
     <tr>
       <th>Ítem</th>
       <th>Descripción</th>
       <th>Cant.</th>
-      <th>Precio Unitario</th>
-      <th>Valor Total</th>
+      <th>Precio Unit.<br>(s/IVA)</th>
+      <th>IVA%</th>
+      <th>Subtotal</th>
+      <th>IVA $</th>
+      <th>Total</th>
     </tr>
   </thead>
   <tbody>
@@ -128,12 +131,15 @@
       <td style="text-transform:uppercase;">{{ $det->articulo->nombre }}</td>
       <td style="text-align:center;">{{ intval($det->cantidad) == $det->cantidad ? intval($det->cantidad) : $det->cantidad }}</td>
       <td style="text-align:right; font-family:monospace;">{{ number_format($det->precio_unitario, 5) }}</td>
+      <td style="text-align:center;">{{ number_format($det->iva_porcentaje, 0) }}%</td>
+      <td style="text-align:right; font-family:monospace;">{{ number_format($det->subtotal, 5) }}</td>
+      <td style="text-align:right; font-family:monospace;">{{ number_format($det->iva_valor, 5) }}</td>
       <td style="text-align:right; font-family:monospace;">{{ number_format($det->total_linea, 5) }}</td>
     </tr>
     @endforeach
     {{-- Filas vacías para rellenar --}}
     @for($i = count($orden->detalles); $i < 6; $i++)
-    <tr><td style="height:16px;">&nbsp;</td><td></td><td></td><td></td><td></td></tr>
+    <tr><td style="height:16px;">&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
     @endfor
   </tbody>
 </table>
@@ -172,10 +178,15 @@
   </table>
 </div>
 
-{{-- ══ PIE ══ --}}
-<div class="pie" style="margin-top:40px;">
-  Recibido por Unidad de Bienes
-</div>
+{{-- ══ PIE — espacio para firma digital ══ --}}
+<table style="width:100%; margin-top:20px; border-collapse:collapse;">
+  <tr>
+    <td style="border:1px solid #555; padding: 36px 12px 6px 12px; text-align:center;
+               font-weight:bold; font-size:9px; text-transform:uppercase;">
+      Recibido por la Unidad de Bienes
+    </td>
+  </tr>
+</table>
 
 </body>
 </html>

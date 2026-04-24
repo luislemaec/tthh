@@ -505,8 +505,9 @@ async function abrirEditar(e) {
   modalForm.value  = { show: true, editando: true, id: e.id }
 }
 
-function verDetalle(e) {
-  modalDetalle.value = { show: true, egreso: e }
+async function verDetalle(e) {
+  const { data } = await api.get(`/adquisiciones/egresos/${e.id}`)
+  modalDetalle.value = { show: true, egreso: data }
 }
 
 async function guardar() {
