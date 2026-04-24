@@ -137,9 +137,7 @@
               <label class="block text-xs text-gray-600 mb-1">Proceso de Contratación *</label>
               <select v-model="form.proceso_contratacion" class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none">
                 <option value="">Seleccionar...</option>
-                <option value="CATALOGO ELECTRONICO">CATÁLOGO ELECTRÓNICO</option>
-                <option value="SUBASTA INVERSA ELECTRONICA">SUBASTA INVERSA ELECTRÓNICA</option>
-                <option value="CAJA CHICA">CAJA CHICA</option>
+                <option v-for="p in procesosActivos" :key="p" :value="p">{{ p }}</option>
               </select>
             </div>
             <div>
@@ -415,6 +413,7 @@ import { ref, computed, onMounted } from 'vue'
 import api from '@/services/api'
 
 const ordenes        = ref([])
+const procesosActivos = ref([])
 const hasBuscado     = ref(false)
 const filtroEstado   = ref('')
 const filtroTipo     = ref('')
@@ -551,12 +550,14 @@ async function cargar() {
 }
 
 onMounted(async () => {
-  const [p, a, iv] = await Promise.all([
+  const [p, a, iv, pr] = await Promise.all([
     api.get('/adquisiciones/proveedores'),
     api.get('/adquisiciones/articulos'),
     api.get('/adquisiciones/iva'),
+    api.get('/adquisiciones/procesos-contratacion/activos'),
   ])
   proveedores.value = p.data
+  procesosActivos.value = pr.data
   articulos.value   = a.data
   ivasActivos.value = iv.data.filter(i => i.activo)
 })

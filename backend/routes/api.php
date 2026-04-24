@@ -242,6 +242,13 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::put('iva/{id}',                              [\App\Http\Controllers\Adquisiciones\IvaController::class, 'update']);
         Route::patch('iva/{id}/toggle',                     [\App\Http\Controllers\Adquisiciones\IvaController::class, 'toggle']);
 
+        // Procesos de contratación
+        Route::get('procesos-contratacion',                 [\App\Http\Controllers\Adquisiciones\ProcesoContratacionController::class, 'index']);
+        Route::get('procesos-contratacion/activos',         [\App\Http\Controllers\Adquisiciones\ProcesoContratacionController::class, 'activos']);
+        Route::post('procesos-contratacion',                [\App\Http\Controllers\Adquisiciones\ProcesoContratacionController::class, 'store']);
+        Route::put('procesos-contratacion/{id}',            [\App\Http\Controllers\Adquisiciones\ProcesoContratacionController::class, 'update']);
+        Route::patch('procesos-contratacion/{id}/toggle',   [\App\Http\Controllers\Adquisiciones\ProcesoContratacionController::class, 'toggle']);
+
         // Ingresos de Bienes (antes órdenes de compra)
         Route::get('ordenes',                               [OrdenCompraController::class, 'index']);
         Route::post('ordenes',                              [OrdenCompraController::class, 'store']);

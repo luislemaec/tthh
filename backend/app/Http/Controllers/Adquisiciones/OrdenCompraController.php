@@ -31,7 +31,7 @@ class OrdenCompraController extends Controller
 
         $request->validate([
             'tipo_ingreso'          => 'required|in:COMPRA,DONACION',
-            'proceso_contratacion'  => $esCompra ? 'required|in:CATALOGO ELECTRONICO,SUBASTA INVERSA ELECTRONICA,CAJA CHICA' : 'nullable',
+            'proceso_contratacion'  => $esCompra ? ['required', \Illuminate\Validation\Rule::in(DB::table('adq.proceso_contratacion')->where('activo', true)->pluck('nombre')->toArray())] : 'nullable',
             'tipo_documento'        => 'nullable|in:FACTURA,NOTA DE ENTREGA',
             'proveedor_id'          => 'nullable|exists:pgsql.adq.proveedor,id',
             'numero_documento'      => $esFactura ? 'required|string|max:50' : 'nullable|string|max:50',
@@ -93,7 +93,7 @@ class OrdenCompraController extends Controller
         $esFactura = $request->tipo_documento === 'FACTURA';
         $request->validate([
             'tipo_ingreso'          => 'required|in:COMPRA,DONACION',
-            'proceso_contratacion'  => $esCompra ? 'required|in:CATALOGO ELECTRONICO,SUBASTA INVERSA ELECTRONICA,CAJA CHICA' : 'nullable',
+            'proceso_contratacion'  => $esCompra ? ['required', \Illuminate\Validation\Rule::in(DB::table('adq.proceso_contratacion')->where('activo', true)->pluck('nombre')->toArray())] : 'nullable',
             'tipo_documento'        => 'nullable|in:FACTURA,NOTA DE ENTREGA',
             'proveedor_id'          => 'nullable|exists:pgsql.adq.proveedor,id',
             'numero_documento'      => $esFactura ? 'required|string|max:50' : 'nullable|string|max:50',
