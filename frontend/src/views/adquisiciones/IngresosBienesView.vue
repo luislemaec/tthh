@@ -158,9 +158,9 @@
             </div>
             <!-- Proveedor -->
             <div class="md:col-span-2 relative">
-              <label class="block text-xs text-gray-600 mb-1">Proveedor{{ form.tipo_ingreso === 'COMPRA' ? ' *' : '' }}</label>
-              <div class="flex gap-2">
+              <div class="flex gap-2 items-end">
                 <div class="relative flex-1">
+                  <label class="block text-xs text-gray-600 mb-1">Proveedor{{ form.tipo_ingreso === 'COMPRA' ? ' *' : '' }}</label>
                   <input v-model="busquedaProveedor"
                     @input="filtrarProveedores" @keydown.escape="sugerenciasProveedor = []"
                     type="text" placeholder="Buscar por RUC o nombre..."
@@ -175,7 +175,7 @@
                     </div>
                   </div>
                 </div>
-                <div class="w-40">
+                <div class="w-36">
                   <label class="block text-xs text-gray-600 mb-1">RUC</label>
                   <input :value="proveedorSeleccionado?.ruc || ''" type="text" readonly
                     class="w-full border rounded px-3 py-2 text-sm bg-gray-50 text-gray-600 font-mono" />
@@ -250,18 +250,18 @@
                         class="w-24 border rounded px-2 py-1 text-right focus:ring-1 outline-none text-xs" />
                     </td>
                     <td class="px-3 py-1.5">
-                      <div class="flex flex-col gap-1">
-                        <button @click="det.precio_incluye_iva = !det.precio_incluye_iva; recalcularLinea(det)"
-                          class="text-xs px-1.5 py-0.5 rounded font-medium whitespace-nowrap self-start"
-                          :style="det.precio_incluye_iva ? 'background:#4a5e3a;color:white' : 'background:#e5e7eb;color:#6b7280'">
-                          {{ det.precio_incluye_iva ? 'c/IVA' : 's/IVA' }}
-                        </button>
+                      <div class="flex items-center gap-1.5">
                         <div class="relative">
                           <span class="absolute left-1.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
                           <input v-model.number="det.precio_unitario" type="number" step="0.00001" min="0"
                             @input="recalcularLinea(det)"
-                            class="w-28 border rounded pl-4 pr-1 py-1 text-right focus:ring-1 outline-none text-xs" />
+                            class="w-24 border rounded pl-4 pr-1 py-1 text-right focus:ring-1 outline-none text-xs" />
                         </div>
+                        <label class="flex items-center gap-1 cursor-pointer whitespace-nowrap text-xs text-gray-600">
+                          <input type="checkbox" v-model="det.precio_incluye_iva" @change="recalcularLinea(det)"
+                            class="rounded accent-green-700" />
+                          c/IVA
+                        </label>
                       </div>
                     </td>
                     <td class="px-3 py-1.5">
