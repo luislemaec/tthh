@@ -290,8 +290,8 @@ class EgresoController extends Controller
             }
 
             $subtotal   = round((float) $det['cantidad'] * $precio, 5);
-            $ivaValor   = round($subtotal * $ivaPct / 100, 5);
-            $totalLinea = round($subtotal + $ivaValor, 5);
+            $totalLinea = round($subtotal * (1 + $ivaPct / 100), 5);
+            $ivaValor   = round($totalLinea - $subtotal, 5);
 
             $subtotalTotal += $subtotal;
             $ivaTotal      += $ivaValor;

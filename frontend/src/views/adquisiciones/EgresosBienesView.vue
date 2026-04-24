@@ -378,11 +378,15 @@ const totales = computed(() => {
 function fmt(v) { return parseFloat(v || 0).toFixed(5) }
 
 function recalcularLinea(det) {
-  const sub    = Math.round((det.cantidad || 0) * (det.precio_unitario || 0) * 100000) / 100000
-  const ivaVal = Math.round(sub * (det.iva_porcentaje || 0) / 100 * 100000) / 100000
+  const qty    = det.cantidad || 0
+  const precio = det.precio_unitario || 0
+  const ivaPct = det.iva_porcentaje || 0
+  const sub    = Math.round(qty * precio * 100000) / 100000
+  const total  = Math.round(qty * precio * (1 + ivaPct / 100) * 100000) / 100000
+  const ivaVal = Math.round((total - sub) * 100000) / 100000
   det._subtotal    = sub
   det._iva_valor   = ivaVal
-  det._total_linea = Math.round((sub + ivaVal) * 100000) / 100000
+  det._total_linea = total
 }
 
 function filtrarArticulos() {
