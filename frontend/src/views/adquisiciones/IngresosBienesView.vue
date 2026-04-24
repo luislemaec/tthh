@@ -269,12 +269,8 @@
                         </label>
                       </div>
                     </td>
-                    <td class="px-3 py-1.5">
-                      <select v-model="det.iva_id" @change="onIvaChange(det)"
-                        class="w-20 border rounded px-1.5 py-1 text-right focus:ring-1 outline-none text-xs">
-                        <option value="">0%</option>
-                        <option v-for="iva in ivasActivos" :key="iva.id" :value="iva.id">{{ iva.porcentaje }}%</option>
-                      </select>
+                    <td class="px-3 py-1.5 text-center text-xs text-gray-600 font-medium">
+                      {{ det._iva_pct || 0 }}%
                     </td>
                     <td class="px-3 py-1.5 text-right font-mono whitespace-nowrap">${{ fmt(det._subtotal) }}</td>
                     <td class="px-3 py-1.5 text-right font-mono whitespace-nowrap">${{ fmt(det._iva_valor) }}</td>
@@ -461,9 +457,8 @@ const totales = computed(() => {
   return { subtotal, iva, total: subtotal + iva }
 })
 
-function fmt(v) {
-  return parseFloat(v || 0).toFixed(5)
-}
+function fmt(v)       { return parseFloat(v || 0).toFixed(2) }
+function fmtPrecio(v) { return parseFloat(v || 0).toFixed(5) }
 
 function recalcularLinea(det) {
   const qty    = det.cantidad || 0
@@ -471,18 +466,18 @@ function recalcularLinea(det) {
   const ivaPct = det._iva_pct || 0
 
   if (det.precio_incluye_iva && ivaPct > 0) {
-    const total  = Math.round(qty * precio * 100000) / 100000
-    const sub    = Math.round(total / (1 + ivaPct / 100) * 100000) / 100000
-    const ivaVal = Math.round((total - sub) * 100000) / 100000
-    det._subtotal    = sub
-    det._iva_valor   = ivaVal
-    det._total_linea = total
+    const totalCents    = Math.round(qty * precio * 100)
+    const subtotalCents = Math.round(totalCents / (1 + ivaPct / 100))
+    const ivaCents      = totalCents - subtotalCents
+    det._subtotal    = subtotalCents / 100
+    det._iva_valor   = ivaCents / 100
+    det._total_linea = totalCents / 100
   } else {
-    const sub    = Math.round(qty * precio * 100000) / 100000
-    const ivaVal = Math.round(sub * ivaPct / 100 * 100000) / 100000
-    det._subtotal    = sub
-    det._iva_valor   = ivaVal
-    det._total_linea = Math.round((sub + ivaVal) * 100000) / 100000
+    const subCents  = Math.round(qty * precio * 100)
+    const ivaCents  = Math.round(subCents * ivaPct / 100)
+    det._subtotal    = subCents / 100
+    det._iva_valor   = ivaCents / 100
+    det._total_linea = (subCents + ivaCents) / 100
   }
 }
 

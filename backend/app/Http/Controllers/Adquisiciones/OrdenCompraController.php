@@ -252,14 +252,20 @@ class OrdenCompraController extends Controller
             $incluyeIva      = !empty($det['precio_incluye_iva']);
 
             if ($incluyeIva && $ivaPct > 0) {
-                $totalLinea   = round((float) $det['cantidad'] * $precioIngresado, 5);
-                $subtotal     = round($totalLinea / (1 + $ivaPct / 100), 5);
-                $ivaValor     = round($totalLinea - $subtotal, 5);
+                // Total exacto de la factura; subtotal y IVA se calculan desde el total
+                $totalCents   = (int) round((float) $det['cantidad'] * $precioIngresado * 100);
+                $subtotalCents = (int) round($totalCents / (1 + $ivaPct / 100));
+                $ivaCents     = $totalCents - $subtotalCents;
+                $subtotal     = $subtotalCents / 100;
+                $ivaValor     = $ivaCents / 100;
+                $totalLinea   = $totalCents / 100;
                 $precioSinIva = round($precioIngresado / (1 + $ivaPct / 100), 5);
             } else {
-                $subtotal     = round((float) $det['cantidad'] * $precioIngresado, 5);
-                $ivaValor     = round($subtotal * $ivaPct / 100, 5);
-                $totalLinea   = round($subtotal + $ivaValor, 5);
+                $subCents     = (int) round((float) $det['cantidad'] * $precioIngresado * 100);
+                $ivaCents     = (int) round($subCents * $ivaPct / 100);
+                $subtotal     = $subCents / 100;
+                $ivaValor     = $ivaCents / 100;
+                $totalLinea   = ($subCents + $ivaCents) / 100;
                 $precioSinIva = $precioIngresado;
             }
 
@@ -280,9 +286,9 @@ class OrdenCompraController extends Controller
 
         return [
             'detalles' => $items,
-            'subtotal' => round($subtotalTotal, 5),
-            'iva_valor' => round($ivaTotal, 5),
-            'total'    => round($subtotalTotal + $ivaTotal, 5),
+            'subtotal' => round($subtotalTotal, 2),
+            'iva_valor' => round($ivaTotal, 2),
+            'total'    => round($subtotalTotal + $ivaTotal, 2),
         ];
     }
 }

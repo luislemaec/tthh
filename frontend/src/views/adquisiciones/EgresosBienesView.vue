@@ -375,17 +375,18 @@ const totales = computed(() => {
   return { subtotal, iva, total: subtotal + iva }
 })
 
-function fmt(v) { return parseFloat(v || 0).toFixed(5) }
+function fmt(v)       { return parseFloat(v || 0).toFixed(2) }
+function fmtPrecio(v) { return parseFloat(v || 0).toFixed(5) }
 
 function recalcularLinea(det) {
   const qty      = det.cantidad || 0
   const precio   = det.precio_unitario || 0
   const ivaPct   = det.iva_porcentaje || 0
-  const subMicro = Math.round(qty * precio * 100000)
-  const ivaMicro = Math.round(subMicro * ivaPct / 100)
-  det._subtotal    = subMicro / 100000
-  det._iva_valor   = ivaMicro / 100000
-  det._total_linea = (subMicro + ivaMicro) / 100000
+  const subCents = Math.round(qty * precio * 100)
+  const ivaCents = Math.round(subCents * ivaPct / 100)
+  det._subtotal    = subCents / 100
+  det._iva_valor   = ivaCents / 100
+  det._total_linea = (subCents + ivaCents) / 100
 }
 
 function filtrarArticulos() {

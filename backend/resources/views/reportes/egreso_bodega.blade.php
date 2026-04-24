@@ -116,7 +116,7 @@
       <td style="text-transform:uppercase;">{{ $det->articulo->nombre }}</td>
       <td style="text-align:center;">{{ intval($det->cantidad) == $det->cantidad ? intval($det->cantidad) : $det->cantidad }}</td>
       <td style="text-align:right; font-family:monospace;">{{ number_format($det->precio_unitario, 5) }}</td>
-      <td style="text-align:right; font-family:monospace;">{{ number_format($det->subtotal, 5) }}</td>
+      <td style="text-align:right; font-family:monospace;">{{ number_format($det->subtotal, 2) }}</td>
     </tr>
     @endforeach
     @for($i = count($egreso->detalles); $i < 3; $i++)
@@ -156,23 +156,23 @@
       <table style="width:100%; border-collapse:collapse;">
         <tr>
           <td class="totales-label">Subtotal</td>
-          <td class="totales-valor">{{ number_format($egreso->subtotal, 5) }}</td>
+          <td class="totales-valor">{{ number_format($egreso->subtotal, 2) }}</td>
         </tr>
         <tr>
           <td class="totales-label">Tarifa 0%</td>
-          <td class="totales-valor">{{ number_format($tarifa0, 5) }}</td>
+          <td class="totales-valor">{{ number_format($tarifa0, 2) }}</td>
         </tr>
         <tr>
           <td class="totales-label">Tarifa 15%</td>
-          <td class="totales-valor">{{ number_format($tarifa15, 5) }}</td>
+          <td class="totales-valor">{{ number_format($tarifa15, 2) }}</td>
         </tr>
         <tr>
           <td class="totales-label">15 % IVA</td>
-          <td class="totales-valor">{{ number_format($egreso->iva_valor, 5) }}</td>
+          <td class="totales-valor">{{ number_format($egreso->iva_valor, 2) }}</td>
         </tr>
         <tr>
           <td class="totales-label totales-total">Total</td>
-          <td class="totales-valor totales-total">{{ number_format($egreso->total, 5) }}</td>
+          <td class="totales-valor totales-total">{{ number_format($egreso->total, 2) }}</td>
         </tr>
       </table>
     </td>

@@ -133,11 +133,11 @@ class EgresoController extends Controller
                     $ivaPct = $iva ? (float) $iva->porcentaje : 0;
                 }
 
-                $subMicro   = (int) round((float) $det->cantidad * $precioAnterior * 100000);
-                $ivaMicro   = (int) round($subMicro * $ivaPct / 100);
-                $subtotal   = $subMicro / 100000;
-                $ivaValor   = $ivaMicro / 100000;
-                $totalLinea = ($subMicro + $ivaMicro) / 100000;
+                $subCents   = (int) round((float) $det->cantidad * $precioAnterior * 100);
+                $ivaCents   = (int) round($subCents * $ivaPct / 100);
+                $subtotal   = $subCents / 100;
+                $ivaValor   = $ivaCents / 100;
+                $totalLinea = ($subCents + $ivaCents) / 100;
 
                 $subtotalTotal += $subtotal;
                 $ivaTotal      += $ivaValor;
@@ -164,9 +164,9 @@ class EgresoController extends Controller
             }
 
             $egreso->update([
-                'subtotal'         => round($subtotalTotal, 5),
-                'iva_valor'        => round($ivaTotal, 5),
-                'total'            => round($subtotalTotal + $ivaTotal, 5),
+                'subtotal'         => round($subtotalTotal, 2),
+                'iva_valor'        => round($ivaTotal, 2),
+                'total'            => round($subtotalTotal + $ivaTotal, 2),
                 'estado'           => 'DESPACHADO',
                 'usuario_despacho' => $request->user()->id_emp,
                 'fecha_despacho'   => now(),
@@ -291,11 +291,11 @@ class EgresoController extends Controller
                 $ivaPct = $iva ? (float) $iva->porcentaje : 0;
             }
 
-            $subMicro   = (int) round((float) $det['cantidad'] * $precio * 100000);
-            $ivaMicro   = (int) round($subMicro * $ivaPct / 100);
-            $subtotal   = $subMicro / 100000;
-            $ivaValor   = $ivaMicro / 100000;
-            $totalLinea = ($subMicro + $ivaMicro) / 100000;
+            $subCents   = (int) round((float) $det['cantidad'] * $precio * 100);
+            $ivaCents   = (int) round($subCents * $ivaPct / 100);
+            $subtotal   = $subCents / 100;
+            $ivaValor   = $ivaCents / 100;
+            $totalLinea = ($subCents + $ivaCents) / 100;
 
             $subtotalTotal += $subtotal;
             $ivaTotal      += $ivaValor;
