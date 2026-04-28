@@ -94,7 +94,7 @@
       <div class="bg-white rounded-xl shadow-xl w-full max-w-7xl p-6 my-4">
 
         <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-bold">{{ modalForm.editando ? 'Editar Egreso #' + modalForm.id : 'Nuevo Egreso de Bienes' }}</h2>
+          <h2 class="text-lg font-bold" style="color:#4a5e3a">{{ modalForm.editando ? 'Editar Egreso #' + modalForm.id : 'Nuevo Egreso de Bienes' }}</h2>
         </div>
 
         <!-- Nav pestañas -->
@@ -145,7 +145,7 @@
             <!-- Observación -->
             <div>
               <label class="block text-xs text-gray-600 mb-1">Observación</label>
-              <input v-model="form.observacion" type="text"
+              <input v-model="form.observacion" v-uppercase type="text"
                 class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none" />
             </div>
           </div>
@@ -251,7 +251,7 @@
     <div v-if="modalDetalle.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-xl w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto">
         <div class="flex justify-between items-start mb-4">
-          <h2 class="text-lg font-bold">Egreso #{{ modalDetalle.egreso?.numero_secuencial ?? modalDetalle.egreso?.id }}</h2>
+          <h2 class="text-lg font-bold" style="color:#4a5e3a">Egreso #{{ modalDetalle.egreso?.numero_secuencial ?? modalDetalle.egreso?.id }}</h2>
           <button @click="modalDetalle.show = false" class="text-gray-400 hover:text-gray-600 text-xl">✕</button>
         </div>
         <div class="grid grid-cols-2 gap-x-6 gap-y-1 text-sm mb-4">

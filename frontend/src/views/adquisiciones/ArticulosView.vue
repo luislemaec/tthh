@@ -175,7 +175,7 @@
     <div v-if="modal.show" class="fixed inset-0 bg-black/50 flex items-start justify-center z-50 p-4 overflow-y-auto">
       <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl p-6 my-4">
         <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-bold">{{ modal.editando ? 'Editar' : 'Nuevo' }} Artículo</h2>
+          <h2 class="text-lg font-bold" style="color:#4a5e3a">{{ modal.editando ? 'Editar' : 'Nuevo' }} Artículo</h2>
         </div>
 
         <!-- Nav pestañas -->
@@ -194,7 +194,7 @@
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-xs text-gray-600 mb-1">Código *</label>
-              <input v-model="modal.form.codigo" type="text" maxlength="30"
+              <input v-model="modal.form.codigo" v-uppercase type="text" maxlength="30"
                 class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none" />
             </div>
             <div>
@@ -235,7 +235,7 @@
 
           <div>
             <label class="block text-xs text-gray-600 mb-1">Nombre / Descripción *</label>
-            <input v-model="modal.form.nombre" type="text" maxlength="200"
+            <input v-model="modal.form.nombre" v-uppercase type="text" maxlength="200"
               class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none" />
           </div>
 
@@ -288,13 +288,13 @@
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-xs text-gray-600 mb-1">Categoría</label>
-              <input v-model="modal.form.categoria" type="text" maxlength="100"
+              <input v-model="modal.form.categoria" v-uppercase type="text" maxlength="100"
                 placeholder="ej: Papelería, Limpieza"
                 class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none" />
             </div>
             <div>
               <label class="block text-xs text-gray-600 mb-1">Marca</label>
-              <input v-model="modal.form.marca" type="text" maxlength="100"
+              <input v-model="modal.form.marca" v-uppercase type="text" maxlength="100"
                 placeholder="ej: HP, BIC"
                 class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none" />
             </div>
@@ -321,7 +321,7 @@
     <!-- Modal configuración porcentaje -->
     <div v-if="modalConfig.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-xl w-full max-w-sm p-6">
-        <h2 class="text-lg font-bold mb-4">Configurar Stock Mínimo</h2>
+        <h2 class="text-lg font-bold mb-4" style="color:#4a5e3a">Configurar Stock Mínimo</h2>
         <p class="text-sm text-gray-600 mb-4">
           Se genera alerta cuando el stock actual es menor o igual al
           <b>{{ modalConfig.porcentaje }}%</b> del stock máximo histórico del artículo.

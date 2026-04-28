@@ -60,8 +60,8 @@
           </svg>
         </div>
         <div class="text-center">
-          <p class="font-bold text-gray-800 text-lg">Solicitud de Materiales</p>
-          <p class="text-gray-500 text-xs mt-1">Solicita materiales y suministros</p>
+          <p class="font-bold text-gray-800 text-lg">Administrativo</p>
+          <p class="text-gray-500 text-xs mt-1">Bienes y Suministros</p>
         </div>
       </button>
 

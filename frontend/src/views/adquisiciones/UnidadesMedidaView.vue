@@ -56,17 +56,17 @@
 
     <div v-if="modal.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-xl w-full max-w-sm p-6">
-        <h2 class="text-lg font-bold mb-4">{{ modal.editando ? 'Editar' : 'Nueva' }} unidad de medida</h2>
+        <h2 class="text-lg font-bold mb-4" style="color:#4a5e3a">{{ modal.editando ? 'Editar' : 'Nueva' }} unidad de medida</h2>
         <div class="space-y-3">
           <div>
             <label class="block text-xs text-gray-600 mb-1">Nombre *</label>
-            <input v-model="modal.form.nombre" type="text" maxlength="60"
+            <input v-model="modal.form.nombre" v-uppercase type="text" maxlength="60"
               placeholder="ej: UNIDADES, RESMAS, LITROS"
               class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none" />
           </div>
           <div>
             <label class="block text-xs text-gray-600 mb-1">Abreviatura *</label>
-            <input v-model="modal.form.abreviatura" type="text" maxlength="15"
+            <input v-model="modal.form.abreviatura" v-uppercase type="text" maxlength="15"
               placeholder="ej: u, resma, L"
               class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none" />
           </div>

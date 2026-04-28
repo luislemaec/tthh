@@ -58,11 +58,11 @@
 
     <div v-if="modal.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-xl w-full max-w-sm p-6">
-        <h2 class="text-lg font-bold mb-4">{{ modal.editando ? 'Editar' : 'Nueva' }} tasa de IVA</h2>
+        <h2 class="text-lg font-bold mb-4" style="color:#4a5e3a">{{ modal.editando ? 'Editar' : 'Nueva' }} tasa de IVA</h2>
         <div class="space-y-3">
           <div>
             <label class="block text-xs text-gray-600 mb-1">Descripción *</label>
-            <input v-model="modal.form.descripcion" type="text" maxlength="50"
+            <input v-model="modal.form.descripcion" v-uppercase type="text" maxlength="50"
               placeholder="ej: IVA 15%, IVA 0% (Exento)"
               class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none" />
           </div>

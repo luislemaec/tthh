@@ -109,28 +109,28 @@
     <!-- Modal -->
     <div v-if="modal.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-        <h2 class="text-lg font-bold mb-4">{{ modal.editando ? 'Editar' : 'Nuevo' }} ítem del catálogo</h2>
+        <h2 class="text-lg font-bold mb-4" style="color:#4a5e3a">{{ modal.editando ? 'Editar' : 'Nuevo' }} ítem del catálogo</h2>
         <div class="space-y-3">
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-xs text-gray-600 mb-1">Nivel 1 * (2 dígitos)</label>
-              <input v-model="modal.form.nivel1" :disabled="modal.editando" type="text" maxlength="2"
+              <input v-model="modal.form.nivel1" v-uppercase :disabled="modal.editando" type="text" maxlength="2"
                 class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none disabled:bg-gray-50" />
             </div>
             <div>
               <label class="block text-xs text-gray-600 mb-1">Nivel 2 * (6 dígitos)</label>
-              <input v-model="modal.form.nivel2" :disabled="modal.editando" type="text" maxlength="6"
+              <input v-model="modal.form.nivel2" v-uppercase :disabled="modal.editando" type="text" maxlength="6"
                 class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none disabled:bg-gray-50" />
             </div>
           </div>
           <div>
             <label class="block text-xs text-gray-600 mb-1">Descripción *</label>
-            <input v-model="modal.form.descripcion" type="text" maxlength="300"
+            <input v-model="modal.form.descripcion" v-uppercase type="text" maxlength="300"
               class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none" />
           </div>
           <div>
             <label class="block text-xs text-gray-600 mb-1">Asociación Presupuestaria</label>
-            <input v-model="modal.form.asociacion_presupuestaria" type="text" maxlength="150"
+            <input v-model="modal.form.asociacion_presupuestaria" v-uppercase type="text" maxlength="150"
               placeholder="ej: 530804-630804-730804"
               class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none" />
           </div>

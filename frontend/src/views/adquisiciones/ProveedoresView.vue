@@ -98,29 +98,29 @@
     <!-- Modal proveedor -->
     <div v-if="modal.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
-        <h2 class="text-lg font-bold mb-4">{{ modal.editando ? 'Editar' : 'Nuevo' }} Proveedor</h2>
+        <h2 class="text-lg font-bold mb-4" style="color:#4a5e3a">{{ modal.editando ? 'Editar' : 'Nuevo' }} Proveedor</h2>
 
         <div class="grid grid-cols-2 gap-3 mb-3">
           <div>
             <label class="block text-xs text-gray-600 mb-1">RUC *</label>
-            <input v-model="modal.form.ruc" type="text" maxlength="20"
+            <input v-model="modal.form.ruc" v-uppercase type="text" maxlength="20"
               class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none" />
           </div>
           <div>
             <label class="block text-xs text-gray-600 mb-1">Teléfono</label>
-            <input v-model="modal.form.telefono" type="text" maxlength="20"
+            <input v-model="modal.form.telefono" v-uppercase type="text" maxlength="20"
               class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none" />
           </div>
         </div>
         <div class="mb-3">
           <label class="block text-xs text-gray-600 mb-1">Nombre *</label>
-          <input v-model="modal.form.nombre" type="text" maxlength="200"
+          <input v-model="modal.form.nombre" v-uppercase type="text" maxlength="200"
             class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none" />
         </div>
         <div class="grid grid-cols-2 gap-3 mb-3">
           <div>
             <label class="block text-xs text-gray-600 mb-1">Contacto</label>
-            <input v-model="modal.form.contacto" type="text" maxlength="100"
+            <input v-model="modal.form.contacto" v-uppercase type="text" maxlength="100"
               class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none" />
           </div>
           <div>
@@ -131,7 +131,7 @@
         </div>
         <div class="mb-4">
           <label class="block text-xs text-gray-600 mb-1">Dirección</label>
-          <input v-model="modal.form.direccion" type="text" maxlength="300"
+          <input v-model="modal.form.direccion" v-uppercase type="text" maxlength="300"
             class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none" />
         </div>
 
@@ -149,12 +149,12 @@
             <div class="grid grid-cols-3 gap-2">
               <div class="col-span-2">
                 <label class="block text-xs text-gray-500 mb-1">Descripción *</label>
-                <input v-model="item.descripcion" type="text" maxlength="300"
+                <input v-model="item.descripcion" v-uppercase type="text" maxlength="300"
                   class="w-full border rounded px-2 py-1.5 text-sm focus:ring-1 focus:ring-amber-300 outline-none" />
               </div>
               <div>
                 <label class="block text-xs text-gray-500 mb-1">Unidad</label>
-                <input v-model="item.unidad_medida" type="text" maxlength="50"
+                <input v-model="item.unidad_medida" v-uppercase type="text" maxlength="50"
                   class="w-full border rounded px-2 py-1.5 text-sm focus:ring-1 focus:ring-amber-300 outline-none" />
               </div>
               <div class="col-span-3">

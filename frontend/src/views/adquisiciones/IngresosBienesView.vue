@@ -104,7 +104,7 @@
 
         <!-- Título + pestañas -->
         <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-bold">{{ modalForm.editando ? 'Editar Ingreso #' + modalForm.id : 'Nuevo Ingreso de Bienes' }}</h2>
+          <h2 class="text-lg font-bold" style="color:#4a5e3a">{{ modalForm.editando ? 'Editar Ingreso #' + modalForm.id : 'Nuevo Ingreso de Bienes' }}</h2>
         </div>
 
         <!-- Nav pestañas -->
@@ -152,7 +152,7 @@
               <label class="block text-xs text-gray-600 mb-1">
                 Número Documento{{ form.tipo_documento === 'FACTURA' ? ' *' : '' }}
               </label>
-              <input v-model="form.numero_documento" type="text" maxlength="50"
+              <input v-model="form.numero_documento" v-uppercase type="text" maxlength="50"
                 placeholder="ej: 001-001-000001234"
                 class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none" />
             </div>
@@ -189,7 +189,7 @@
             </div>
             <div class="md:col-span-3">
               <label class="block text-xs text-gray-600 mb-1">Observación</label>
-              <input v-model="form.observacion" type="text"
+              <input v-model="form.observacion" v-uppercase type="text"
                 class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none" />
             </div>
           </div>
