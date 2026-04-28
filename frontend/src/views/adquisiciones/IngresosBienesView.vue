@@ -46,10 +46,10 @@
         <thead>
           <tr style="background-color: #4a5e3a;">
             <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">#</th>
-            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Tipo</th>
+            <th v-if="filtroEstado !== 'RECIBIDO'" class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Tipo</th>
             <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Documento</th>
             <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Proveedor</th>
-            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Fecha Doc.</th>
+            <th v-if="filtroEstado !== 'RECIBIDO'" class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Fecha Doc.</th>
             <th class="text-right px-4 py-3 text-white font-semibold whitespace-nowrap">Subtotal</th>
             <th class="text-right px-4 py-3 text-white font-semibold whitespace-nowrap">IVA</th>
             <th class="text-right px-4 py-3 text-white font-semibold whitespace-nowrap">Total</th>
@@ -63,7 +63,7 @@
           </tr>
           <tr v-for="o in ordenes" :key="o.id" class="border-b hover:bg-green-50">
             <td class="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">{{ o.id }}</td>
-            <td class="px-4 py-3 whitespace-nowrap">
+            <td v-if="filtroEstado !== 'RECIBIDO'" class="px-4 py-3 whitespace-nowrap">
               <span :class="o.tipo_ingreso === 'COMPRA' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'"
                 class="px-2 py-0.5 rounded-full text-xs font-medium">{{ o.tipo_ingreso }}</span>
             </td>
@@ -72,7 +72,7 @@
               <div class="font-mono text-xs">{{ o.numero_documento || '-' }}</div>
             </td>
             <td class="px-4 py-3 text-gray-700">{{ o.proveedor?.nombre || '-' }}</td>
-            <td class="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{{ o.fecha_documento || '-' }}</td>
+            <td v-if="filtroEstado !== 'RECIBIDO'" class="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{{ o.fecha_documento || '-' }}</td>
             <td class="px-4 py-3 text-right font-mono text-xs whitespace-nowrap">${{ fmt(o.subtotal) }}</td>
             <td class="px-4 py-3 text-right font-mono text-xs whitespace-nowrap">${{ fmt(o.iva_valor) }}</td>
             <td class="px-4 py-3 text-right font-mono font-semibold whitespace-nowrap">${{ fmt(o.total) }}</td>
@@ -128,6 +128,13 @@
         <!-- ── TAB DATOS ── -->
         <div v-show="tabActiva === 'datos'">
           <div class="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 bg-gray-50 rounded-lg">
+            <div>
+              <label class="block text-xs text-gray-600 mb-1">Tipo de Ingreso *</label>
+              <select v-model="form.tipo_ingreso" class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none">
+                <option value="COMPRA">COMPRA</option>
+                <option value="DONACION">DONACIÓN</option>
+              </select>
+            </div>
             <div v-if="form.tipo_ingreso === 'COMPRA'">
               <label class="block text-xs text-gray-600 mb-1">Proceso de Contratación *</label>
               <select v-model="form.proceso_contratacion" class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none">
@@ -149,6 +156,11 @@
               </label>
               <input v-model="form.numero_documento" v-uppercase type="text" maxlength="50"
                 placeholder="ej: 001-001-000001234"
+                class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none" />
+            </div>
+            <div>
+              <label class="block text-xs text-gray-600 mb-1">Fecha Documento</label>
+              <input v-model="form.fecha_documento" type="date"
                 class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none" />
             </div>
             <!-- Proveedor -->
