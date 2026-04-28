@@ -2,7 +2,7 @@
   <div>
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-2xl font-bold text-gray-800">Tasas de IVA</h1>
-      <button @click="abrirCrear" class="bg-amber-700 text-white px-4 py-2 rounded-lg text-sm hover:bg-amber-800">
+      <button @click="abrirCrear" class="bg-green-700 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-800">
         + Nueva tasa
       </button>
     </div>
@@ -57,8 +57,11 @@
     </div>
 
     <div v-if="modal.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-sm p-6">
-        <h2 class="text-lg font-bold mb-4" style="color:#4a5e3a">{{ modal.editando ? 'Editar' : 'Nueva' }} tasa de IVA</h2>
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
+        <div class="px-6 py-4" style="background-color:#4a5e3a;">
+          <h2 class="text-lg font-bold text-white">{{ modal.editando ? 'Editar' : 'Nueva' }} tasa de IVA</h2>
+        </div>
+        <div class="p-6">
         <div class="space-y-3">
           <div>
             <label class="block text-xs text-gray-600 mb-1">Descripción *</label>
@@ -82,10 +85,11 @@
         <div class="flex justify-end gap-3 mt-5">
           <button @click="modal.show = false" class="px-4 py-2 text-sm text-gray-600">Cancelar</button>
           <button @click="guardar" :disabled="guardando"
-            class="bg-amber-700 text-white px-5 py-2 rounded-lg text-sm hover:bg-amber-800 disabled:opacity-50">
+            class="bg-green-700 text-white px-5 py-2 rounded-lg text-sm hover:bg-green-800 disabled:opacity-50">
             {{ guardando ? 'Guardando...' : 'Guardar' }}
           </button>
         </div>
+        </div><!-- /p-6 -->
       </div>
     </div>
   </div>

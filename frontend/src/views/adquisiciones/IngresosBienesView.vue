@@ -61,7 +61,7 @@
           <tr v-if="!ordenes.length">
             <td colspan="10" class="text-center py-8 text-gray-400">Sin ingresos registrados</td>
           </tr>
-          <tr v-for="o in ordenes" :key="o.id" class="border-b hover:bg-amber-50">
+          <tr v-for="o in ordenes" :key="o.id" class="border-b hover:bg-green-50">
             <td class="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">{{ o.id }}</td>
             <td class="px-4 py-3 whitespace-nowrap">
               <span :class="o.tipo_ingreso === 'COMPRA' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'"
@@ -85,7 +85,7 @@
               <button v-if="o.estado === 'RECIBIDO'" @click="descargarPdf(o.id)"
                 class="text-xs text-purple-600 hover:text-purple-800 font-medium">PDF</button>
               <button v-if="o.estado === 'RECIBIDO'" @click="abrirReverso(o.id)"
-                class="text-xs text-orange-600 hover:text-orange-800 font-medium">Reversar</button>
+                class="text-xs text-red-600 hover:text-red-800 font-medium">Reversar</button>
               <button v-if="o.estado === 'BORRADOR'" @click="abrirEditar(o)"
                 class="text-xs text-amber-600 hover:text-amber-800 font-medium">Editar</button>
               <button v-if="o.estado === 'BORRADOR'" @click="confirmar(o.id)"
@@ -128,13 +128,6 @@
         <!-- ── TAB DATOS ── -->
         <div v-show="tabActiva === 'datos'">
           <div class="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 bg-gray-50 rounded-lg">
-            <div>
-              <label class="block text-xs text-gray-600 mb-1">Tipo de Ingreso *</label>
-              <select v-model="form.tipo_ingreso" class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none">
-                <option value="COMPRA">COMPRA</option>
-                <option value="DONACION">DONACIÓN</option>
-              </select>
-            </div>
             <div v-if="form.tipo_ingreso === 'COMPRA'">
               <label class="block text-xs text-gray-600 mb-1">Proceso de Contratación *</label>
               <select v-model="form.proceso_contratacion" class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none">
@@ -156,11 +149,6 @@
               </label>
               <input v-model="form.numero_documento" v-uppercase type="text" maxlength="50"
                 placeholder="ej: 001-001-000001234"
-                class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none" />
-            </div>
-            <div>
-              <label class="block text-xs text-gray-600 mb-1">Fecha Documento</label>
-              <input v-model="form.fecha_documento" type="date"
                 class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none" />
             </div>
             <!-- Proveedor -->
@@ -384,8 +372,11 @@
 
     <!-- ══ MODAL REVERSO ══ -->
     <div v-if="modalReverso.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-        <h2 class="text-lg font-bold mb-1">Reversar Ingreso</h2>
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+        <div class="px-6 py-4" style="background-color:#dc2626;">
+          <h2 class="text-lg font-bold text-white">Reversar Ingreso</h2>
+        </div>
+        <div class="p-6">
         <p class="text-sm text-gray-500 mb-4">El stock y precio promedio de los artículos serán revertidos al estado anterior.</p>
         <div>
           <label class="block text-xs text-gray-600 mb-1">Motivo del reverso *</label>
@@ -398,10 +389,11 @@
         <div class="flex justify-end gap-3 mt-4">
           <button @click="modalReverso.show = false" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancelar</button>
           <button @click="confirmarReverso" :disabled="modalReverso.guardando"
-            class="bg-orange-600 text-white px-5 py-2 rounded-lg text-sm hover:bg-orange-700 disabled:opacity-50">
+            class="bg-red-600 text-white px-5 py-2 rounded-lg text-sm hover:bg-red-700 disabled:opacity-50">
             {{ modalReverso.guardando ? 'Reversando...' : 'Confirmar Reverso' }}
           </button>
         </div>
+        </div><!-- /p-6 -->
       </div>
     </div>
   </div>

@@ -2,7 +2,7 @@
   <div>
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-2xl font-bold text-gray-800">Unidades de Medida</h1>
-      <button @click="abrirCrear" class="bg-amber-700 text-white px-4 py-2 rounded-lg text-sm hover:bg-amber-800">
+      <button @click="abrirCrear" class="bg-green-700 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-800">
         + Nueva unidad
       </button>
     </div>
@@ -78,7 +78,7 @@
         <div class="flex justify-end gap-3 mt-5">
           <button @click="modal.show = false" class="px-4 py-2 text-sm text-gray-600">Cancelar</button>
           <button @click="guardar" :disabled="guardando"
-            class="bg-amber-700 text-white px-5 py-2 rounded-lg text-sm hover:bg-amber-800 disabled:opacity-50">
+            class="bg-green-700 text-white px-5 py-2 rounded-lg text-sm hover:bg-green-800 disabled:opacity-50">
             {{ guardando ? 'Guardando...' : 'Guardar' }}
           </button>
         </div>

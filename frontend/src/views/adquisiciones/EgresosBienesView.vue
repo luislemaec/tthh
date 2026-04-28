@@ -76,7 +76,7 @@
               <button v-if="e.estado === 'DESPACHADO'" @click="descargarPdf(e.id)"
                 class="text-xs text-purple-600 hover:text-purple-800 font-medium">PDF</button>
               <button v-if="e.estado === 'DESPACHADO'" @click="abrirReverso(e.id)"
-                class="text-xs text-orange-600 hover:text-orange-800 font-medium">Reversar</button>
+                class="text-xs text-red-600 hover:text-red-800 font-medium">Reversar</button>
               <button v-if="e.estado === 'BORRADOR'" @click="abrirEditar(e)"
                 class="text-xs text-amber-600 hover:text-amber-800 font-medium">Editar</button>
               <button v-if="e.estado === 'BORRADOR'" @click="confirmar(e.id)"
@@ -307,7 +307,7 @@
     <!-- ══ MODAL REVERSO ══ -->
     <div v-if="modalReverso.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
-        <div class="px-6 py-4" style="background-color:#4a5e3a;">
+        <div class="px-6 py-4" style="background-color:#dc2626;">
           <h2 class="text-lg font-bold text-white">Reversar Egreso</h2>
         </div>
         <div class="p-6">
@@ -323,7 +323,7 @@
         <div class="flex justify-end gap-3 mt-4">
           <button @click="modalReverso.show = false" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancelar</button>
           <button @click="confirmarReverso" :disabled="modalReverso.guardando"
-            class="bg-orange-600 text-white px-5 py-2 rounded-lg text-sm hover:bg-orange-700 disabled:opacity-50">
+            class="bg-red-600 text-white px-5 py-2 rounded-lg text-sm hover:bg-red-700 disabled:opacity-50">
             {{ modalReverso.guardando ? 'Reversando...' : 'Confirmar Reverso' }}
           </button>
         </div>
