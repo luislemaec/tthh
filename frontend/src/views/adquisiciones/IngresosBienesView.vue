@@ -100,12 +100,14 @@
 
     <!-- ══ MODAL CREAR / EDITAR ══ -->
     <div v-if="modalForm.show" class="fixed inset-0 bg-black/50 flex items-start justify-center z-50 p-4 overflow-y-auto">
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-7xl p-6 my-4">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-7xl my-4 overflow-hidden">
 
-        <!-- Título + pestañas -->
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-bold" style="color:#4a5e3a">{{ modalForm.editando ? 'Editar Ingreso #' + modalForm.id : 'Nuevo Ingreso de Bienes' }}</h2>
+        <!-- Título -->
+        <div class="px-6 py-4" style="background-color:#4a5e3a;">
+          <h2 class="text-lg font-bold text-white">{{ modalForm.editando ? 'Editar Ingreso #' + modalForm.id : 'Nuevo Ingreso de Bienes' }}</h2>
         </div>
+
+        <div class="p-6">
 
         <!-- Nav pestañas -->
         <div class="flex border-b mb-5">
@@ -303,6 +305,7 @@
             {{ guardando ? 'Guardando...' : 'Guardar ingreso' }}
           </button>
         </div>
+        </div><!-- /p-6 -->
       </div>
     </div>
 
