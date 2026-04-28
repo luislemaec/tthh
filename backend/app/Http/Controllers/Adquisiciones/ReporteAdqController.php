@@ -106,7 +106,7 @@ class ReporteAdqController extends Controller
             ->orderBy('ed.id');
 
         if ($request->filled('direccion')) {
-            $query->where('e.direccion', 'ilike', '%' . $request->direccion . '%');
+            $query->where('e.direccion', $request->direccion);
         }
 
         $filas = $query->get();

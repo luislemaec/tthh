@@ -19,8 +19,11 @@
         </div>
         <div>
           <label class="block text-xs text-gray-600 mb-1">Dirección / Área</label>
-          <input v-model="filtro.direccion" type="text" placeholder="Filtrar por dirección..."
-            class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none" />
+          <select v-model="filtro.direccion"
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none">
+            <option value="">Todas las direcciones</option>
+            <option v-for="d in departamentos" :key="d.id_depto" :value="d.nombre_depto">{{ d.nombre_depto }}</option>
+          </select>
         </div>
         <div class="flex flex-col gap-2">
           <button @click="consultar" :disabled="cargando"
@@ -100,10 +103,16 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import api from '@/services/api'
 
-const filtro   = ref({ desde: '', hasta: '', direccion: '' })
+const filtro       = ref({ desde: '', hasta: '', direccion: '' })
+const departamentos = ref([])
+
+onMounted(async () => {
+  const { data } = await api.get('/adquisiciones/departamentos-activos')
+  departamentos.value = data
+})
 const filas    = ref([])
 const cargando       = ref(false)
 const descargandoPdf = ref(false)
