@@ -125,7 +125,7 @@ class ReporteAdqController extends Controller
     {
         $q = $request->get('q', '');
         $articulos = DB::table('adq.articulo')
-            ->where('activo', true)
+            ->where('estado', 'ACTIVO')
             ->where(function ($query) use ($q) {
                 $query->where('codigo', 'ilike', "%{$q}%")
                       ->orWhere('nombre', 'ilike', "%{$q}%");
