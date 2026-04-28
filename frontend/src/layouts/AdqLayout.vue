@@ -16,21 +16,57 @@
       </div>
 
       <!-- Menú -->
-      <nav class="flex-1 overflow-y-auto py-3 space-y-0.5">
-        <router-link v-for="item in menuItems" :key="item.to" :to="item.to"
+      <nav class="flex-1 overflow-y-auto py-2">
+
+        <!-- Dashboard -->
+        <router-link to="/adquisiciones/dashboard"
           class="flex items-center gap-3 px-4 py-2.5 text-sm transition-all duration-200"
-          :style="$route.path.startsWith(item.to) ? 'background-color:#3b4a2e' : ''"
-          :class="$route.path.startsWith(item.to) ? 'font-semibold text-white' : 'text-green-100 hover:bg-[#3b4a2e]'"
+          :style="$route.path === '/adquisiciones/dashboard' ? 'background-color:#3b4a2e' : ''"
+          :class="$route.path === '/adquisiciones/dashboard' ? 'font-semibold text-white' : 'text-green-100 hover:bg-[#3b4a2e]'"
           active-class="">
-          <component :is="'svg'" class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="item.icon" />
-          </component>
-          <span v-show="sidebarOpen">{{ item.label }}</span>
-          <span v-if="item.badge && item.badge > 0 && sidebarOpen"
-            class="ml-auto bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 leading-none">
-            {{ item.badge }}
-          </span>
+          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+          </svg>
+          <span v-show="sidebarOpen">Dashboard</span>
         </router-link>
+
+        <!-- Grupos -->
+        <template v-for="grupo in menuGrupos" :key="grupo.label">
+          <!-- Encabezado de grupo -->
+          <div class="mt-3 mb-0.5">
+            <div v-if="sidebarOpen"
+              class="px-4 py-1 text-xs font-bold tracking-widest uppercase select-none"
+              style="color:rgba(255,255,255,0.45)">
+              {{ grupo.label }}
+            </div>
+            <div v-else class="mx-3 border-t" style="border-color:rgba(255,255,255,0.2)"></div>
+          </div>
+
+          <!-- Items del grupo -->
+          <router-link v-for="item in grupo.items" :key="item.to" :to="item.to"
+            class="flex items-center gap-3 px-4 py-2.5 text-sm transition-all duration-200"
+            :style="$route.path.startsWith(item.to) ? 'background-color:#3b4a2e' : ''"
+            :class="$route.path.startsWith(item.to) ? 'font-semibold text-white' : 'text-green-100 hover:bg-[#3b4a2e]'"
+            active-class="">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="item.icon" />
+            </svg>
+            <span v-show="sidebarOpen">{{ item.label }}</span>
+            <span v-if="item.badge && item.badge > 0 && sidebarOpen"
+              class="ml-auto bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 leading-none">
+              {{ item.badge }}
+            </span>
+          </router-link>
+
+          <!-- Sin items: placeholder -->
+          <p v-if="!grupo.items.length && sidebarOpen"
+            class="px-4 py-1.5 text-xs italic"
+            style="color:rgba(255,255,255,0.3)">
+            Próximamente...
+          </p>
+        </template>
+
       </nav>
 
       <!-- Footer -->
@@ -92,24 +128,44 @@ const esBienes = computed(() => auth.tieneRol('BIENES'))
 const esAdq    = computed(() => auth.tieneRol('ADQUISICIONES'))
 const esAdmin  = computed(() => auth.tieneRol('ADMINISTRADOR') || auth.tieneRol('TALENTO HUMANO'))
 
-const menuItems = computed(() => {
-  const items = []
+const menuGrupos = computed(() => {
+  const grupos = []
 
   if (esBienes.value || esAdq.value || esAdmin.value) {
-    items.push({ to: '/adquisiciones/dashboard',   label: 'Dashboard',    icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' })
-    items.push({ to: '/adquisiciones/proveedores', label: 'Proveedores',   icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' })
-    items.push({ to: '/adquisiciones/articulos',   label: 'Inventario',   icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4', badge: alertasStock.value })
-    items.push({ to: '/adquisiciones/ingresos',    label: 'Ingresos de Bienes', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01' })
-    items.push({ to: '/adquisiciones/egresos',     label: 'Egresos de Bienes',  icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 4h.01M9 12h.01M9 16h.01M13 8h3m-3 4h3m-3 4h3' })
-    items.push({ to: '/adquisiciones/catalogo',    label: 'Catálogo MF',       icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 4h.01M9 12h.01M9 16h.01M13 8h3m-3 4h3m-3 4h3' })
-    items.push({ to: '/adquisiciones/iva',                  label: 'Tasas IVA',              icon: 'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z' })
-    items.push({ to: '/adquisiciones/procesos-contratacion', label: 'Procesos Contratación', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' })
-    items.push({ to: '/adquisiciones/unidades-medida', label: 'Unidades de Medida', icon: 'M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3' })
+    grupos.push({
+      label: 'ADMINISTRACIÓN',
+      items: [
+        { to: '/adquisiciones/proveedores',          label: 'Proveedores',           icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' },
+        { to: '/adquisiciones/articulos',            label: 'Inventario',            icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4', badge: alertasStock.value },
+        { to: '/adquisiciones/catalogo',             label: 'Catálogo MF',           icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 4h.01M9 12h.01M9 16h.01M13 8h3m-3 4h3m-3 4h3' },
+        { to: '/adquisiciones/iva',                  label: 'Tasas IVA',             icon: 'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z' },
+        { to: '/adquisiciones/procesos-contratacion', label: 'Procesos Contratación', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+        { to: '/adquisiciones/unidades-medida',      label: 'Unidades de Medida',    icon: 'M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3' },
+      ],
+    })
+
+    grupos.push({
+      label: 'MOVIMIENTOS',
+      items: [
+        { to: '/adquisiciones/ingresos', label: 'Ingresos de Bienes', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01' },
+        { to: '/adquisiciones/egresos',  label: 'Egresos de Bienes',  icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 4h.01M9 12h.01M9 16h.01M13 8h3m-3 4h3m-3 4h3' },
+      ],
+    })
   }
 
-  items.push({ to: '/adquisiciones/solicitudes',  label: 'Solicitudes',  icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' })
+  grupos.push({
+    label: 'SOLICITUDES',
+    items: [
+      { to: '/adquisiciones/solicitudes', label: 'Solicitudes', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+    ],
+  })
 
-  return items
+  grupos.push({
+    label: 'REPORTES',
+    items: [],
+  })
+
+  return grupos
 })
 
 const iniciales = computed(() => {
