@@ -10,10 +10,10 @@
         <!-- Artículo autocomplete -->
         <div class="md:col-span-2 relative">
           <label class="block text-xs text-gray-600 mb-1">Artículo *</label>
-          <input v-model="busquedaArticulo" @input="buscarArticulos" @focus="mostrarSugerencias = true"
+          <input v-model="busquedaArticulo" @input="buscarArticulos" @blur="cerrarSugerencias"
             type="text" placeholder="Buscar por código o nombre..."
             class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none" />
-          <ul v-if="mostrarSugerencias && sugerencias.length"
+          <ul v-if="sugerencias.length"
             class="absolute z-10 bg-white border rounded-lg shadow-lg w-full mt-1 max-h-48 overflow-y-auto">
             <li v-for="a in sugerencias" :key="a.id"
               @mousedown.prevent="seleccionarArticulo(a)"
@@ -118,7 +118,6 @@ import api from '@/services/api'
 const filtro              = ref({ desde: '', hasta: '' })
 const busquedaArticulo    = ref('')
 const sugerencias         = ref([])
-const mostrarSugerencias  = ref(false)
 const articuloSeleccionado = ref(null)
 const articulo            = ref(null)
 const filas               = ref([])
@@ -129,21 +128,27 @@ const error               = ref('')
 
 let debounceTimer = null
 
-async function buscarArticulos() {
+function buscarArticulos() {
   articuloSeleccionado.value = null
+  sugerencias.value = []
   clearTimeout(debounceTimer)
+  if (busquedaArticulo.value.trim().length < 2) return
   debounceTimer = setTimeout(async () => {
-    if (busquedaArticulo.value.length < 2) { sugerencias.value = []; return }
-    const { data } = await api.get('/adquisiciones/reportes/articulos', { params: { q: busquedaArticulo.value } })
-    sugerencias.value = data
+    try {
+      const { data } = await api.get('/adquisiciones/reportes/articulos', { params: { q: busquedaArticulo.value } })
+      sugerencias.value = data
+    } catch {}
   }, 300)
+}
+
+function cerrarSugerencias() {
+  setTimeout(() => { sugerencias.value = [] }, 200)
 }
 
 function seleccionarArticulo(a) {
   articuloSeleccionado.value = a
   busquedaArticulo.value     = `[${a.codigo}] ${a.nombre}`
   sugerencias.value          = []
-  mostrarSugerencias.value   = false
 }
 
 async function consultar() {

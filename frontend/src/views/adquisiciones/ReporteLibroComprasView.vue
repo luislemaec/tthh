@@ -21,7 +21,7 @@
           <label class="block text-xs text-gray-600 mb-1">Proceso de Contratación</label>
           <select v-model="filtro.proceso" class="w-full border rounded-lg px-3 py-2 text-sm">
             <option value="">Todos</option>
-            <option v-for="p in procesos" :key="p.nombre" :value="p.nombre">{{ p.nombre }}</option>
+            <option v-for="p in procesos" :key="p" :value="p">{{ p }}</option>
           </select>
         </div>
         <div class="flex flex-col gap-2">
