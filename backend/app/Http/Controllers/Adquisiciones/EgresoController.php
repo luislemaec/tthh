@@ -153,13 +153,37 @@ class EgresoController extends Controller
                     'updated_at'      => now(),
                 ]);
 
-                $nuevoStock    = max(0, (float) $articulo->stock_actual - (float) $det->cantidad);
-                $nuevoPrecio   = $nuevoStock == 0 ? 0 : $precioAnterior;
+                $stockAntes  = (float) $articulo->stock_actual;
+                $nuevoStock  = max(0, $stockAntes - (float) $det->cantidad);
+                $nuevoPrecio = $nuevoStock == 0 ? 0 : $precioAnterior;
 
                 DB::table('adq.articulo')->where('id', $det->articulo_id)->update([
                     'stock_actual'    => $nuevoStock,
                     'precio_unitario' => $nuevoPrecio,
                     'updated_at'      => now(),
+                ]);
+
+                DB::table('adq.kardex')->insert([
+                    'articulo_id'       => $det->articulo_id,
+                    'fecha'             => now(),
+                    'tipo_movimiento'   => 'EGRESO',
+                    'referencia_tipo'   => 'egreso',
+                    'referencia_id'     => $egreso->id,
+                    'referencia_det_id' => $det->id,
+                    'numero_documento'  => null,
+                    'cantidad_entrada'  => 0,
+                    'cantidad_salida'   => $det->cantidad,
+                    'stock_antes'       => $stockAntes,
+                    'stock_despues'     => $nuevoStock,
+                    'precio_antes'      => $precioAnterior,
+                    'precio_despues'    => $nuevoPrecio,
+                    'precio_movimiento' => $precioAnterior,
+                    'subtotal'          => $subtotal,
+                    'iva_valor'         => $ivaValor,
+                    'total_linea'       => $totalLinea,
+                    'usuario'           => $request->user()->id_emp,
+                    'observacion'       => $egreso->observacion,
+                    'created_at'        => now(),
                 ]);
             }
 
@@ -192,8 +216,9 @@ class EgresoController extends Controller
 
         DB::transaction(function () use ($egreso, $request) {
             foreach ($egreso->detalles as $det) {
-                $articulo   = Articulo::findOrFail($det->articulo_id);
-                $nuevoStock = (float) $articulo->stock_actual + (float) $det->cantidad;
+                $articulo       = Articulo::findOrFail($det->articulo_id);
+                $stockAntes     = (float) $articulo->stock_actual;
+                $nuevoStock     = $stockAntes + (float) $det->cantidad;
                 $precioAnterior = $det->precio_anterior !== null ? (float) $det->precio_anterior : 0;
 
                 // Restaurar precio solo si el artículo quedó en 0 (el egreso lo puso en 0)
@@ -205,6 +230,29 @@ class EgresoController extends Controller
                     'stock_actual'    => $nuevoStock,
                     'precio_unitario' => $nuevoPrecio,
                     'updated_at'      => now(),
+                ]);
+
+                DB::table('adq.kardex')->insert([
+                    'articulo_id'       => $det->articulo_id,
+                    'fecha'             => now(),
+                    'tipo_movimiento'   => 'REVERSO_EGRESO',
+                    'referencia_tipo'   => 'egreso',
+                    'referencia_id'     => $egreso->id,
+                    'referencia_det_id' => $det->id,
+                    'numero_documento'  => null,
+                    'cantidad_entrada'  => $det->cantidad,
+                    'cantidad_salida'   => 0,
+                    'stock_antes'       => $stockAntes,
+                    'stock_despues'     => $nuevoStock,
+                    'precio_antes'      => (float) $articulo->precio_unitario,
+                    'precio_despues'    => $nuevoPrecio,
+                    'precio_movimiento' => $precioAnterior,
+                    'subtotal'          => $det->subtotal ?? 0,
+                    'iva_valor'         => $det->iva_valor ?? 0,
+                    'total_linea'       => $det->total_linea ?? 0,
+                    'usuario'           => $request->user()->id_emp,
+                    'observacion'       => $request->motivo_reverso,
+                    'created_at'        => now(),
                 ]);
             }
 

@@ -146,6 +146,9 @@ class OrdenCompraController extends Controller
                     ? round(($precioAnterior + $nuevoPrecio) / 2, 5)
                     : $nuevoPrecio;
 
+                $stockAntes   = (float) $articulo->stock_actual;
+                $stockDespues = $stockAntes + (float) $det->cantidad;
+
                 DB::table('adq.orden_compra_det')
                     ->where('id', $det->id)
                     ->update(['precio_anterior' => $precioAnterior]);
@@ -158,6 +161,29 @@ class OrdenCompraController extends Controller
                         'precio_unitario'        => $precioPromedio,
                         'updated_at'             => now(),
                     ]);
+
+                DB::table('adq.kardex')->insert([
+                    'articulo_id'       => $det->articulo_id,
+                    'fecha'             => now(),
+                    'tipo_movimiento'   => 'INGRESO',
+                    'referencia_tipo'   => 'orden_compra',
+                    'referencia_id'     => $orden->id,
+                    'referencia_det_id' => $det->id,
+                    'numero_documento'  => $orden->numero_documento,
+                    'cantidad_entrada'  => $det->cantidad,
+                    'cantidad_salida'   => 0,
+                    'stock_antes'       => $stockAntes,
+                    'stock_despues'     => $stockDespues,
+                    'precio_antes'      => $precioAnterior,
+                    'precio_despues'    => $precioPromedio,
+                    'precio_movimiento' => $det->precio_unitario,
+                    'subtotal'          => $det->subtotal ?? 0,
+                    'iva_valor'         => $det->iva_valor ?? 0,
+                    'total_linea'       => $det->total_linea ?? 0,
+                    'usuario'           => $request->user()->id_emp,
+                    'observacion'       => $orden->observacion,
+                    'created_at'        => now(),
+                ]);
             }
 
             $orden->update([
@@ -191,6 +217,9 @@ class OrdenCompraController extends Controller
                     ? (float) $det->precio_anterior
                     : (float) $articulo->precio_unitario;
 
+                $stockAntes   = (float) $articulo->stock_actual;
+                $stockDespues = max(0, $stockAntes - (float) $det->cantidad);
+
                 DB::table('adq.articulo')
                     ->where('id', $det->articulo_id)
                     ->update([
@@ -198,6 +227,29 @@ class OrdenCompraController extends Controller
                         'precio_unitario' => $precioAnterior,
                         'updated_at'      => now(),
                     ]);
+
+                DB::table('adq.kardex')->insert([
+                    'articulo_id'       => $det->articulo_id,
+                    'fecha'             => now(),
+                    'tipo_movimiento'   => 'REVERSO_INGRESO',
+                    'referencia_tipo'   => 'orden_compra',
+                    'referencia_id'     => $orden->id,
+                    'referencia_det_id' => $det->id,
+                    'numero_documento'  => $orden->numero_documento,
+                    'cantidad_entrada'  => 0,
+                    'cantidad_salida'   => $det->cantidad,
+                    'stock_antes'       => $stockAntes,
+                    'stock_despues'     => $stockDespues,
+                    'precio_antes'      => (float) $articulo->precio_unitario,
+                    'precio_despues'    => $precioAnterior,
+                    'precio_movimiento' => $det->precio_unitario,
+                    'subtotal'          => $det->subtotal ?? 0,
+                    'iva_valor'         => $det->iva_valor ?? 0,
+                    'total_linea'       => $det->total_linea ?? 0,
+                    'usuario'           => $request->user()->id_emp,
+                    'observacion'       => $request->motivo_reverso,
+                    'created_at'        => now(),
+                ]);
             }
 
             $orden->update([
