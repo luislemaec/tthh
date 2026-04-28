@@ -33,38 +33,56 @@
 
         <!-- Grupos -->
         <template v-for="grupo in menuGrupos" :key="grupo.label">
+
           <!-- Encabezado de grupo -->
           <div class="mt-3 mb-0.5">
-            <div v-if="sidebarOpen"
-              class="px-4 py-1 text-xs font-bold tracking-widest uppercase select-none"
-              style="color:rgba(255,255,255,0.45)">
-              {{ grupo.label }}
-            </div>
+            <button v-if="sidebarOpen"
+              @click="toggleGrupo(grupo.label)"
+              class="w-full flex items-center justify-between px-4 py-1 select-none focus:outline-none group">
+              <span class="text-xs font-bold tracking-widest uppercase transition-colors duration-300"
+                :style="gruposAbiertos[grupo.label] ? 'color:rgba(255,255,255,0.8)' : 'color:rgba(255,255,255,0.4)'">
+                {{ grupo.label }}
+              </span>
+              <svg class="w-3.5 h-3.5 flex-shrink-0 transition-all duration-300 ease-in-out"
+                :class="gruposAbiertos[grupo.label] ? 'rotate-90' : 'rotate-0'"
+                :style="gruposAbiertos[grupo.label] ? 'color:rgba(255,255,255,0.65)' : 'color:rgba(255,255,255,0.3)'"
+                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
+              </svg>
+            </button>
             <div v-else class="mx-3 border-t" style="border-color:rgba(255,255,255,0.2)"></div>
           </div>
 
-          <!-- Items del grupo -->
-          <router-link v-for="item in grupo.items" :key="item.to" :to="item.to"
-            class="flex items-center gap-3 px-4 py-2.5 text-sm transition-all duration-200"
-            :style="$route.path.startsWith(item.to) ? 'background-color:#3b4a2e' : ''"
-            :class="$route.path.startsWith(item.to) ? 'font-semibold text-white' : 'text-green-100 hover:bg-[#3b4a2e]'"
-            active-class="">
-            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="item.icon" />
-            </svg>
-            <span v-show="sidebarOpen">{{ item.label }}</span>
-            <span v-if="item.badge && item.badge > 0 && sidebarOpen"
-              class="ml-auto bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 leading-none">
-              {{ item.badge }}
-            </span>
-          </router-link>
+          <!-- Items con animación acordeón -->
+          <Transition @enter="slideDown" @after-enter="afterSlideDown" @leave="slideUp">
+            <div v-show="!sidebarOpen || gruposAbiertos[grupo.label]">
+              <router-link v-for="item in grupo.items" :key="item.to" :to="item.to"
+                class="flex items-center gap-3 px-4 py-2.5 text-sm transition-all duration-200 border-l-2"
+                :style="$route.path.startsWith(item.to)
+                  ? 'background-color:#3b4a2e; border-color:#8aad6a'
+                  : 'border-color:transparent'"
+                :class="$route.path.startsWith(item.to)
+                  ? 'font-semibold text-white'
+                  : 'text-green-100 hover:bg-[#3b4a2e] hover:border-green-500'"
+                active-class="">
+                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="item.icon" />
+                </svg>
+                <span v-show="sidebarOpen">{{ item.label }}</span>
+                <span v-if="item.badge && item.badge > 0 && sidebarOpen"
+                  class="ml-auto bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 leading-none">
+                  {{ item.badge }}
+                </span>
+              </router-link>
 
-          <!-- Sin items: placeholder -->
-          <p v-if="!grupo.items.length && sidebarOpen"
-            class="px-4 py-1.5 text-xs italic"
-            style="color:rgba(255,255,255,0.3)">
-            Próximamente...
-          </p>
+              <p v-if="!grupo.items.length && sidebarOpen"
+                class="px-4 py-2 text-xs italic"
+                style="color:rgba(255,255,255,0.3)">
+                Próximamente...
+              </p>
+            </div>
+          </Transition>
+
         </template>
 
       </nav>
@@ -121,8 +139,46 @@ import api from '@/services/api'
 
 const router = useRouter()
 const auth   = useAuthStore()
-const sidebarOpen = ref(true)
+const sidebarOpen  = ref(true)
 const alertasStock = ref(0)
+
+const gruposAbiertos = ref({
+  'ADMINISTRACIÓN': true,
+  'MOVIMIENTOS':    true,
+  'SOLICITUDES':    true,
+  'REPORTES':       true,
+})
+
+function toggleGrupo(label) {
+  gruposAbiertos.value[label] = !gruposAbiertos.value[label]
+}
+
+function slideDown(el) {
+  el.style.overflow = 'hidden'
+  el.style.height   = '0px'
+  el.style.opacity  = '0'
+  requestAnimationFrame(() => {
+    el.style.transition = 'height 0.32s cubic-bezier(0.4,0,0.2,1), opacity 0.28s ease'
+    el.style.height     = el.scrollHeight + 'px'
+    el.style.opacity    = '1'
+  })
+}
+function afterSlideDown(el) {
+  el.style.height     = 'auto'
+  el.style.overflow   = ''
+  el.style.transition = ''
+  el.style.opacity    = ''
+}
+function slideUp(el) {
+  el.style.overflow = 'hidden'
+  el.style.height   = el.scrollHeight + 'px'
+  el.style.opacity  = '1'
+  requestAnimationFrame(() => {
+    el.style.transition = 'height 0.25s cubic-bezier(0.4,0,1,1), opacity 0.2s ease'
+    el.style.height     = '0px'
+    el.style.opacity    = '0'
+  })
+}
 
 const esBienes = computed(() => auth.tieneRol('BIENES'))
 const esAdq    = computed(() => auth.tieneRol('ADQUISICIONES'))
