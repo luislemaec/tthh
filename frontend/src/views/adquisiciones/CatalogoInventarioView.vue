@@ -108,8 +108,11 @@
 
     <!-- Modal -->
     <div v-if="modal.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-        <h2 class="text-lg font-bold mb-4" style="color:#4a5e3a">{{ modal.editando ? 'Editar' : 'Nuevo' }} ítem del catálogo</h2>
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+        <div class="px-6 py-4" style="background-color:#4a5e3a;">
+          <h2 class="text-lg font-bold text-white">{{ modal.editando ? 'Editar' : 'Nuevo' }} ítem del catálogo</h2>
+        </div>
+        <div class="p-6">
         <div class="space-y-3">
           <div class="grid grid-cols-2 gap-3">
             <div>
@@ -143,6 +146,7 @@
             {{ guardando ? 'Guardando...' : 'Guardar' }}
           </button>
         </div>
+        </div><!-- /p-6 -->
       </div>
     </div>
   </div>

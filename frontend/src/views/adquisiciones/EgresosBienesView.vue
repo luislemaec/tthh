@@ -91,11 +91,12 @@
 
     <!-- ══ MODAL CREAR / EDITAR ══ -->
     <div v-if="modalForm.show" class="fixed inset-0 bg-black/50 flex items-start justify-center z-50 p-4 overflow-y-auto">
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-7xl p-6 my-4">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-7xl my-4 overflow-hidden">
 
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-bold" style="color:#4a5e3a">{{ modalForm.editando ? 'Editar Egreso #' + modalForm.id : 'Nuevo Egreso de Bienes' }}</h2>
+        <div class="px-6 py-4" style="background-color:#4a5e3a;">
+          <h2 class="text-lg font-bold text-white">{{ modalForm.editando ? 'Editar Egreso #' + modalForm.id : 'Nuevo Egreso de Bienes' }}</h2>
         </div>
+        <div class="p-6">
 
         <!-- Nav pestañas -->
         <div class="flex border-b mb-5">
@@ -244,16 +245,18 @@
             {{ guardando ? 'Guardando...' : 'Guardar egreso' }}
           </button>
         </div>
+        </div><!-- /p-6 -->
       </div>
     </div>
 
     <!-- ══ MODAL VER DETALLE ══ -->
     <div v-if="modalDetalle.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto">
-        <div class="flex justify-between items-start mb-4">
-          <h2 class="text-lg font-bold" style="color:#4a5e3a">Egreso #{{ modalDetalle.egreso?.numero_secuencial ?? modalDetalle.egreso?.id }}</h2>
-          <button @click="modalDetalle.show = false" class="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="px-6 py-4 flex items-center justify-between flex-shrink-0" style="background-color:#4a5e3a;">
+          <h2 class="text-lg font-bold text-white">Egreso #{{ modalDetalle.egreso?.numero_secuencial ?? modalDetalle.egreso?.id }}</h2>
+          <button @click="modalDetalle.show = false" class="text-white/70 hover:text-white text-xl leading-none">✕</button>
         </div>
+        <div class="p-6 overflow-y-auto">
         <div class="grid grid-cols-2 gap-x-6 gap-y-1 text-sm mb-4">
           <div><span class="text-gray-500">Dirección:</span> <span class="font-medium">{{ modalDetalle.egreso?.direccion }}</span></div>
           <div><span class="text-gray-500">Servidor:</span> <span class="font-medium">{{ modalDetalle.egreso?.empleado_nombre }}</span></div>
@@ -297,13 +300,17 @@
             </tfoot>
           </table>
         </div>
+        </div><!-- /p-6 -->
       </div>
     </div>
 
     <!-- ══ MODAL REVERSO ══ -->
     <div v-if="modalReverso.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-        <h2 class="text-lg font-bold mb-1">Reversar Egreso</h2>
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+        <div class="px-6 py-4" style="background-color:#4a5e3a;">
+          <h2 class="text-lg font-bold text-white">Reversar Egreso</h2>
+        </div>
+        <div class="p-6">
         <p class="text-sm text-gray-500 mb-4">El stock de los artículos será restituido. El precio se restaura si quedó en cero.</p>
         <div>
           <label class="block text-xs text-gray-600 mb-1">Motivo del reverso *</label>
@@ -320,6 +327,7 @@
             {{ modalReverso.guardando ? 'Reversando...' : 'Confirmar Reverso' }}
           </button>
         </div>
+        </div><!-- /p-6 -->
       </div>
     </div>
   </div>

@@ -173,10 +173,11 @@
 
     <!-- Modal crear/editar -->
     <div v-if="modal.show" class="fixed inset-0 bg-black/50 flex items-start justify-center z-50 p-4 overflow-y-auto">
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl p-6 my-4">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-bold" style="color:#4a5e3a">{{ modal.editando ? 'Editar' : 'Nuevo' }} Artículo</h2>
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl my-4 overflow-hidden">
+        <div class="px-6 py-4" style="background-color:#4a5e3a;">
+          <h2 class="text-lg font-bold text-white">{{ modal.editando ? 'Editar' : 'Nuevo' }} Artículo</h2>
         </div>
+        <div class="p-6">
 
         <!-- Nav pestañas -->
         <div class="flex border-b mb-5">
@@ -315,13 +316,17 @@
             {{ guardando ? 'Guardando...' : 'Guardar' }}
           </button>
         </div>
+        </div><!-- /p-6 -->
       </div>
     </div>
 
     <!-- Modal configuración porcentaje -->
     <div v-if="modalConfig.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-sm p-6">
-        <h2 class="text-lg font-bold mb-4" style="color:#4a5e3a">Configurar Stock Mínimo</h2>
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
+        <div class="px-6 py-4" style="background-color:#4a5e3a;">
+          <h2 class="text-lg font-bold text-white">Configurar Stock Mínimo</h2>
+        </div>
+        <div class="p-6">
         <p class="text-sm text-gray-600 mb-4">
           Se genera alerta cuando el stock actual es menor o igual al
           <b>{{ modalConfig.porcentaje }}%</b> del stock máximo histórico del artículo.
@@ -338,6 +343,7 @@
             Guardar
           </button>
         </div>
+        </div><!-- /p-6 -->
       </div>
     </div>
   </div>

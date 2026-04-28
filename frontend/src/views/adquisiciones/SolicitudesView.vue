@@ -94,9 +94,11 @@
 
     <!-- Modal crear solicitud -->
     <div v-if="modalCrear.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-3xl p-6 max-h-[95vh] overflow-y-auto">
-        <h2 class="text-lg font-bold mb-4">Nueva Solicitud de Materiales</h2>
-
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[95vh] overflow-hidden flex flex-col">
+        <div class="px-6 py-4 flex-shrink-0" style="background-color:#4a5e3a;">
+          <h2 class="text-lg font-bold text-white">Nueva Solicitud de Materiales</h2>
+        </div>
+        <div class="p-6 overflow-y-auto">
         <div class="mb-4">
           <label class="block text-xs text-gray-600 mb-1">Justificación</label>
           <textarea v-model="modalCrear.form.justificacion" rows="2" maxlength="500"
@@ -173,13 +175,17 @@
             {{ guardando ? 'Enviando...' : 'Enviar solicitud' }}
           </button>
         </div>
+        </div><!-- /p-6 overflow-y-auto -->
       </div>
     </div>
 
     <!-- Modal despachar (Bienes) -->
     <div v-if="modalDespacho.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-xl p-6 max-h-[90vh] overflow-y-auto">
-        <h2 class="text-lg font-bold mb-1">Autorizar Cantidades — Despacho</h2>
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="px-6 py-4 flex-shrink-0" style="background-color:#4a5e3a;">
+          <h2 class="text-lg font-bold text-white">Autorizar Cantidades — Despacho</h2>
+        </div>
+        <div class="p-6 overflow-y-auto">
         <p class="text-sm text-gray-500 mb-4">
           Solicitud de {{ modalDespacho.solicitud?.empleado?.apellido_emp }} {{ modalDespacho.solicitud?.empleado?.nombre_emp }}
         </p>
@@ -216,6 +222,7 @@
             {{ guardando ? 'Guardando...' : 'Confirmar despacho' }}
           </button>
         </div>
+        </div><!-- /p-6 overflow-y-auto -->
       </div>
     </div>
   </div>

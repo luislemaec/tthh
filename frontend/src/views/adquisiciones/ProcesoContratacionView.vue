@@ -48,8 +48,11 @@
     </div>
 
     <div v-if="modal.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-sm p-6">
-        <h2 class="text-lg font-bold mb-4" style="color:#4a5e3a">{{ modal.editando ? 'Editar' : 'Nuevo' }} proceso de contratación</h2>
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
+        <div class="px-6 py-4" style="background-color:#4a5e3a;">
+          <h2 class="text-lg font-bold text-white">{{ modal.editando ? 'Editar' : 'Nuevo' }} proceso de contratación</h2>
+        </div>
+        <div class="p-6">
         <div>
           <label class="block text-xs text-gray-600 mb-1">Nombre *</label>
           <input v-model="modal.nombre" v-uppercase type="text" maxlength="100"
@@ -64,6 +67,7 @@
             {{ guardando ? 'Guardando...' : 'Guardar' }}
           </button>
         </div>
+        </div><!-- /p-6 -->
       </div>
     </div>
   </div>
