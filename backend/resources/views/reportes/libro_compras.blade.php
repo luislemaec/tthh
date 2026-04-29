@@ -38,9 +38,10 @@
 @php
   $logoPath = public_path('logo.png');
   $logoB64  = base64_encode(file_get_contents($logoPath));
-  $totalSub = $filas->sum('subtotal');
-  $totalIva = $filas->sum('iva_valor');
-  $totalGen = $filas->sum('total');
+  $totalSub  = $filas->sum('subtotal');
+  $totalDesc = $filas->sum('descuento');
+  $totalIva  = $filas->sum('iva_valor');
+  $totalGen  = $filas->sum('total');
 @endphp
 
 <div class="header">
@@ -64,10 +65,11 @@
       <th style="width:11%">RUC</th>
       <th style="width:22%">Proveedor</th>
       <th style="width:10%">N° Factura</th>
-      <th style="width:16%">Proceso Contratación</th>
-      <th style="width:11%">Subtotal</th>
-      <th style="width:11%">IVA</th>
-      <th style="width:12%">Total</th>
+      <th style="width:14%">Proceso Contratación</th>
+      <th style="width:9%">Subtotal</th>
+      <th style="width:7%">Descuento</th>
+      <th style="width:9%">IVA</th>
+      <th style="width:10%">Total</th>
     </tr>
   </thead>
   <tbody>
@@ -79,18 +81,20 @@
       <td class="text-center">{{ $f->numero_documento }}</td>
       <td>{{ $f->proceso_contratacion ?? '-' }}</td>
       <td class="text-right">$ {{ number_format($f->subtotal, 2) }}</td>
+      <td class="text-right">{{ ($f->descuento ?? 0) > 0 ? '($ '.number_format($f->descuento, 2).')' : '—' }}</td>
       <td class="text-right">$ {{ number_format($f->iva_valor, 2) }}</td>
       <td class="text-right">$ {{ number_format($f->total, 2) }}</td>
     </tr>
     @empty
     <tr>
-      <td colspan="8" style="text-align:center; padding:8px; color:#888;">Sin facturas en el período seleccionado</td>
+      <td colspan="9" style="text-align:center; padding:8px; color:#888;">Sin facturas en el período seleccionado</td>
     </tr>
     @endforelse
     @if(count($filas) > 0)
     <tr class="totales">
       <td colspan="5" class="text-right">TOTALES</td>
       <td class="text-right">$ {{ number_format($totalSub, 2) }}</td>
+      <td class="text-right">{{ $totalDesc > 0 ? '($ '.number_format($totalDesc, 2).')' : '—' }}</td>
       <td class="text-right">$ {{ number_format($totalIva, 2) }}</td>
       <td class="text-right">$ {{ number_format($totalGen, 2) }}</td>
     </tr>

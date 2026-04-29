@@ -53,6 +53,7 @@ class ReporteAdqController extends Controller
                 'oc.numero_documento',
                 'oc.proceso_contratacion',
                 'oc.subtotal',
+                'oc.descuento',
                 'oc.iva_valor',
                 'oc.total',
                 'p.ruc',
