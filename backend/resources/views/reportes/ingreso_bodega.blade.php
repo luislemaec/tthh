@@ -155,27 +155,38 @@
     <td style="width:47%; vertical-align:bottom;">
       <table style="width:100%; border-collapse:collapse;">
         <tr>
-          <td class="totales-label">Subtotal</td>
+          <td class="totales-label">Subtotal sin impuesto</td>
           <td class="totales-valor">{{ number_format($orden->subtotal, 2) }}</td>
         </tr>
         <tr>
-          <td class="totales-label">Otros Dsctos.</td>
+          <td class="totales-label">Total descuento</td>
           <td class="totales-valor">{{ number_format($orden->descuento ?? 0, 2) }}</td>
         </tr>
+        @php
+          $descuento = (float)($orden->descuento ?? 0);
+          $subtotal  = (float)$orden->subtotal;
+          $factor    = $subtotal > 0 ? ($subtotal - $descuento) / $subtotal : 1;
+          $tarifa0Net  = round($tarifa0  * $factor, 2);
+          $tarifa15Net = round($tarifa15 * $factor, 2);
+        @endphp
         <tr>
-          <td class="totales-label">Tarifa 0%</td>
-          <td class="totales-valor">{{ number_format($tarifa0, 2) }}</td>
+          <td class="totales-label">Subtotal 15%</td>
+          <td class="totales-valor">{{ number_format($tarifa15Net, 2) }}</td>
         </tr>
         <tr>
-          <td class="totales-label">Tarifa 15%</td>
-          <td class="totales-valor">{{ number_format($tarifa15, 2) }}</td>
+          <td class="totales-label">Subtotal 0%</td>
+          <td class="totales-valor">{{ number_format($tarifa0Net, 2) }}</td>
         </tr>
         <tr>
-          <td class="totales-label">15 % IVA</td>
+          <td class="totales-label">Base imponible</td>
+          <td class="totales-valor">{{ number_format($subtotal - $descuento, 2) }}</td>
+        </tr>
+        <tr>
+          <td class="totales-label">I.V.A.</td>
           <td class="totales-valor">{{ number_format($orden->iva_valor, 2) }}</td>
         </tr>
         <tr>
-          <td class="totales-label totales-total">Total</td>
+          <td class="totales-label totales-total">Valor Total</td>
           <td class="totales-valor totales-total">{{ number_format($orden->total, 2) }}</td>
         </tr>
       </table>

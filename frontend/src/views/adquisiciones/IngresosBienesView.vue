@@ -282,32 +282,48 @@
                     </td>
                   </tr>
                 </tbody>
-                <tfoot v-if="form.detalles.length" style="background-color:#f0f4ed;" class="border-t-2">
-                  <tr>
-                    <td colspan="7" class="px-3 py-2 text-right font-semibold text-gray-600">Subtotal artículos:</td>
-                    <td class="px-3 py-2 text-right font-bold font-mono">${{ fmt(totales.subtotal) }}</td>
-                    <td class="px-3 py-2 text-right font-bold font-mono">${{ fmt(totales.iva) }}</td>
-                    <td class="px-3 py-2 text-right font-bold font-mono">${{ fmt(totales.subtotal + totales.iva) }}</td>
+                <tfoot v-if="form.detalles.length" class="border-t-2 text-xs">
+                  <!-- Subtotal sin impuesto -->
+                  <tr style="background-color:#f0f4ed;">
+                    <td colspan="7" class="px-3 py-1.5 text-right font-semibold text-gray-600">Subtotal sin impuesto:</td>
+                    <td class="px-3 py-1.5 text-right font-mono">${{ fmt(totales.subtotal) }}</td>
+                    <td colspan="2"></td>
                     <td></td>
                   </tr>
+                  <!-- Descuento (editable) -->
                   <tr style="background-color:#fef9c3;">
-                    <td colspan="9" class="px-3 py-1.5">
-                      <div class="flex justify-end items-center gap-2">
-                        <span class="text-xs text-gray-600 font-semibold">Descuento $:</span>
-                        <div class="relative">
-                          <span class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
-                          <input v-model.number="form.descuento" type="number" step="0.01" min="0"
-                            class="w-28 border rounded pl-5 pr-2 py-1 text-right text-xs focus:ring-1 outline-none" />
-                        </div>
+                    <td colspan="7" class="px-3 py-1.5 text-right font-semibold text-gray-600">
+                      Descuento $:
+                    </td>
+                    <td class="px-3 py-1.5">
+                      <div class="relative">
+                        <span class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                        <input v-model.number="form.descuento" type="number" step="0.01" min="0"
+                          class="w-full border rounded pl-5 pr-2 py-1 text-right focus:ring-1 outline-none" />
                       </div>
                     </td>
+                    <td colspan="2"></td>
                     <td></td>
                   </tr>
-                  <tr>
-                    <td colspan="7" class="px-3 py-2 text-right font-semibold text-gray-700">TOTAL A PAGAR:</td>
-                    <td class="px-3 py-2 text-right font-bold font-mono">${{ fmt(totales.subtotal) }}</td>
-                    <td class="px-3 py-2 text-right font-bold font-mono">${{ fmt(totales.iva) }}</td>
-                    <td class="px-3 py-2 text-right font-bold font-mono text-sm" style="color:#4a5e3a;">${{ fmt(totales.total) }}</td>
+                  <!-- Base neta (después del descuento) -->
+                  <tr style="background-color:#f0f4ed;">
+                    <td colspan="7" class="px-3 py-1.5 text-right font-semibold text-gray-600">Base imponible:</td>
+                    <td class="px-3 py-1.5 text-right font-mono font-semibold">${{ fmt(totales.baseNeta) }}</td>
+                    <td colspan="2"></td>
+                    <td></td>
+                  </tr>
+                  <!-- IVA sobre base neta -->
+                  <tr style="background-color:#f0f4ed;">
+                    <td colspan="7" class="px-3 py-1.5 text-right font-semibold text-gray-600">IVA:</td>
+                    <td></td>
+                    <td class="px-3 py-1.5 text-right font-mono">${{ fmt(totales.iva) }}</td>
+                    <td></td>
+                    <td></td>
+                  </tr>
+                  <!-- Total final -->
+                  <tr style="background-color:#dce8d4;">
+                    <td colspan="7" class="px-3 py-2 text-right font-bold text-gray-800 text-sm">VALOR TOTAL:</td>
+                    <td colspan="3" class="px-3 py-2 text-right font-bold font-mono text-sm" style="color:#4a5e3a;">${{ fmt(totales.total) }}</td>
                     <td></td>
                   </tr>
                 </tfoot>
@@ -481,13 +497,16 @@ const form = ref(formInicial())
 const proveedoresActivos = computed(() => proveedores.value.filter(p => p.estado === 'ACTIVO'))
 
 const totales = computed(() => {
-  let subtotal = 0, iva = 0
+  let subtotal = 0, ivaLineas = 0
   for (const d of form.value.detalles) {
-    subtotal += d._subtotal || 0
-    iva      += d._iva_valor || 0
+    subtotal   += d._subtotal   || 0
+    ivaLineas  += d._iva_valor  || 0
   }
-  const descuento = parseFloat(form.value.descuento) || 0
-  return { subtotal, iva, descuento, total: subtotal + iva - descuento }
+  const descuento = Math.round((parseFloat(form.value.descuento) || 0) * 100) / 100
+  const baseNeta  = Math.round((subtotal - descuento) * 100) / 100
+  const factor    = subtotal > 0 ? baseNeta / subtotal : 1
+  const ivaNeto   = Math.round(ivaLineas * factor * 100) / 100
+  return { subtotal, descuento, baseNeta, iva: ivaNeto, total: Math.round((baseNeta + ivaNeto) * 100) / 100 }
 })
 
 function fmt(v)       { return parseFloat(v || 0).toFixed(2) }

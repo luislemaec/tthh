@@ -54,6 +54,10 @@ class OrdenCompraController extends Controller
         $detallesCalc = $this->calcularDetalles($request->detalles);
 
         $descuento = round((float) ($request->descuento ?? 0), 2);
+        $subtotal  = $detallesCalc['subtotal'];
+        $factor    = $subtotal > 0 ? ($subtotal - $descuento) / $subtotal : 1;
+        $ivaNeto   = round($detallesCalc['iva_valor'] * $factor, 2);
+        $total     = round(($subtotal - $descuento) + $ivaNeto, 2);
 
         $orden = OrdenCompra::create([
             'tipo_ingreso'          => $request->tipo_ingreso,
@@ -65,10 +69,10 @@ class OrdenCompraController extends Controller
             'fecha'                 => $request->fecha_documento ?? now()->toDateString(),
             'estado'                => 'BORRADOR',
             'observacion'           => $request->observacion,
-            'subtotal'              => $detallesCalc['subtotal'],
+            'subtotal'              => $subtotal,
             'descuento'             => $descuento,
-            'iva_valor'             => $detallesCalc['iva_valor'],
-            'total'                 => round($detallesCalc['subtotal'] + $detallesCalc['iva_valor'] - $descuento, 2),
+            'iva_valor'             => $ivaNeto,
+            'total'                 => $total,
             'usuario_registro'      => $request->user()->id_emp,
             'numero_secuencial'     => $secuencial,
             'anio'                  => $anio,
@@ -114,6 +118,9 @@ class OrdenCompraController extends Controller
 
         $detallesCalc = $this->calcularDetalles($request->detalles);
         $descuento    = round((float) ($request->descuento ?? 0), 2);
+        $subtotal     = $detallesCalc['subtotal'];
+        $factor       = $subtotal > 0 ? ($subtotal - $descuento) / $subtotal : 1;
+        $ivaNeto      = round($detallesCalc['iva_valor'] * $factor, 2);
 
         $orden->update([
             'tipo_ingreso'         => $request->tipo_ingreso,
@@ -123,10 +130,10 @@ class OrdenCompraController extends Controller
             'numero_documento'     => $request->numero_documento,
             'fecha_documento'      => $request->fecha_documento,
             'observacion'          => $request->observacion,
-            'subtotal'             => $detallesCalc['subtotal'],
+            'subtotal'             => $subtotal,
             'descuento'            => $descuento,
-            'iva_valor'            => $detallesCalc['iva_valor'],
-            'total'                => round($detallesCalc['subtotal'] + $detallesCalc['iva_valor'] - $descuento, 2),
+            'iva_valor'            => $ivaNeto,
+            'total'                => round(($subtotal - $descuento) + $ivaNeto, 2),
         ]);
 
         $orden->detalles()->delete();
