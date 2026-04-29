@@ -11,7 +11,7 @@ class OrdenCompra extends Model
         'proveedor_id', 'fecha', 'estado', 'observacion',
         'tipo_ingreso', 'proceso_contratacion', 'tipo_documento',
         'numero_documento', 'fecha_documento',
-        'subtotal', 'iva_valor', 'total',
+        'subtotal', 'descuento', 'iva_valor', 'total',
         'usuario_registro', 'usuario_recepcion', 'fecha_recepcion',
         'numero_secuencial', 'anio',
         'motivo_reverso', 'usuario_reverso', 'fecha_reverso',

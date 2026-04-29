@@ -46,10 +46,10 @@
         <thead>
           <tr style="background-color: #4a5e3a;">
             <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">#</th>
-            <th v-if="filtroEstado !== 'RECIBIDO'" class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Tipo</th>
+            <th v-show="filtroEstado !== 'RECIBIDO'" class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Tipo</th>
             <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Documento</th>
             <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Proveedor</th>
-            <th v-if="filtroEstado !== 'RECIBIDO'" class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Fecha Doc.</th>
+            <th v-show="filtroEstado !== 'RECIBIDO'" class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Fecha Doc.</th>
             <th class="text-right px-4 py-3 text-white font-semibold whitespace-nowrap">Subtotal</th>
             <th class="text-right px-4 py-3 text-white font-semibold whitespace-nowrap">IVA</th>
             <th class="text-right px-4 py-3 text-white font-semibold whitespace-nowrap">Total</th>
@@ -63,7 +63,7 @@
           </tr>
           <tr v-for="o in ordenes" :key="o.id" class="border-b hover:bg-green-50">
             <td class="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">{{ o.id }}</td>
-            <td v-if="filtroEstado !== 'RECIBIDO'" class="px-4 py-3 whitespace-nowrap">
+            <td v-show="filtroEstado !== 'RECIBIDO'" class="px-4 py-3 whitespace-nowrap">
               <span :class="o.tipo_ingreso === 'COMPRA' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'"
                 class="px-2 py-0.5 rounded-full text-xs font-medium">{{ o.tipo_ingreso }}</span>
             </td>
@@ -72,7 +72,7 @@
               <div class="font-mono text-xs">{{ o.numero_documento || '-' }}</div>
             </td>
             <td class="px-4 py-3 text-gray-700">{{ o.proveedor?.nombre || '-' }}</td>
-            <td v-if="filtroEstado !== 'RECIBIDO'" class="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{{ o.fecha_documento || '-' }}</td>
+            <td v-show="filtroEstado !== 'RECIBIDO'" class="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{{ o.fecha_documento || '-' }}</td>
             <td class="px-4 py-3 text-right font-mono text-xs whitespace-nowrap">${{ fmt(o.subtotal) }}</td>
             <td class="px-4 py-3 text-right font-mono text-xs whitespace-nowrap">${{ fmt(o.iva_valor) }}</td>
             <td class="px-4 py-3 text-right font-mono font-semibold whitespace-nowrap">${{ fmt(o.total) }}</td>
@@ -284,7 +284,27 @@
                 </tbody>
                 <tfoot v-if="form.detalles.length" style="background-color:#f0f4ed;" class="border-t-2">
                   <tr>
-                    <td colspan="7" class="px-3 py-2 text-right font-semibold text-gray-600">TOTALES:</td>
+                    <td colspan="7" class="px-3 py-2 text-right font-semibold text-gray-600">Subtotal artículos:</td>
+                    <td class="px-3 py-2 text-right font-bold font-mono">${{ fmt(totales.subtotal) }}</td>
+                    <td class="px-3 py-2 text-right font-bold font-mono">${{ fmt(totales.iva) }}</td>
+                    <td class="px-3 py-2 text-right font-bold font-mono">${{ fmt(totales.subtotal + totales.iva) }}</td>
+                    <td></td>
+                  </tr>
+                  <tr style="background-color:#fef9c3;">
+                    <td colspan="9" class="px-3 py-1.5">
+                      <div class="flex justify-end items-center gap-2">
+                        <span class="text-xs text-gray-600 font-semibold">Descuento $:</span>
+                        <div class="relative">
+                          <span class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
+                          <input v-model.number="form.descuento" type="number" step="0.01" min="0"
+                            class="w-28 border rounded pl-5 pr-2 py-1 text-right text-xs focus:ring-1 outline-none" />
+                        </div>
+                      </div>
+                    </td>
+                    <td></td>
+                  </tr>
+                  <tr>
+                    <td colspan="7" class="px-3 py-2 text-right font-semibold text-gray-700">TOTAL A PAGAR:</td>
                     <td class="px-3 py-2 text-right font-bold font-mono">${{ fmt(totales.subtotal) }}</td>
                     <td class="px-3 py-2 text-right font-bold font-mono">${{ fmt(totales.iva) }}</td>
                     <td class="px-3 py-2 text-right font-bold font-mono text-sm" style="color:#4a5e3a;">${{ fmt(totales.total) }}</td>
@@ -370,6 +390,10 @@
                 <td class="px-3 py-2 text-right font-mono">${{ fmt(modalDetalle.orden?.iva_valor) }}</td>
                 <td></td>
               </tr>
+              <tr v-if="parseFloat(modalDetalle.orden?.descuento) > 0">
+                <td colspan="6" class="px-3 py-2 text-right text-red-600">Descuento:</td>
+                <td class="px-3 py-2 text-right font-mono text-red-600">-${{ fmt(modalDetalle.orden?.descuento) }}</td>
+              </tr>
               <tr>
                 <td colspan="6" class="px-3 py-2 text-right text-gray-700">TOTAL:</td>
                 <td class="px-3 py-2 text-right font-mono text-base" style="color:#4a5e3a;">
@@ -449,6 +473,7 @@ const formInicial = () => ({
   numero_documento: '',
   fecha_documento: '',
   observacion: '',
+  descuento: 0,
   detalles: [],
 })
 const form = ref(formInicial())
@@ -461,7 +486,8 @@ const totales = computed(() => {
     subtotal += d._subtotal || 0
     iva      += d._iva_valor || 0
   }
-  return { subtotal, iva, total: subtotal + iva }
+  const descuento = parseFloat(form.value.descuento) || 0
+  return { subtotal, iva, descuento, total: subtotal + iva - descuento }
 })
 
 function fmt(v)       { return parseFloat(v || 0).toFixed(2) }
@@ -621,6 +647,7 @@ async function abrirEditar(o) {
     numero_documento:     data.numero_documento || '',
     fecha_documento:      data.fecha_documento || '',
     observacion:          data.observacion || '',
+    descuento:            parseFloat(data.descuento || 0),
     detalles: data.detalles.map(d => {
       const ivaPct = parseFloat(d.iva_porcentaje || 0)
       const sub    = parseFloat(d.subtotal || 0)
@@ -679,6 +706,7 @@ async function guardar() {
     numero_documento:     form.value.numero_documento || null,
     fecha_documento:      form.value.fecha_documento || null,
     observacion:          form.value.observacion || null,
+    descuento:            parseFloat(form.value.descuento) || 0,
     detalles: form.value.detalles.map(d => ({
       articulo_id:        d.articulo_id,
       cantidad:           d.cantidad,

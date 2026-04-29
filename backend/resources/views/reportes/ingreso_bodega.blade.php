@@ -160,7 +160,7 @@
         </tr>
         <tr>
           <td class="totales-label">Otros Dsctos.</td>
-          <td class="totales-valor">0.00000</td>
+          <td class="totales-valor">{{ number_format($orden->descuento ?? 0, 2) }}</td>
         </tr>
         <tr>
           <td class="totales-label">Tarifa 0%</td>

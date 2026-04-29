@@ -37,6 +37,7 @@ class OrdenCompraController extends Controller
             'numero_documento'      => $esFactura ? 'required|string|max:50' : 'nullable|string|max:50',
             'fecha_documento'       => 'nullable|date',
             'observacion'           => 'nullable|string',
+            'descuento'             => 'nullable|numeric|min:0',
             'detalles'              => 'required|array|min:1',
             'detalles.*.articulo_id'     => 'required|exists:pgsql.adq.articulo,id',
             'detalles.*.cantidad'        => 'required|numeric|min:0.01',
@@ -52,6 +53,8 @@ class OrdenCompraController extends Controller
 
         $detallesCalc = $this->calcularDetalles($request->detalles);
 
+        $descuento = round((float) ($request->descuento ?? 0), 2);
+
         $orden = OrdenCompra::create([
             'tipo_ingreso'          => $request->tipo_ingreso,
             'proceso_contratacion'  => $request->proceso_contratacion,
@@ -63,8 +66,9 @@ class OrdenCompraController extends Controller
             'estado'                => 'BORRADOR',
             'observacion'           => $request->observacion,
             'subtotal'              => $detallesCalc['subtotal'],
+            'descuento'             => $descuento,
             'iva_valor'             => $detallesCalc['iva_valor'],
-            'total'                 => $detallesCalc['total'],
+            'total'                 => round($detallesCalc['subtotal'] + $detallesCalc['iva_valor'] - $descuento, 2),
             'usuario_registro'      => $request->user()->id_emp,
             'numero_secuencial'     => $secuencial,
             'anio'                  => $anio,
@@ -98,6 +102,7 @@ class OrdenCompraController extends Controller
             'proveedor_id'          => 'nullable|exists:pgsql.adq.proveedor,id',
             'numero_documento'      => $esFactura ? 'required|string|max:50' : 'nullable|string|max:50',
             'fecha_documento'       => 'nullable|date',
+            'descuento'             => 'nullable|numeric|min:0',
             'detalles'              => 'required|array|min:1',
             'detalles.*.articulo_id'     => 'required|exists:pgsql.adq.articulo,id',
             'detalles.*.cantidad'        => 'required|numeric|min:0.01',
@@ -108,6 +113,7 @@ class OrdenCompraController extends Controller
         ]);
 
         $detallesCalc = $this->calcularDetalles($request->detalles);
+        $descuento    = round((float) ($request->descuento ?? 0), 2);
 
         $orden->update([
             'tipo_ingreso'         => $request->tipo_ingreso,
@@ -118,8 +124,9 @@ class OrdenCompraController extends Controller
             'fecha_documento'      => $request->fecha_documento,
             'observacion'          => $request->observacion,
             'subtotal'             => $detallesCalc['subtotal'],
+            'descuento'            => $descuento,
             'iva_valor'            => $detallesCalc['iva_valor'],
-            'total'                => $detallesCalc['total'],
+            'total'                => round($detallesCalc['subtotal'] + $detallesCalc['iva_valor'] - $descuento, 2),
         ]);
 
         $orden->detalles()->delete();
