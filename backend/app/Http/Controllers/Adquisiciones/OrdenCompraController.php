@@ -156,12 +156,13 @@ class OrdenCompraController extends Controller
                 $articulo       = Articulo::findOrFail($det->articulo_id);
                 $precioAnterior = (float) $articulo->precio_unitario;
                 $nuevoPrecio    = (float) $det->precio_unitario;
-                $precioPromedio = $precioAnterior > 0
-                    ? round(($precioAnterior + $nuevoPrecio) / 2, 5)
-                    : $nuevoPrecio;
+                $stockAntes     = (float) $articulo->stock_actual;
+                $stockDespues   = $stockAntes + (float) $det->cantidad;
 
-                $stockAntes   = (float) $articulo->stock_actual;
-                $stockDespues = $stockAntes + (float) $det->cantidad;
+                // Promedio ponderado: (stock_anterior × costo_anterior + cantidad_nueva × costo_nuevo) / stock_nuevo
+                $precioPromedio = ($stockAntes > 0 && $precioAnterior > 0)
+                    ? round(($stockAntes * $precioAnterior + (float) $det->cantidad * $nuevoPrecio) / $stockDespues, 5)
+                    : $nuevoPrecio;
 
                 DB::table('adq.orden_compra_det')
                     ->where('id', $det->id)
@@ -194,6 +195,7 @@ class OrdenCompraController extends Controller
                     'subtotal'          => $det->subtotal ?? 0,
                     'iva_valor'         => $det->iva_valor ?? 0,
                     'total_linea'       => $det->total_linea ?? 0,
+                    'valor_saldo'       => round($stockDespues * $precioPromedio, 2),
                     'usuario'           => $request->user()->id_emp,
                     'observacion'       => $orden->observacion,
                     'created_at'        => now(),
@@ -260,6 +262,7 @@ class OrdenCompraController extends Controller
                     'subtotal'          => $det->subtotal ?? 0,
                     'iva_valor'         => $det->iva_valor ?? 0,
                     'total_linea'       => $det->total_linea ?? 0,
+                    'valor_saldo'       => round($stockDespues * $precioAnterior, 2),
                     'usuario'           => $request->user()->id_emp,
                     'observacion'       => $request->motivo_reverso,
                     'created_at'        => now(),

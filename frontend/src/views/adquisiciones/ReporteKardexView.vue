@@ -1,13 +1,12 @@
 <template>
   <div>
     <div class="flex justify-between items-center mb-6">
-      <h1 class="text-2xl font-bold text-gray-800">Reporte Kardex</h1>
+      <h1 class="text-2xl font-bold text-gray-800">Kardex de Inventario</h1>
     </div>
 
     <!-- Filtros -->
     <div class="bg-white rounded-xl shadow p-5 mb-5">
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-        <!-- Artículo autocomplete -->
         <div class="md:col-span-2 relative">
           <label class="block text-xs text-gray-600 mb-1">Artículo *</label>
           <input v-model="busquedaArticulo" @input="buscarArticulos" @blur="cerrarSugerencias"
@@ -54,53 +53,104 @@
       <div><span class="text-gray-500 text-xs uppercase font-semibold">Artículo</span><br>
         <span class="font-medium">[{{ articulo.codigo }}] {{ articulo.nombre }}</span></div>
       <div><span class="text-gray-500 text-xs uppercase font-semibold">Stock Actual</span><br>
-        <span class="font-medium">{{ fmt2(articulo.stock_actual) }}</span></div>
-      <div><span class="text-gray-500 text-xs uppercase font-semibold">Precio s/IVA</span><br>
-        <span class="font-medium">$ {{ fmt4(articulo.precio_unitario) }}</span></div>
+        <span class="font-bold">{{ fmt2(articulo.stock_actual) }}</span></div>
+      <div><span class="text-gray-500 text-xs uppercase font-semibold">Costo Promedio</span><br>
+        <span class="font-bold font-mono">$ {{ fmt5(articulo.precio_unitario) }}</span></div>
+      <div><span class="text-gray-500 text-xs uppercase font-semibold">Valor Inventario</span><br>
+        <span class="font-bold font-mono text-green-800">$ {{ fmt2(articulo.stock_actual * articulo.precio_unitario) }}</span></div>
       <div><span class="text-gray-500 text-xs uppercase font-semibold">Movimientos</span><br>
         <span class="font-medium">{{ filas.length }}</span></div>
     </div>
 
-    <!-- Tabla -->
+    <!-- Tabla Kardex NIC 2 -->
     <div v-if="filas.length" class="bg-white rounded-xl shadow overflow-x-auto">
-      <table class="w-full text-sm">
+      <table class="w-full text-xs border-collapse">
         <thead>
-          <tr style="background-color:#4a5e3a;">
-            <th class="text-center px-3 py-3 text-white font-semibold whitespace-nowrap text-xs">Fecha</th>
-            <th class="text-center px-3 py-3 text-white font-semibold whitespace-nowrap text-xs">Tipo</th>
-            <th class="text-left px-3 py-3 text-white font-semibold whitespace-nowrap text-xs">N° Documento</th>
-            <th class="text-right px-3 py-3 text-white font-semibold whitespace-nowrap text-xs">Cant. Entrada</th>
-            <th class="text-right px-3 py-3 text-white font-semibold whitespace-nowrap text-xs">Cant. Salida</th>
-            <th class="text-right px-3 py-3 text-white font-semibold whitespace-nowrap text-xs">Stock Antes</th>
-            <th class="text-right px-3 py-3 text-white font-semibold whitespace-nowrap text-xs">Stock Después</th>
-            <th class="text-right px-3 py-3 text-white font-semibold whitespace-nowrap text-xs">Precio s/IVA</th>
-            <th class="text-right px-3 py-3 text-white font-semibold whitespace-nowrap text-xs">Subtotal</th>
-            <th class="text-right px-3 py-3 text-white font-semibold whitespace-nowrap text-xs">IVA</th>
-            <th class="text-right px-3 py-3 text-white font-semibold whitespace-nowrap text-xs">Total</th>
-            <th class="text-center px-3 py-3 text-white font-semibold whitespace-nowrap text-xs">Usuario</th>
+          <!-- Fila 1: grupos -->
+          <tr>
+            <th rowspan="2" class="px-2 py-2 text-white text-center border border-gray-600 whitespace-nowrap" style="background-color:#4a5e3a;">Fecha</th>
+            <th rowspan="2" class="px-2 py-2 text-white text-center border border-gray-600 whitespace-nowrap" style="background-color:#4a5e3a;">N° Doc.</th>
+            <th rowspan="2" class="px-2 py-2 text-white text-center border border-gray-600 whitespace-nowrap" style="background-color:#4a5e3a;">Detalle</th>
+            <th colspan="3" class="px-2 py-2 text-white text-center border border-gray-600" style="background-color:#1a5c2a;">INGRESO</th>
+            <th colspan="3" class="px-2 py-2 text-white text-center border border-gray-600" style="background-color:#7b1d1d;">EGRESO</th>
+            <th colspan="3" class="px-2 py-2 text-white text-center border border-gray-600" style="background-color:#1e3a5f;">SALDO</th>
+            <th rowspan="2" class="px-2 py-2 text-white text-center border border-gray-600 whitespace-nowrap" style="background-color:#4a5e3a;">Usuario</th>
+          </tr>
+          <!-- Fila 2: subencabezados -->
+          <tr>
+            <th class="px-2 py-1 text-white text-right border border-gray-600" style="background-color:#1a5c2a;">Cant.</th>
+            <th class="px-2 py-1 text-white text-right border border-gray-600" style="background-color:#1a5c2a;">P.Unit</th>
+            <th class="px-2 py-1 text-white text-right border border-gray-600" style="background-color:#1a5c2a;">Total</th>
+            <th class="px-2 py-1 text-white text-right border border-gray-600" style="background-color:#7b1d1d;">Cant.</th>
+            <th class="px-2 py-1 text-white text-right border border-gray-600" style="background-color:#7b1d1d;">P.Unit</th>
+            <th class="px-2 py-1 text-white text-right border border-gray-600" style="background-color:#7b1d1d;">Total</th>
+            <th class="px-2 py-1 text-white text-right border border-gray-600" style="background-color:#1e3a5f;">Cant.</th>
+            <th class="px-2 py-1 text-white text-right border border-gray-600" style="background-color:#1e3a5f;">P.Unit</th>
+            <th class="px-2 py-1 text-white text-right border border-gray-600" style="background-color:#1e3a5f;">Total</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="f in filas" :key="f.id" class="border-b hover:bg-gray-50">
-            <td class="px-3 py-2 text-center whitespace-nowrap text-xs">{{ fmtFecha(f.fecha) }}</td>
-            <td class="px-3 py-2 text-center whitespace-nowrap">
-              <span :class="badgeClass(f.tipo_movimiento)"
-                class="inline-block text-xs px-2 py-0.5 rounded-full font-medium">
+          <tr v-for="(f, i) in filas" :key="f.id"
+            :class="i % 2 === 0 ? 'bg-white' : 'bg-gray-50'"
+            class="border-b hover:bg-yellow-50">
+            <td class="px-2 py-1.5 text-center border border-gray-200 whitespace-nowrap">{{ fmtFecha(f.fecha) }}</td>
+            <td class="px-2 py-1.5 text-center border border-gray-200 font-mono whitespace-nowrap">{{ f.numero_documento || '—' }}</td>
+            <td class="px-2 py-1.5 border border-gray-200 whitespace-nowrap">
+              <span :class="badgeClass(f.tipo_movimiento)" class="px-2 py-0.5 rounded-full font-medium">
                 {{ tipoLabel(f.tipo_movimiento) }}
               </span>
             </td>
-            <td class="px-3 py-2 font-mono text-xs">{{ f.numero_documento || '-' }}</td>
-            <td class="px-3 py-2 text-right text-xs">{{ +f.cantidad_entrada > 0 ? fmt2(f.cantidad_entrada) : '-' }}</td>
-            <td class="px-3 py-2 text-right text-xs">{{ +f.cantidad_salida > 0 ? fmt2(f.cantidad_salida) : '-' }}</td>
-            <td class="px-3 py-2 text-right text-xs">{{ fmt2(f.stock_antes) }}</td>
-            <td class="px-3 py-2 text-right font-semibold text-xs">{{ fmt2(f.stock_despues) }}</td>
-            <td class="px-3 py-2 text-right text-xs font-mono">$ {{ fmt4(f.precio_movimiento) }}</td>
-            <td class="px-3 py-2 text-right text-xs font-mono">$ {{ fmt2(f.subtotal) }}</td>
-            <td class="px-3 py-2 text-right text-xs font-mono">$ {{ fmt2(f.iva_valor) }}</td>
-            <td class="px-3 py-2 text-right text-xs font-mono font-semibold">$ {{ fmt2(f.total_linea) }}</td>
-            <td class="px-3 py-2 text-center text-xs">{{ f.usuario }}</td>
+            <!-- INGRESO -->
+            <td class="px-2 py-1.5 text-right border border-gray-200 font-mono" style="background-color:#f0faf3;">
+              {{ esIngreso(f) ? fmt2(f.cantidad_entrada) : '' }}
+            </td>
+            <td class="px-2 py-1.5 text-right border border-gray-200 font-mono" style="background-color:#f0faf3;">
+              {{ esIngreso(f) ? fmt5(f.precio_movimiento) : '' }}
+            </td>
+            <td class="px-2 py-1.5 text-right border border-gray-200 font-mono font-semibold" style="background-color:#f0faf3;">
+              {{ esIngreso(f) ? fmt2(f.cantidad_entrada * f.precio_movimiento) : '' }}
+            </td>
+            <!-- EGRESO -->
+            <td class="px-2 py-1.5 text-right border border-gray-200 font-mono" style="background-color:#fff5f5;">
+              {{ esEgreso(f) ? fmt2(f.cantidad_salida) : '' }}
+            </td>
+            <td class="px-2 py-1.5 text-right border border-gray-200 font-mono" style="background-color:#fff5f5;">
+              {{ esEgreso(f) ? fmt5(f.precio_movimiento) : '' }}
+            </td>
+            <td class="px-2 py-1.5 text-right border border-gray-200 font-mono font-semibold" style="background-color:#fff5f5;">
+              {{ esEgreso(f) ? fmt2(f.cantidad_salida * f.precio_movimiento) : '' }}
+            </td>
+            <!-- SALDO -->
+            <td class="px-2 py-1.5 text-right border border-gray-200 font-mono font-bold" style="background-color:#eff6ff;">
+              {{ fmt2(f.stock_despues) }}
+            </td>
+            <td class="px-2 py-1.5 text-right border border-gray-200 font-mono" style="background-color:#eff6ff;">
+              {{ fmt5(f.precio_despues) }}
+            </td>
+            <td class="px-2 py-1.5 text-right border border-gray-200 font-mono font-bold" style="background-color:#eff6ff; color:#1e3a5f;">
+              {{ fmt2(f.valor_saldo) }}
+            </td>
+            <td class="px-2 py-1.5 text-center border border-gray-200 text-gray-500">{{ f.usuario }}</td>
           </tr>
         </tbody>
+        <!-- Totales -->
+        <tfoot>
+          <tr class="font-bold text-xs" style="background-color:#e8f0e0;">
+            <td colspan="3" class="px-2 py-2 text-right border border-gray-400">TOTALES</td>
+            <td class="px-2 py-2 text-right border border-gray-400 font-mono">{{ fmt2(totIngresosCant) }}</td>
+            <td class="px-2 py-2 border border-gray-400"></td>
+            <td class="px-2 py-2 text-right border border-gray-400 font-mono">{{ fmt2(totIngresosVal) }}</td>
+            <td class="px-2 py-2 text-right border border-gray-400 font-mono">{{ fmt2(totEgresosCant) }}</td>
+            <td class="px-2 py-2 border border-gray-400"></td>
+            <td class="px-2 py-2 text-right border border-gray-400 font-mono">{{ fmt2(totEgresosVal) }}</td>
+            <td class="px-2 py-2 text-right border border-gray-400 font-mono">{{ fmt2(filas[filas.length-1]?.stock_despues) }}</td>
+            <td class="px-2 py-2 text-right border border-gray-400 font-mono">{{ fmt5(filas[filas.length-1]?.precio_despues) }}</td>
+            <td class="px-2 py-2 text-right border border-gray-400 font-mono font-bold" style="color:#1e3a5f;">
+              {{ fmt2(filas[filas.length-1]?.valor_saldo) }}
+            </td>
+            <td class="border border-gray-400"></td>
+          </tr>
+        </tfoot>
       </table>
     </div>
 
@@ -112,21 +162,32 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import api from '@/services/api'
 
-const filtro              = ref({ desde: '', hasta: '' })
-const busquedaArticulo    = ref('')
-const sugerencias         = ref([])
+const filtro               = ref({ desde: '', hasta: '' })
+const busquedaArticulo     = ref('')
+const sugerencias          = ref([])
 const articuloSeleccionado = ref(null)
-const articulo            = ref(null)
-const filas               = ref([])
-const cargando            = ref(false)
-const descargandoPdf      = ref(false)
-const consultado          = ref(false)
-const error               = ref('')
+const articulo             = ref(null)
+const filas                = ref([])
+const cargando             = ref(false)
+const descargandoPdf       = ref(false)
+const consultado           = ref(false)
+const error                = ref('')
 
 let debounceTimer = null
+
+const TIPOS_INGRESO = ['INGRESO', 'REVERSO_EGRESO', 'AJUSTE_POSITIVO', 'SALDO_INICIAL']
+const TIPOS_EGRESO  = ['EGRESO', 'REVERSO_INGRESO', 'AJUSTE_NEGATIVO']
+
+function esIngreso(f) { return TIPOS_INGRESO.includes(f.tipo_movimiento) }
+function esEgreso(f)  { return TIPOS_EGRESO.includes(f.tipo_movimiento) }
+
+const totIngresosCant = computed(() => filas.value.filter(esIngreso).reduce((s, f) => s + +f.cantidad_entrada, 0))
+const totIngresosVal  = computed(() => filas.value.filter(esIngreso).reduce((s, f) => s + +f.cantidad_entrada * +f.precio_movimiento, 0))
+const totEgresosCant  = computed(() => filas.value.filter(esEgreso).reduce((s, f) => s + +f.cantidad_salida, 0))
+const totEgresosVal   = computed(() => filas.value.filter(esEgreso).reduce((s, f) => s + +f.cantidad_salida * +f.precio_movimiento, 0))
 
 function buscarArticulos() {
   articuloSeleccionado.value = null
@@ -141,9 +202,7 @@ function buscarArticulos() {
   }, 300)
 }
 
-function cerrarSugerencias() {
-  setTimeout(() => { sugerencias.value = [] }, 200)
-}
+function cerrarSugerencias() { setTimeout(() => { sugerencias.value = [] }, 200) }
 
 function seleccionarArticulo(a) {
   articuloSeleccionado.value = a
@@ -160,8 +219,8 @@ async function consultar() {
     const { data } = await api.get('/adquisiciones/reportes/kardex', {
       params: { articulo_id: articuloSeleccionado.value.id, ...filtro.value },
     })
-    articulo.value = data.articulo
-    filas.value    = data.filas
+    articulo.value   = data.articulo
+    filas.value      = data.filas
     consultado.value = true
   } catch (e) {
     error.value = e.response?.data?.message || 'Error al consultar'
@@ -176,29 +235,40 @@ async function exportarPdf() {
       responseType: 'blob',
     })
     const url = URL.createObjectURL(new Blob([response.data]))
-    const a = document.createElement('a')
-    a.href = url
+    const a   = document.createElement('a')
+    a.href    = url
     a.download = `kardex-${articuloSeleccionado.value.codigo}.pdf`
     a.click()
     URL.revokeObjectURL(url)
   } finally { descargandoPdf.value = false }
 }
 
-function fmt2(v) { return (+v).toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }
-function fmt4(v) { return (+v).toLocaleString('es-EC', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) }
+function fmt2(v) { return (+v || 0).toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }
+function fmt5(v) { return (+v || 0).toLocaleString('es-EC', { minimumFractionDigits: 5, maximumFractionDigits: 5 }) }
 function fmtFecha(v) {
   const d = new Date(v)
   return d.toLocaleDateString('es-EC') + ' ' + d.toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' })
 }
 function tipoLabel(t) {
-  return { INGRESO: 'Ingreso', EGRESO: 'Egreso', REVERSO_INGRESO: 'Rev. Ingreso', REVERSO_EGRESO: 'Rev. Egreso' }[t] || t
+  return {
+    INGRESO:          'Ingreso',
+    EGRESO:           'Egreso',
+    REVERSO_INGRESO:  'Rev. Ingreso',
+    REVERSO_EGRESO:   'Rev. Egreso',
+    AJUSTE_POSITIVO:  'Ajuste (+)',
+    AJUSTE_NEGATIVO:  'Ajuste (-)',
+    SALDO_INICIAL:    'Saldo Inicial',
+  }[t] || t
 }
 function badgeClass(t) {
   return {
-    INGRESO:         'bg-green-100 text-green-700',
-    EGRESO:          'bg-red-100 text-red-700',
-    REVERSO_INGRESO: 'bg-yellow-100 text-yellow-700',
-    REVERSO_EGRESO:  'bg-indigo-100 text-indigo-700',
+    INGRESO:         'bg-green-100 text-green-800',
+    EGRESO:          'bg-red-100 text-red-800',
+    REVERSO_INGRESO: 'bg-yellow-100 text-yellow-800',
+    REVERSO_EGRESO:  'bg-indigo-100 text-indigo-800',
+    AJUSTE_POSITIVO: 'bg-teal-100 text-teal-800',
+    AJUSTE_NEGATIVO: 'bg-orange-100 text-orange-800',
+    SALDO_INICIAL:   'bg-gray-100 text-gray-700',
   }[t] || 'bg-gray-100 text-gray-600'
 }
 </script>

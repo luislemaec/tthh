@@ -23,6 +23,7 @@ use App\Http\Controllers\Adquisiciones\ArticuloController;
 use App\Http\Controllers\Adquisiciones\OrdenCompraController;
 use App\Http\Controllers\Adquisiciones\SolicitudMaterialController;
 use App\Http\Controllers\Adquisiciones\ReporteAdqController;
+use App\Http\Controllers\Adquisiciones\AjusteController;
 use Illuminate\Support\Facades\Route;
 
 // Rutas PÚBLICAS
@@ -271,6 +272,10 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::delete('egresos/{id}',                       [\App\Http\Controllers\Adquisiciones\EgresoController::class, 'destroy']);
         Route::get('departamentos-activos',                 [\App\Http\Controllers\Adquisiciones\EgresoController::class, 'departamentos']);
         Route::get('empleados-activos',                     [\App\Http\Controllers\Adquisiciones\EgresoController::class, 'empleadosPorDepto']);
+
+        // Ajuste de inventario
+        Route::get('ajustes',                               [AjusteController::class, 'index']);
+        Route::post('ajustes',                              [AjusteController::class, 'store']);
 
         // Reportes
         Route::get('reportes/kardex',                       [ReporteAdqController::class, 'kardex']);

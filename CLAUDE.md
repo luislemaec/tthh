@@ -4,169 +4,223 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Full-stack HR management system ("Gestión de Talento Humano") for the Consejo de Comunicación (Ecuador). Manages employees, attendance, permissions, vacations, vacation planning, vacation settlement/liquidation, and personnel actions (encargo/subrogación/ingreso/etc.).
+Sistema de Gestión para el Consejo de Comunicación (Ecuador) con dos módulos:
+1. **Talento Humano** — empleados, asistencia, permisos, vacaciones, acciones de personal
+2. **Adquisiciones/Bienes** — inventario, ingresos, egresos, kardex, reportes
 
-- **Backend:** Laravel 12 (PHP 8.2+), PostgreSQL (`dbo` schema), Laravel Sanctum (token auth), DomPDF for PDF generation
+- **Backend:** Laravel 12 (PHP 8.4), PostgreSQL, Laravel Sanctum, DomPDF
 - **Frontend:** Vue 3 (Composition API), Pinia, Vue Router 5, Tailwind CSS 4, Axios, Vite 7
 
 ## Development Commands
 
-### Backend (`d:\rrhh\backend`)
 ```bash
-php artisan serve           # Start API server at localhost:8000
-php artisan migrate         # Run migrations
-php artisan tinker          # REPL
-composer test               # Run PHPUnit tests
+# Backend (d:\rrhh\backend)
+php artisan serve       # API en localhost:8000
+php artisan migrate     # Ejecutar migraciones
+
+# Frontend (d:\rrhh\frontend)
+npm run dev             # Dev server
+npm run build           # Build producción (solo si cambiaron .vue/.js/.css)
+
+# Ambos juntos (desde backend)
+composer dev
 ```
 
-### Frontend (`d:\rrhh\frontend`)
-```bash
-npm run dev                 # Start Vite dev server
-npm run build               # Production build (required after any frontend change in prod)
-```
+## Deployment
 
-### Run both together (from backend)
-```bash
-composer dev                # Runs artisan serve + queue + pail + vite concurrently
-```
+Después de cualquier cambio: Push → Pull en servidor → `npm run build` (solo si hay cambios frontend) → `php artisan migrate` (solo si hay nuevas migraciones).
 
-## Deployment Workflow
+---
 
-After any change, always tell the user:
-1. **Push** (from dev machine)
-2. **Pull** (on server)
-3. **`npm run build`** in `frontend/` — **only when frontend files changed** (`.vue`, `.js`, `.css`)
-4. No build needed for backend-only changes (PHP, Blade, migrations)
+## Autenticación
 
-## Architecture
+- Login: `POST /api/login` con `identificacion` + `password`
+- Guard usa modelo `Empleado` (tabla `dbo.ad_empleado`), no el `User` de Laravel
+- Token Sanctum en localStorage; Axios lo inyecta en cada request
+- 401 → limpia token y redirige a `/login`
 
-### Authentication
-- Login via `POST /api/login` with `identificacion` (employee ID) + `password`
-- Returns Sanctum Bearer token + employee data + roles + menu
-- Auth guard uses `Empleado` model (table `dbo.ad_empleado`), not the default `User` model
-- Frontend stores token in localStorage; Axios injects it on every request
-- 401 response clears token and redirects to `/login`
+## Roles
 
-### Role System
-Five roles: `ADMINISTRADOR`, `TALENTO HUMANO`, `SUPERVISOR`, `ADQUISICIONES`, `BIENES`. Regular employees have no role.
-- `ADQUISICIONES` and `BIENES` access `/adquisiciones/*` module via `AdqLayout.vue`
-- Backend: checked via `DB::table('dbo.admin_usuario_rol')` joins in controllers (no Laravel policies/gates)
-- Frontend: `auth.tieneRol('NOMBRE')` from Pinia store
-- Menu items are filtered per role from `dbo.admin_opcion`
+Cinco roles: `ADMINISTRADOR`, `TALENTO HUMANO`, `SUPERVISOR`, `ADQUISICIONES`, `BIENES`. Empleados sin rol = acceso básico.
+- Backend: `DB::table('dbo.admin_usuario_rol')` — sin Laravel policies/gates
+- Frontend: `auth.tieneRol('NOMBRE')` desde Pinia store
+- Menú filtrado por rol desde `dbo.admin_opcion`
 
-### Database Conventions
-- HR tables use `dbo` schema; Adquisiciones tables use `adq` schema (same PostgreSQL DB)
-- Employee statuses: `ACTIVO` / `INACTIVO` (soft deletes — never hard delete employees)
-- Request statuses: `PENDIENTE`, `APROBADO`, `NEGADO`, `ELIMINADO`
-- Department 999 (`id_depto = 999`) is excluded from all queries — it's a system/admin placeholder
-- Primary key for employees is `id_emp` (string), not integer
-- `dbo.d2_configuracion` stores institution-wide config values (key/value pairs)
+## Base de Datos
 
-### PDF Generation
-Uses `barryvdh/laravel-dompdf`. All Blade PDF templates are in `backend/resources/views/reportes/`.
-- Always embed images as base64 (`public_path()` + `base64_encode(file_get_contents())`) — direct file paths fail in dompdf
-- Institution logo: `backend/public/logo.png` (transparent PNG)
-- Margins must be set at `@page { margin: ... }` level, not on `.page` div — otherwise dompdf overflows the right edge
-- Use `table-layout: fixed` on all tables to prevent overflow
-- Spanish dates: use a manual `$meses` PHP array — do NOT use `Carbon::translatedFormat()` (locale may not be set)
+- Schema `dbo` → Talento Humano | Schema `adq` → Adquisiciones (misma BD PostgreSQL)
+- Empleados: PK = `id_emp` (string); estados `ACTIVO`/`INACTIVO` (nunca eliminar)
+- Depto 999 excluido de todas las consultas (placeholder de sistema)
+- `dbo.d2_configuracion` → parámetros globales (clave/valor)
+- Stock: siempre usar `DB::table()->update(['stock_actual' => DB::raw('stock_actual + N')])` — nunca Eloquent para tablas con schema prefix en PostgreSQL
 
-### Alfresco Document Storage
-Used for signed PDF uploads (vacation planning, personnel actions).
-- Base URL: `http://192.168.26.38:8080/alfresco/api/-default-/public/alfresco/versions/1`
-- Credentials: `admin / admin`, site: `talentohumano`
-- Pattern: upload to `talentohumano/{module-folder}/{year}/`, save returned `entry.id` (node ID) to DB
-- Helpers `getDocLibNodeId()` and `getOrCreateFolderNodeId()` are repeated in each controller that uses Alfresco (no shared service yet)
+## PDF (DomPDF)
 
-### Vacation Balance Calculation
-Computed on-the-fly in `calcularSaldoDisponible()` / `calcularSaldo()`:
-- Accrual rates: `LOSEP` → 2.50 days/month, `CODIGO DEL TRABAJO` → 1.25 days/month
-- Formula: `(days since FECHA_CORTE_VACACIONES / 360) × (rate × 12)`
-- If hire date is after cutoff date, use hire date as the base
-- `FECHA_CORTE_VACACIONES` is stored in `dbo.d2_configuracion`
-- Balance = `dias_adicionales` (initial/carried) + accrued − `total_dias_tomados`
+- Templates en `backend/resources/views/reportes/`
+- Logo siempre en base64: `base64_encode(file_get_contents(public_path('logo.png')))`
+- Márgenes en `@page { margin: ... }` (no en `.page` div)
+- `table-layout: fixed` en todas las tablas
+- Fechas en español: array manual `$meses` — NO usar `Carbon::translatedFormat()`
 
-### Key Controllers
-| Controller | Responsibility |
+## Alfresco (documentos firmados)
+
+- URL: `http://192.168.26.38:8080/alfresco/api/-default-/public/alfresco/versions/1`
+- Credenciales: `admin/admin`, sitio: `talentohumano`
+- Subir a `talentohumano/{módulo}/{año}/`, guardar `entry.id` en DB
+- Helpers `getDocLibNodeId()` y `getOrCreateFolderNodeId()` repetidos en cada controlador que usa Alfresco
+
+---
+
+## Módulo Talento Humano
+
+### Controladores clave
+
+| Controlador | Función |
 |---|---|
 | `AuthController` | Login / logout / me |
-| `EmpleadoController` | Employee CRUD + role assignment |
-| `AccionPersonalController` | Personnel actions (encargo, subrogación, ingreso, vacaciones, destitución, cesación) |
-| `VacacionesController` | Vacation requests (approve/deny/balance) |
-| `PlanificacionVacController` | Annual vacation planning |
-| `LiquidacionVacController` | Vacation settlement for commissions/exits |
-| `ReportePlanificacionController` | Planning PDF + Alfresco signed upload |
-| `PermisosController` | Permission/leave requests |
-| `AsistenciaController` | Attendance marking and reports |
-| `CuadreController` | Attendance reconciliation |
-| `DashboardController` | Dashboard stats |
-| `Admin/*` | Departments, reasons, shifts, schedules, calendar, configuration, IESS contributions |
-| `Adquisiciones/ArticuloController` | Inventory CRUD + image upload + stock alerts |
-| `Adquisiciones/OrdenCompraController` | Ingresos de bienes (BORRADOR→RECIBIDO, updates stock + precio promedio) |
-| `Adquisiciones/EgresoController` | Egresos de bienes (BORRADOR→DESPACHADO, decrements stock) |
-| `Adquisiciones/ProveedorController` | Supplier CRUD |
-| `Adquisiciones/IvaController` | IVA rate CRUD |
+| `EmpleadoController` | CRUD empleados + asignación de roles |
+| `AccionPersonalController` | Acciones (encargo, subrogación, ingreso, vacaciones, destitución, cesación) |
+| `VacacionesController` | Solicitudes de vacaciones (aprobar/negar/saldo) |
+| `PlanificacionVacController` | Planificación anual de vacaciones |
+| `LiquidacionVacController` | Liquidación por comisión/desvinculación |
+| `ReportePlanificacionController` | PDF planificación + subida Alfresco |
+| `PermisosController` | Permisos y licencias |
+| `AsistenciaController` | Marcaciones y reportes |
+| `CuadreController` | Conciliación de asistencia |
+| `DashboardController` | Estadísticas del dashboard |
+| `Admin/*` | Departamentos, causas, turnos, horarios, calendario, configuración, aportes IESS |
 
-### Acciones de Personal Module
-Table: `dbo.acc_accion_personal`. Supported types and their rules:
+### Vacaciones — cálculo de saldo
 
-| Tipo | fecha_fin | Situación Actual | Situación Propuesta | Buscador Titular | Declaración Jurada | Auto-cierra |
-|---|---|---|---|---|---|---|
-| INGRESO | No aplica | Vacía (null) | Requerida — auto-llena desde ficha empleado | No | SI | No |
-| ENCARGO | Opcional ("Hasta nueva orden" = null) | ✓ | Requerida | ✓ | NO APLICA | No (manual) |
-| SUBROGACION | Requerida | ✓ | Requerida | ✓ | NO APLICA | Sí (al vencer fecha_fin) |
-| VACACIONES | Requerida | ✓ | No aplica | No | NO APLICA | Sí (al vencer fecha_fin) |
-| DESTITUCION | No aplica | ✓ | No aplica | No | SI | No |
-| CESACION DE FUNCIONES | No aplica | ✓ | No aplica | No | SI | No |
+Calculado en `calcularSaldoDisponible()` / `calcularSaldo()`:
+- `LOSEP` → 2.50 días/mes | `CODIGO DEL TRABAJO` → 1.25 días/mes
+- Fórmula: `(días desde FECHA_CORTE_VACACIONES / 360) × (tasa × 12)`
+- Si fecha_ingreso > fecha_corte, se usa fecha_ingreso como base
+- Saldo = `dias_adicionales` + devengado − `total_dias_tomados`
 
-- Auto-cierre: corre en cada llamada a `index()` para SUBROGACION y VACACIONES cuya `fecha_fin < today`
-- Signed PDF stored as Alfresco node ID in `pdf_firmado` column
-- Workflow: INGRESO → create employee first, then action; DESTITUCION/CESACION → action first, then deactivate employee
+### Acciones de Personal (`dbo.acc_accion_personal`)
 
-### Vacation Liquidation Module (`LiquidacionVacController`)
-Handles special events that require freezing/certifying vacation balances:
-- `INICIO_COMISION` / `FIN_COMISION_SALIDA` → generate certificate PDF (employee leaving on commission)
-- `FIN_COMISION_RETORNO` / `COMISION_ENTRANTE` → load balance from external certificate
-- `DESVINCULACION` → liquidation report for employees leaving the institution
-- Valid motives per employee depend on `modalidad_laboral` field
-- Estado requerido per motive defined in `ESTADO_REQUERIDO` constant
+| Tipo | fecha_fin | Sit. Propuesta | Buscador Titular | Decl. Jurada | Auto-cierra |
+|---|---|---|---|---|---|
+| INGRESO | No aplica | Requerida (auto-llena) | No | Sí | No |
+| ENCARGO | Opcional | Requerida | Sí | No | No |
+| SUBROGACION | Requerida | Requerida | Sí | No | Sí (al vencer) |
+| VACACIONES | Requerida | No aplica | No | No | Sí (al vencer) |
+| DESTITUCION | No aplica | No aplica | No | Sí | No |
+| CESACION | No aplica | No aplica | No | Sí | No |
 
-### Frontend Structure
+Auto-cierre corre en cada `index()` para SUBROGACION y VACACIONES con `fecha_fin < hoy`.
+
+### Liquidación de Vacaciones
+
+- `INICIO_COMISION` / `FIN_COMISION_SALIDA` → genera certificado PDF
+- `FIN_COMISION_RETORNO` / `COMISION_ENTRANTE` → carga saldo desde certificado externo
+- `DESVINCULACION` → reporte de liquidación
+- Motivos válidos dependen de `modalidad_laboral` del empleado
+
+### Vistas Frontend (Talento Humano)
+
 ```
-frontend/src/
-  router/index.js           # Routes with meta.requiresAuth / meta.rol guards
-  stores/auth.js            # Pinia: token, empleado, roles, menu (localStorage)
-  services/api.js           # Axios instance (base URL from VITE_API_URL)
-  layouts/MainLayout.vue    # HR module layout
-  layouts/AdqLayout.vue     # Adquisiciones module layout (green sidebar, roles ADQUISICIONES/BIENES)
-  views/acciones/           # Acciones de Personal (list + form)
-  views/planificacion/      # Vacation planning, liquidation, report
-  views/empleados/          # Employee CRUD, detail, import, distributivo
-  views/admin/              # Admin panel (roles, departments, shifts, config, etc.)
-  views/adquisiciones/      # Adquisiciones module (articulos, ingresos, egresos, proveedores, IVA)
+views/empleados/        # CRUD, detalle, importación, distributivo
+views/acciones/         # Acciones de personal (lista + formulario)
+views/planificacion/    # Planificación, liquidación, reporte
+views/admin/            # Roles, departamentos, turnos, configuración, IESS
+layouts/MainLayout.vue  # Layout del módulo RRHH
 ```
 
-### Adquisiciones Module
+---
 
-**Schema:** `adq.*` tables. Key tables:
-- `adq.articulo` — inventory items; `precio_unitario DECIMAL(10,4)`, `stock_actual`, `iva_id`
-- `adq.orden_compra` / `adq.orden_compra_det` — ingresos (BORRADOR→RECIBIDO)
-- `adq.egreso` / `adq.egreso_det` — egresos (BORRADOR→DESPACHADO)
-- `adq.iva` — IVA rates (e.g. 15%, 0%)
-- `adq.catalogo_inventario` — MEF catalog (nivel1/nivel2/item_presupuestario)
+## Módulo Adquisiciones / Bienes
 
-**Price rules:**
-- All monetary calculations use `round(..., 4)` — 4 decimal places throughout (subtotal, iva_valor, total_linea, totals)
-- On ingreso confirm: `precio_unitario = (old == 0) ? new : round((old + new) / 2, 4)` (weighted average)
-- On egreso confirm: if `stock_actual` reaches 0, set `precio_unitario = 0`; on reversal restore price only if current price is still 0 and `precio_anterior > 0`
-- Frontend `fmt()` and `recalcularLinea()` also use 4-decimal rounding (`Math.round(... * 10000) / 10000`)
+### Tablas principales (`adq.*`)
 
-**Stock updates:** Always use `DB::table()->update(['stock_actual' => DB::raw('stock_actual + N')])` — never Eloquent `$model->update()` for stock (unreliable with schema-prefixed tables in PostgreSQL).
+| Tabla | Descripción |
+|---|---|
+| `adq.articulo` | Inventario; `precio_unitario DECIMAL(10,5)`, `stock_actual`, `iva_id`, `nivel1`, `nivel2` |
+| `adq.orden_compra` / `adq.orden_compra_det` | Ingresos de bienes (BORRADOR → RECIBIDO) |
+| `adq.egreso` / `adq.egreso_det` | Egresos de bienes (BORRADOR → DESPACHADO) |
+| `adq.kardex` | Log inmutable de movimientos; snapshot de stock_antes/despues y precio_antes/despues |
+| `adq.iva` | Tasas de IVA (15%, 0%, etc.) |
+| `adq.proveedor` | Proveedores |
+| `adq.catalogo_inventario` | Catálogo MEF (nivel1, nivel2, item_presupuestario) |
+| `adq.catalogo_nivel1` | Categorías nivel 1 del catálogo MEF |
+| `adq.proceso_contratacion` | Procesos configurables (Catálogo Electrónico, Subasta, Caja Chica, etc.) |
+| `adq.unidad_medida` | Unidades de medida configurables |
 
-**Routes:** All Adquisiciones API routes are under `/api/adquisiciones/*` in `routes/api.php`.
+### Controladores Adquisiciones
 
-**Images:** Article images stored via `Storage::disk('public')` in `articulos/` folder. Run `php artisan storage:link` once after deploy. URL returned as `imagen_url` in `articulos` API response.
+| Controlador | Función |
+|---|---|
+| `ArticuloController` | CRUD artículos + imagen + alertas de stock |
+| `OrdenCompraController` | Ingresos: store/update/confirmar/reversar/pdf |
+| `EgresoController` | Egresos: store/update/confirmar/reversar/pdf |
+| `ProveedorController` | CRUD proveedores |
+| `IvaController` | CRUD tasas IVA |
+| `ReporteAdqController` | Kardex, Libro de Compras, Egresos Valorizados (JSON + PDF) |
 
-### Environment
-- `VITE_API_URL` in `frontend/.env` sets the API base URL (default: `http://localhost:8000/api`)
-- Backend `.env` must have `DB_CONNECTION=pgsql` and correct DB credentials
-- Session and cache drivers are `database`
+### Reglas de Precio
+
+- `precio_unitario` se guarda con 5 decimales; subtotales y totales con 2 decimales
+- Al **confirmar ingreso** (promedio ponderado): `precio_unitario = (stock_antes × precio_anterior + cantidad × precio_nuevo) / stock_despues`; si stock_antes = 0 → `precio_unitario = precio_nuevo`
+- Al **confirmar egreso**: si stock llega a 0 → `precio_unitario = 0`; al reversar, restaura precio solo si precio actual es 0 y `precio_anterior > 0`
+
+### Cálculo de Totales con Descuento
+
+El descuento es a nivel de cabecera y se aplica **antes** del IVA (formato SRI):
+```
+subtotal        = suma de subtotales de líneas (sin IVA)
+descuento       = valor manual ingresado
+base_imponible  = subtotal - descuento
+iva_valor       = iva_lineas × (base_imponible / subtotal)   ← proporcional
+total           = base_imponible + iva_valor
+```
+
+### Kardex (`adq.kardex`)
+
+Fila inmutable insertada por cada línea de detalle al confirmar/reversar:
+- `INGRESO` → al confirmar orden_compra
+- `REVERSO_INGRESO` → al reversar orden_compra
+- `EGRESO` → al confirmar egreso
+- `REVERSO_EGRESO` → al reversar egreso
+
+Captura: `stock_antes`, `stock_despues`, `precio_antes`, `precio_despues`, `precio_movimiento`, usuario.
+
+### Reportes Adquisiciones
+
+- **Kardex**: por artículo + rango fechas → tabla de movimientos + PDF (legal landscape)
+- **Libro de Compras**: facturas de proveedores por período + filtro proceso → PDF SRI
+- **Egresos Valorizados**: salidas despachadas por período + filtro dirección/área → PDF
+
+### Imágenes de Artículos
+
+`Storage::disk('public')` en carpeta `articulos/`. Ejecutar `php artisan storage:link` una vez al desplegar. Se retorna `imagen_url` en la API.
+
+### Rutas
+
+Todas las rutas de Adquisiciones bajo `/api/adquisiciones/*` en `routes/api.php`.
+
+### Vistas Frontend (Adquisiciones)
+
+```
+views/adquisiciones/
+  ArticulosView.vue           # Inventario con precio, IVA, stock, imagen
+  IngresosBienesView.vue      # Ingresos (BORRADOR/RECIBIDO) + descuento + PDF
+  EgresosBienesView.vue       # Egresos (BORRADOR/DESPACHADO) + PDF
+  ProveedoresView.vue         # CRUD proveedores
+  IvaView.vue                 # Tasas IVA
+  ProcesoContratacionView.vue # Procesos de contratación configurables
+  UnidadesMedidaView.vue      # Unidades de medida configurables
+  CatalogoInventarioView.vue  # Catálogo MEF nivel1/nivel2
+  ReporteKardexView.vue       # Kardex por artículo + PDF
+  ReporteLibroComprasView.vue # Libro de compras + PDF
+  ReporteEgresosView.vue      # Egresos valorizados + PDF
+layouts/AdqLayout.vue         # Layout verde, roles ADQUISICIONES/BIENES
+```
+
+---
+
+## Environment
+
+- `VITE_API_URL` en `frontend/.env` — URL base de la API
+- Backend `.env`: `DB_CONNECTION=pgsql`, credenciales BD
+- Session y cache driver: `database`
