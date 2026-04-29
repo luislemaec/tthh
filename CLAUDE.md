@@ -139,13 +139,14 @@ layouts/MainLayout.vue  # Layout del módulo RRHH
 | `adq.articulo` | Inventario; `precio_unitario DECIMAL(10,5)`, `stock_actual`, `iva_id`, `nivel1`, `nivel2` |
 | `adq.orden_compra` / `adq.orden_compra_det` | Ingresos de bienes (BORRADOR → RECIBIDO) |
 | `adq.egreso` / `adq.egreso_det` | Egresos de bienes (BORRADOR → DESPACHADO) |
-| `adq.kardex` | Log inmutable de movimientos; snapshot de stock_antes/despues y precio_antes/despues |
+| `adq.kardex` | Log inmutable de movimientos; snapshot de stock_antes/despues, precio_antes/despues y `valor_saldo` (= stock_despues × precio_despues) |
 | `adq.iva` | Tasas de IVA (15%, 0%, etc.) |
 | `adq.proveedor` | Proveedores |
 | `adq.catalogo_inventario` | Catálogo MEF (nivel1, nivel2, item_presupuestario) |
 | `adq.catalogo_nivel1` | Categorías nivel 1 del catálogo MEF |
 | `adq.proceso_contratacion` | Procesos configurables (Catálogo Electrónico, Subasta, Caja Chica, etc.) |
 | `adq.unidad_medida` | Unidades de medida configurables |
+| `adq.solicitud_material` / `adq.solicitud_material_det` | Solicitudes internas de materiales; estados PENDIENTE/APROBADO/NEGADO/DESPACHADO/DESPACHADO PARCIAL |
 
 ### Controladores Adquisiciones
 
@@ -156,7 +157,9 @@ layouts/MainLayout.vue  # Layout del módulo RRHH
 | `EgresoController` | Egresos: store/update/confirmar/reversar/pdf |
 | `ProveedorController` | CRUD proveedores |
 | `IvaController` | CRUD tasas IVA |
-| `ReporteAdqController` | Kardex, Libro de Compras, Egresos Valorizados (JSON + PDF) |
+| `AjusteController` | Ajuste de inventario (toma física): store/index — inserta en kardex tipo AJUSTE_POSITIVO/NEGATIVO |
+| `SolicitudMaterialController` | Solicitudes internas: store/aprobar/negar/despachar — **PENDIENTE: despachar() debe insertar en kardex** |
+| `ReporteAdqController` | Kardex NIC 2, Libro de Compras, Egresos Valorizados (JSON + PDF) |
 
 ### Reglas de Precio
 
@@ -177,18 +180,36 @@ total           = base_imponible + iva_valor
 
 ### Kardex (`adq.kardex`)
 
-Fila inmutable insertada por cada línea de detalle al confirmar/reversar:
-- `INGRESO` → al confirmar orden_compra
-- `REVERSO_INGRESO` → al reversar orden_compra
-- `EGRESO` → al confirmar egreso
-- `REVERSO_EGRESO` → al reversar egreso
+Fila inmutable insertada por cada línea de detalle al confirmar/reversar/ajustar:
 
-Captura: `stock_antes`, `stock_despues`, `precio_antes`, `precio_despues`, `precio_movimiento`, usuario.
+| tipo_movimiento | Cuándo se inserta | Columna afectada |
+|---|---|---|
+| `INGRESO` | Confirmar orden_compra | cantidad_entrada |
+| `REVERSO_INGRESO` | Reversar orden_compra | cantidad_salida |
+| `EGRESO` | Confirmar egreso | cantidad_salida |
+| `REVERSO_EGRESO` | Reversar egreso | cantidad_entrada |
+| `AJUSTE_POSITIVO` | Ajuste inventario (físico > sistema) | cantidad_entrada |
+| `AJUSTE_NEGATIVO` | Ajuste inventario (físico < sistema) | cantidad_salida |
+
+Captura: `stock_antes`, `stock_despues`, `precio_antes`, `precio_despues`, `precio_movimiento`, `valor_saldo`, usuario.
+
+`valor_saldo = ROUND(stock_despues × precio_despues, 2)` — valor total del inventario tras el movimiento.
+
+### Solicitudes de Materiales (`adq.solicitud_material`)
+
+Flujo: empleado crea → supervisor aprueba/niega → bienes despacha con `cantidad_autorizada` por línea.
+- Si el solicitante es supervisor, la solicitud se crea directamente en APROBADO
+- Estado final en despacho: DESPACHADO (todo), DESPACHADO PARCIAL (parcial), NEGADO (todo en 0)
+- **BUG PENDIENTE**: `despachar()` actualiza stock con Eloquent (debe usar `DB::table`) y **no inserta en `adq.kardex`** — al corregir, insertar tipo `EGRESO` igual que `EgresoController::confirmar()`
+
+### Ajuste de Inventario
+
+Toma física: el usuario ingresa la cantidad contada físicamente; el sistema calcula la diferencia vs `stock_actual` y genera un movimiento AJUSTE_POSITIVO o AJUSTE_NEGATIVO en el kardex. No genera egreso ni ingreso de bienes, solo corrige el stock y el `valor_saldo`.
 
 ### Reportes Adquisiciones
 
-- **Kardex**: por artículo + rango fechas → tabla de movimientos + PDF (legal landscape)
-- **Libro de Compras**: facturas de proveedores por período + filtro proceso → PDF SRI
+- **Kardex NIC 2**: por artículo + rango fechas → tabla doble encabezado (INGRESO/EGRESO/SALDO, cada uno con Cant./P.Unit./Total) + PDF legal landscape. `valor_saldo` en columna SALDO Total. Clasifica AJUSTE_POSITIVO y REVERSO_EGRESO como INGRESO; AJUSTE_NEGATIVO y REVERSO_INGRESO como EGRESO.
+- **Libro de Compras**: facturas de proveedores por período + filtro proceso → muestra columna Descuento cuando aplica → PDF SRI
 - **Egresos Valorizados**: salidas despachadas por período + filtro dirección/área → PDF
 
 ### Imágenes de Artículos
@@ -211,8 +232,10 @@ views/adquisiciones/
   ProcesoContratacionView.vue # Procesos de contratación configurables
   UnidadesMedidaView.vue      # Unidades de medida configurables
   CatalogoInventarioView.vue  # Catálogo MEF nivel1/nivel2
-  ReporteKardexView.vue       # Kardex por artículo + PDF
-  ReporteLibroComprasView.vue # Libro de compras + PDF
+  SolicitudesView.vue         # Solicitudes internas: crear, aprobar (supervisor), despachar (bienes)
+  AjusteInventarioView.vue    # Toma física: buscar artículo, ingresar cant. física, registra ajuste
+  ReporteKardexView.vue       # Kardex NIC 2 por artículo + PDF (doble encabezado INGRESO/EGRESO/SALDO)
+  ReporteLibroComprasView.vue # Libro de compras + PDF (incluye columna descuento)
   ReporteEgresosView.vue      # Egresos valorizados + PDF
 layouts/AdqLayout.vue         # Layout verde, roles ADQUISICIONES/BIENES
 ```

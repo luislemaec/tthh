@@ -41,9 +41,9 @@
             </span>
             <!-- Acciones según rol y estado -->
             <button v-if="s.estado === 'PENDIENTE' && esSupervisorLocal"
-              @click="aprobar(s.id)"
+              @click="abrirAprobacion(s)"
               class="text-xs text-green-700 hover:text-green-900 font-medium border border-green-300 px-3 py-1 rounded-lg">
-              Aprobar
+              Revisar y aprobar
             </button>
             <button v-if="s.estado === 'PENDIENTE' && esSupervisorLocal"
               @click="negar(s.id)"
@@ -115,15 +115,10 @@
             class="absolute z-10 bg-white border rounded-lg shadow-lg w-full mt-1 max-h-48 overflow-y-auto">
             <div v-for="a in articulosFiltrados" :key="a.id"
               @click="agregarDetalle(a)"
-              class="px-4 py-2 text-sm hover:bg-gray-100 cursor-pointer flex justify-between items-center">
-              <div>
-                <span class="font-mono text-xs text-gray-400 mr-2">{{ a.codigo }}</span>
-                <span class="font-medium">{{ a.nombre }}</span>
-                <span v-if="a.marca" class="text-gray-400 text-xs ml-1">({{ a.marca }})</span>
-              </div>
-              <span class="text-xs" :class="a.stock_actual > 0 ? 'text-green-600' : 'text-red-500'">
-                Stock: {{ a.stock_actual }} {{ a.unidad_medida }}
-              </span>
+              class="px-4 py-2 text-sm hover:bg-gray-100 cursor-pointer">
+              <span class="font-mono text-xs text-gray-400 mr-2">{{ a.codigo }}</span>
+              <span class="font-medium">{{ a.nombre }}</span>
+              <span v-if="a.marca" class="text-gray-400 text-xs ml-1">({{ a.marca }})</span>
             </div>
           </div>
         </div>
@@ -136,7 +131,6 @@
                 <th class="text-left px-3 py-2 font-medium">Código</th>
                 <th class="text-left px-3 py-2 font-medium">Artículo</th>
                 <th class="text-left px-3 py-2 font-medium">Marca</th>
-                <th class="text-right px-3 py-2 font-medium">Stock disp.</th>
                 <th class="text-right px-3 py-2 font-medium w-28">Cantidad</th>
                 <th class="w-8"></th>
               </tr>
@@ -151,9 +145,6 @@
                 <td class="px-3 py-1.5 font-mono text-xs text-gray-500">{{ det.codigo }}</td>
                 <td class="px-3 py-1.5 font-medium">{{ det.nombre }}</td>
                 <td class="px-3 py-1.5 text-gray-400 text-xs">{{ det.marca || '-' }}</td>
-                <td class="px-3 py-1.5 text-right text-xs" :class="det.stock_actual > 0 ? 'text-green-600' : 'text-red-500'">
-                  {{ det.stock_actual }} {{ det.unidad_medida }}
-                </td>
                 <td class="px-3 py-1.5">
                   <input v-model="det.cantidad_solicitada" type="number" step="1" min="1"
                     class="w-full border rounded px-2 py-1 text-sm text-right focus:ring-1 outline-none" />
@@ -176,6 +167,52 @@
           </button>
         </div>
         </div><!-- /p-6 overflow-y-auto -->
+      </div>
+    </div>
+
+    <!-- Modal aprobar (Supervisor) -->
+    <div v-if="modalAprobacion.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="px-6 py-4 flex-shrink-0 bg-blue-700">
+          <h2 class="text-lg font-bold text-white">Revisar y Aprobar Solicitud</h2>
+        </div>
+        <div class="p-6 overflow-y-auto">
+          <p class="text-sm text-gray-500 mb-4">
+            Solicitud de <b>{{ modalAprobacion.solicitud?.empleado?.apellido_emp }} {{ modalAprobacion.solicitud?.empleado?.nombre_emp }}</b>
+            — {{ modalAprobacion.solicitud?.fecha }}
+          </p>
+          <p v-if="modalAprobacion.solicitud?.justificacion" class="text-xs italic text-gray-500 mb-3">
+            "{{ modalAprobacion.solicitud.justificacion }}"
+          </p>
+
+          <div class="space-y-3 mb-4">
+            <div v-for="(det, i) in modalAprobacion.detalles" :key="det.id" class="border rounded-lg p-3 bg-gray-50">
+              <p class="text-sm font-medium text-gray-700 mb-2">{{ det.articulo?.nombre }}</p>
+              <div class="flex items-center gap-4 text-sm flex-wrap">
+                <span class="text-gray-500">Solicitado: <b>{{ det.cantidad_solicitada }}</b></span>
+                <span class="text-gray-500">Stock disponible:
+                  <b :class="det.articulo?.stock_actual > 0 ? 'text-green-700' : 'text-red-600'">
+                    {{ det.articulo?.stock_actual }} {{ det.articulo?.unidad_medida }}
+                  </b>
+                </span>
+              </div>
+              <div class="mt-2">
+                <label class="block text-xs text-gray-500 mb-1">Cantidad a aprobar (puede modificar)</label>
+                <input v-model="modalAprobacion.detalles[i].cantidad_nueva" type="number" step="1" min="0.01"
+                  class="w-32 border rounded px-2 py-1.5 text-sm focus:ring-2 focus:ring-blue-300 outline-none" />
+              </div>
+            </div>
+          </div>
+
+          <p v-if="errorModal" class="text-red-600 text-sm mb-3">{{ errorModal }}</p>
+          <div class="flex justify-end gap-3">
+            <button @click="modalAprobacion.show = false" class="px-4 py-2 text-sm text-gray-600">Cancelar</button>
+            <button @click="confirmarAprobacion" :disabled="guardando"
+              class="bg-blue-700 text-white px-5 py-2 rounded-lg text-sm hover:bg-blue-800 disabled:opacity-50">
+              {{ guardando ? 'Guardando...' : 'Aprobar solicitud' }}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -247,8 +284,9 @@ const miId              = computed(() => auth.empleado?.id_emp)
 const esBienes          = computed(() => auth.tieneRol('BIENES'))
 const esSupervisorLocal = ref(false)
 
-const modalCrear    = ref({ show: false, form: { justificacion: '', detalles: [] } })
-const modalDespacho = ref({ show: false, solicitud: null, detalles: [], observacion: '' })
+const modalCrear      = ref({ show: false, form: { justificacion: '', detalles: [] } })
+const modalAprobacion = ref({ show: false, solicitud: null, detalles: [] })
+const modalDespacho   = ref({ show: false, solicitud: null, detalles: [], observacion: '' })
 
 function filtrarArticulos() {
   const q = busquedaArticulo.value.toLowerCase().trim()
@@ -319,10 +357,31 @@ async function guardarSolicitud() {
   } finally { guardando.value = false }
 }
 
-async function aprobar(id) {
-  if (!confirm('¿Aprobar esta solicitud?')) return
-  await api.patch(`/adquisiciones/solicitudes/${id}/aprobar`)
-  await cargar()
+function abrirAprobacion(s) {
+  modalAprobacion.value = {
+    show: true,
+    solicitud: s,
+    detalles: s.detalles.map(d => ({ ...d, cantidad_nueva: d.cantidad_solicitada })),
+  }
+  errorModal.value = ''
+}
+
+async function confirmarAprobacion() {
+  errorModal.value = ''
+  guardando.value = true
+  try {
+    const payload = {
+      detalles: modalAprobacion.value.detalles.map(d => ({
+        det_id: d.id,
+        cantidad_solicitada: parseFloat(d.cantidad_nueva) || d.cantidad_solicitada,
+      })),
+    }
+    await api.patch(`/adquisiciones/solicitudes/${modalAprobacion.value.solicitud.id}/aprobar`, payload)
+    modalAprobacion.value.show = false
+    await cargar()
+  } catch (e) {
+    errorModal.value = e.response?.data?.message || 'Error al aprobar'
+  } finally { guardando.value = false }
 }
 
 async function negar(id) {

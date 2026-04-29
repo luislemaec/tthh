@@ -102,16 +102,29 @@ class SolicitudMaterialController extends Controller
             return response()->json(['message' => 'Sin permiso.'], 403);
         }
 
-        $solicitud = SolicitudMaterial::findOrFail($id);
+        $solicitud = SolicitudMaterial::with('detalles')->findOrFail($id);
         if ($solicitud->estado !== 'PENDIENTE') {
             return response()->json(['message' => 'Solo se pueden aprobar solicitudes PENDIENTES.'], 422);
         }
 
-        $solicitud->update([
-            'estado'             => 'APROBADO',
-            'usuario_aprobacion' => $emp->id_emp,
-            'fecha_aprobacion'   => now(),
-        ]);
+        DB::transaction(function () use ($solicitud, $request, $emp) {
+            // Actualizar cantidades si el supervisor las modificó
+            if ($request->filled('detalles')) {
+                foreach ($request->detalles as $item) {
+                    $cantidad = max(0.01, (float) ($item['cantidad_solicitada'] ?? 0.01));
+                    DB::table('adq.solicitud_material_det')
+                        ->where('id', $item['det_id'])
+                        ->where('solicitud_id', $solicitud->id)
+                        ->update(['cantidad_solicitada' => $cantidad]);
+                }
+            }
+
+            $solicitud->update([
+                'estado'             => 'APROBADO',
+                'usuario_aprobacion' => $emp->id_emp,
+                'fecha_aprobacion'   => now(),
+            ]);
+        });
 
         return response()->json($solicitud->load('detalles.articulo'));
     }
@@ -170,10 +183,12 @@ class SolicitudMaterialController extends Controller
                 $det->update(['cantidad_autorizada' => $autorizada]);
 
                 if ($autorizada > 0) {
-                    $articulo = $det->articulo;
-                    $articulo->update([
-                        'stock_actual' => max(0, $articulo->stock_actual - $autorizada),
-                    ]);
+                    DB::table('adq.articulo')
+                        ->where('id', $det->articulo_id)
+                        ->update([
+                            'stock_actual' => DB::raw('GREATEST(0, stock_actual - ' . $autorizada . ')'),
+                            'updated_at'   => now(),
+                        ]);
                 }
 
                 $totalAutorizado += $autorizada;
