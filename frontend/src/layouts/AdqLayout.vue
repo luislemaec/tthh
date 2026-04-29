@@ -132,26 +132,28 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/services/api'
 
 const router = useRouter()
+const route  = useRoute()
 const auth   = useAuthStore()
 const sidebarOpen  = ref(true)
 const alertasStock = ref(0)
 
 const gruposAbiertos = ref({
-  'ADMINISTRACIÓN': true,
-  'MOVIMIENTOS':    true,
-  'SOLICITUDES':    true,
-  'REPORTES':       true,
+  'ADMINISTRACIÓN': false,
+  'MOVIMIENTOS':    false,
+  'SOLICITUDES':    false,
+  'REPORTES':       false,
 })
 
 function toggleGrupo(label) {
   gruposAbiertos.value[label] = !gruposAbiertos.value[label]
 }
+
 
 function slideDown(el) {
   el.style.overflow = 'hidden'
@@ -235,7 +237,19 @@ const iniciales = computed(() => {
   return (a + n).toUpperCase()
 })
 
+function abrirGrupoActivo(path) {
+  for (const grupo of menuGrupos.value) {
+    if (grupo.items.some(item => path.startsWith(item.to))) {
+      gruposAbiertos.value[grupo.label] = true
+      break
+    }
+  }
+}
+
+watch(() => route.path, abrirGrupoActivo)
+
 onMounted(async () => {
+  abrirGrupoActivo(route.path)
   try {
     const { data } = await api.get('/adquisiciones/articulos/alertas')
     alertasStock.value = data.length
