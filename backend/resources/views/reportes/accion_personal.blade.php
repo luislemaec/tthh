@@ -184,8 +184,8 @@
   </div>
   <div style="font-size:7.5pt; margin-top:2px;">
     <b>* PRESENTÓ LA DECLARACIÓN JURADA</b> (número 2 del art. 3 RLOSEP) &nbsp;
-    SI <span class="{{ $declaracionSI ? 'cb cb-on' : 'cb' }}">{{ $declaracionSI ? 'X' : '&nbsp;' }}</span> &nbsp;&nbsp;
-    NO APLICA <span class="{{ !$declaracionSI ? 'cb cb-on' : 'cb' }}">{{ !$declaracionSI ? 'X' : '&nbsp;' }}</span>
+    SI <span class="{{ $declaracionSI ? 'cb cb-on' : 'cb' }}">{!! $declaracionSI ? 'X' : '&nbsp;' !!}</span> &nbsp;&nbsp;
+    NO APLICA <span class="{{ !$declaracionSI ? 'cb cb-on' : 'cb' }}">{!! !$declaracionSI ? 'X' : '&nbsp;' !!}</span>
   </div>
 </div>
 
