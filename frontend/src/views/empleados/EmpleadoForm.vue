@@ -197,6 +197,18 @@
               <option :value="false">No acumula</option>
             </select>
           </div>
+          <div class="sm:col-span-2">
+            <label class="block text-sm font-medium text-gray-600 mb-1">Partida Presupuestaria *</label>
+            <input v-model="form.partida_presupuestaria" type="text" placeholder="Ej: 202622000000000..." required
+              class="w-full border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Control de Asistencia -->
+      <div class="bg-white rounded-xl shadow p-6 space-y-4">
+        <h2 class="text-lg font-semibold text-gray-700 border-b pb-2">Control de Asistencia</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Modalidad de Marcación</label>
             <select v-model="form.modalidad_marcacion"
@@ -206,10 +218,12 @@
               <option value="TELETRABAJO">TELETRABAJO — marca como teletrabajo</option>
             </select>
           </div>
-          <div class="sm:col-span-2">
-            <label class="block text-sm font-medium text-gray-600 mb-1">Partida Presupuestaria *</label>
-            <input v-model="form.partida_presupuestaria" type="text" placeholder="Ej: 202622000000000..." required
-              class="w-full border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+          <div class="flex items-end pb-1">
+            <p class="text-xs text-gray-400 leading-relaxed">
+              <b class="text-gray-500">PRESENCIAL:</b> solo puede timbrar desde las VLANs internas configuradas.<br>
+              <b class="text-gray-500">REMOTO:</b> puede timbrar desde cualquier IP (viaje, comisión).<br>
+              <b class="text-gray-500">TELETRABAJO:</b> marca como teletrabajo sin restricción de IP.
+            </p>
           </div>
         </div>
       </div>
