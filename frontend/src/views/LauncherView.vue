@@ -6,7 +6,7 @@
     <div class="text-center mb-10">
       <img src="@/assets/LOGOS-CONSEJOBLANCOH.png" alt="Logo" class="h-16 mx-auto mb-4 object-contain" />
       <h1 class="text-2xl font-bold text-white tracking-wide">CONSEJO DE COMUNICACIÓN</h1>
-      <p class="text-green-200 text-sm mt-1">Sistema Integrado de Gestión Institucional</p>
+      <p class="text-green-200 text-sm mt-1">Sistema Integral Tecnológico Institucional</p>
     </div>
 
     <!-- Tarjetas de aplicativos -->
