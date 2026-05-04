@@ -171,6 +171,24 @@ class SolicitudMaterialController extends Controller
             return response()->json(['message' => 'Solo se pueden despachar solicitudes APROBADAS.'], 422);
         }
 
+        // Validar stock antes de iniciar la transacción
+        foreach ($request->detalles as $item) {
+            $det = $solicitud->detalles->firstWhere('id', $item['det_id']);
+            if (!$det) continue;
+            $autorizada = (float)$item['cantidad_autorizada'];
+            if ($autorizada <= 0) continue;
+
+            $stockActual = (float) DB::table('adq.articulo')
+                ->where('id', $det->articulo_id)
+                ->value('stock_actual');
+
+            if ($autorizada > $stockActual) {
+                return response()->json([
+                    'message' => "Stock insuficiente para \"{$det->articulo->nombre}\": disponible {$stockActual}, ingresado {$autorizada}.",
+                ], 422);
+            }
+        }
+
         DB::transaction(function () use ($solicitud, $request, $emp) {
             $totalAutorizado = 0;
             $totalSolicitado = 0;
