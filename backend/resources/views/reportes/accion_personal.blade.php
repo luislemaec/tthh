@@ -277,7 +277,7 @@
         <div style="min-height:26px;"></div>
         <div style="font-size:7.5pt;">FIRMA: <span style="border-bottom:1px solid #000; display:inline-block; width:68%;">&nbsp;</span></div>
         <div style="font-size:7.5pt; margin-top:1px;">NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">{{ $config['DIRECTOR_TALENTO_HUMANO'] ?? '' }}</span></div>
-        <div style="font-size:7.5pt; margin-top:1px;">PUESTO: <span style="border-bottom:1px solid #000; display:inline-block; width:64%;">DIRECTOR DE ADMINISTRACIÓN DEL TALENTO HUMANO</span></div>
+        <div style="font-size:7.5pt; margin-top:1px;">PUESTO: <span style="border-bottom:1px solid #000; display:inline-block; width:64%;">DIRECTOR (A) DE ADMINISTRACIÓN DEL TALENTO HUMANO</span></div>
       </td>
       <td style="width:50%; padding:5px 6px; vertical-align:bottom;">
         <div class="lbl">AUTORIDAD NOMINADORA O SU DELEGADO</div>
@@ -358,7 +358,7 @@
           <div style="min-height:55px;"></div>
           <div style="font-size:7.5pt;">FIRMA: <span style="border-bottom:1px solid #000; display:inline-block; width:68%;">&nbsp;</span></div>
           <div style="font-size:7.5pt; margin-top:2px;">NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">{{ $esDirectorTH ? '' : $directorTH }}</span></div>
-          <div style="font-size:7.5pt; margin-top:2px;">PUESTO: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">{{ $esDirectorTH ? '' : 'DIRECTOR DE ADMINISTRACIÓN DEL TALENTO HUMANO' }}</span></div>
+          <div style="font-size:7.5pt; margin-top:2px;">PUESTO: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">{{ $esDirectorTH ? '' : 'DIRECTOR(A) DE ADMINISTRACIÓN DEL TALENTO HUMANO' }}</span></div>
         </div>
       </td>
       <td style="width:33.4%; padding:0; vertical-align:top;">
