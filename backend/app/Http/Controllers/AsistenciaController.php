@@ -59,6 +59,23 @@ class AsistenciaController extends Controller
         $hoy  = now()->toDateString();
         $concepto = $request->concepto;
 
+        // Validar IP si el empleado no puede marcar remotamente
+        if (!$emp->permite_marcacion_remota) {
+            $vlansConf = DB::table('dbo.d2_configuracion')
+                ->where('concepto', 'vlans_permitidas')
+                ->value('valor');
+
+            $vlans = array_filter(array_map('trim', explode(',', $vlansConf ?? '')));
+            $ip    = $request->ip();
+            $permitida = empty($vlans) || collect($vlans)->contains(fn($v) => str_starts_with($ip, $v));
+
+            if (!$permitida) {
+                return response()->json([
+                    'message' => 'No está autorizado para registrar asistencia fuera de las instalaciones.',
+                ], 403);
+            }
+        }
+
         // Validar que no haya marcado el mismo concepto hoy
         $yaMarcado = SgControlPersona::where("nro_documento", $emp->id_emp)
             ->whereDate("fecha_hora", $hoy)

@@ -197,6 +197,20 @@
               <option :value="false">No acumula</option>
             </select>
           </div>
+          <div class="flex items-center gap-3 py-1">
+            <button type="button" @click="form.permite_marcacion_remota = !form.permite_marcacion_remota"
+              class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none"
+              :class="form.permite_marcacion_remota ? 'bg-green-500' : 'bg-gray-300'">
+              <span class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform"
+                :class="form.permite_marcacion_remota ? 'translate-x-6' : 'translate-x-1'"></span>
+            </button>
+            <span class="text-sm text-gray-600">
+              Permite marcación remota
+              <span class="text-xs ml-1" :class="form.permite_marcacion_remota ? 'text-green-600' : 'text-red-500'">
+                ({{ form.permite_marcacion_remota ? 'Sí — puede timbrar desde cualquier IP' : 'No — solo desde VLANs internas' }})
+              </span>
+            </span>
+          </div>
           <div class="sm:col-span-2">
             <label class="block text-sm font-medium text-gray-600 mb-1">Partida Presupuestaria *</label>
             <input v-model="form.partida_presupuestaria" type="text" placeholder="Ej: 202622000000000..." required
@@ -263,9 +277,10 @@ const form = ref({
   estado_puesto:           "OCUPADO",
   partida_individual:      "",
   partida_presupuestaria:  "",
-  acumula_fondos_reserva:  0,
-  acumula_decimo_tercero:  false,
-  acumula_decimo_cuarto:   false,
+  acumula_fondos_reserva:    0,
+  acumula_decimo_tercero:    false,
+  acumula_decimo_cuarto:     false,
+  permite_marcacion_remota:  true,
 })
 
 const guardar = async () => {
@@ -294,9 +309,10 @@ const guardar = async () => {
       estado_puesto:           form.value.estado_puesto,
       partida_individual:      form.value.partida_individual     || null,
       partida_presupuestaria:  form.value.partida_presupuestaria || null,
-      acumula_fondos_reserva:  form.value.acumula_fondos_reserva,
-      acumula_decimo_tercero:  form.value.acumula_decimo_tercero,
-      acumula_decimo_cuarto:   form.value.acumula_decimo_cuarto,
+      acumula_fondos_reserva:   form.value.acumula_fondos_reserva,
+      acumula_decimo_tercero:   form.value.acumula_decimo_tercero,
+      acumula_decimo_cuarto:    form.value.acumula_decimo_cuarto,
+      permite_marcacion_remota: form.value.permite_marcacion_remota,
     }
 
     if (esEdicion.value) {
@@ -351,9 +367,10 @@ onMounted(async () => {
     form.value.estado_puesto          = data.estado_puesto          || "OCUPADO"
     form.value.partida_individual     = data.partida_individual     || ""
     form.value.partida_presupuestaria = data.partida_presupuestaria || ""
-    form.value.acumula_fondos_reserva = data.acumula_fondos_reserva ?? 0
-    form.value.acumula_decimo_tercero = data.acumula_decimo_tercero ?? false
-    form.value.acumula_decimo_cuarto  = data.acumula_decimo_cuarto  ?? false
+    form.value.acumula_fondos_reserva   = data.acumula_fondos_reserva   ?? 0
+    form.value.acumula_decimo_tercero   = data.acumula_decimo_tercero   ?? false
+    form.value.acumula_decimo_cuarto    = data.acumula_decimo_cuarto    ?? false
+    form.value.permite_marcacion_remota = data.permite_marcacion_remota ?? true
   }
 })
 </script>
