@@ -508,13 +508,20 @@ class HorasExtrasController extends Controller
             9 => 'SEPTIEMBRE', 10 => 'OCTUBRE', 11 => 'NOVIEMBRE', 12 => 'DICIEMBRE',
         ];
 
+        $supervisorEmp = Supervisor::where('id_depto', $emp->id_depto)->first();
+        $supervisorObj = $supervisorEmp ? Empleado::find($supervisorEmp->id_supervisor) : null;
+        $nombreSupervisor = $supervisorObj
+            ? strtoupper(($supervisorObj->apellido_emp ?? '') . ' ' . ($supervisorObj->nombre_emp ?? ''))
+            : ($config['DIRECTOR_TALENTO_HUMANO'] ?? '');
+
         $pdf = Pdf::loadView('reportes.he_registros', [
-            'cab'      => $cab,
-            'emp'      => $emp,
-            'registros' => $registros,
-            'config'   => $config,
-            'logo'     => $logoBase64,
-            'meses'    => $meses,
+            'cab'             => $cab,
+            'emp'             => $emp,
+            'registros'       => $registros,
+            'config'          => $config,
+            'logo'            => $logoBase64,
+            'meses'           => $meses,
+            'nombreSupervisor' => $nombreSupervisor,
         ])->setPaper('letter', 'portrait');
 
         $filename = "horas_trabajadas_{$emp->apellido_emp}_{$emp->nombre_emp}_{$cab->anio}_{$cab->mes}.pdf";

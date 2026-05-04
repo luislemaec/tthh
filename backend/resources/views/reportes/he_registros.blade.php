@@ -62,6 +62,20 @@
   .badge-negado { color: #991b1b; }
 
   .nota { font-size: 7.5pt; color: #444; margin-top: 6px; }
+
+  .firma-table td {
+    padding: 6px 10px;
+    font-size: 8pt;
+    text-align: center;
+    vertical-align: bottom;
+  }
+  .firma-linea {
+    border-top: 1px solid #000;
+    margin: 0 10px;
+    padding-top: 3px;
+    font-weight: bold;
+    font-size: 8pt;
+  }
 </style>
 </head>
 <body>
@@ -174,6 +188,28 @@
   Planificado: {{ number_format($cab->total_extraordinarias, 2) }} h. extraordinarias &nbsp;|&nbsp;
   {{ number_format($cab->total_suplementarias, 2) }} h. suplementarias
 </p>
+
+{{-- FIRMAS --}}
+<table class="firma-table" style="margin-top:40px;">
+  <tr>
+    <td style="width:50%;">
+      <div style="margin-bottom:25px;">&nbsp;</div>
+      <div class="firma-linea">
+        {{ $nombreEmp }}<br>
+        {{ $cargo }}<br>
+        <span style="font-weight:normal;">Servidor/a que solicita</span>
+      </div>
+    </td>
+    <td style="width:50%;">
+      <div style="margin-bottom:25px;">&nbsp;</div>
+      <div class="firma-linea">
+        {{ $nombreSupervisor }}<br>
+        {{ strtoupper($depto) }}<br>
+        <span style="font-weight:normal;">Autoriza</span>
+      </div>
+    </td>
+  </tr>
+</table>
 
 </div>
 </body>
