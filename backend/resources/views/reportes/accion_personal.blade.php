@@ -283,7 +283,7 @@
         <div class="lbl">AUTORIDAD NOMINADORA O SU DELEGADO</div>
         <div style="min-height:26px;"></div>
         <div style="font-size:7.5pt;">FIRMA: <span style="border-bottom:1px solid #000; display:inline-block; width:68%;">&nbsp;</span></div>
-        <div style="font-size:7.5pt; margin-top:1px;">NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">{{ $config['PRESIDENTE_INSTITUCION'] ?? '' }}</span></div>
+        <div style="font-size:7.5pt; margin-top:1px;">NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">{{ $config['APROBADOR_ACCION_PERSONAL'] ?? '' }}</span></div>
         <div style="font-size:7.5pt; margin-top:1px;">PUESTO: <span style="border-bottom:1px solid #000; display:inline-block; width:64%;">&nbsp;</span></div>
       </td>
     </tr>
