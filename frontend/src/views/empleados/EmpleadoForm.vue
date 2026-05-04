@@ -197,19 +197,14 @@
               <option :value="false">No acumula</option>
             </select>
           </div>
-          <div class="flex items-center gap-3 py-1">
-            <button type="button" @click="form.permite_marcacion_remota = !form.permite_marcacion_remota"
-              class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none"
-              :class="form.permite_marcacion_remota ? 'bg-green-500' : 'bg-gray-300'">
-              <span class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform"
-                :class="form.permite_marcacion_remota ? 'translate-x-6' : 'translate-x-1'"></span>
-            </button>
-            <span class="text-sm text-gray-600">
-              Permite marcación remota
-              <span class="text-xs ml-1" :class="form.permite_marcacion_remota ? 'text-green-600' : 'text-red-500'">
-                ({{ form.permite_marcacion_remota ? 'Sí — puede timbrar desde cualquier IP' : 'No — solo desde VLANs internas' }})
-              </span>
-            </span>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Modalidad de Marcación</label>
+            <select v-model="form.modalidad_marcacion"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
+              <option value="PRESENCIAL">PRESENCIAL — solo desde red interna</option>
+              <option value="REMOTO">REMOTO — desde cualquier IP (comisión, viaje)</option>
+              <option value="TELETRABAJO">TELETRABAJO — marca como teletrabajo</option>
+            </select>
           </div>
           <div class="sm:col-span-2">
             <label class="block text-sm font-medium text-gray-600 mb-1">Partida Presupuestaria *</label>
@@ -280,7 +275,7 @@ const form = ref({
   acumula_fondos_reserva:    0,
   acumula_decimo_tercero:    false,
   acumula_decimo_cuarto:     false,
-  permite_marcacion_remota:  true,
+  modalidad_marcacion:       'PRESENCIAL',
 })
 
 const guardar = async () => {
@@ -312,7 +307,7 @@ const guardar = async () => {
       acumula_fondos_reserva:   form.value.acumula_fondos_reserva,
       acumula_decimo_tercero:   form.value.acumula_decimo_tercero,
       acumula_decimo_cuarto:    form.value.acumula_decimo_cuarto,
-      permite_marcacion_remota: form.value.permite_marcacion_remota,
+      modalidad_marcacion:      form.value.modalidad_marcacion,
     }
 
     if (esEdicion.value) {
@@ -370,7 +365,7 @@ onMounted(async () => {
     form.value.acumula_fondos_reserva   = data.acumula_fondos_reserva   ?? 0
     form.value.acumula_decimo_tercero   = data.acumula_decimo_tercero   ?? false
     form.value.acumula_decimo_cuarto    = data.acumula_decimo_cuarto    ?? false
-    form.value.permite_marcacion_remota = data.permite_marcacion_remota ?? true
+    form.value.modalidad_marcacion      = data.modalidad_marcacion      ?? 'PRESENCIAL'
   }
 })
 </script>

@@ -10,10 +10,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::connection('pgsql')->table('dbo.ad_empleado', function (Blueprint $table) {
-            $table->boolean('permite_marcacion_remota')->default(true)->after('ubicacion');
+            $table->string('modalidad_marcacion', 15)->default('PRESENCIAL')->after('ubicacion');
         });
 
-        // Insertar parámetro de VLANs si no existe
         $existe = DB::table('dbo.d2_configuracion')
             ->where('concepto', 'vlans_permitidas')
             ->exists();
@@ -29,7 +28,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::connection('pgsql')->table('dbo.ad_empleado', function (Blueprint $table) {
-            $table->dropColumn('permite_marcacion_remota');
+            $table->dropColumn('modalidad_marcacion');
         });
 
         DB::table('dbo.d2_configuracion')
