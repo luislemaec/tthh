@@ -347,12 +347,11 @@ class EmpleadoController extends Controller
 
     public function partidasVacantes()
     {
-        $partidas = Empleado::where('estado_puesto', 'VACANTE')
+        $partidas = Empleado::where('estado', 'INACTIVO')
+            ->where('estado_puesto', 'DISPONIBLE')
             ->whereNotNull('partida_individual')
             ->orderBy('partida_individual')
-            ->pluck('partida_individual')
-            ->unique()
-            ->values();
+            ->get(['id_emp', 'nombre_emp', 'apellido_emp', 'partida_individual', 'partida_presupuestaria']);
         return response()->json($partidas);
     }
 }

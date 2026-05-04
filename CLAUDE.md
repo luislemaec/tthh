@@ -78,17 +78,43 @@ Cinco roles: `ADMINISTRADOR`, `TALENTO HUMANO`, `SUPERVISOR`, `ADQUISICIONES`, `
 | Controlador | Función |
 |---|---|
 | `AuthController` | Login / logout / me |
-| `EmpleadoController` | CRUD empleados + asignación de roles |
+| `EmpleadoController` | CRUD empleados + asignación de roles + partidas disponibles |
 | `AccionPersonalController` | Acciones (encargo, subrogación, ingreso, vacaciones, destitución, cesación) |
 | `VacacionesController` | Solicitudes de vacaciones (aprobar/negar/saldo) |
 | `PlanificacionVacController` | Planificación anual de vacaciones |
 | `LiquidacionVacController` | Liquidación por comisión/desvinculación |
 | `ReportePlanificacionController` | PDF planificación + subida Alfresco |
 | `PermisosController` | Permisos y licencias |
-| `AsistenciaController` | Marcaciones y reportes |
-| `CuadreController` | Conciliación de asistencia |
+| `AsistenciaController` | Marcaciones y reportes de asistencia |
+| `CuadreController` | Conciliación de asistencia (atrasos) |
+| `HorasExtrasController` | Planificación y registro de horas extras |
 | `DashboardController` | Estadísticas del dashboard |
 | `Admin/*` | Departamentos, causas, turnos, horarios, calendario, configuración, aportes IESS |
+
+### Empleados (`dbo.ad_empleado`)
+
+Campos relevantes:
+- `estado`: `ACTIVO` / `INACTIVO` — nunca se elimina
+- `estado_puesto`: `OCUPADO` / `VACANTE` / `DISPONIBLE` — DISPONIBLE = empleado inactivo, partida presupuestaria libre para reasignar
+- `partida_individual` / `partida_presupuestaria`: identificadores de la partida MEF
+- `modalidad_marcacion`: `PRESENCIAL` / `REMOTO` / `TELETRABAJO` (ver Control de Asistencia)
+- `modalidad_laboral`: determina motivos válidos en liquidación de vacaciones
+- `tipo_contrato`: `LOSEP` / `CODIGO DEL TRABAJO` — define tasa de vacaciones
+
+**Partidas disponibles** (`GET /api/empleados/partidas-vacantes`): devuelve empleados con `estado=INACTIVO` + `estado_puesto=DISPONIBLE`. En `EmpleadoForm.vue`, el campo Partida Individual tiene input libre + botón "Seleccionar libre" que abre un modal con la lista — al seleccionar una fila se auto-llenan `partida_individual` y `partida_presupuestaria`.
+
+### Control de Asistencia (`dbo.sg_control_persona`)
+
+Tabla de marcaciones individuales. Flujo diario en orden estricto: `ENTRADA → SALIDA AL LUNCH → ENTRADA DEL LUNCH → SALIDA`
+
+**modalidad_marcacion** controla cómo puede timbrar el empleado:
+- `PRESENCIAL` (default): la IP del request debe comenzar con algún prefijo de `vlans_permitidas` en `dbo.d2_configuracion`. Formato del valor: `10.10.12.,192.168.1.` (prefijos separados por coma). Si la lista está vacía se permite todo.
+- `REMOTO`: puede marcar desde cualquier IP sin validación. `tipo_marcacion = 'WEB'`. Uso: comisiones, viajes.
+- `TELETRABAJO`: puede marcar desde cualquier IP. `tipo_marcacion = 'TELETRABAJO'`. Uso: trabajo desde casa.
+
+Campos clave de `sg_control_persona`: `nro_documento` (= id_emp), `clasificacion` (ENTRADA/SALIDA), `concepto` (ENTRADA/SALIDA AL LUNCH/ENTRADA DEL LUNCH/SALIDA), `fecha_hora`, `tipo_marcacion` (WEB/TELETRABAJO), `ip`, `ubicacion`, `procesado` (SI/NO), `origen`.
+
+**Cuadre** (`dbo.d2_cuadre_marcacion`): tabla con atrasos en minutos por día por empleado (`atraso_entrada`, `atraso_lunch`, `atraso_salida`). Se usa en el reporte personal de asistencia para mostrar atrasos y si están justificados por permisos aprobados.
 
 ### Vacaciones — cálculo de saldo
 
@@ -111,6 +137,8 @@ Calculado en `calcularSaldoDisponible()` / `calcularSaldo()`:
 
 Auto-cierre corre en cada `index()` para SUBROGACION y VACACIONES con `fecha_fin < hoy`.
 
+PDF: `accion_personal.blade.php` — usa `{!! !!}` (no `{{ }}`) para entidades HTML como `&nbsp;` en checkboxes.
+
 ### Liquidación de Vacaciones
 
 - `INICIO_COMISION` / `FIN_COMISION_SALIDA` → genera certificado PDF
@@ -118,14 +146,109 @@ Auto-cierre corre en cada `index()` para SUBROGACION y VACACIONES con `fecha_fin
 - `DESVINCULACION` → reporte de liquidación
 - Motivos válidos dependen de `modalidad_laboral` del empleado
 
+### Horas Extras
+
+#### Tablas (`dbo.*`)
+
+| Tabla | Descripción |
+|---|---|
+| `dbo.nom_he_planificacion_cab` | Cabecera mensual: id_emp, anio, mes, estado, total_extraordinarias, total_suplementarias, memorando, pdf_aprobado (Alfresco node id), fechas y usuarios de cada transición |
+| `dbo.nom_he_planificacion_det` | Detalle: cab_id, actividad (texto), horas_extraordinarias, horas_suplementarias |
+| `dbo.nom_he_registro` | Horas reales: cab_id, id_emp, fecha, hora_inicio, hora_fin, horas_extraordinarias, horas_suplementarias, descripcion, estado, observacion, usuario_decision, fecha_decision |
+
+#### Flujo completo
+
+```
+Empleado crea planificación → PENDIENTE
+  ↓ (si es supervisor/admin → directamente APROBADO)
+Supervisor aprueba → APROBADO  |  niega → NEGADO (con observación)
+  ↓
+TH NOMINA autoriza con N° memorando → AUTORIZADO
+  ↓
+Empleado registra horas reales (solo en mes planificado y mes actual) → EN REVISION
+  ↓
+TH NOMINA revisa → aprueba → PENDIENTE  |  devuelve al empleado para corrección
+  ↓
+Supervisor confirma → APROBADO  |  niega → NEGADO
+```
+
+Estados del registro de horas: `EN REVISION → PENDIENTE → APROBADO / NEGADO`
+
+#### Clasificación automática de horas
+
+El sistema calcula automáticamente el tipo a partir de hora_inicio y hora_fin:
+- **Lunes–Viernes** (sin feriado): 00:00–06:00 = Extra | 06:00–08:00 = Supl | 08:00–16:30 = Normal | 16:30–24:00 = Supl
+- **Fin de semana o feriado** (`dbo.d2_lista_fecha`): todo el rango = Extraordinarias
+- Límite máximo: 20h extraordinarias y 20h suplementarias por mes
+
+#### Cálculo monetario (visible solo para TH NOMINA / ADMINISTRADOR)
+
+```
+tarifa_hora = sueldo / 240
+valor_extra = tarifa_hora × (1 + porc_extraordinaria/100) × horas_extraordinarias
+valor_supl  = tarifa_hora × (1 + porc_suplementaria/100)  × horas_suplementarias
+```
+Porcentajes se obtienen de `dbo.d2_jornada` (campos `porc_extraordinaria`, `porc_suplementaria`) según la jornada del empleado.
+
+#### PDFs y Alfresco
+
+- `GET /api/horas-extras/planificacion/{id}/pdf` → `he_planificacion.blade.php` — actividades planificadas, datos del empleado, firmas (empleado + supervisor del departamento)
+- `GET /api/horas-extras/planificacion/{id}/pdf-registros` → `he_registros.blade.php` — solo registros en estado APROBADO, mismas firmas. Visible cuando hay al menos 1 registro APROBADO.
+- PDF firmado: se sube a Alfresco en `horas-extras/{año}/`, se guarda el `entry.id` en `pdf_aprobado` de la cabecera.
+- Botones PDF (planificación): visibles en estados APROBADO y AUTORIZADO.
+
+#### Roles en Horas Extras
+
+- **Supervisor**: presencia en `dbo.supervisor_area` — endpoint `/horas-extras/mi-rol` devuelve `es_supervisor`
+- **TH NOMINA**: rol exacto `TH NOMINA` (sin tilde) en `dbo.admin_rol` — devuelve `es_admin_th`
+- Supervisores ven tabs "Planificaciones del Equipo" y "Registros del Equipo"
+- TH NOMINA ve además el desglose monetario y puede revisar/autorizar
+- Horas en UI: formato `Xh Ym` (ej: 4h 15m), no decimal
+
+#### Rutas (`/api/horas-extras/*`)
+
+| Método | Ruta | Función |
+|---|---|---|
+| GET | `/calcular` | Calcula horas por rango horario |
+| GET | `/mi-rol` | Indica si es supervisor / admin TH |
+| GET | `/mi-planificacion` | Planificación del empleado para mes/año |
+| POST | `/planificacion` | Crear planificación |
+| PUT | `/planificacion/{id}` | Editar (solo PENDIENTE) |
+| DELETE | `/planificacion/{id}` | Eliminar (solo PENDIENTE) |
+| GET | `/planificacion` | Lista planificaciones del equipo |
+| PATCH | `/planificacion/{id}/aprobar` | Supervisor aprueba |
+| PATCH | `/planificacion/{id}/negar` | Supervisor niega |
+| PATCH | `/planificacion/{id}/autorizar` | TH NOMINA autoriza |
+| GET | `/planificacion/{id}/pdf` | PDF planificación |
+| GET | `/planificacion/{id}/pdf-registros` | PDF horas trabajadas |
+| POST | `/planificacion/{id}/subir-firmado` | Sube PDF firmado a Alfresco |
+| GET | `/planificacion/{id}/descargar-firmado` | Descarga desde Alfresco |
+| GET | `/mis-registros` | Registros del empleado para mes/año |
+| POST | `/registro` | Registrar horas reales |
+| PUT | `/registro/{id}` | Editar registro (solo EN REVISION) |
+| GET | `/equipo-registros` | Registros del equipo (supervisor/admin) |
+| PATCH | `/registro/{id}/revisar` | TH NOMINA aprueba/devuelve |
+| PATCH | `/registro/{id}/confirmar` | Supervisor confirma → APROBADO |
+| PATCH | `/registro/{id}/negar` | Supervisor niega |
+
 ### Vistas Frontend (Talento Humano)
 
 ```
-views/empleados/        # CRUD, detalle, importación, distributivo
-views/acciones/         # Acciones de personal (lista + formulario)
-views/planificacion/    # Planificación, liquidación, reporte
+views/empleados/        # CRUD empleados, detalle, importación, distributivo
+                        # EmpleadoForm: bloque "Control de Asistencia" (modalidad_marcacion)
+                        #   Partida Individual: input libre + botón "Seleccionar libre" (modal partidas disponibles)
+views/acciones/         # Acciones de personal (lista + formulario + PDF)
+views/planificacion/    # Planificación anual de vacaciones, liquidación, reporte
+views/permisos/         # Permisos y licencias
+views/asistencia/       # Reporte de asistencia personal y admin
+views/horasextras/
+  HorasExtrasView.vue   # 4 tabs:
+                        #   MI PLANIFICACIÓN: crear/editar, PDF planificación, subir PDF firmado
+                        #   MIS HORAS TRABAJADAS: registrar horas, PDF horas trabajadas
+                        #   PLANIFICACIONES DEL EQUIPO: aprobar/negar (supervisor/admin)
+                        #   REGISTROS DEL EQUIPO: revisar/confirmar/negar + desglose monetario (TH NOMINA)
 views/admin/            # Roles, departamentos, turnos, configuración, IESS
-layouts/MainLayout.vue  # Layout del módulo RRHH
+layouts/MainLayout.vue  # Layout del módulo RRHH (menú colapsado, se abre el grupo activo)
 ```
 
 ---
@@ -197,10 +320,17 @@ Captura: `stock_antes`, `stock_despues`, `precio_antes`, `precio_despues`, `prec
 
 ### Solicitudes de Materiales (`adq.solicitud_material`)
 
-Flujo: empleado crea → supervisor aprueba/niega → bienes despacha con `cantidad_autorizada` por línea.
+Flujo: empleado crea → supervisor revisa y aprueba (puede modificar cantidades) / niega → bienes despacha con `cantidad_autorizada` por línea.
+
+- Empleado NO ve el stock disponible al crear la solicitud
+- Supervisor SÍ ve el stock en el modal de aprobación y puede modificar las cantidades solicitadas antes de aprobar
 - Si el solicitante es supervisor, la solicitud se crea directamente en APROBADO
 - Estado final en despacho: DESPACHADO (todo), DESPACHADO PARCIAL (parcial), NEGADO (todo en 0)
-- **BUG PENDIENTE**: `despachar()` actualiza stock con Eloquent (debe usar `DB::table`) y **no inserta en `adq.kardex`** — al corregir, insertar tipo `EGRESO` igual que `EgresoController::confirmar()`
+- `despachar()` usa `DB::table()->update(['stock_actual' => DB::raw('GREATEST(0, stock_actual - N)')])` — nunca Eloquent
+- **PENDIENTE**: `despachar()` aún no inserta en `adq.kardex` — al implementar, usar tipo `EGRESO` igual que `EgresoController::confirmar()`
+
+Campos de cabecera: `id_emp`, `id_depto`, `estado`, `justificacion`, `fecha_solicitud`, `fecha_aprobacion`, `fecha_despacho`, `usuario_aprobacion`, `usuario_despacho`
+Campos de detalle: `articulo_id`, `cantidad_solicitada`, `cantidad_autorizada`, `unidad_medida`
 
 ### Ajuste de Inventario
 
@@ -238,6 +368,7 @@ views/adquisiciones/
   ReporteLibroComprasView.vue # Libro de compras + PDF (incluye columna descuento)
   ReporteEgresosView.vue      # Egresos valorizados + PDF
 layouts/AdqLayout.vue         # Layout verde, roles ADQUISICIONES/BIENES
+                              # Menú colapsado por defecto, auto-abre el grupo de la ruta activa
 ```
 
 ---

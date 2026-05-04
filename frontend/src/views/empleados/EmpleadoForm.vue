@@ -161,16 +161,21 @@
               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
               <option value="OCUPADO">OCUPADO</option>
               <option value="VACANTE">VACANTE</option>
+              <option value="DISPONIBLE">DISPONIBLE</option>
             </select>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Partida Individual *</label>
-            <input v-model="form.partida_individual" list="lista-partidas-vacantes" type="text" required
-              placeholder="Ingrese o seleccione una partida vacante"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
-            <datalist id="lista-partidas-vacantes">
-              <option v-for="p in partidasVacantes" :key="p" :value="p" />
-            </datalist>
+            <div class="flex gap-2">
+              <input v-model="form.partida_individual" type="text" required
+                placeholder="Escriba una nueva o use el botón para seleccionar una libre"
+                class="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+              <button type="button" @click="modalPartidas.show = true"
+                title="Ver partidas disponibles de empleados inactivos"
+                class="shrink-0 text-xs border border-[#00372e] text-[#00372e] px-3 py-2 rounded-lg hover:bg-[#00372e] hover:text-white whitespace-nowrap transition-colors">
+                Seleccionar libre
+              </button>
+            </div>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Fondos de Reserva</label>
@@ -245,6 +250,51 @@
         </button>
       </div>
     </form>
+
+    <!-- Modal: Seleccionar partida disponible -->
+    <div v-if="modalPartidas.show"
+      class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-lg font-bold text-gray-800">Partidas individuales disponibles</h2>
+          <button @click="modalPartidas.show = false" class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+        </div>
+        <p class="text-xs text-gray-500 mb-3">Empleados inactivos con estado del puesto DISPONIBLE. Al seleccionar se llenarán ambas partidas.</p>
+        <div v-if="!partidasVacantes.length" class="text-center py-8 text-gray-400 text-sm">
+          No hay partidas disponibles en este momento.
+        </div>
+        <div v-else class="overflow-auto max-h-80">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 sticky top-0">
+              <tr>
+                <th class="text-left px-3 py-2 text-gray-600 font-medium">Empleado anterior</th>
+                <th class="text-left px-3 py-2 text-gray-600 font-medium">Partida Individual</th>
+                <th class="text-left px-3 py-2 text-gray-600 font-medium">Partida Presupuestaria</th>
+                <th class="px-3 py-2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="p in partidasVacantes" :key="p.id_emp"
+                class="border-b hover:bg-green-50 cursor-pointer"
+                @click="seleccionarPartida(p)">
+                <td class="px-3 py-2">{{ p.apellido_emp }} {{ p.nombre_emp }}</td>
+                <td class="px-3 py-2 font-mono text-xs">{{ p.partida_individual }}</td>
+                <td class="px-3 py-2 font-mono text-xs">{{ p.partida_presupuestaria || '—' }}</td>
+                <td class="px-3 py-2 text-right">
+                  <span class="text-[#00372e] font-semibold text-xs">Seleccionar →</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="flex justify-end mt-4">
+          <button @click="modalPartidas.show = false"
+            class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -262,6 +312,13 @@ const error         = ref("")
 const departamentos    = ref([])
 const jornadas         = ref([])
 const partidasVacantes = ref([])
+const modalPartidas    = ref({ show: false })
+
+function seleccionarPartida(p) {
+  form.value.partida_individual    = p.partida_individual    || ""
+  form.value.partida_presupuestaria = p.partida_presupuestaria || ""
+  modalPartidas.value.show = false
+}
 
 const form = ref({
   nombres:        "",
