@@ -50,6 +50,9 @@ const routes = [
       { path: 'planificacion/reporte', name: 'ReportePlanificacion', component: () => import('@/views/planificacion/ReportePlanificacionView.vue') },
       { path: 'planificacion/liquidacion', name: 'LiquidacionVacaciones', component: () => import('@/views/planificacion/LiquidacionVacView.vue') },
       { path: 'horas-extras', name: 'HorasExtras', component: () => import('@/views/horasextras/HorasExtrasView.vue') },
+      { path: 'nomina/decimo-tercero', name: 'NominaDecimoTercero', component: () => import('@/views/nomina/DecimoTerceroView.vue') },
+      { path: 'nomina/decimo-cuarto',  name: 'NominaDecimoCuarto',  component: () => import('@/views/nomina/DecimoCuartoView.vue') },
+      { path: 'nomina/fondos-reserva', name: 'NominaFondosReserva', component: () => import('@/views/nomina/FondosReservaView.vue') },
     ],
   },
   // ── Adquisiciones ──────────────────────────────────────────────────────────

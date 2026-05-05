@@ -17,6 +17,7 @@ use App\Http\Controllers\PlanificacionVacController;
 use App\Http\Controllers\ReportePlanificacionController;
 use App\Http\Controllers\LiquidacionVacController;
 use App\Http\Controllers\HorasExtrasController;
+use App\Http\Controllers\NominaController;
 use App\Http\Controllers\Adquisiciones\AdqDashboardController;
 use App\Http\Controllers\Adquisiciones\ProveedorController;
 use App\Http\Controllers\Adquisiciones\ArticuloController;
@@ -201,6 +202,28 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::patch("/horas-extras/registro/{id}/revisar",                   [HorasExtrasController::class, "revisarRegistro"]);
     Route::patch("/horas-extras/registro/{id}/confirmar",                 [HorasExtrasController::class, "confirmar"]);
     Route::patch("/horas-extras/registro/{id}/negar",                     [HorasExtrasController::class, "negarRegistro"]);
+
+    // ── Nómina ────────────────────────────────────────────────────────────────
+    Route::prefix('nomina')->group(function () {
+        Route::get('auditoria',                   [NominaController::class, 'auditoria']);
+        Route::get('sbu',                         [NominaController::class, 'sbuIndex']);
+        Route::post('sbu',                        [NominaController::class, 'sbuStore']);
+
+        Route::get('decimo-tercero',              [NominaController::class, 'index13']);
+        Route::post('decimo-tercero/calcular',    [NominaController::class, 'calcular13']);
+        Route::post('decimo-tercero/cerrar',      [NominaController::class, 'cerrar13']);
+        Route::get('decimo-tercero/pdf',          [NominaController::class, 'pdf13']);
+
+        Route::get('decimo-cuarto',               [NominaController::class, 'index14']);
+        Route::post('decimo-cuarto/calcular',     [NominaController::class, 'calcular14']);
+        Route::post('decimo-cuarto/cerrar',       [NominaController::class, 'cerrar14']);
+        Route::get('decimo-cuarto/pdf',           [NominaController::class, 'pdf14']);
+
+        Route::get('fondos-reserva',              [NominaController::class, 'indexFR']);
+        Route::post('fondos-reserva/calcular',    [NominaController::class, 'calcularFR']);
+        Route::post('fondos-reserva/cerrar',      [NominaController::class, 'cerrarFR']);
+        Route::get('fondos-reserva/pdf',          [NominaController::class, 'pdfFR']);
+    });
 
     // ── Adquisiciones ─────────────────────────────────────────────────────────
     Route::prefix('adquisiciones')->group(function () {
