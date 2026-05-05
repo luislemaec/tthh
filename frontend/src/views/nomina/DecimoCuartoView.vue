@@ -128,8 +128,8 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
-            <tr v-for="(r, i) in registros" :key="r.id" class="hover:bg-gray-50">
-              <td class="px-4 py-2 text-gray-500">{{ i + 1 }}</td>
+            <tr v-for="(r, i) in registrosPaginados" :key="r.id" class="hover:bg-gray-50">
+              <td class="px-4 py-2 text-gray-500">{{ (pagina - 1) * POR_PAGINA + i + 1 }}</td>
               <td class="px-4 py-2 font-medium text-gray-800">{{ nombreCompleto(r.empleado) }}</td>
               <td class="px-4 py-2 text-gray-600 font-mono">{{ r.empleado?.identificacion }}</td>
               <td class="px-4 py-2 text-gray-600">{{ r.empleado?.departamento?.nombre_depto }}</td>
@@ -146,6 +146,21 @@
             </tr>
           </tfoot>
         </table>
+      </div>
+      <!-- Paginador -->
+      <div v-if="totalPaginas > 1" class="px-5 py-3 border-t flex items-center justify-between text-sm text-gray-600">
+        <span>Página {{ pagina }} de {{ totalPaginas }} ({{ registros.length }} servidores)</span>
+        <div class="flex gap-1">
+          <button @click="pagina--" :disabled="pagina === 1"
+            class="px-3 py-1 border rounded text-sm hover:bg-gray-50 disabled:opacity-40">‹ Anterior</button>
+          <button v-for="p in totalPaginas" :key="p" @click="pagina = p"
+            class="px-3 py-1 border rounded text-sm"
+            :class="p === pagina ? 'bg-blue-600 text-white border-blue-600' : 'hover:bg-gray-50'">
+            {{ p }}
+          </button>
+          <button @click="pagina++" :disabled="pagina === totalPaginas"
+            class="px-3 py-1 border rounded text-sm hover:bg-gray-50 disabled:opacity-40">Siguiente ›</button>
+        </div>
       </div>
     </div>
 
@@ -180,7 +195,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import api from '@/services/api'
 
 const meses = [
@@ -214,6 +229,14 @@ const sbuHistorico   = ref([])
 const sbuForm        = ref({ anio: anioActual, valor: '' })
 const guardandoSbu   = ref(false)
 const sbuError       = ref('')
+
+const POR_PAGINA = 20
+const pagina = ref(1)
+const registrosPaginados = computed(() => {
+  const ini = (pagina.value - 1) * POR_PAGINA
+  return registros.value.slice(ini, ini + POR_PAGINA)
+})
+const totalPaginas = computed(() => Math.ceil(registros.value.length / POR_PAGINA))
 
 const fmt = (v) => parseFloat(v || 0).toFixed(2)
 const nombreCompleto = (e) => e ? `${e.apellido_emp ?? ''} ${e.nombre_emp ?? ''}`.trim().toUpperCase() : ''
@@ -284,6 +307,7 @@ async function cargar() {
     estadoPeriodo.value = data.estado_periodo
     totalValor.value    = data.total_valor
     sbuDelAnio.value    = data.sbu_anio
+    pagina.value = 1
     buscado.value = true
   } catch (e) {
     error.value = e.response?.data?.message ?? 'Error al cargar.'
@@ -307,6 +331,7 @@ async function confirmarCalculo() {
     estadoPeriodo.value = data.estado_periodo
     totalValor.value   = data.total_valor
     sbuDelAnio.value   = data.sbu_anio
+    pagina.value = 1
     buscado.value = true
   } catch (e) {
     error.value = e.response?.data?.message ?? 'Error al calcular.'

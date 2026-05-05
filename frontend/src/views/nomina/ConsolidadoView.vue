@@ -43,8 +43,8 @@
     <div v-if="filas.length" class="bg-white rounded-xl shadow overflow-hidden">
       <div class="px-5 py-3 border-b flex flex-wrap gap-6 items-center text-sm text-gray-600">
         <span>{{ filas.length }} servidores</span>
-        <span>D13: <span class="font-semibold text-blue-700">${{ fmt(total13) }}</span></span>
-        <span>D14: <span class="font-semibold text-green-700">${{ fmt(total14) }}</span></span>
+        <span>Décimo Tercero: <span class="font-semibold text-blue-700">${{ fmt(total13) }}</span></span>
+        <span>Décimo Cuarto: <span class="font-semibold text-green-700">${{ fmt(total14) }}</span></span>
         <span class="ml-auto font-bold text-gray-800">Gran Total: ${{ fmt(granTotal) }}</span>
       </div>
       <div class="overflow-x-auto">
@@ -55,14 +55,14 @@
               <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Apellidos y Nombres</th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Cédula</th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Departamento</th>
-              <th class="px-4 py-3 text-right text-xs font-semibold text-blue-600 uppercase bg-blue-50">D13 $</th>
-              <th class="px-4 py-3 text-right text-xs font-semibold text-green-600 uppercase bg-green-50">D14 $</th>
+              <th class="px-4 py-3 text-right text-xs font-semibold text-blue-600 uppercase bg-blue-50">Décimo Tercero $</th>
+              <th class="px-4 py-3 text-right text-xs font-semibold text-green-600 uppercase bg-green-50">Décimo Cuarto $</th>
               <th class="px-4 py-3 text-right text-xs font-semibold text-yellow-700 uppercase bg-yellow-50">Total $</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
-            <tr v-for="(f, i) in filas" :key="f.id_emp" class="hover:bg-gray-50">
-              <td class="px-4 py-2 text-gray-500">{{ i + 1 }}</td>
+            <tr v-for="(f, i) in filasPaginadas" :key="f.id_emp" class="hover:bg-gray-50">
+              <td class="px-4 py-2 text-gray-500">{{ (pagina - 1) * POR_PAGINA + i + 1 }}</td>
               <td class="px-4 py-2 font-medium text-gray-800">{{ nombreCompleto(f.empleado) }}</td>
               <td class="px-4 py-2 text-gray-600 font-mono">{{ f.empleado?.identificacion }}</td>
               <td class="px-4 py-2 text-gray-600">{{ f.empleado?.departamento?.nombre_depto }}</td>
@@ -81,6 +81,21 @@
           </tfoot>
         </table>
       </div>
+      <!-- Paginador -->
+      <div v-if="totalPaginas > 1" class="px-5 py-3 border-t flex items-center justify-between text-sm text-gray-600">
+        <span>Página {{ pagina }} de {{ totalPaginas }} ({{ filas.length }} servidores)</span>
+        <div class="flex gap-1">
+          <button @click="pagina--" :disabled="pagina === 1"
+            class="px-3 py-1 border rounded text-sm hover:bg-gray-50 disabled:opacity-40">‹ Anterior</button>
+          <button v-for="p in totalPaginas" :key="p" @click="pagina = p"
+            class="px-3 py-1 border rounded text-sm"
+            :class="p === pagina ? 'bg-blue-600 text-white border-blue-600' : 'hover:bg-gray-50'">
+            {{ p }}
+          </button>
+          <button @click="pagina++" :disabled="pagina === totalPaginas"
+            class="px-3 py-1 border rounded text-sm hover:bg-gray-50 disabled:opacity-40">Siguiente ›</button>
+        </div>
+      </div>
     </div>
 
     <div v-else-if="buscado" class="bg-white rounded-xl shadow p-8 text-center text-gray-400">
@@ -90,7 +105,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import api from '@/services/api'
 
 const meses = [
@@ -114,6 +129,14 @@ const cargando = ref(false)
 const buscado  = ref(false)
 const error    = ref('')
 
+const POR_PAGINA = 20
+const pagina = ref(1)
+const filasPaginadas = computed(() => {
+  const ini = (pagina.value - 1) * POR_PAGINA
+  return filas.value.slice(ini, ini + POR_PAGINA)
+})
+const totalPaginas = computed(() => Math.ceil(filas.value.length / POR_PAGINA))
+
 const fmt = (v) => parseFloat(v || 0).toFixed(2)
 const nombreCompleto = (e) => e ? `${e.apellido_emp ?? ''} ${e.nombre_emp ?? ''}`.trim().toUpperCase() : ''
 
@@ -130,6 +153,7 @@ async function cargar() {
     total13.value  = data.total_13
     total14.value  = data.total_14
     granTotal.value = data.gran_total
+    pagina.value = 1
     buscado.value = true
   } catch (e) {
     error.value = e.response?.data?.message ?? 'Error al cargar.'

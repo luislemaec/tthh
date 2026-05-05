@@ -65,8 +65,8 @@
       <th style="width:28%;">Apellidos y Nombres</th>
       <th style="width:12%;">Cédula</th>
       <th style="width:20%;">Departamento</th>
-      <th style="width:11%;" class="col-d13">D13 $</th>
-      <th style="width:11%;" class="col-d14">D14 $</th>
+      <th style="width:11%;" class="col-d13">Décimo Tercero $</th>
+      <th style="width:11%;" class="col-d14">Décimo Cuarto $</th>
       <th style="width:13%;" class="col-tot">Total $</th>
     </tr>
   </thead>
