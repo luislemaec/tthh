@@ -4,43 +4,6 @@
       <h1 class="text-2xl font-bold text-gray-800">Décimo Cuarto Sueldo</h1>
     </div>
 
-    <!-- Panel SBU -->
-    <div class="bg-white rounded-xl shadow p-5 mb-4">
-      <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Salario Básico Unificado (SBU) por Año</h2>
-      <div class="flex flex-wrap gap-3 items-end mb-4">
-        <div>
-          <label class="block text-xs text-gray-600 mb-1">Año</label>
-          <input v-model.number="sbuForm.anio" type="number" min="2020" max="2100"
-            class="border rounded-lg px-3 py-2 text-sm w-24 focus:ring-2 focus:ring-blue-300 outline-none" />
-        </div>
-        <div>
-          <label class="block text-xs text-gray-600 mb-1">Valor SBU $</label>
-          <input v-model.number="sbuForm.valor" type="number" step="0.01" min="1"
-            class="border rounded-lg px-3 py-2 text-sm w-32 focus:ring-2 focus:ring-blue-300 outline-none" />
-        </div>
-        <button @click="guardarSbu" :disabled="guardandoSbu"
-          class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-50">
-          {{ guardandoSbu ? 'Guardando...' : 'Guardar SBU' }}
-        </button>
-      </div>
-      <p v-if="sbuError" class="text-red-600 text-xs mb-2">{{ sbuError }}</p>
-
-      <table v-if="sbuHistorico.length" class="text-sm border-collapse">
-        <thead>
-          <tr class="bg-gray-50">
-            <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 border">Año</th>
-            <th class="px-4 py-2 text-right text-xs font-semibold text-gray-600 border">SBU $</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="s in sbuHistorico" :key="s.id" class="border-b hover:bg-gray-50">
-            <td class="px-4 py-1 border font-medium">{{ s.anio }}</td>
-            <td class="px-4 py-1 border text-right font-mono">${{ parseFloat(s.valor).toFixed(2) }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
     <!-- Controles período -->
     <div class="bg-white rounded-xl shadow p-5 mb-5">
       <div class="flex flex-wrap gap-3 items-end">
@@ -225,11 +188,6 @@ const busquedaEmp    = ref('')
 const sugerenciasEmp = ref([])
 let todosEmpleados   = []
 
-const sbuHistorico   = ref([])
-const sbuForm        = ref({ anio: anioActual, valor: '' })
-const guardandoSbu   = ref(false)
-const sbuError       = ref('')
-
 const POR_PAGINA = 20
 const pagina = ref(1)
 const registrosPaginados = computed(() => {
@@ -272,29 +230,6 @@ function limpiarEmp() {
   busquedaEmp.value = ''
 }
 
-onMounted(cargarSbu)
-
-async function cargarSbu() {
-  try {
-    const { data } = await api.get('/nomina/sbu')
-    sbuHistorico.value = data
-  } catch {}
-}
-
-async function guardarSbu() {
-  sbuError.value = ''
-  if (!sbuForm.value.anio || !sbuForm.value.valor) { sbuError.value = 'Ingrese año y valor.'; return }
-  guardandoSbu.value = true
-  try {
-    await api.post('/nomina/sbu', sbuForm.value)
-    await cargarSbu()
-    sbuForm.value.valor = ''
-  } catch (e) {
-    sbuError.value = e.response?.data?.message ?? 'Error al guardar.'
-  } finally {
-    guardandoSbu.value = false
-  }
-}
 
 async function cargar() {
   cargando.value = true
