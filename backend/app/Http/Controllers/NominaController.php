@@ -43,14 +43,17 @@ class NominaController extends Controller
     {
         if (!$fechaIngreso) return 30;
 
-        $primerDia = Carbon::createFromDate($anio, $mes, 1)->startOfDay();
-        $ingreso   = Carbon::parse($fechaIngreso)->startOfDay();
+        $primerDia  = Carbon::createFromDate($anio, $mes, 1)->startOfDay();
+        $ultimoDia  = Carbon::createFromDate($anio, $mes, 1)->endOfMonth()->startOfDay();
+        $ingreso    = Carbon::parse($fechaIngreso)->startOfDay();
 
-        if ($ingreso->lt($primerDia)) {
-            return 30;
-        }
+        // Ingresó después del mes → no le corresponde nada
+        if ($ingreso->gt($ultimoDia)) return 0;
 
-        // Empleado ingresó dentro del mes; se usa base 30 días por mes
+        // Ingresó antes del mes → mes completo
+        if ($ingreso->lt($primerDia)) return 30;
+
+        // Ingresó dentro del mes; se usa base 30 días por mes
         $diaIngreso = (int)$ingreso->format('d');
         return max(1, 30 - $diaIngreso + 1);
     }
@@ -164,9 +167,15 @@ class NominaController extends Controller
 
         DecimoTercero::where('anio', $anio)->where('mes', $mes)->where('estado', 'BORRADOR')->delete();
 
+        $ultimoDiaMes = Carbon::createFromDate($anio, $mes, 1)->endOfMonth()->toDateString();
+
         $empleados = Empleado::where('estado', 'ACTIVO')
             ->where('acumula_decimo_tercero', false)
             ->where('id_depto', '!=', 999)
+            ->where(function ($q) use ($ultimoDiaMes) {
+                $q->whereNull('fecha_ingreso')
+                  ->orWhere('fecha_ingreso', '<=', $ultimoDiaMes);
+            })
             ->get();
 
         $emp = $request->user();
@@ -315,9 +324,15 @@ class NominaController extends Controller
 
         DecimoCuarto::where('anio', $anio)->where('mes', $mes)->where('estado', 'BORRADOR')->delete();
 
+        $ultimoDiaMes = Carbon::createFromDate($anio, $mes, 1)->endOfMonth()->toDateString();
+
         $empleados = Empleado::where('estado', 'ACTIVO')
             ->where('acumula_decimo_cuarto', false)
             ->where('id_depto', '!=', 999)
+            ->where(function ($q) use ($ultimoDiaMes) {
+                $q->whereNull('fecha_ingreso')
+                  ->orWhere('fecha_ingreso', '<=', $ultimoDiaMes);
+            })
             ->get();
 
         $emp = $request->user();
@@ -403,6 +418,85 @@ class NominaController extends Controller
         ])->setPaper('letter', 'portrait');
 
         return $pdf->download("decimo_cuarto_{$anio}_{$mes}.pdf");
+    }
+
+    // ── Consolidado D13 + D14 ────────────────────────────────────────────────
+
+    private function buildConsolidado(int $anio, int $mes): array
+    {
+        $d13 = DecimoTercero::with('empleado.departamento')
+            ->where('anio', $anio)->where('mes', $mes)->get()
+            ->keyBy('id_emp');
+
+        $d14 = DecimoCuarto::with('empleado.departamento')
+            ->where('anio', $anio)->where('mes', $mes)->get()
+            ->keyBy('id_emp');
+
+        $ids = $d13->keys()->merge($d14->keys())->unique()->sort()->values();
+
+        $filas = $ids->map(function ($id) use ($d13, $d14) {
+            $r13 = $d13->get($id);
+            $r14 = $d14->get($id);
+            $empleado = ($r13 ?? $r14)->empleado;
+            $v13 = (float)($r13?->valor ?? 0);
+            $v14 = (float)($r14?->valor ?? 0);
+            return [
+                'id_emp'     => $id,
+                'empleado'   => $empleado,
+                'valor_13'   => $v13,
+                'valor_14'   => $v14,
+                'total'      => round($v13 + $v14, 2),
+                'estado_13'  => $r13?->estado,
+                'estado_14'  => $r14?->estado,
+            ];
+        })->values();
+
+        return [
+            'filas'       => $filas,
+            'tiene_d13'   => $d13->isNotEmpty(),
+            'tiene_d14'   => $d14->isNotEmpty(),
+            'total_13'    => round($d13->sum('valor'), 2),
+            'total_14'    => round($d14->sum('valor'), 2),
+            'gran_total'  => round($d13->sum('valor') + $d14->sum('valor'), 2),
+        ];
+    }
+
+    // GET /api/nomina/consolidado?anio=&mes=
+    public function consolidado(Request $request)
+    {
+        if (!$this->esNominaOAdmin($request->user()->id_emp)) {
+            return response()->json(['message' => 'Sin permiso.'], 403);
+        }
+        $request->validate(['anio' => 'required|integer', 'mes' => 'required|integer|min:1|max:12']);
+
+        $data = $this->buildConsolidado((int)$request->anio, (int)$request->mes);
+        return response()->json($data);
+    }
+
+    // GET /api/nomina/consolidado/pdf?anio=&mes=
+    public function pdfConsolidado(Request $request)
+    {
+        if (!$this->esNominaOAdmin($request->user()->id_emp)) {
+            return response()->json(['message' => 'Sin permiso.'], 403);
+        }
+        $request->validate(['anio' => 'required|integer', 'mes' => 'required|integer|min:1|max:12']);
+
+        $anio = (int)$request->anio;
+        $mes  = (int)$request->mes;
+        $data = $this->buildConsolidado($anio, $mes);
+
+        if ($data['filas']->isEmpty()) {
+            return response()->json(['message' => 'No hay datos para este período.'], 404);
+        }
+
+        $pdf = Pdf::loadView('reportes.nom_consolidado', array_merge($data, [
+            'anio'      => $anio,
+            'mes'       => $mes,
+            'nombreMes' => $this->nombreMes($mes),
+            'logo'      => $this->logoBase64(),
+        ]))->setPaper('letter', 'portrait');
+
+        return $pdf->download("consolidado_decimos_{$anio}_{$mes}.pdf");
     }
 
     // ── Fondos de Reserva ────────────────────────────────────────────────────

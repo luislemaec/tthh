@@ -219,6 +219,9 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post('decimo-cuarto/cerrar',       [NominaController::class, 'cerrar14']);
         Route::get('decimo-cuarto/pdf',           [NominaController::class, 'pdf14']);
 
+        Route::get('consolidado',                 [NominaController::class, 'consolidado']);
+        Route::get('consolidado/pdf',             [NominaController::class, 'pdfConsolidado']);
+
         Route::get('fondos-reserva',              [NominaController::class, 'indexFR']);
         Route::post('fondos-reserva/calcular',    [NominaController::class, 'calcularFR']);
         Route::post('fondos-reserva/cerrar',      [NominaController::class, 'cerrarFR']);

@@ -53,6 +53,7 @@ const routes = [
       { path: 'nomina/decimo-tercero', name: 'NominaDecimoTercero', component: () => import('@/views/nomina/DecimoTerceroView.vue') },
       { path: 'nomina/decimo-cuarto',  name: 'NominaDecimoCuarto',  component: () => import('@/views/nomina/DecimoCuartoView.vue') },
       { path: 'nomina/fondos-reserva', name: 'NominaFondosReserva', component: () => import('@/views/nomina/FondosReservaView.vue') },
+      { path: 'nomina/consolidado',    name: 'NominaConsolidado',   component: () => import('@/views/nomina/ConsolidadoView.vue') },
     ],
   },
   // ── Adquisiciones ──────────────────────────────────────────────────────────
