@@ -41,6 +41,15 @@
           Generar PDF
         </button>
 
+        <div>
+          <label class="block text-xs text-gray-600 mb-1">Tipo</label>
+          <select v-model="filtroTipo" class="border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-300 outline-none">
+            <option value="">Todos</option>
+            <option value="MENSUAL">Mensual</option>
+            <option value="IESS">IESS</option>
+          </select>
+        </div>
+
         <span v-if="estadoPeriodo" class="ml-2 px-3 py-1 rounded-full text-xs font-bold"
           :class="estadoPeriodo === 'CERRADO' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'">
           {{ estadoPeriodo }}
@@ -54,8 +63,8 @@
     <!-- Tabla de resultados -->
     <div v-if="registros.length" class="bg-white rounded-xl shadow overflow-hidden">
       <div class="px-5 py-3 border-b flex justify-between items-center text-sm text-gray-600">
-        <span>{{ registros.length }} servidores</span>
-        <span class="font-semibold text-gray-800">Total: ${{ fmt(totalValor) }}</span>
+        <span>{{ registrosFiltrados.length }} servidores{{ filtroTipo ? ` (${filtroTipo})` : '' }}</span>
+        <span class="font-semibold text-gray-800">Total: ${{ fmt(registrosFiltrados.reduce((s,r) => s + parseFloat(r.valor), 0)) }}</span>
       </div>
       <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200 text-sm">
@@ -73,7 +82,7 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
-            <tr v-for="(r, i) in registros" :key="r.id" class="hover:bg-gray-50">
+            <tr v-for="(r, i) in registrosFiltrados" :key="r.id" class="hover:bg-gray-50">
               <td class="px-3 py-2 text-gray-500">{{ i + 1 }}</td>
               <td class="px-3 py-2 font-medium text-gray-800">{{ nombreCompleto(r.empleado) }}</td>
               <td class="px-3 py-2 text-gray-600 font-mono">{{ r.empleado?.identificacion }}</td>
@@ -95,7 +104,7 @@
               <td colspan="6" class="px-3 py-2 text-right text-gray-700">TOTAL</td>
               <td></td>
               <td></td>
-              <td class="px-3 py-2 text-right font-mono text-blue-800">${{ fmt(totalValor) }}</td>
+              <td class="px-3 py-2 text-right font-mono text-blue-800">${{ fmt(registrosFiltrados.reduce((s,r) => s + parseFloat(r.valor), 0)) }}</td>
             </tr>
           </tfoot>
         </table>
@@ -133,7 +142,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import api from '@/services/api'
 
 const meses = [
@@ -150,6 +159,11 @@ const form = ref({ mes: new Date().getMonth() + 1, anio: anioActual })
 const registros     = ref([])
 const estadoPeriodo = ref(null)
 const totalValor    = ref(0)
+const filtroTipo    = ref('')
+
+const registrosFiltrados = computed(() =>
+  filtroTipo.value ? registros.value.filter(r => r.tipo === filtroTipo.value) : registros.value
+)
 const cargando      = ref(false)
 const calculando    = ref(false)
 const cerrando      = ref(false)

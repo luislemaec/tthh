@@ -118,7 +118,7 @@ class NominaController extends Controller
 
     // ── Décimo Tercero ────────────────────────────────────────────────────────
 
-    // GET /api/nomina/decimo-tercero?anio=&mes=
+    // GET /api/nomina/decimo-tercero?anio=&mes=&id_emp=
     public function index13(Request $request)
     {
         if (!$this->esNominaOAdmin($request->user()->id_emp)) {
@@ -126,10 +126,15 @@ class NominaController extends Controller
         }
         $request->validate(['anio' => 'required|integer', 'mes' => 'required|integer|min:1|max:12']);
 
-        $registros = DecimoTercero::with('empleado.departamento')
+        $query = DecimoTercero::with('empleado.departamento')
             ->where('anio', $request->anio)
-            ->where('mes', $request->mes)
-            ->get();
+            ->where('mes', $request->mes);
+
+        if ($request->filled('id_emp')) {
+            $query->where('id_emp', $request->id_emp);
+        }
+
+        $registros = $query->get();
 
         return response()->json([
             'registros'      => $registros,
@@ -160,7 +165,7 @@ class NominaController extends Controller
         DecimoTercero::where('anio', $anio)->where('mes', $mes)->where('estado', 'BORRADOR')->delete();
 
         $empleados = Empleado::where('estado', 'ACTIVO')
-            ->where('acumula_decimo_tercero', true)
+            ->where('acumula_decimo_tercero', false)
             ->where('id_depto', '!=', 999)
             ->get();
 
@@ -252,7 +257,7 @@ class NominaController extends Controller
 
     // ── Décimo Cuarto ─────────────────────────────────────────────────────────
 
-    // GET /api/nomina/decimo-cuarto?anio=&mes=
+    // GET /api/nomina/decimo-cuarto?anio=&mes=&id_emp=
     public function index14(Request $request)
     {
         if (!$this->esNominaOAdmin($request->user()->id_emp)) {
@@ -263,8 +268,14 @@ class NominaController extends Controller
         $anio = (int)$request->anio;
         $mes  = (int)$request->mes;
 
-        $registros = DecimoCuarto::with('empleado.departamento')
-            ->where('anio', $anio)->where('mes', $mes)->get();
+        $query = DecimoCuarto::with('empleado.departamento')
+            ->where('anio', $anio)->where('mes', $mes);
+
+        if ($request->filled('id_emp')) {
+            $query->where('id_emp', $request->id_emp);
+        }
+
+        $registros = $query->get();
 
         $sbu = SbuHistorico::where('anio', $anio)->first();
 
@@ -305,7 +316,7 @@ class NominaController extends Controller
         DecimoCuarto::where('anio', $anio)->where('mes', $mes)->where('estado', 'BORRADOR')->delete();
 
         $empleados = Empleado::where('estado', 'ACTIVO')
-            ->where('acumula_decimo_cuarto', true)
+            ->where('acumula_decimo_cuarto', false)
             ->where('id_depto', '!=', 999)
             ->get();
 

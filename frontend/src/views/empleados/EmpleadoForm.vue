@@ -187,19 +187,11 @@
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-600 mb-1">Décimo Tercero</label>
-            <select v-model="form.acumula_decimo_tercero"
+            <label class="block text-sm font-medium text-gray-600 mb-1">Acumula Décimos (13° y 14°)</label>
+            <select v-model="form.acumula_decimos"
               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
               <option :value="true">Acumula</option>
-              <option :value="false">No acumula</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-600 mb-1">Décimo Cuarto</label>
-            <select v-model="form.acumula_decimo_cuarto"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
-              <option :value="true">Acumula</option>
-              <option :value="false">No acumula</option>
+              <option :value="false">Cobra mensualmente</option>
             </select>
           </div>
           <div class="sm:col-span-2">
@@ -344,8 +336,7 @@ const form = ref({
   partida_individual:      "",
   partida_presupuestaria:  "",
   acumula_fondos_reserva:    0,
-  acumula_decimo_tercero:    false,
-  acumula_decimo_cuarto:     false,
+  acumula_decimos:           false,
   modalidad_marcacion:       'PRESENCIAL',
 })
 
@@ -376,8 +367,8 @@ const guardar = async () => {
       partida_individual:      form.value.partida_individual     || null,
       partida_presupuestaria:  form.value.partida_presupuestaria || null,
       acumula_fondos_reserva:   form.value.acumula_fondos_reserva,
-      acumula_decimo_tercero:   form.value.acumula_decimo_tercero,
-      acumula_decimo_cuarto:    form.value.acumula_decimo_cuarto,
+      acumula_decimo_tercero:   form.value.acumula_decimos,
+      acumula_decimo_cuarto:    form.value.acumula_decimos,
       modalidad_marcacion:      form.value.modalidad_marcacion,
     }
 
@@ -434,8 +425,7 @@ onMounted(async () => {
     form.value.partida_individual     = data.partida_individual     || ""
     form.value.partida_presupuestaria = data.partida_presupuestaria || ""
     form.value.acumula_fondos_reserva   = data.acumula_fondos_reserva   ?? 0
-    form.value.acumula_decimo_tercero   = data.acumula_decimo_tercero   ?? false
-    form.value.acumula_decimo_cuarto    = data.acumula_decimo_cuarto    ?? false
+    form.value.acumula_decimos          = data.acumula_decimo_tercero   ?? false
     form.value.modalidad_marcacion      = data.modalidad_marcacion      ?? 'PRESENCIAL'
   }
 })

@@ -19,6 +19,22 @@
             <option v-for="a in anios" :key="a" :value="a">{{ a }}</option>
           </select>
         </div>
+        <div class="relative">
+          <label class="block text-xs text-gray-600 mb-1">Empleado (opcional)</label>
+          <input v-model="busquedaEmp" @input="filtrarEmpleados" @keydown.escape="sugerenciasEmp = []"
+            type="text" placeholder="Todos o buscar nombre..."
+            class="border rounded-lg px-3 py-2 text-sm w-52 focus:ring-2 focus:ring-blue-300 outline-none" />
+          <button v-if="form.id_emp" @click="limpiarEmp" title="Quitar filtro"
+            class="absolute right-2 top-7 text-gray-400 hover:text-gray-600 text-xs">✕</button>
+          <div v-if="sugerenciasEmp.length"
+            class="absolute z-20 bg-white border rounded-lg shadow-lg w-64 mt-1 max-h-48 overflow-y-auto">
+            <div v-for="e in sugerenciasEmp" :key="e.id_emp" @click="seleccionarEmp(e)"
+              class="px-3 py-2 text-sm hover:bg-gray-100 cursor-pointer border-b last:border-0">
+              <div class="font-medium">{{ e.apellido_emp }} {{ e.nombre_emp }}</div>
+              <div class="text-xs text-gray-400">{{ e.identificacion }}</div>
+            </div>
+          </div>
+        </div>
         <button @click="cargar" :disabled="cargando"
           class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-50">
           {{ cargando ? 'Cargando...' : 'Buscar' }}
@@ -129,7 +145,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import api from '@/services/api'
 
 const meses = [
@@ -142,29 +158,66 @@ const meses = [
 const anioActual = new Date().getFullYear()
 const anios = Array.from({ length: 5 }, (_, i) => anioActual - i)
 
-const form = ref({ mes: new Date().getMonth() + 1, anio: anioActual })
-const registros    = ref([])
+const form = ref({ mes: new Date().getMonth() + 1, anio: anioActual, id_emp: null })
+const registros     = ref([])
 const estadoPeriodo = ref(null)
-const totalValor   = ref(0)
-const cargando     = ref(false)
-const calculando   = ref(false)
-const cerrando     = ref(false)
-const buscado      = ref(false)
-const error        = ref('')
-const modalConfirm = ref(false)
-const modalCerrar  = ref(false)
+const totalValor    = ref(0)
+const cargando      = ref(false)
+const calculando    = ref(false)
+const cerrando      = ref(false)
+const buscado       = ref(false)
+const error         = ref('')
+const modalConfirm  = ref(false)
+const modalCerrar   = ref(false)
+
+const busquedaEmp   = ref('')
+const sugerenciasEmp = ref([])
+let todosEmpleados  = []
 
 const fmt = (v) => parseFloat(v || 0).toFixed(2)
 const nombreCompleto = (e) => e ? `${e.apellido_emp ?? ''} ${e.nombre_emp ?? ''}`.trim().toUpperCase() : ''
+
+async function cargarListaEmpleados() {
+  if (todosEmpleados.length) return
+  try {
+    const { data } = await api.get('/empleados', { params: { per_page: 500, estado: 'ACTIVO' } })
+    todosEmpleados = data.data ?? data
+  } catch {}
+}
+
+function filtrarEmpleados() {
+  sugerenciasEmp.value = []
+  form.value.id_emp = null
+  if (!busquedaEmp.value.trim()) return
+  cargarListaEmpleados().then(() => {
+    const q = busquedaEmp.value.toLowerCase()
+    sugerenciasEmp.value = todosEmpleados.filter(e =>
+      `${e.nombre_emp} ${e.apellido_emp} ${e.identificacion}`.toLowerCase().includes(q)
+    ).slice(0, 8)
+  })
+}
+
+function seleccionarEmp(e) {
+  form.value.id_emp = e.id_emp
+  busquedaEmp.value = `${e.apellido_emp} ${e.nombre_emp}`
+  sugerenciasEmp.value = []
+}
+
+function limpiarEmp() {
+  form.value.id_emp = null
+  busquedaEmp.value = ''
+}
 
 async function cargar() {
   cargando.value = true
   error.value = ''
   try {
-    const { data } = await api.get('/nomina/decimo-tercero', { params: { anio: form.value.anio, mes: form.value.mes } })
-    registros.value    = data.registros
+    const params = { anio: form.value.anio, mes: form.value.mes }
+    if (form.value.id_emp) params.id_emp = form.value.id_emp
+    const { data } = await api.get('/nomina/decimo-tercero', { params })
+    registros.value     = data.registros
     estadoPeriodo.value = data.estado_periodo
-    totalValor.value   = data.total_valor
+    totalValor.value    = data.total_valor
     buscado.value = true
   } catch (e) {
     error.value = e.response?.data?.message ?? 'Error al cargar los datos.'
