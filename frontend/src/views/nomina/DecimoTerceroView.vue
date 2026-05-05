@@ -123,6 +123,12 @@
       </div>
     </div>
 
+    <!-- Aviso empleado acumula -->
+    <div v-if="buscado && !registros.length && form.id_emp"
+      class="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
+      Este empleado <strong>acumula el Décimo Tercero</strong>, no recibe pago mensual. El valor se paga en diciembre.
+    </div>
+
     <!-- Modal confirmación recalcular -->
     <div v-if="modalConfirm" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div class="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
