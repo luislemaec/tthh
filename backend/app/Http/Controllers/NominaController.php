@@ -628,13 +628,15 @@ class NominaController extends Controller
             return response()->json(['message' => 'No hay datos para este período.'], 404);
         }
 
+        $emp = $request->user();
         $pdf = Pdf::loadView('reportes.nom_fondos_reserva', [
-            'registros' => $registros,
-            'anio'      => $anio,
-            'mes'       => $mes,
-            'nombreMes' => $this->nombreMes($mes),
-            'logo'      => $this->logoBase64(),
-            'estado'    => $registros->first()->estado,
+            'registros'      => $registros,
+            'anio'           => $anio,
+            'mes'            => $mes,
+            'nombreMes'      => $this->nombreMes($mes),
+            'logo'           => $this->logoBase64(),
+            'estado'         => $registros->first()->estado,
+            'generadoPor'    => $emp->nombre_emp . ' ' . $emp->apellido_emp,
         ])->setPaper('letter', 'portrait');
 
         return $pdf->download("fondos_reserva_{$anio}_{$mes}.pdf");

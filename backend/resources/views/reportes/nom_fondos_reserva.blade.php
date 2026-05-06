@@ -63,11 +63,10 @@
       <th style="width:28%;">Apellidos y Nombres</th>
       <th style="width:12%;">Cédula</th>
       <th style="width:20%;">Departamento</th>
-      <th style="width:10%;">Sueldo</th>
+      <th style="width:12%;">Sueldo</th>
       <th style="width:7%;">Días</th>
-      <th style="width:8%;">%</th>
-      <th style="width:10%;">Tipo</th>
-      <th style="width:10%;">Valor</th>
+      <th style="width:12%;">Tipo</th>
+      <th style="width:12%;">Valor</th>
     </tr>
   </thead>
   <tbody>
@@ -80,7 +79,6 @@
       <td>{{ $e->departamento->nombre_depto ?? '' }}</td>
       <td class="r">{{ number_format($r->sueldo_base, 2) }}</td>
       <td class="c">{{ $r->dias }}</td>
-      <td class="c">{{ number_format($r->porcentaje, 2) }}</td>
       <td class="c">{{ $r->tipo }}</td>
       <td class="r">{{ number_format($r->valor, 2) }}</td>
     </tr>
@@ -88,8 +86,7 @@
   </tbody>
   <tfoot>
     <tr class="total-row">
-      <td colspan="5" style="text-align:right; padding-right:8px;">TOTAL ({{ $totalEmp }} servidores)</td>
-      <td></td>
+      <td colspan="4" style="text-align:right; padding-right:8px;">TOTAL ({{ $totalEmp }} servidores)</td>
       <td></td>
       <td></td>
       <td class="r">{{ number_format($totalValor, 2) }}</td>
@@ -101,7 +98,7 @@
   * Solo servidores con &ge;1 año de servicio. MENSUAL = pago directo. IESS = se deposita al IESS.
 </p>
 <p style="font-size:7.5pt; color:#555; text-align:right;">
-  Generado el {{ now()->format('d/m/Y H:i') }}
+  Generado el {{ now()->format('d/m/Y H:i') }} &nbsp;|&nbsp; Generado por: {{ $generadoPor }}
 </p>
 
 </body>
