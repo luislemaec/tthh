@@ -77,10 +77,8 @@
               <th class="px-3 py-2 text-left text-gray-600 font-medium border min-w-[120px]">Departamento</th>
               <th class="px-3 py-2 text-center text-gray-600 font-medium border">Días</th>
               <th class="px-3 py-2 text-right text-gray-600 font-medium border">RMU $</th>
-              <th class="px-3 py-2 text-right text-gray-600 font-medium border">Ap.Pat %</th>
-              <th class="px-3 py-2 text-right text-gray-600 font-medium border">Ap.Pat $</th>
-              <th class="px-3 py-2 text-right text-gray-600 font-medium border">Ap.Pers %</th>
-              <th class="px-3 py-2 text-right text-gray-600 font-medium border">Ap.Pers $</th>
+              <th class="px-3 py-2 text-right text-gray-600 font-medium border">{{ headerPatronal }}</th>
+              <th class="px-3 py-2 text-right text-gray-600 font-medium border">{{ headerPersonal }}</th>
               <th class="px-3 py-2 text-right text-gray-600 font-medium border" :title="cab?.estado === 'BORRADOR' ? 'Click para editar' : ''">
                 Quirogr.{{ cab?.estado === 'BORRADOR' ? ' ✎' : '' }}
               </th>
@@ -105,9 +103,7 @@
               <td class="px-3 py-2 border text-gray-600">{{ r.nombre_depto }}</td>
               <td class="px-3 py-2 text-center border">{{ r.dias }}</td>
               <td class="px-3 py-2 text-right font-mono border">{{ fmt(r.valor_rmu) }}</td>
-              <td class="px-3 py-2 text-right font-mono border">{{ r.aporte_patronal_pct }}%</td>
               <td class="px-3 py-2 text-right font-mono border">{{ fmt(r.aporte_patronal) }}</td>
-              <td class="px-3 py-2 text-right font-mono border">{{ r.aporte_personal_pct }}%</td>
               <td class="px-3 py-2 text-right font-mono border">{{ fmt(r.aporte_personal) }}</td>
 
               <!-- Campos editables -->
@@ -181,6 +177,15 @@ const editando   = ref(null)
 const inputEdicion = ref(null)
 
 const totalPaginas = computed(() => Math.ceil(detalles.value.length / POR_PAGINA))
+
+const headerPatronal = computed(() => {
+  const pcts = [...new Set(detalles.value.map(d => parseFloat(d.aporte_patronal_pct)))]
+  return pcts.length === 1 ? `Ap. Patronal ${pcts[0]}%` : 'Ap. Patronal'
+})
+const headerPersonal = computed(() => {
+  const pcts = [...new Set(detalles.value.map(d => parseFloat(d.aporte_personal_pct)))]
+  return pcts.length === 1 ? `Ap. Personal ${pcts[0]}%` : 'Ap. Personal'
+})
 const detallesPaginados = computed(() => {
   const inicio = (pagina.value - 1) * POR_PAGINA
   return detalles.value.slice(inicio, inicio + POR_PAGINA)

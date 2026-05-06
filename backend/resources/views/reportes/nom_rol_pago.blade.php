@@ -39,6 +39,10 @@
   $totalSupa       = $detalles->sum('supa');
   $totalDescuentos = $detalles->sum('total_descuentos');
   $totalLiquido    = $detalles->sum('liquido');
+  $pctPatronalUnicos = $detalles->pluck('aporte_patronal_pct')->unique()->values();
+  $pctPersonalUnicos = $detalles->pluck('aporte_personal_pct')->unique()->values();
+  $lblPatronal = $pctPatronalUnicos->count() === 1 ? 'Ap.Pat ' . $pctPatronalUnicos->first() . '%' : 'Ap. Patronal';
+  $lblPersonal = $pctPersonalUnicos->count() === 1 ? 'Ap.Pers ' . $pctPersonalUnicos->first() . '%' : 'Ap. Personal';
 @endphp
 
 <table style="margin-bottom:6px;">
@@ -70,10 +74,8 @@
       <th style="width:9%;">Departamento</th>
       <th style="width:3%;">Días</th>
       <th style="width:6.5%;">RMU $</th>
-      <th style="width:4.5%;">Ap.Pat%</th>
-      <th style="width:6.5%;">Ap.Pat $</th>
-      <th style="width:4.5%;">Ap.Pers%</th>
-      <th style="width:6.5%;">Ap.Pers $</th>
+      <th style="width:8%;">{{ $lblPatronal }}</th>
+      <th style="width:8%;">{{ $lblPersonal }}</th>
       <th style="width:5.5%;">Quirogr.</th>
       <th style="width:5.5%;">Hipotec.</th>
       <th style="width:5.5%;">Imp.Renta</th>
@@ -91,9 +93,7 @@
       <td>{{ $r->nombre_depto ?? '' }}</td>
       <td class="c">{{ $r->dias }}</td>
       <td class="r">{{ number_format($r->valor_rmu, 2) }}</td>
-      <td class="c">{{ number_format($r->aporte_patronal_pct, 2) }}%</td>
       <td class="r">{{ number_format($r->aporte_patronal, 2) }}</td>
-      <td class="c">{{ number_format($r->aporte_personal_pct, 2) }}%</td>
       <td class="r">{{ number_format($r->aporte_personal, 2) }}</td>
       <td class="r">{{ number_format($r->quirografario, 2) }}</td>
       <td class="r">{{ number_format($r->hipotecario, 2) }}</td>
@@ -108,9 +108,7 @@
     <tr class="total-row">
       <td colspan="5" style="text-align:right; padding-right:6px;">TOTAL ({{ $detalles->count() }} servidores)</td>
       <td class="r">{{ number_format($totalBruto, 2) }}</td>
-      <td></td>
       <td class="r">{{ number_format($totalPatronal, 2) }}</td>
-      <td></td>
       <td class="r">{{ number_format($totalPersonal, 2) }}</td>
       <td class="r">{{ number_format($totalQuirogr, 2) }}</td>
       <td class="r">{{ number_format($totalHipotec, 2) }}</td>
