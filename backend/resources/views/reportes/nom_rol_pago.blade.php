@@ -41,8 +41,8 @@
   $totalLiquido    = $detalles->sum('liquido');
   $pctPatronalUnicos = $detalles->pluck('aporte_patronal_pct')->unique()->values();
   $pctPersonalUnicos = $detalles->pluck('aporte_personal_pct')->unique()->values();
-  $lblPatronal = $pctPatronalUnicos->count() === 1 ? 'Ap.Pat ' . $pctPatronalUnicos->first() . '%' : 'Ap. Patronal';
-  $lblPersonal = $pctPersonalUnicos->count() === 1 ? 'Ap.Pers ' . $pctPersonalUnicos->first() . '%' : 'Ap. Personal';
+  $lblPatronal = 'Ap.Pat (' . $pctPatronalUnicos->sort()->map(fn($p) => $p . '%')->implode(' / ') . ')';
+  $lblPersonal = 'Ap.Pers (' . $pctPersonalUnicos->sort()->map(fn($p) => $p . '%')->implode(' / ') . ')';
 @endphp
 
 <table style="margin-bottom:6px;">

@@ -179,12 +179,12 @@ const inputEdicion = ref(null)
 const totalPaginas = computed(() => Math.ceil(detalles.value.length / POR_PAGINA))
 
 const headerPatronal = computed(() => {
-  const pcts = [...new Set(detalles.value.map(d => parseFloat(d.aporte_patronal_pct)))]
-  return pcts.length === 1 ? `Ap. Patronal ${pcts[0]}%` : 'Ap. Patronal'
+  const pcts = [...new Set(detalles.value.map(d => parseFloat(d.aporte_patronal_pct)))].sort((a,b) => a-b)
+  return `Ap. Patronal (${pcts.map(p => p + '%').join(' / ')})`
 })
 const headerPersonal = computed(() => {
-  const pcts = [...new Set(detalles.value.map(d => parseFloat(d.aporte_personal_pct)))]
-  return pcts.length === 1 ? `Ap. Personal ${pcts[0]}%` : 'Ap. Personal'
+  const pcts = [...new Set(detalles.value.map(d => parseFloat(d.aporte_personal_pct)))].sort((a,b) => a-b)
+  return `Ap. Personal (${pcts.map(p => p + '%').join(' / ')})`
 })
 const detallesPaginados = computed(() => {
   const inicio = (pagina.value - 1) * POR_PAGINA
