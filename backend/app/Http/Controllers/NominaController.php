@@ -619,9 +619,10 @@ class NominaController extends Controller
         $anio = (int)$request->anio;
         $mes  = (int)$request->mes;
 
-        $registros = FondosReserva::with('empleado.departamento')
-            ->where('anio', $anio)->where('mes', $mes)
-            ->orderBy('id_emp')->get();
+        $query = FondosReserva::with('empleado.departamento')
+            ->where('anio', $anio)->where('mes', $mes);
+        if ($request->filled('tipo')) $query->where('tipo', $request->tipo);
+        $registros = $query->orderBy('id_emp')->get();
 
         if ($registros->isEmpty()) {
             return response()->json(['message' => 'No hay datos para este período.'], 404);

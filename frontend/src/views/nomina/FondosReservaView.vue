@@ -234,7 +234,7 @@ async function confirmarCierre() {
 async function descargarPdf() {
   try {
     const resp = await api.get('/nomina/fondos-reserva/pdf', {
-      params: { anio: form.value.anio, mes: form.value.mes },
+      params: { anio: form.value.anio, mes: form.value.mes, tipo: filtroTipo.value || undefined },
       responseType: 'blob',
     })
     const url = URL.createObjectURL(new Blob([resp.data], { type: 'application/pdf' }))
