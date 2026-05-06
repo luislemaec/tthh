@@ -53,6 +53,7 @@ const routes = [
       { path: 'horas-extras', name: 'HorasExtras', component: () => import('@/views/horasextras/HorasExtrasView.vue') },
       { path: 'nomina/decimos',        name: 'NominaDecimos',       component: () => import('@/views/nomina/DecimosView.vue') },
       { path: 'nomina/fondos-reserva', name: 'NominaFondosReserva', component: () => import('@/views/nomina/FondosReservaView.vue') },
+      { path: 'nomina/rol-pago',       name: 'NominaRolPago',       component: () => import('@/views/nomina/RolPagoView.vue') },
     ],
   },
   // ── Adquisiciones ──────────────────────────────────────────────────────────

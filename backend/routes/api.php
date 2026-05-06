@@ -18,6 +18,7 @@ use App\Http\Controllers\ReportePlanificacionController;
 use App\Http\Controllers\LiquidacionVacController;
 use App\Http\Controllers\HorasExtrasController;
 use App\Http\Controllers\NominaController;
+use App\Http\Controllers\RolPagoController;
 use App\Http\Controllers\Adquisiciones\AdqDashboardController;
 use App\Http\Controllers\Adquisiciones\ProveedorController;
 use App\Http\Controllers\Adquisiciones\ArticuloController;
@@ -228,6 +229,12 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post('fondos-reserva/calcular',    [NominaController::class, 'calcularFR']);
         Route::post('fondos-reserva/cerrar',      [NominaController::class, 'cerrarFR']);
         Route::get('fondos-reserva/pdf',          [NominaController::class, 'pdfFR']);
+
+        Route::get('rol-pago',                    [RolPagoController::class, 'index']);
+        Route::post('rol-pago/calcular',          [RolPagoController::class, 'calcular']);
+        Route::put('rol-pago/detalle/{id}',       [RolPagoController::class, 'updateDetalle']);
+        Route::post('rol-pago/cerrar',            [RolPagoController::class, 'cerrar']);
+        Route::get('rol-pago/pdf',                [RolPagoController::class, 'pdf']);
     });
 
     // ── Adquisiciones ─────────────────────────────────────────────────────────
