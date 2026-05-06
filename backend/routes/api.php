@@ -75,6 +75,8 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get("aportes-iess",          [\App\Http\Controllers\Admin\AportesIessController::class, "index"]);
         Route::get("aportes-iess/vigentes", [\App\Http\Controllers\Admin\AportesIessController::class, "vigentes"]);
         Route::post("aportes-iess",         [\App\Http\Controllers\Admin\AportesIessController::class, "store"]);
+        Route::put("aportes-iess/{id}",     [\App\Http\Controllers\Admin\AportesIessController::class, "update"]);
+        Route::delete("aportes-iess/{id}", [\App\Http\Controllers\Admin\AportesIessController::class, "destroy"]);
     });
 
     // Opciones de menú

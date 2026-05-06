@@ -63,4 +63,33 @@ class AportesIessController extends Controller
             return response()->json(['message' => 'Error al registrar los aportes: ' . $e->getMessage()], 500);
         }
     }
+
+    // DELETE /api/admin/aportes-iess/{id}
+    public function destroy($id)
+    {
+        AportesIess::findOrFail($id)->delete();
+        return response()->json(['message' => 'Eliminado correctamente.']);
+    }
+
+    // PUT /api/admin/aportes-iess/{id}
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'modalidad'         => 'required|string|max:100',
+            'aporte_individual' => 'required|numeric|min:0|max:100',
+            'aporte_patronal'   => 'required|numeric|min:0|max:100',
+            'fecha_desde'       => 'required|date',
+        ]);
+
+        $aporte = AportesIess::findOrFail($id);
+        $aporte->update([
+            'modalidad'         => $request->modalidad,
+            'aporte_individual' => $request->aporte_individual,
+            'aporte_patronal'   => $request->aporte_patronal,
+            'fecha_desde'       => $request->fecha_desde,
+            'fecha_hasta'       => $request->fecha_hasta ?? $aporte->fecha_hasta,
+        ]);
+
+        return response()->json($aporte);
+    }
 }

@@ -24,6 +24,7 @@
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Vigente desde</th>
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Vigente hasta</th>
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Estado</th>
+            <th class="px-6 py-3"></th>
           </tr>
         </thead>
         <tbody>
@@ -50,6 +51,10 @@
                 Histórico
               </span>
             </td>
+            <td class="px-6 py-3">
+              <button @click="abrirEdicion(a)" class="text-blue-600 hover:underline text-xs font-medium mr-3">Editar</button>
+              <button @click="eliminar(a)" class="text-red-500 hover:underline text-xs font-medium">Eliminar</button>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -58,7 +63,7 @@
     <!-- Modal nuevo cambio -->
     <div v-if="modal" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
       <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md space-y-4">
-        <h2 class="text-lg font-semibold text-gray-700">Registrar Cambio de Tasas</h2>
+        <h2 class="text-lg font-semibold text-gray-700">{{ editandoId ? 'Editar Aporte' : 'Registrar Cambio de Tasas' }}</h2>
 
         <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-xs text-yellow-700">
           Al guardar, la tasa vigente anterior de la misma modalidad se cerrará automáticamente.
@@ -102,7 +107,7 @@
           </button>
           <button @click="guardar" :disabled="guardando"
             class="px-4 py-2 rounded-lg bg-[#0b5447] text-white text-sm hover:bg-[#00372e] disabled:opacity-50">
-            {{ guardando ? "Guardando..." : "Guardar" }}
+            {{ guardando ? "Guardando..." : (editandoId ? "Actualizar" : "Guardar") }}
           </button>
         </div>
       </div>
@@ -114,12 +119,13 @@
 import { ref, computed, onMounted } from "vue"
 import api from "@/services/api"
 
-const aportes   = ref([])
-const cargando  = ref(false)
-const modal     = ref(false)
-const guardando = ref(false)
-const error     = ref("")
-const form      = ref({ modalidad: "", aporte_individual: "", aporte_patronal: "", fecha_desde: "" })
+const aportes    = ref([])
+const cargando   = ref(false)
+const modal      = ref(false)
+const guardando  = ref(false)
+const error      = ref("")
+const editandoId = ref(null)
+const form       = ref({ modalidad: "", aporte_individual: "", aporte_patronal: "", fecha_desde: "" })
 
 const modalidadesUnicas = computed(() => [...new Set(aportes.value.map(a => a.modalidad))])
 
@@ -141,7 +147,20 @@ const cargar = async () => {
 
 const abrirModal = () => {
   error.value = ""
+  editandoId.value = null
   form.value = { modalidad: "", aporte_individual: "", aporte_patronal: "", fecha_desde: "" }
+  modal.value = true
+}
+
+const abrirEdicion = (a) => {
+  error.value = ""
+  editandoId.value = a.id_aporte
+  form.value = {
+    modalidad:         a.modalidad,
+    aporte_individual: a.aporte_individual,
+    aporte_patronal:   a.aporte_patronal,
+    fecha_desde:       a.fecha_desde?.substring(0, 10) ?? "",
+  }
   modal.value = true
 }
 
@@ -153,13 +172,27 @@ const guardar = async () => {
   guardando.value = true
   error.value = ""
   try {
-    await api.post("/admin/aportes-iess", form.value)
+    if (editandoId.value) {
+      await api.put(`/admin/aportes-iess/${editandoId.value}`, form.value)
+    } else {
+      await api.post("/admin/aportes-iess", form.value)
+    }
     modal.value = false
     cargar()
   } catch (e) {
     error.value = e.response?.data?.message || "Error al guardar."
   } finally {
     guardando.value = false
+  }
+}
+
+const eliminar = async (a) => {
+  if (!confirm(`¿Eliminar el aporte ${a.modalidad}?`)) return
+  try {
+    await api.delete(`/admin/aportes-iess/${a.id_aporte}`)
+    cargar()
+  } catch (e) {
+    alert(e.response?.data?.message || 'Error al eliminar.')
   }
 }
 
