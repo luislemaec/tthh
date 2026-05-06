@@ -32,6 +32,11 @@
         {{ calculando ? 'Calculando...' : 'Calcular' }}
       </button>
 
+      <button v-if="cab && cab.estado === 'BORRADOR'" @click="abrirImportar"
+        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium">
+        Importar CSV
+      </button>
+
       <button v-if="cab && cab.estado === 'BORRADOR'" @click="cerrar"
         class="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 text-sm font-medium">
         Cerrar Período
@@ -153,6 +158,65 @@
     </div>
 
     <div v-if="error" class="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">{{ error }}</div>
+
+    <!-- Modal importar CSV -->
+    <div v-if="modalImportar" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+      <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-lg space-y-4">
+        <h2 class="text-lg font-semibold text-gray-700">Importar descuentos desde CSV</h2>
+
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700 space-y-1">
+          <p>El archivo CSV debe tener las siguientes columnas (con encabezado):</p>
+          <p class="font-mono">cedula, quirografario, hipotecario, impuesto_renta</p>
+          <p>Las columnas que no incluyas no se modifican.</p>
+        </div>
+
+        <input type="file" accept=".csv" @change="leerCsv"
+          class="block w-full text-sm text-gray-600 border border-gray-300 rounded-lg px-3 py-2 cursor-pointer" />
+
+        <!-- Preview -->
+        <div v-if="csvFilas.length" class="max-h-48 overflow-y-auto border rounded-lg">
+          <table class="w-full text-xs">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-3 py-2 text-left">Cédula</th>
+                <th class="px-3 py-2 text-right">Quirografario</th>
+                <th class="px-3 py-2 text-right">Hipotecario</th>
+                <th class="px-3 py-2 text-right">Imp. Renta</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(f, i) in csvFilas" :key="i" class="border-t">
+                <td class="px-3 py-1 font-mono">{{ f.cedula }}</td>
+                <td class="px-3 py-1 text-right">{{ f.quirografario ?? '—' }}</td>
+                <td class="px-3 py-1 text-right">{{ f.hipotecario ?? '—' }}</td>
+                <td class="px-3 py-1 text-right">{{ f.impuesto_renta ?? '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p v-if="csvError" class="text-red-600 text-xs">{{ csvError }}</p>
+
+        <!-- Resultado -->
+        <div v-if="csvResultado" class="text-sm space-y-1">
+          <p class="text-green-700 font-medium">✓ {{ csvResultado.actualizados }} empleados actualizados.</p>
+          <div v-if="csvResultado.no_encontrados.length" class="text-red-600">
+            <p class="font-medium">No encontrados ({{ csvResultado.no_encontrados.length }}):</p>
+            <p class="font-mono text-xs">{{ csvResultado.no_encontrados.join(', ') }}</p>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-3 pt-2">
+          <button @click="cerrarImportar" class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">
+            {{ csvResultado ? 'Cerrar' : 'Cancelar' }}
+          </button>
+          <button v-if="!csvResultado" @click="enviarCsv" :disabled="!csvFilas.length || importando"
+            class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-50">
+            {{ importando ? 'Importando...' : 'Importar' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -173,8 +237,14 @@ const cargando   = ref(false)
 const calculando = ref(false)
 const error      = ref('')
 const pagina     = ref(1)
-const editando   = ref(null)
+const editando     = ref(null)
 const inputEdicion = ref(null)
+const modalImportar = ref(false)
+
+const csvFilas     = ref([])
+const csvError     = ref('')
+const csvResultado = ref(null)
+const importando   = ref(false)
 
 const totalPaginas = computed(() => Math.ceil(detalles.value.length / POR_PAGINA))
 
@@ -310,6 +380,65 @@ const guardarEdicion = async (row) => {
   } catch (e) {
     alert(e.response?.data?.message || 'Error al guardar.')
     cargar()
+  }
+}
+
+const abrirImportar = () => {
+  csvFilas.value = []
+  csvError.value = ''
+  csvResultado.value = null
+  modalImportar.value = true
+}
+
+const cerrarImportar = () => {
+  modalImportar.value = false
+  if (csvResultado.value?.actualizados > 0) cargar()
+}
+
+const leerCsv = (e) => {
+  csvError.value = ''
+  csvFilas.value = []
+  csvResultado.value = null
+  const file = e.target.files[0]
+  if (!file) return
+  const reader = new FileReader()
+  reader.onload = (ev) => {
+    const lines = ev.target.result.split(/\r?\n/).filter(l => l.trim())
+    if (lines.length < 2) { csvError.value = 'El archivo está vacío.'; return }
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
+    if (!headers.includes('cedula')) { csvError.value = 'Falta la columna "cedula".'; return }
+    const filas = []
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(',').map(c => c.trim())
+      const row = {}
+      headers.forEach((h, idx) => { row[h] = cols[idx] ?? '' })
+      if (!row.cedula) continue
+      filas.push({
+        cedula:         row.cedula,
+        quirografario:  row.quirografario  !== undefined && row.quirografario  !== '' ? parseFloat(row.quirografario)  : undefined,
+        hipotecario:    row.hipotecario    !== undefined && row.hipotecario    !== '' ? parseFloat(row.hipotecario)    : undefined,
+        impuesto_renta: row.impuesto_renta !== undefined && row.impuesto_renta !== '' ? parseFloat(row.impuesto_renta) : undefined,
+      })
+    }
+    if (!filas.length) { csvError.value = 'No se encontraron filas válidas.'; return }
+    csvFilas.value = filas
+  }
+  reader.readAsText(file)
+}
+
+const enviarCsv = async () => {
+  importando.value = true
+  try {
+    const { data } = await api.post('/nomina/rol-pago/importar', {
+      anio:  form.value.anio,
+      mes:   form.value.mes,
+      filas: csvFilas.value,
+    })
+    csvResultado.value = data
+  } catch (e) {
+    csvError.value = e.response?.data?.message || 'Error al importar.'
+  } finally {
+    importando.value = false
   }
 }
 

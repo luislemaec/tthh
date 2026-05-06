@@ -288,6 +288,81 @@ class RolPagoController extends Controller
         return response()->json(DB::table('dbo.nom_rol_pago_cab')->where('id', $cab->id)->first());
     }
 
+    // POST /api/nomina/rol-pago/importar
+    public function importar(Request $request)
+    {
+        $request->validate([
+            'anio'  => 'required|integer',
+            'mes'   => 'required|integer|min:1|max:12',
+            'filas' => 'required|array|min:1',
+            'filas.*.cedula'          => 'required|string',
+            'filas.*.quirografario'   => 'nullable|numeric|min:0',
+            'filas.*.hipotecario'     => 'nullable|numeric|min:0',
+            'filas.*.impuesto_renta'  => 'nullable|numeric|min:0',
+        ]);
+
+        $cab = DB::table('dbo.nom_rol_pago_cab')
+            ->where('anio', $request->anio)
+            ->where('mes', $request->mes)
+            ->where('estado', 'BORRADOR')
+            ->first();
+
+        if (!$cab) {
+            return response()->json(['message' => 'No existe un período en BORRADOR para este mes/año.'], 422);
+        }
+
+        $actualizados = [];
+        $noEncontrados = [];
+
+        foreach ($request->filas as $fila) {
+            $cedula = trim($fila['cedula']);
+
+            $emp = DB::table('dbo.ad_empleado')
+                ->where('identificacion', $cedula)
+                ->value('id_emp');
+
+            if (!$emp) {
+                $noEncontrados[] = $cedula;
+                continue;
+            }
+
+            $det = DB::table('dbo.nom_rol_pago_det')
+                ->where('cab_id', $cab->id)
+                ->where('id_emp', $emp)
+                ->first();
+
+            if (!$det) {
+                $noEncontrados[] = $cedula;
+                continue;
+            }
+
+            $quirografario  = (float)($fila['quirografario']  ?? $det->quirografario);
+            $hipotecario    = (float)($fila['hipotecario']    ?? $det->hipotecario);
+            $impuesto_renta = (float)($fila['impuesto_renta'] ?? $det->impuesto_renta);
+
+            $total_descuentos = round($det->aporte_personal + $quirografario + $hipotecario + $impuesto_renta + $det->supa, 2);
+            $liquido          = round($det->valor_rmu - $total_descuentos, 2);
+
+            DB::table('dbo.nom_rol_pago_det')->where('id', $det->id)->update([
+                'quirografario'   => $quirografario,
+                'hipotecario'     => $hipotecario,
+                'impuesto_renta'  => $impuesto_renta,
+                'total_descuentos'=> $total_descuentos,
+                'liquido'         => $liquido,
+                'updated_at'      => now(),
+            ]);
+
+            $actualizados[] = $cedula;
+        }
+
+        $this->recalcularTotalesCab($cab->id);
+
+        return response()->json([
+            'actualizados'   => count($actualizados),
+            'no_encontrados' => $noEncontrados,
+        ]);
+    }
+
     // GET /api/nomina/rol-pago/pdf
     public function pdf(Request $request)
     {

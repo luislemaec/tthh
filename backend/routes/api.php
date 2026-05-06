@@ -234,6 +234,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post('rol-pago/calcular',          [RolPagoController::class, 'calcular']);
         Route::put('rol-pago/detalle/{id}',       [RolPagoController::class, 'updateDetalle']);
         Route::post('rol-pago/cerrar',            [RolPagoController::class, 'cerrar']);
+        Route::post('rol-pago/importar',          [RolPagoController::class, 'importar']);
         Route::get('rol-pago/pdf',                [RolPagoController::class, 'pdf']);
     });
 
