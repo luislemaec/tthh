@@ -33,7 +33,7 @@ class AportesIessController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'modalidad'         => 'required|string|in:LOSEP,CODIGO DEL TRABAJO',
+            'modalidad'         => 'required|string|max:100',
             'aporte_individual' => 'required|numeric|min:0|max:100',
             'aporte_patronal'   => 'required|numeric|min:0|max:100',
             'fecha_desde'       => 'required|date',

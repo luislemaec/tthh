@@ -66,12 +66,11 @@
 
         <div>
           <label class="block text-sm font-medium text-gray-600 mb-1">Modalidad *</label>
-          <select v-model="form.modalidad"
-            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
-            <option value="">Seleccionar...</option>
-            <option value="LOSEP">LOSEP</option>
-            <option value="CODIGO DEL TRABAJO">CÓDIGO DEL TRABAJO</option>
-          </select>
+          <input v-model="form.modalidad" list="modalidades-list" placeholder="Seleccionar o escribir nueva..."
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+          <datalist id="modalidades-list">
+            <option v-for="m in modalidadesUnicas" :key="m" :value="m" />
+          </datalist>
         </div>
         <div class="grid grid-cols-2 gap-4">
           <div>
@@ -112,7 +111,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue"
+import { ref, computed, onMounted } from "vue"
 import api from "@/services/api"
 
 const aportes   = ref([])
@@ -121,6 +120,8 @@ const modal     = ref(false)
 const guardando = ref(false)
 const error     = ref("")
 const form      = ref({ modalidad: "", aporte_individual: "", aporte_patronal: "", fecha_desde: "" })
+
+const modalidadesUnicas = computed(() => [...new Set(aportes.value.map(a => a.modalidad))])
 
 const fmtFecha = (f) => {
   if (!f) return "—"
