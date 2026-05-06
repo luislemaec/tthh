@@ -56,7 +56,7 @@ class RolPagoController extends Controller
             ->orderByDesc('fecha_desde')
             ->get()
             ->unique('modalidad')
-            ->keyBy('modalidad');
+            ->keyBy(fn($r) => trim($r->modalidad));
     }
 
     private function detallesConEmpleado(int $cabId): \Illuminate\Support\Collection
@@ -178,7 +178,7 @@ class RolPagoController extends Controller
 
             $valorRmu = round($e->sueldo * $dias / 30, 2);
 
-            $tasa         = $tasas->get($e->tipo_contrato);
+            $tasa         = $tasas->get(trim($e->tipo_contrato));
             $patronalPct  = $tasa ? (float)$tasa->aporte_patronal  : 0;
             $personalPct  = $tasa ? (float)$tasa->aporte_individual : 0;
 
