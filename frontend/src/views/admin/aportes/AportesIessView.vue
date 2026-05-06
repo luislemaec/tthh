@@ -146,7 +146,7 @@ const abrirModal = () => {
 }
 
 const guardar = async () => {
-  if (!form.value.modalidad || !form.value.aporte_individual || !form.value.aporte_patronal || !form.value.fecha_desde) {
+  if (!form.value.modalidad?.trim() || form.value.aporte_individual === '' || form.value.aporte_patronal === '' || !form.value.fecha_desde) {
     error.value = "Todos los campos son requeridos."
     return
   }
