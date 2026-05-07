@@ -95,7 +95,7 @@
 </table>
 
 <p style="font-size:7.5pt; color:#555; margin-top:8px; text-align:right;">
-  Generado el: {{ now()->format('d/m/Y H:i') }} &nbsp; <br>Generado por: {{ $generadoPor }}
+  Generado el: {{ now()->format('d/m/Y H:i') }} 
 </p>
 
 </body>

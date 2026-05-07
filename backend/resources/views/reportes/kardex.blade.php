@@ -207,7 +207,7 @@
 </table>
 
 <div class="footer">
-  Generado el {{ \Carbon\Carbon::now()->format('d/m/Y H:i') }}
+  Generado el: {{ \Carbon\Carbon::now()->format('d/m/Y H:i') }}
   &nbsp;|&nbsp; Movimientos: {{ count($filas) }}
   &nbsp;|&nbsp; Saldo final: {{ number_format($ultimoSaldo, 2) }} u. &nbsp;×&nbsp; $ {{ number_format($ultimoPrecio, 4) }} = <strong>$ {{ number_format($ultimoValorSaldo, 2) }}</strong>
 </div>
