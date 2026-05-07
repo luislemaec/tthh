@@ -6,7 +6,7 @@
     <div class="text-center mb-10">
       <img src="@/assets/LOGOS-CONSEJOBLANCOH.png" alt="Logo" class="h-16 mx-auto mb-4 object-contain" />
       <h1 class="text-2xl font-bold text-white tracking-wide">CONSEJO DE COMUNICACIÓN</h1>
-      <p class="text-green-200 text-sm mt-1">Sistema Integral Tecnológico Institucional</p>
+      <p class="text-green-200 text-sm mt-1">Sistema Integral Tecnológico Institucional - SIT</p>
     </div>
 
     <!-- Tarjetas de aplicativos -->
@@ -26,7 +26,7 @@
         </div>
         <div class="text-center">
           <p class="font-bold text-gray-800 text-lg">Talento Humano</p>
-          <p class="text-gray-500 text-xs mt-1">Empleados, vacaciones, permisos, asistencia</p>
+          <p class="text-gray-500 text-xs mt-1">Empleados, asistencia, vacaciones, permisos</p>
         </div>
       </button>
 
@@ -40,8 +40,8 @@
           </svg>
         </div>
         <div class="text-center">
-          <p class="font-bold text-gray-800 text-lg">Adquisiciones</p>
-          <p class="text-gray-500 text-xs mt-1">Inventario, compras, solicitudes de materiales</p>
+          <p class="font-bold text-gray-800 text-lg">Administrativo</p>
+          <p class="text-gray-500 text-xs mt-1">Inventario, ingreso, egreso, solicitudes de materiales</p>
           <span v-if="alertasStock > 0"
             class="mt-2 inline-block bg-red-100 text-red-700 text-xs font-semibold px-2 py-0.5 rounded-full">
             {{ alertasStock }} alerta{{ alertasStock > 1 ? 's' : '' }} de stock
