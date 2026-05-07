@@ -281,7 +281,7 @@ const busquedaArticulo   = ref('')
 const articulosFiltrados = ref([])
 
 const miId              = computed(() => auth.empleado?.id_emp)
-const esBienes          = computed(() => auth.tieneRol('BIENES'))
+const esBienes          = computed(() => auth.tieneRol('BIENES') || auth.tieneRol('ADQUISICIONES'))
 const esSupervisorLocal = ref(false)
 
 const modalCrear      = ref({ show: false, form: { justificacion: '', detalles: [] } })
