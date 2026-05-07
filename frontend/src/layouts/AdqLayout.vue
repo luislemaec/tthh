@@ -18,8 +18,8 @@
       <!-- Menú -->
       <nav class="flex-1 overflow-y-auto py-2">
 
-        <!-- Dashboard -->
-        <router-link to="/adquisiciones/dashboard"
+        <!-- Dashboard (solo para ADQUISICIONES / BIENES) -->
+        <router-link v-if="esAdqOBienes" to="/adquisiciones/dashboard"
           class="flex items-center gap-3 px-4 py-2.5 text-sm transition-all duration-200"
           :style="$route.path === '/adquisiciones/dashboard' ? 'background-color:#3b4a2e' : ''"
           :class="$route.path === '/adquisiciones/dashboard' ? 'font-semibold text-white' : 'text-green-100 hover:bg-[#3b4a2e]'"
@@ -177,6 +177,10 @@ function slideUp(el) {
   })
 }
 
+const esAdqOBienes = computed(() =>
+  auth.tieneRol('ADQUISICIONES') || auth.tieneRol('BIENES') || auth.tieneRol('ADMINISTRADOR')
+)
+
 const ICON_DEFAULT = 'M4 6h16M4 12h16M4 18h16'
 const iconPorUrl = {
   'adquisiciones/proveedores':            'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4',
@@ -238,6 +242,9 @@ function abrirGrupoActivo(path) {
 watch(() => route.path, abrirGrupoActivo)
 
 onMounted(async () => {
+  if (!esAdqOBienes.value && route.path === '/adquisiciones/dashboard') {
+    router.replace('/adquisiciones/solicitudes')
+  }
   abrirGrupoActivo(route.path)
   try {
     const { data } = await api.get('/adquisiciones/articulos/alertas')
