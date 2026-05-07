@@ -24,7 +24,7 @@
 
       <!-- Menú acordeón -->
       <nav class="flex-1 overflow-y-auto py-3 space-y-0.5">
-        <template v-for="(items, categoria) in auth.menuAgrupado" :key="categoria">
+        <template v-for="(items, categoria) in menuFiltrado" :key="categoria">
 
           <!-- Cabecera de categoría (solo visible con sidebar abierto) -->
           <div v-if="sidebarOpen">
@@ -176,13 +176,22 @@ const route       = useRoute()
 const auth        = useAuthStore()
 const sidebarOpen = ref(true)
 
+const menuFiltrado = computed(() => {
+  const result = {}
+  for (const [cat, items] of Object.entries(auth.menuAgrupado || {})) {
+    const filtered = items.filter(item => !item.url.startsWith('adquisiciones/'))
+    if (filtered.length > 0) result[cat] = filtered
+  }
+  return result
+})
+
 // Estado del acordeón — qué categorías están abiertas
 const categoriasAbiertas = ref({})
 
 // Abre automáticamente la categoría que contiene la ruta activa
 const abrirCategoriaActiva = () => {
   const currentPath = route.path.replace(/^\//, '')
-  for (const [categoria, items] of Object.entries(auth.menuAgrupado || {})) {
+  for (const [categoria, items] of Object.entries(menuFiltrado.value || {})) {
     const tieneActivo = items.some(item => currentPath.startsWith(item.url))
     if (tieneActivo) {
       categoriasAbiertas.value[categoria] = true
@@ -202,7 +211,7 @@ const isActive = (url) => {
 
 // Re-evaluar cuando cambia la ruta o el menú
 watch(() => route.path, abrirCategoriaActiva)
-watch(() => auth.menuAgrupado, abrirCategoriaActiva, { immediate: true })
+watch(() => menuFiltrado.value, abrirCategoriaActiva, { immediate: true })
 
 const iniciales = computed(() => {
   const n = auth.empleado?.nombre?.[0] || ''

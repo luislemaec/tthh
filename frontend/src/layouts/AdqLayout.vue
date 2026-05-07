@@ -143,12 +143,7 @@ const auth   = useAuthStore()
 const sidebarOpen  = ref(true)
 const alertasStock = ref(0)
 
-const gruposAbiertos = ref({
-  'ADMINISTRACIÓN': false,
-  'MOVIMIENTOS':    false,
-  'SOLICITUDES':    false,
-  'REPORTES':       false,
-})
+const gruposAbiertos = ref({})
 
 function toggleGrupo(label) {
   gruposAbiertos.value[label] = !gruposAbiertos.value[label]
@@ -182,54 +177,48 @@ function slideUp(el) {
   })
 }
 
-const esBienes = computed(() => auth.tieneRol('BIENES'))
-const esAdq    = computed(() => auth.tieneRol('ADQUISICIONES'))
-const esAdmin  = computed(() => auth.tieneRol('ADMINISTRADOR') || auth.tieneRol('TALENTO HUMANO'))
+const ICON_DEFAULT = 'M4 6h16M4 12h16M4 18h16'
+const iconPorUrl = {
+  'adquisiciones/proveedores':            'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4',
+  'adquisiciones/articulos':              'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
+  'adquisiciones/catalogo':               'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 4h.01M9 12h.01M9 16h.01M13 8h3m-3 4h3m-3 4h3',
+  'adquisiciones/iva':                    'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z',
+  'adquisiciones/procesos-contratacion':  'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+  'adquisiciones/unidades-medida':        'M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3',
+  'adquisiciones/ingresos':               'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01',
+  'adquisiciones/egresos':                'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 4h.01M9 12h.01M9 16h.01M13 8h3m-3 4h3m-3 4h3',
+  'adquisiciones/ajustes':                'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z',
+  'adquisiciones/solicitudes':            'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+  'adquisiciones/reportes/kardex':        'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+  'adquisiciones/reportes/libro-compras': 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+  'adquisiciones/reportes/egresos':       'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z',
+}
 
 const menuGrupos = computed(() => {
   const grupos = []
-
-  if (esBienes.value || esAdq.value || esAdmin.value) {
-    grupos.push({
-      label: 'ADMINISTRACIÓN',
-      items: [
-        { to: '/adquisiciones/proveedores',          label: 'Proveedores',           icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' },
-        { to: '/adquisiciones/articulos',            label: 'Inventario',            icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4', badge: alertasStock.value },
-        { to: '/adquisiciones/catalogo',             label: 'Catálogo MF',           icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 4h.01M9 12h.01M9 16h.01M13 8h3m-3 4h3m-3 4h3' },
-        { to: '/adquisiciones/iva',                  label: 'Tasas IVA',             icon: 'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z' },
-        { to: '/adquisiciones/procesos-contratacion', label: 'Procesos Contratación', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
-        { to: '/adquisiciones/unidades-medida',      label: 'Unidades de Medida',    icon: 'M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3' },
-      ],
-    })
-
-    grupos.push({
-      label: 'MOVIMIENTOS',
-      items: [
-        { to: '/adquisiciones/ingresos', label: 'Ingresos de Bienes',    icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01' },
-        { to: '/adquisiciones/egresos',  label: 'Egresos de Bienes',    icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 4h.01M9 12h.01M9 16h.01M13 8h3m-3 4h3m-3 4h3' },
-        { to: '/adquisiciones/ajustes',  label: 'Ajuste de Inventario', icon: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z' },
-      ],
-    })
+  for (const [categoria, items] of Object.entries(auth.menuAgrupado)) {
+    const adqItems = items
+      .filter(item => item.url.startsWith('adquisiciones/'))
+      .map(item => ({
+        to: '/' + item.url,
+        label: item.descripcion,
+        icon: iconPorUrl[item.url] || ICON_DEFAULT,
+        badge: item.url === 'adquisiciones/articulos' ? alertasStock.value : 0,
+      }))
+    if (adqItems.length > 0) {
+      grupos.push({ label: categoria, items: adqItems })
+    }
   }
-
-  grupos.push({
-    label: 'SOLICITUDES',
-    items: [
-      { to: '/adquisiciones/solicitudes', label: 'Solicitudes', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
-    ],
-  })
-
-  grupos.push({
-    label: 'REPORTES',
-    items: [
-      { to: '/adquisiciones/reportes/kardex',        label: 'Kardex',             icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
-      { to: '/adquisiciones/reportes/libro-compras', label: 'Libro de Compras',   icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
-      { to: '/adquisiciones/reportes/egresos',       label: 'Egresos Valorizados', icon: 'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z' },
-    ],
-  })
-
   return grupos
 })
+
+watch(menuGrupos, (grupos) => {
+  for (const g of grupos) {
+    if (!(g.label in gruposAbiertos.value)) {
+      gruposAbiertos.value[g.label] = false
+    }
+  }
+}, { immediate: true })
 
 const iniciales = computed(() => {
   const a = auth.empleado?.apellido_emp?.[0] || ''
