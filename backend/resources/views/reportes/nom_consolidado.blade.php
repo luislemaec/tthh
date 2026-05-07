@@ -44,7 +44,7 @@
     </td>
     <td style="text-align:center; vertical-align:middle;">
       <div style="font-size:10pt; font-weight:bold; text-transform:uppercase;">{{ $nombreInst }}</div>
-      <div class="title" style="margin-top:4px;">CONSOLIDADO DÉCIMOS — 13° Y 14°</div>
+      <div class="title" style="margin-top:4px;">INFORMACIÓN CONSOLIDADA DÉCIMO TERCERO Y CUARTO</div>
       <div class="subtitle">Período: {{ $nombreMes }} {{ $anio }}</div>
     </td>
   </tr>
