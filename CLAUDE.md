@@ -4,140 +4,437 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Full-stack HR management system ("Gestión de Talento Humano") for the Consejo de Comunicación (Ecuador). Manages employees, attendance, permissions, vacations, vacation planning, vacation settlement/liquidation, and personnel actions (encargo/subrogación/ingreso/etc.).
+Sistema de Gestión para el Consejo de Comunicación (Ecuador) con dos módulos:
+1. **Talento Humano** — empleados, asistencia, permisos, vacaciones, acciones de personal
+2. **Adquisiciones/Bienes** — inventario, ingresos, egresos, kardex, reportes
 
-- **Backend:** Laravel 12 (PHP 8.2+), PostgreSQL (`dbo` schema), Laravel Sanctum (token auth), DomPDF for PDF generation
+- **Backend:** Laravel 12 (PHP 8.4), PostgreSQL, Laravel Sanctum, DomPDF
 - **Frontend:** Vue 3 (Composition API), Pinia, Vue Router 5, Tailwind CSS 4, Axios, Vite 7
 
 ## Development Commands
 
-### Backend (`d:\rrhh\backend`)
 ```bash
-php artisan serve           # Start API server at localhost:8000
-php artisan migrate         # Run migrations
-php artisan tinker          # REPL
-composer test               # Run PHPUnit tests
+# Backend (d:\rrhh\backend)
+php artisan serve       # API en localhost:8000
+php artisan migrate     # Ejecutar migraciones
+
+# Frontend (d:\rrhh\frontend)
+npm run dev             # Dev server
+npm run build           # Build producción (solo si cambiaron .vue/.js/.css)
+
+# Ambos juntos (desde backend)
+composer dev
 ```
 
-### Frontend (`d:\rrhh\frontend`)
-```bash
-npm run dev                 # Start Vite dev server
-npm run build               # Production build (required after any frontend change in prod)
-```
+## Deployment
 
-### Run both together (from backend)
-```bash
-composer dev                # Runs artisan serve + queue + pail + vite concurrently
-```
+Después de cualquier cambio: Push → Pull en servidor → `npm run build` (solo si hay cambios frontend) → `php artisan migrate` (solo si hay nuevas migraciones).
 
-## Deployment Workflow
+---
 
-After any change, always tell the user:
-1. **Push** (from dev machine)
-2. **Pull** (on server)
-3. **`npm run build`** in `frontend/` — **only when frontend files changed** (`.vue`, `.js`, `.css`)
-4. No build needed for backend-only changes (PHP, Blade, migrations)
+## Autenticación
 
-## Architecture
+- Login: `POST /api/login` con `identificacion` + `password`
+- Guard usa modelo `Empleado` (tabla `dbo.ad_empleado`), no el `User` de Laravel
+- Token Sanctum en localStorage; Axios lo inyecta en cada request
+- 401 → limpia token y redirige a `/login`
 
-### Authentication
-- Login via `POST /api/login` with `identificacion` (employee ID) + `password`
-- Returns Sanctum Bearer token + employee data + roles + menu
-- Auth guard uses `Empleado` model (table `dbo.ad_empleado`), not the default `User` model
-- Frontend stores token in localStorage; Axios injects it on every request
-- 401 response clears token and redirects to `/login`
+## Roles
 
-### Role System
-Three roles: `ADMINISTRADOR`, `TALENTO HUMANO`, `SUPERVISOR`. Regular employees have no role.
-- Backend: checked via `DB::table('dbo.admin_usuario_rol')` joins in controllers (no Laravel policies/gates)
-- Frontend: `auth.tieneRol('NOMBRE')` from Pinia store
-- Menu items are filtered per role from `dbo.admin_opcion`
+Cinco roles: `ADMINISTRADOR`, `TALENTO HUMANO`, `SUPERVISOR`, `ADQUISICIONES`, `BIENES`. Empleados sin rol = acceso básico.
+- Backend: `DB::table('dbo.admin_usuario_rol')` — sin Laravel policies/gates
+- Frontend: `auth.tieneRol('NOMBRE')` desde Pinia store
+- Menú filtrado por rol desde `dbo.admin_opcion`
 
-### Database Conventions
-- All tables use `dbo` schema prefix (PostgreSQL)
-- Employee statuses: `ACTIVO` / `INACTIVO` (soft deletes — never hard delete employees)
-- Request statuses: `PENDIENTE`, `APROBADO`, `NEGADO`, `ELIMINADO`
-- Department 999 (`id_depto = 999`) is excluded from all queries — it's a system/admin placeholder
-- Primary key for employees is `id_emp` (string), not integer
-- `dbo.d2_configuracion` stores institution-wide config values (key/value pairs)
+## Base de Datos
 
-### PDF Generation
-Uses `barryvdh/laravel-dompdf`. All Blade PDF templates are in `backend/resources/views/reportes/`.
-- Always embed images as base64 (`public_path()` + `base64_encode(file_get_contents())`) — direct file paths fail in dompdf
-- Institution logo: `backend/public/logo.png` (transparent PNG)
-- Margins must be set at `@page { margin: ... }` level, not on `.page` div — otherwise dompdf overflows the right edge
-- Use `table-layout: fixed` on all tables to prevent overflow
-- Spanish dates: use a manual `$meses` PHP array — do NOT use `Carbon::translatedFormat()` (locale may not be set)
+- Schema `dbo` → Talento Humano | Schema `adq` → Adquisiciones (misma BD PostgreSQL)
+- Empleados: PK = `id_emp` (string); estados `ACTIVO`/`INACTIVO` (nunca eliminar)
+- Depto 999 excluido de todas las consultas (placeholder de sistema)
+- `dbo.d2_configuracion` → parámetros globales (clave/valor)
+- Stock: siempre usar `DB::table()->update(['stock_actual' => DB::raw('stock_actual + N')])` — nunca Eloquent para tablas con schema prefix en PostgreSQL
 
-### Alfresco Document Storage
-Used for signed PDF uploads (vacation planning, personnel actions).
-- Base URL: `http://192.168.26.38:8080/alfresco/api/-default-/public/alfresco/versions/1`
-- Credentials: `admin / admin`, site: `talentohumano`
-- Pattern: upload to `talentohumano/{module-folder}/{year}/`, save returned `entry.id` (node ID) to DB
-- Helpers `getDocLibNodeId()` and `getOrCreateFolderNodeId()` are repeated in each controller that uses Alfresco (no shared service yet)
+## PDF (DomPDF)
 
-### Vacation Balance Calculation
-Computed on-the-fly in `calcularSaldoDisponible()` / `calcularSaldo()`:
-- Accrual rates: `LOSEP` → 2.50 days/month, `CODIGO DEL TRABAJO` → 1.25 days/month
-- Formula: `(days since FECHA_CORTE_VACACIONES / 360) × (rate × 12)`
-- If hire date is after cutoff date, use hire date as the base
-- `FECHA_CORTE_VACACIONES` is stored in `dbo.d2_configuracion`
-- Balance = `dias_adicionales` (initial/carried) + accrued − `total_dias_tomados`
+- Templates en `backend/resources/views/reportes/`
+- Logo siempre en base64: `base64_encode(file_get_contents(public_path('logo.png')))`
+- Márgenes en `@page { margin: ... }` (no en `.page` div)
+- `table-layout: fixed` en todas las tablas
+- Fechas en español: array manual `$meses` — NO usar `Carbon::translatedFormat()`
 
-### Key Controllers
-| Controller | Responsibility |
+## Alfresco (documentos firmados)
+
+- URL: `http://192.168.26.38:8080/alfresco/api/-default-/public/alfresco/versions/1`
+- Credenciales: `admin/admin`, sitio: `talentohumano`
+- Subir a `talentohumano/{módulo}/{año}/`, guardar `entry.id` en DB
+- Helpers `getDocLibNodeId()` y `getOrCreateFolderNodeId()` repetidos en cada controlador que usa Alfresco
+
+---
+
+## Módulo Talento Humano
+
+### Controladores clave
+
+| Controlador | Función |
 |---|---|
 | `AuthController` | Login / logout / me |
-| `EmpleadoController` | Employee CRUD + role assignment |
-| `AccionPersonalController` | Personnel actions (encargo, subrogación, ingreso, vacaciones, destitución, cesación) |
-| `VacacionesController` | Vacation requests (approve/deny/balance) |
-| `PlanificacionVacController` | Annual vacation planning |
-| `LiquidacionVacController` | Vacation settlement for commissions/exits |
-| `ReportePlanificacionController` | Planning PDF + Alfresco signed upload |
-| `PermisosController` | Permission/leave requests |
-| `AsistenciaController` | Attendance marking and reports |
-| `CuadreController` | Attendance reconciliation |
-| `DashboardController` | Dashboard stats |
-| `Admin/*` | Departments, reasons, shifts, schedules, calendar, configuration, IESS contributions |
+| `EmpleadoController` | CRUD empleados + asignación de roles + partidas disponibles |
+| `AccionPersonalController` | Acciones (encargo, subrogación, ingreso, vacaciones, destitución, cesación) |
+| `VacacionesController` | Solicitudes de vacaciones (aprobar/negar/saldo) |
+| `PlanificacionVacController` | Planificación anual de vacaciones |
+| `LiquidacionVacController` | Liquidación por comisión/desvinculación |
+| `ReportePlanificacionController` | PDF planificación + subida Alfresco |
+| `PermisosController` | Permisos y licencias |
+| `AsistenciaController` | Marcaciones y reportes de asistencia |
+| `CuadreController` | Conciliación de asistencia (atrasos) |
+| `HorasExtrasController` | Planificación y registro de horas extras |
+| `DashboardController` | Estadísticas del dashboard |
+| `Admin/*` | Departamentos, causas, turnos, horarios, calendario, configuración, aportes IESS |
 
-### Acciones de Personal Module
-Table: `dbo.acc_accion_personal`. Supported types and their rules:
+### Empleados (`dbo.ad_empleado`)
 
-| Tipo | fecha_fin | Situación Actual | Situación Propuesta | Buscador Titular | Declaración Jurada | Auto-cierra |
-|---|---|---|---|---|---|---|
-| INGRESO | No aplica | Vacía (null) | Requerida — auto-llena desde ficha empleado | No | SI | No |
-| ENCARGO | Opcional ("Hasta nueva orden" = null) | ✓ | Requerida | ✓ | NO APLICA | No (manual) |
-| SUBROGACION | Requerida | ✓ | Requerida | ✓ | NO APLICA | Sí (al vencer fecha_fin) |
-| VACACIONES | Requerida | ✓ | No aplica | No | NO APLICA | Sí (al vencer fecha_fin) |
-| DESTITUCION | No aplica | ✓ | No aplica | No | SI | No |
-| CESACION DE FUNCIONES | No aplica | ✓ | No aplica | No | SI | No |
+Campos relevantes:
+- `estado`: `ACTIVO` / `INACTIVO` — nunca se elimina
+- `estado_puesto`: `OCUPADO` / `VACANTE` / `DISPONIBLE` — DISPONIBLE = empleado inactivo, partida presupuestaria libre para reasignar
+- `partida_individual` / `partida_presupuestaria`: identificadores de la partida MEF
+- `modalidad_marcacion`: `PRESENCIAL` / `REMOTO` / `TELETRABAJO` (ver Control de Asistencia)
+- `modalidad_laboral`: determina motivos válidos en liquidación de vacaciones
+- `tipo_contrato`: `LOSEP` / `CODIGO DEL TRABAJO` — define tasa de vacaciones
 
-- Auto-cierre: corre en cada llamada a `index()` para SUBROGACION y VACACIONES cuya `fecha_fin < today`
-- Signed PDF stored as Alfresco node ID in `pdf_firmado` column
-- Workflow: INGRESO → create employee first, then action; DESTITUCION/CESACION → action first, then deactivate employee
+**Partidas disponibles** (`GET /api/empleados/partidas-vacantes`): devuelve empleados con `estado=INACTIVO` + `estado_puesto=DISPONIBLE`. En `EmpleadoForm.vue`, el campo Partida Individual tiene input libre + botón "Seleccionar libre" que abre un modal con la lista — al seleccionar una fila se auto-llenan `partida_individual` y `partida_presupuestaria`.
 
-### Vacation Liquidation Module (`LiquidacionVacController`)
-Handles special events that require freezing/certifying vacation balances:
-- `INICIO_COMISION` / `FIN_COMISION_SALIDA` → generate certificate PDF (employee leaving on commission)
-- `FIN_COMISION_RETORNO` / `COMISION_ENTRANTE` → load balance from external certificate
-- `DESVINCULACION` → liquidation report for employees leaving the institution
-- Valid motives per employee depend on `modalidad_laboral` field
-- Estado requerido per motive defined in `ESTADO_REQUERIDO` constant
+### Control de Asistencia (`dbo.sg_control_persona`)
 
-### Frontend Structure
+Tabla de marcaciones individuales. Flujo diario en orden estricto: `ENTRADA → SALIDA AL LUNCH → ENTRADA DEL LUNCH → SALIDA`
+
+**modalidad_marcacion** controla cómo puede timbrar el empleado:
+- `PRESENCIAL` (default): la IP del request debe comenzar con algún prefijo de `vlans_permitidas` en `dbo.d2_configuracion`. Formato del valor: `10.10.12.,192.168.1.` (prefijos separados por coma). Si la lista está vacía se permite todo.
+- `REMOTO`: puede marcar desde cualquier IP sin validación. `tipo_marcacion = 'WEB'`. Uso: comisiones, viajes.
+- `TELETRABAJO`: puede marcar desde cualquier IP. `tipo_marcacion = 'TELETRABAJO'`. Uso: trabajo desde casa.
+
+Campos clave de `sg_control_persona`: `nro_documento` (= id_emp), `clasificacion` (ENTRADA/SALIDA), `concepto` (ENTRADA/SALIDA AL LUNCH/ENTRADA DEL LUNCH/SALIDA), `fecha_hora`, `tipo_marcacion` (WEB/TELETRABAJO), `ip`, `ubicacion`, `procesado` (SI/NO), `origen`.
+
+**Cuadre** (`dbo.d2_cuadre_marcacion`): tabla con atrasos en minutos por día por empleado (`atraso_entrada`, `atraso_lunch`, `atraso_salida`). Se usa en el reporte personal de asistencia para mostrar atrasos y si están justificados por permisos aprobados.
+
+### Vacaciones — cálculo de saldo
+
+Calculado en `calcularSaldoDisponible()` / `calcularSaldo()`:
+- `LOSEP` → 2.50 días/mes | `CODIGO DEL TRABAJO` → 1.25 días/mes
+- Fórmula: `(días desde FECHA_CORTE_VACACIONES / 360) × (tasa × 12)`
+- Si fecha_ingreso > fecha_corte, se usa fecha_ingreso como base
+- Saldo = `dias_adicionales` + devengado − `total_dias_tomados`
+
+### Acciones de Personal (`dbo.acc_accion_personal`)
+
+| Tipo | fecha_fin | Sit. Propuesta | Buscador Titular | Decl. Jurada | Auto-cierra |
+|---|---|---|---|---|---|
+| INGRESO | No aplica | Requerida (auto-llena) | No | Sí | No |
+| ENCARGO | Opcional | Requerida | Sí | No | No |
+| SUBROGACION | Requerida | Requerida | Sí | No | Sí (al vencer) |
+| VACACIONES | Requerida | No aplica | No | No | Sí (al vencer) |
+| DESTITUCION | No aplica | No aplica | No | Sí | No |
+| CESACION | No aplica | No aplica | No | Sí | No |
+
+Auto-cierre corre en cada `index()` para SUBROGACION y VACACIONES con `fecha_fin < hoy`.
+
+PDF: `accion_personal.blade.php` — usa `{!! !!}` (no `{{ }}`) para entidades HTML como `&nbsp;` en checkboxes.
+
+### Liquidación de Vacaciones
+
+- `INICIO_COMISION` / `FIN_COMISION_SALIDA` → genera certificado PDF
+- `FIN_COMISION_RETORNO` / `COMISION_ENTRANTE` → carga saldo desde certificado externo
+- `DESVINCULACION` → reporte de liquidación
+- Motivos válidos dependen de `modalidad_laboral` del empleado
+
+### Horas Extras
+
+#### Tablas (`dbo.*`)
+
+| Tabla | Descripción |
+|---|---|
+| `dbo.nom_he_planificacion_cab` | Cabecera mensual: id_emp, anio, mes, estado, total_extraordinarias, total_suplementarias, memorando, pdf_aprobado (Alfresco node id), fechas y usuarios de cada transición |
+| `dbo.nom_he_planificacion_det` | Detalle: cab_id, actividad (texto), horas_extraordinarias, horas_suplementarias |
+| `dbo.nom_he_registro` | Horas reales: cab_id, id_emp, fecha, hora_inicio, hora_fin, horas_extraordinarias, horas_suplementarias, descripcion, estado, observacion, usuario_decision, fecha_decision |
+
+#### Flujo completo
+
 ```
-frontend/src/
-  router/index.js           # Routes with meta.requiresAuth / meta.rol guards
-  stores/auth.js            # Pinia: token, empleado, roles, menu (localStorage)
-  services/api.js           # Axios instance (base URL from VITE_API_URL)
-  layouts/MainLayout.vue
-  views/acciones/           # Acciones de Personal (list + form)
-  views/planificacion/      # Vacation planning, liquidation, report
-  views/empleados/          # Employee CRUD, detail, import, distributivo
-  views/admin/              # Admin panel (roles, departments, shifts, config, etc.)
+Empleado crea planificación → PENDIENTE
+  ↓ (si es supervisor/admin → directamente APROBADO)
+Supervisor aprueba → APROBADO  |  niega → NEGADO (con observación)
+  ↓
+TH NOMINA autoriza con N° memorando → AUTORIZADO
+  ↓
+Empleado registra horas reales (solo en mes planificado y mes actual) → EN REVISION
+  ↓
+TH NOMINA revisa → aprueba → PENDIENTE  |  devuelve al empleado para corrección
+  ↓
+Supervisor confirma → APROBADO  |  niega → NEGADO
 ```
 
-### Environment
-- `VITE_API_URL` in `frontend/.env` sets the API base URL (default: `http://localhost:8000/api`)
-- Backend `.env` must have `DB_CONNECTION=pgsql` and correct DB credentials
-- Session and cache drivers are `database`
+Estados del registro de horas: `EN REVISION → PENDIENTE → APROBADO / NEGADO`
+
+#### Clasificación automática de horas
+
+El sistema calcula automáticamente el tipo a partir de hora_inicio y hora_fin:
+- **Lunes–Viernes** (sin feriado): 00:00–06:00 = Extra | 06:00–08:00 = Supl | 08:00–16:30 = Normal | 16:30–24:00 = Supl
+- **Fin de semana o feriado** (`dbo.d2_lista_fecha`): todo el rango = Extraordinarias
+- Límite máximo: 20h extraordinarias y 20h suplementarias por mes
+
+#### Cálculo monetario (visible solo para TH NOMINA / ADMINISTRADOR)
+
+```
+tarifa_hora = sueldo / 240
+valor_extra = tarifa_hora × (1 + porc_extraordinaria/100) × horas_extraordinarias
+valor_supl  = tarifa_hora × (1 + porc_suplementaria/100)  × horas_suplementarias
+```
+Porcentajes se obtienen de `dbo.d2_jornada` (campos `porc_extraordinaria`, `porc_suplementaria`) según la jornada del empleado.
+
+#### PDFs y Alfresco
+
+- `GET /api/horas-extras/planificacion/{id}/pdf` → `he_planificacion.blade.php` — actividades planificadas, datos del empleado, firmas (empleado + supervisor del departamento)
+- `GET /api/horas-extras/planificacion/{id}/pdf-registros` → `he_registros.blade.php` — solo registros en estado APROBADO, mismas firmas. Visible cuando hay al menos 1 registro APROBADO.
+- PDF firmado: se sube a Alfresco en `horas-extras/{año}/`, se guarda el `entry.id` en `pdf_aprobado` de la cabecera.
+- Botones PDF (planificación): visibles en estados APROBADO y AUTORIZADO.
+
+#### Roles en Horas Extras
+
+- **Supervisor**: presencia en `dbo.supervisor_area` — endpoint `/horas-extras/mi-rol` devuelve `es_supervisor`
+- **TH NOMINA**: rol exacto `TH NOMINA` (sin tilde) en `dbo.admin_rol` — devuelve `es_admin_th`
+- Supervisores ven tabs "Planificaciones del Equipo" y "Registros del Equipo"
+- TH NOMINA ve además el desglose monetario y puede revisar/autorizar
+- Horas en UI: formato `Xh Ym` (ej: 4h 15m), no decimal
+
+#### Rutas (`/api/horas-extras/*`)
+
+| Método | Ruta | Función |
+|---|---|---|
+| GET | `/calcular` | Calcula horas por rango horario |
+| GET | `/mi-rol` | Indica si es supervisor / admin TH |
+| GET | `/mi-planificacion` | Planificación del empleado para mes/año |
+| POST | `/planificacion` | Crear planificación |
+| PUT | `/planificacion/{id}` | Editar (solo PENDIENTE) |
+| DELETE | `/planificacion/{id}` | Eliminar (solo PENDIENTE) |
+| GET | `/planificacion` | Lista planificaciones del equipo |
+| PATCH | `/planificacion/{id}/aprobar` | Supervisor aprueba |
+| PATCH | `/planificacion/{id}/negar` | Supervisor niega |
+| PATCH | `/planificacion/{id}/autorizar` | TH NOMINA autoriza |
+| GET | `/planificacion/{id}/pdf` | PDF planificación |
+| GET | `/planificacion/{id}/pdf-registros` | PDF horas trabajadas |
+| POST | `/planificacion/{id}/subir-firmado` | Sube PDF firmado a Alfresco |
+| GET | `/planificacion/{id}/descargar-firmado` | Descarga desde Alfresco |
+| GET | `/mis-registros` | Registros del empleado para mes/año |
+| POST | `/registro` | Registrar horas reales |
+| PUT | `/registro/{id}` | Editar registro (solo EN REVISION) |
+| GET | `/equipo-registros` | Registros del equipo (supervisor/admin) |
+| PATCH | `/registro/{id}/revisar` | TH NOMINA aprueba/devuelve |
+| PATCH | `/registro/{id}/confirmar` | Supervisor confirma → APROBADO |
+| PATCH | `/registro/{id}/negar` | Supervisor niega |
+
+### Vistas Frontend (Talento Humano)
+
+```
+views/empleados/        # CRUD empleados, detalle, importación, distributivo
+                        # EmpleadoForm: bloque "Control de Asistencia" (modalidad_marcacion)
+                        #   Partida Individual: input libre + botón "Seleccionar libre" (modal partidas disponibles)
+views/acciones/         # Acciones de personal (lista + formulario + PDF)
+views/planificacion/    # Planificación anual de vacaciones, liquidación, reporte
+views/permisos/         # Permisos y licencias
+views/asistencia/       # Reporte de asistencia personal y admin
+views/horasextras/
+  HorasExtrasView.vue   # 4 tabs:
+                        #   MI PLANIFICACIÓN: crear/editar, PDF planificación, subir PDF firmado
+                        #   MIS HORAS TRABAJADAS: registrar horas, PDF horas trabajadas
+                        #   PLANIFICACIONES DEL EQUIPO: aprobar/negar (supervisor/admin)
+                        #   REGISTROS DEL EQUIPO: revisar/confirmar/negar + desglose monetario (TH NOMINA)
+views/admin/            # Roles, departamentos, turnos, configuración, IESS
+layouts/MainLayout.vue  # Layout del módulo RRHH (menú colapsado, se abre el grupo activo)
+```
+
+---
+
+## Módulo Nómina
+
+Rol: `TH NOMINA`. Flujo general: seleccionar mes/año → Calcular → BORRADOR → Cerrar → CERRADO. Un período CERRADO no se puede recalcular.
+
+### Tablas (`dbo.*`)
+
+| Tabla | Descripción |
+|---|---|
+| `nom_auditoria_log` | Log centralizado de auditoría (accion, datos_anteriores/nuevos JSONB, usuario, ip) |
+| `nom_decimo_tercero` | D13 mensual; unique(anio, mes, id_emp) |
+| `nom_sbu_historico` | SBU por año; unique(anio) — administrado desde Admin → SBU |
+| `nom_decimo_cuarto` | D14 mensual; unique(anio, mes, id_emp) |
+| `nom_fondos_reserva` | FR mensual; campo `tipo` MENSUAL/IESS; solo empleados con ≥1 año |
+| `nom_rol_pago_cab` | Cabecera rol de pagos; unique(anio, mes) |
+| `nom_rol_pago_det` | Detalle rol de pagos; unique(cab_id, id_emp) |
+
+### Controladores
+
+- `NominaController` — D13, D14, Fondos de Reserva, Consolidado, SBU
+- `RolPagoController` — Rol de Pagos
+
+### Reglas de negocio clave
+
+**¿Quiénes se calculan?**
+- D13: `acumula_decimo_tercero = false` (cobra mensualmente)
+- D14: `acumula_decimo_cuarto = false`
+- Fondos de Reserva: `acumula_fondos_reserva IN (1,2)` + `fecha_ingreso ≤ primer día del mes - 12 meses`
+- Rol de Pagos: todos los empleados ACTIVOS (depto ≠ 999)
+
+**Días proporcionales** (`calcularDiasEnMes`): ingreso antes del mes → 30 días; ingreso dentro del mes → `30 - día_ingreso + 1`; ingreso después del mes → 0 (excluido).
+
+**Fórmulas:**
+- D13: `(sueldo / 12 / 30) × dias`
+- D14: `(sbu / 12 / 30) × dias`
+- FR: `(sueldo × 8.33 / 100 / 30) × dias`
+- Rol: `valor_rmu = ROUND(sueldo × dias / 30, 2)`; `aporte_patronal/personal = ROUND(valor_rmu × pct / 100, 2)`
+
+**Tasas de aporte** (`dbo.d2_aportes_iess`): `modalidad` debe coincidir con `TRIM(tipo_contrato)` del empleado. Los % almacenados ya incluyen IECE y SECAP:
+- LOSEP: `aporte_individual = 11.45%`, `aporte_patronal = 9.65%`
+- CODIGO DEL TRABAJO: `aporte_individual = 9.45%`, `aporte_patronal = 12.15%`
+
+**Campos manuales en Rol de Pagos:** `quirografario`, `hipotecario`, `impuesto_renta`, `supa` — editables inline (click en celda) o importando CSV con columnas `cedula, quirografario, hipotecario, impuesto_renta`.
+
+### Vistas Frontend (`views/nomina/`)
+
+```
+DecimosView.vue       # Tabs: Décimo Tercero | Décimo Cuarto | Consolidado
+FondosReservaView.vue # Filtro tipo MENSUAL/IESS/Todos
+RolPagoView.vue       # Edición inline de 4 campos manuales + importar CSV + PDF landscape
+```
+
+Vista admin SBU: `views/admin/SbuView.vue` (ruta `admin/sbu`) — el SBU se gestiona aquí, NO en DecimoCuarto.
+
+### PDFs (`resources/views/reportes/`)
+
+- `nom_decimo_tercero.blade.php`, `nom_decimo_cuarto.blade.php`, `nom_fondos_reserva.blade.php`, `nom_consolidado.blade.php` — portrait letter
+- `nom_rol_pago.blade.php` — **landscape** letter, 7pt; % de aportes en encabezado de columna (no en cada fila)
+
+---
+
+## Módulo Adquisiciones / Bienes
+
+### Tablas principales (`adq.*`)
+
+| Tabla | Descripción |
+|---|---|
+| `adq.articulo` | Inventario; `precio_unitario DECIMAL(10,5)`, `stock_actual`, `iva_id`, `nivel1`, `nivel2` |
+| `adq.orden_compra` / `adq.orden_compra_det` | Ingresos de bienes (BORRADOR → RECIBIDO) |
+| `adq.egreso` / `adq.egreso_det` | Egresos de bienes (BORRADOR → DESPACHADO) |
+| `adq.kardex` | Log inmutable de movimientos; snapshot de stock_antes/despues, precio_antes/despues y `valor_saldo` (= stock_despues × precio_despues) |
+| `adq.iva` | Tasas de IVA (15%, 0%, etc.) |
+| `adq.proveedor` | Proveedores |
+| `adq.catalogo_inventario` | Catálogo MEF (nivel1, nivel2, item_presupuestario) |
+| `adq.catalogo_nivel1` | Categorías nivel 1 del catálogo MEF |
+| `adq.proceso_contratacion` | Procesos configurables (Catálogo Electrónico, Subasta, Caja Chica, etc.) |
+| `adq.unidad_medida` | Unidades de medida configurables |
+| `adq.solicitud_material` / `adq.solicitud_material_det` | Solicitudes internas de materiales; estados PENDIENTE/APROBADO/NEGADO/DESPACHADO/DESPACHADO PARCIAL |
+
+### Controladores Adquisiciones
+
+| Controlador | Función |
+|---|---|
+| `ArticuloController` | CRUD artículos + imagen + alertas de stock |
+| `OrdenCompraController` | Ingresos: store/update/confirmar/reversar/pdf |
+| `EgresoController` | Egresos: store/update/confirmar/reversar/pdf |
+| `ProveedorController` | CRUD proveedores |
+| `IvaController` | CRUD tasas IVA |
+| `AjusteController` | Ajuste de inventario (toma física): store/index — inserta en kardex tipo AJUSTE_POSITIVO/NEGATIVO |
+| `SolicitudMaterialController` | Solicitudes internas: store/aprobar/negar/despachar — **PENDIENTE: despachar() debe insertar en kardex** |
+| `ReporteAdqController` | Kardex NIC 2, Libro de Compras, Egresos Valorizados (JSON + PDF) |
+
+### Reglas de Precio
+
+- `precio_unitario` se guarda con 5 decimales; subtotales y totales con 2 decimales
+- Al **confirmar ingreso** (promedio ponderado): `precio_unitario = (stock_antes × precio_anterior + cantidad × precio_nuevo) / stock_despues`; si stock_antes = 0 → `precio_unitario = precio_nuevo`
+- Al **confirmar egreso**: si stock llega a 0 → `precio_unitario = 0`; al reversar, restaura precio solo si precio actual es 0 y `precio_anterior > 0`
+
+### Cálculo de Totales con Descuento
+
+El descuento es a nivel de cabecera y se aplica **antes** del IVA (formato SRI):
+```
+subtotal        = suma de subtotales de líneas (sin IVA)
+descuento       = valor manual ingresado
+base_imponible  = subtotal - descuento
+iva_valor       = iva_lineas × (base_imponible / subtotal)   ← proporcional
+total           = base_imponible + iva_valor
+```
+
+### Kardex (`adq.kardex`)
+
+Fila inmutable insertada por cada línea de detalle al confirmar/reversar/ajustar:
+
+| tipo_movimiento | Cuándo se inserta | Columna afectada |
+|---|---|---|
+| `INGRESO` | Confirmar orden_compra | cantidad_entrada |
+| `REVERSO_INGRESO` | Reversar orden_compra | cantidad_salida |
+| `EGRESO` | Confirmar egreso | cantidad_salida |
+| `REVERSO_EGRESO` | Reversar egreso | cantidad_entrada |
+| `AJUSTE_POSITIVO` | Ajuste inventario (físico > sistema) | cantidad_entrada |
+| `AJUSTE_NEGATIVO` | Ajuste inventario (físico < sistema) | cantidad_salida |
+
+Captura: `stock_antes`, `stock_despues`, `precio_antes`, `precio_despues`, `precio_movimiento`, `valor_saldo`, usuario.
+
+`valor_saldo = ROUND(stock_despues × precio_despues, 2)` — valor total del inventario tras el movimiento.
+
+### Solicitudes de Materiales (`adq.solicitud_material`)
+
+Flujo: empleado crea → supervisor revisa y aprueba (puede modificar cantidades) / niega → bienes despacha con `cantidad_autorizada` por línea.
+
+- Empleado NO ve el stock disponible al crear la solicitud
+- Supervisor SÍ ve el stock en el modal de aprobación y puede modificar las cantidades solicitadas antes de aprobar
+- Si el solicitante es supervisor, la solicitud se crea directamente en APROBADO
+- Estado final en despacho: DESPACHADO (todo), DESPACHADO PARCIAL (parcial), NEGADO (todo en 0)
+- `despachar()` usa `DB::table()->update(['stock_actual' => DB::raw('GREATEST(0, stock_actual - N)')])` — nunca Eloquent
+- **PENDIENTE**: `despachar()` aún no inserta en `adq.kardex` — al implementar, usar tipo `EGRESO` igual que `EgresoController::confirmar()`
+
+Campos de cabecera: `id_emp`, `id_depto`, `estado`, `justificacion`, `fecha_solicitud`, `fecha_aprobacion`, `fecha_despacho`, `usuario_aprobacion`, `usuario_despacho`
+Campos de detalle: `articulo_id`, `cantidad_solicitada`, `cantidad_autorizada`, `unidad_medida`
+
+### Ajuste de Inventario
+
+Toma física: el usuario ingresa la cantidad contada físicamente; el sistema calcula la diferencia vs `stock_actual` y genera un movimiento AJUSTE_POSITIVO o AJUSTE_NEGATIVO en el kardex. No genera egreso ni ingreso de bienes, solo corrige el stock y el `valor_saldo`.
+
+### Reportes Adquisiciones
+
+- **Kardex NIC 2**: por artículo + rango fechas → tabla doble encabezado (INGRESO/EGRESO/SALDO, cada uno con Cant./P.Unit./Total) + PDF legal landscape. `valor_saldo` en columna SALDO Total. Clasifica AJUSTE_POSITIVO y REVERSO_EGRESO como INGRESO; AJUSTE_NEGATIVO y REVERSO_INGRESO como EGRESO.
+- **Libro de Compras**: facturas de proveedores por período + filtro proceso → muestra columna Descuento cuando aplica → PDF SRI
+- **Egresos Valorizados**: salidas despachadas por período + filtro dirección/área → PDF
+
+### Imágenes de Artículos
+
+`Storage::disk('public')` en carpeta `articulos/`. Ejecutar `php artisan storage:link` una vez al desplegar. Se retorna `imagen_url` en la API.
+
+### Rutas
+
+Todas las rutas de Adquisiciones bajo `/api/adquisiciones/*` en `routes/api.php`.
+
+### Vistas Frontend (Adquisiciones)
+
+```
+views/adquisiciones/
+  ArticulosView.vue           # Inventario con precio, IVA, stock, imagen
+  IngresosBienesView.vue      # Ingresos (BORRADOR/RECIBIDO) + descuento + PDF
+  EgresosBienesView.vue       # Egresos (BORRADOR/DESPACHADO) + PDF
+  ProveedoresView.vue         # CRUD proveedores
+  IvaView.vue                 # Tasas IVA
+  ProcesoContratacionView.vue # Procesos de contratación configurables
+  UnidadesMedidaView.vue      # Unidades de medida configurables
+  CatalogoInventarioView.vue  # Catálogo MEF nivel1/nivel2
+  SolicitudesView.vue         # Solicitudes internas: crear, aprobar (supervisor), despachar (bienes)
+  AjusteInventarioView.vue    # Toma física: buscar artículo, ingresar cant. física, registra ajuste
+  ReporteKardexView.vue       # Kardex NIC 2 por artículo + PDF (doble encabezado INGRESO/EGRESO/SALDO)
+  ReporteLibroComprasView.vue # Libro de compras + PDF (incluye columna descuento)
+  ReporteEgresosView.vue      # Egresos valorizados + PDF
+layouts/AdqLayout.vue         # Layout verde, roles ADQUISICIONES/BIENES
+                              # Menú colapsado por defecto, auto-abre el grupo de la ruta activa
+```
+
+---
+
+## Environment
+
+- `VITE_API_URL` en `frontend/.env` — URL base de la API
+- Backend `.env`: `DB_CONNECTION=pgsql`, credenciales BD
+- Session y cache driver: `database`

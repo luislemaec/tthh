@@ -17,6 +17,15 @@ use App\Http\Controllers\PlanificacionVacController;
 use App\Http\Controllers\ReportePlanificacionController;
 use App\Http\Controllers\LiquidacionVacController;
 use App\Http\Controllers\HorasExtrasController;
+use App\Http\Controllers\NominaController;
+use App\Http\Controllers\RolPagoController;
+use App\Http\Controllers\Adquisiciones\AdqDashboardController;
+use App\Http\Controllers\Adquisiciones\ProveedorController;
+use App\Http\Controllers\Adquisiciones\ArticuloController;
+use App\Http\Controllers\Adquisiciones\OrdenCompraController;
+use App\Http\Controllers\Adquisiciones\SolicitudMaterialController;
+use App\Http\Controllers\Adquisiciones\ReporteAdqController;
+use App\Http\Controllers\Adquisiciones\AjusteController;
 use Illuminate\Support\Facades\Route;
 
 // Rutas PÚBLICAS
@@ -67,6 +76,8 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get("aportes-iess",          [\App\Http\Controllers\Admin\AportesIessController::class, "index"]);
         Route::get("aportes-iess/vigentes", [\App\Http\Controllers\Admin\AportesIessController::class, "vigentes"]);
         Route::post("aportes-iess",         [\App\Http\Controllers\Admin\AportesIessController::class, "store"]);
+        Route::put("aportes-iess/{id}",     [\App\Http\Controllers\Admin\AportesIessController::class, "update"]);
+        Route::delete("aportes-iess/{id}", [\App\Http\Controllers\Admin\AportesIessController::class, "destroy"]);
     });
 
     // Opciones de menú
@@ -184,6 +195,7 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::patch("/horas-extras/planificacion/{id}/aprobar",              [HorasExtrasController::class, "aprobar"]);
     Route::patch("/horas-extras/planificacion/{id}/negar",                [HorasExtrasController::class, "negar"]);
     Route::get("/horas-extras/planificacion/{id}/pdf",                    [HorasExtrasController::class, "pdf"]);
+    Route::get("/horas-extras/planificacion/{id}/pdf-registros",          [HorasExtrasController::class, "pdfRegistros"]);
     Route::post("/horas-extras/planificacion/{id}/subir-firmado",         [HorasExtrasController::class, "subirFirmado"]);
     Route::get("/horas-extras/planificacion/{id}/descargar-firmado",      [HorasExtrasController::class, "descargarFirmado"]);
     Route::get("/horas-extras/mis-registros",                             [HorasExtrasController::class, "misHoras"]);
@@ -193,6 +205,130 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::patch("/horas-extras/registro/{id}/revisar",                   [HorasExtrasController::class, "revisarRegistro"]);
     Route::patch("/horas-extras/registro/{id}/confirmar",                 [HorasExtrasController::class, "confirmar"]);
     Route::patch("/horas-extras/registro/{id}/negar",                     [HorasExtrasController::class, "negarRegistro"]);
+
+    // ── Nómina ────────────────────────────────────────────────────────────────
+    Route::prefix('nomina')->group(function () {
+        Route::get('auditoria',                   [NominaController::class, 'auditoria']);
+        Route::get('sbu',                         [NominaController::class, 'sbuIndex']);
+        Route::post('sbu',                        [NominaController::class, 'sbuStore']);
+
+        Route::get('decimo-tercero',              [NominaController::class, 'index13']);
+        Route::post('decimo-tercero/calcular',    [NominaController::class, 'calcular13']);
+        Route::post('decimo-tercero/cerrar',      [NominaController::class, 'cerrar13']);
+        Route::get('decimo-tercero/pdf',          [NominaController::class, 'pdf13']);
+
+        Route::get('decimo-cuarto',               [NominaController::class, 'index14']);
+        Route::post('decimo-cuarto/calcular',     [NominaController::class, 'calcular14']);
+        Route::post('decimo-cuarto/cerrar',       [NominaController::class, 'cerrar14']);
+        Route::get('decimo-cuarto/pdf',           [NominaController::class, 'pdf14']);
+
+        Route::get('consolidado',                 [NominaController::class, 'consolidado']);
+        Route::get('consolidado/pdf',             [NominaController::class, 'pdfConsolidado']);
+
+        Route::get('fondos-reserva',              [NominaController::class, 'indexFR']);
+        Route::post('fondos-reserva/calcular',    [NominaController::class, 'calcularFR']);
+        Route::post('fondos-reserva/cerrar',      [NominaController::class, 'cerrarFR']);
+        Route::get('fondos-reserva/pdf',          [NominaController::class, 'pdfFR']);
+
+        Route::get('rol-pago',                    [RolPagoController::class, 'index']);
+        Route::post('rol-pago/calcular',          [RolPagoController::class, 'calcular']);
+        Route::put('rol-pago/detalle/{id}',       [RolPagoController::class, 'updateDetalle']);
+        Route::post('rol-pago/cerrar',            [RolPagoController::class, 'cerrar']);
+        Route::post('rol-pago/importar',          [RolPagoController::class, 'importar']);
+        Route::get('rol-pago/pdf',                [RolPagoController::class, 'pdf']);
+    });
+
+    // ── Adquisiciones ─────────────────────────────────────────────────────────
+    Route::prefix('adquisiciones')->group(function () {
+        Route::get('dashboard',                             [AdqDashboardController::class, 'index']);
+
+        // Proveedores
+        Route::get('proveedores',                           [ProveedorController::class, 'index']);
+        Route::post('proveedores',                          [ProveedorController::class, 'store']);
+        Route::get('proveedores/{id}',                      [ProveedorController::class, 'show']);
+        Route::put('proveedores/{id}',                      [ProveedorController::class, 'update']);
+        Route::patch('proveedores/{id}/inactivar',          [ProveedorController::class, 'inactivar']);
+        Route::patch('proveedores/{id}/activar',            [ProveedorController::class, 'activar']);
+
+        // Catálogo Inventario MF
+        Route::get('catalogo-inventario',                   [\App\Http\Controllers\Adquisiciones\CatalogoInventarioController::class, 'index']);
+        Route::get('catalogo-inventario/nivel1s',           [\App\Http\Controllers\Adquisiciones\CatalogoInventarioController::class, 'nivel1s']);
+        Route::post('catalogo-inventario',                  [\App\Http\Controllers\Adquisiciones\CatalogoInventarioController::class, 'store']);
+        Route::put('catalogo-inventario/{nivel2}',          [\App\Http\Controllers\Adquisiciones\CatalogoInventarioController::class, 'update']);
+        Route::delete('catalogo-inventario/{nivel2}',       [\App\Http\Controllers\Adquisiciones\CatalogoInventarioController::class, 'destroy']);
+
+        // Artículos / Inventario
+        Route::get('articulos',                             [ArticuloController::class, 'index']);
+        Route::post('articulos',                            [ArticuloController::class, 'store']);
+        Route::get('articulos/alertas',                     [ArticuloController::class, 'alertas']);
+        Route::get('articulos/catalogo',                    [ArticuloController::class, 'buscarCatalogo']);
+        Route::get('articulos/{id}',                        [ArticuloController::class, 'show']);
+        Route::put('articulos/{id}',                        [ArticuloController::class, 'update']);
+        Route::patch('articulos/{id}/inactivar',            [ArticuloController::class, 'inactivar']);
+        Route::post('articulos/{id}/imagen',                [ArticuloController::class, 'subirImagen']);
+        Route::get('configuracion',                         [ArticuloController::class, 'configuracion']);
+        Route::put('configuracion',                         [ArticuloController::class, 'actualizarConfiguracion']);
+
+        // Unidades de medida
+        Route::get('unidades-medida',                       [\App\Http\Controllers\Adquisiciones\UnidadMedidaController::class, 'index']);
+        Route::post('unidades-medida',                      [\App\Http\Controllers\Adquisiciones\UnidadMedidaController::class, 'store']);
+        Route::put('unidades-medida/{id}',                  [\App\Http\Controllers\Adquisiciones\UnidadMedidaController::class, 'update']);
+        Route::patch('unidades-medida/{id}/toggle',         [\App\Http\Controllers\Adquisiciones\UnidadMedidaController::class, 'toggle']);
+
+        // IVA
+        Route::get('iva',                                   [\App\Http\Controllers\Adquisiciones\IvaController::class, 'index']);
+        Route::post('iva',                                  [\App\Http\Controllers\Adquisiciones\IvaController::class, 'store']);
+        Route::put('iva/{id}',                              [\App\Http\Controllers\Adquisiciones\IvaController::class, 'update']);
+        Route::patch('iva/{id}/toggle',                     [\App\Http\Controllers\Adquisiciones\IvaController::class, 'toggle']);
+
+        // Procesos de contratación
+        Route::get('procesos-contratacion',                 [\App\Http\Controllers\Adquisiciones\ProcesoContratacionController::class, 'index']);
+        Route::get('procesos-contratacion/activos',         [\App\Http\Controllers\Adquisiciones\ProcesoContratacionController::class, 'activos']);
+        Route::post('procesos-contratacion',                [\App\Http\Controllers\Adquisiciones\ProcesoContratacionController::class, 'store']);
+        Route::put('procesos-contratacion/{id}',            [\App\Http\Controllers\Adquisiciones\ProcesoContratacionController::class, 'update']);
+        Route::patch('procesos-contratacion/{id}/toggle',   [\App\Http\Controllers\Adquisiciones\ProcesoContratacionController::class, 'toggle']);
+
+        // Ingresos de Bienes (antes órdenes de compra)
+        Route::get('ordenes',                               [OrdenCompraController::class, 'index']);
+        Route::post('ordenes',                              [OrdenCompraController::class, 'store']);
+        Route::get('ordenes/{id}',                          [OrdenCompraController::class, 'show']);
+        Route::put('ordenes/{id}',                          [OrdenCompraController::class, 'update']);
+        Route::patch('ordenes/{id}/confirmar',              [OrdenCompraController::class, 'confirmar']);
+        Route::patch('ordenes/{id}/reversar',               [OrdenCompraController::class, 'reversar']);
+        Route::get('ordenes/{id}/pdf',                      [OrdenCompraController::class, 'pdf']);
+        Route::delete('ordenes/{id}',                       [OrdenCompraController::class, 'destroy']);
+
+        // Egresos de bienes
+        Route::get('egresos',                               [\App\Http\Controllers\Adquisiciones\EgresoController::class, 'index']);
+        Route::post('egresos',                              [\App\Http\Controllers\Adquisiciones\EgresoController::class, 'store']);
+        Route::get('egresos/{id}',                          [\App\Http\Controllers\Adquisiciones\EgresoController::class, 'show']);
+        Route::put('egresos/{id}',                          [\App\Http\Controllers\Adquisiciones\EgresoController::class, 'update']);
+        Route::patch('egresos/{id}/confirmar',              [\App\Http\Controllers\Adquisiciones\EgresoController::class, 'confirmar']);
+        Route::patch('egresos/{id}/reversar',               [\App\Http\Controllers\Adquisiciones\EgresoController::class, 'reversar']);
+        Route::get('egresos/{id}/pdf',                      [\App\Http\Controllers\Adquisiciones\EgresoController::class, 'pdf']);
+        Route::delete('egresos/{id}',                       [\App\Http\Controllers\Adquisiciones\EgresoController::class, 'destroy']);
+        Route::get('departamentos-activos',                 [\App\Http\Controllers\Adquisiciones\EgresoController::class, 'departamentos']);
+        Route::get('empleados-activos',                     [\App\Http\Controllers\Adquisiciones\EgresoController::class, 'empleadosPorDepto']);
+
+        // Ajuste de inventario
+        Route::get('ajustes',                               [AjusteController::class, 'index']);
+        Route::post('ajustes',                              [AjusteController::class, 'store']);
+
+        // Reportes
+        Route::get('reportes/kardex',                       [ReporteAdqController::class, 'kardex']);
+        Route::get('reportes/libro-compras',                [ReporteAdqController::class, 'libroCompras']);
+        Route::get('reportes/egresos-valorizados',          [ReporteAdqController::class, 'egresosValorizados']);
+        Route::get('reportes/articulos',                    [ReporteAdqController::class, 'articulosBuscar']);
+
+        // Solicitudes de materiales
+        Route::get('solicitudes',                           [SolicitudMaterialController::class, 'index']);
+        Route::post('solicitudes',                          [SolicitudMaterialController::class, 'store']);
+        Route::get('solicitudes/{id}',                      [SolicitudMaterialController::class, 'show']);
+        Route::patch('solicitudes/{id}/aprobar',            [SolicitudMaterialController::class, 'aprobar']);
+        Route::patch('solicitudes/{id}/negar',              [SolicitudMaterialController::class, 'negar']);
+        Route::patch('solicitudes/{id}/despachar',          [SolicitudMaterialController::class, 'despachar']);
+        Route::delete('solicitudes/{id}',                   [SolicitudMaterialController::class, 'destroy']);
+    });
 
     // Vacaciones
     Route::get("/vacaciones/mi-rol",            [VacacionesController::class, "miRol"]);

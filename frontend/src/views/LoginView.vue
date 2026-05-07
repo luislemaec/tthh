@@ -14,7 +14,7 @@
                class="w-20 h-20 object-contain" />
         </div>
         <h1 class="text-2xl font-bold text-gray-800">CONSEJO DE COMUNICACIÓN</h1>
-        <p class="text-gray-500 text-sm mt-1">Sistema Administración del Talento Humano</p>
+        <p class="text-gray-500 text-sm mt-1">Sistema Integral Tecnológico- SIT</p>
       </div>
 
       <!-- Formulario -->
@@ -112,7 +112,7 @@ async function handleLogin() {
   error.value   = ''
   try {
     await auth.login(form.value.identificacion, form.value.password)
-    router.push('/dashboard')
+    router.push('/launcher')
   } catch (e) {
     error.value = e.response?.data?.message || 'Error al iniciar sesión'
   } finally {

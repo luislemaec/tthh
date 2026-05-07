@@ -13,6 +13,10 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => !!token.value)
   const isAdmin = computed(() => roles.value.includes('ADMINISTRADOR'))
+  const esSupervisor = computed(() => !!empleado.value?.es_supervisor)
+  const tieneAdquisiciones = computed(() =>
+    roles.value.includes('ADQUISICIONES') || roles.value.includes('BIENES') || esSupervisor.value
+  )
 
   // Menú agrupado por categoría
   const menuAgrupado = computed(() => {
@@ -54,5 +58,5 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   return { token, empleado, roles, menu, isAuthenticated, isAdmin,
-           menuAgrupado, login, logout, tieneRol }
+           esSupervisor, tieneAdquisiciones, menuAgrupado, login, logout, tieneRol }
 })

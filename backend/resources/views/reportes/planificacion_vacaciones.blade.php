@@ -117,7 +117,7 @@
   <tr>
     <td style="width:80px; vertical-align:middle;">
       @if($logoBase64)
-        <img src="{{ $logoBase64 }}" style="height:55px; width:auto;">
+        <img src="{{ $logoBase64 }}" style="height:110px; width:auto;">
       @endif
     </td>
     <td style="vertical-align:middle; text-align:center;">

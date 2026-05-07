@@ -80,11 +80,11 @@
               class="text-xs bg-white border border-red-300 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-50">
               Eliminar
             </button>
-            <button v-if="miPlan.estado === 'APROBADO'" @click="descargarPdf"
+            <button v-if="['APROBADO','AUTORIZADO'].includes(miPlan.estado)" @click="descargarPdf"
               class="text-xs bg-white border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-50">
               Generar PDF
             </button>
-            <button v-if="miPlan.estado === 'APROBADO'" @click="abrirSubirFirmado"
+            <button v-if="['APROBADO','AUTORIZADO'].includes(miPlan.estado)" @click="abrirSubirFirmado"
               class="text-xs bg-white border border-blue-300 text-blue-700 px-3 py-1.5 rounded-lg hover:bg-blue-50">
               Subir PDF Firmado
             </button>
@@ -163,20 +163,28 @@
               <b>{{ hhmm(misHorasData.planificacion.total_suplementarias - totalDeclarado.supl) }}</b> suplementarias
             </p>
           </div>
-          <button
-            v-if="misHorasData.planificacion.estado === 'AUTORIZADO' && esMesActual(misHorasData.planificacion) && !misHorasData.registros.some(r => r.estado === 'NEGADO')"
-            @click="abrirModalRegistrar"
-            class="bg-[#00372e] text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-800">
-            + Registrar horas
-          </button>
-          <p v-else-if="misHorasData.planificacion.estado === 'AUTORIZADO' && misHorasData.registros.some(r => r.estado === 'NEGADO')"
-            class="text-xs text-red-600 italic">
-            Registro negado. Debe volver a planificar.
-          </p>
-          <p v-else-if="misHorasData.planificacion.estado === 'AUTORIZADO' && !esMesActual(misHorasData.planificacion)"
-            class="text-xs text-gray-500 italic">
-            Registro habilitado en {{ mesNombre(misHorasData.planificacion.mes) }} {{ misHorasData.planificacion.anio }}
-          </p>
+          <div class="flex flex-col gap-2 items-end">
+            <button
+              v-if="misHorasData.planificacion.estado === 'AUTORIZADO' && esMesActual(misHorasData.planificacion) && !misHorasData.registros.some(r => r.estado === 'NEGADO')"
+              @click="abrirModalRegistrar"
+              class="bg-[#00372e] text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-800">
+              + Registrar horas
+            </button>
+            <p v-else-if="misHorasData.planificacion.estado === 'AUTORIZADO' && misHorasData.registros.some(r => r.estado === 'NEGADO')"
+              class="text-xs text-red-600 italic">
+              Registro negado. Debe volver a planificar.
+            </p>
+            <p v-else-if="misHorasData.planificacion.estado === 'AUTORIZADO' && !esMesActual(misHorasData.planificacion)"
+              class="text-xs text-gray-500 italic">
+              Registro habilitado en {{ mesNombre(misHorasData.planificacion.mes) }} {{ misHorasData.planificacion.anio }}
+            </p>
+            <button
+              v-if="misHorasData.registros.some(r => r.estado === 'APROBADO')"
+              @click="descargarPdfRegistros"
+              class="text-xs bg-white border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-50">
+              Generar PDF
+            </button>
+          </div>
         </div>
       </div>
       <div v-else class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-4 text-yellow-800 text-sm">
@@ -975,6 +983,22 @@ async function eliminarPlan() {
 }
 
 // ── PDF ──────────────────────────────────────────────────────────────────────
+async function descargarPdfRegistros() {
+  const cab = misHorasData.value.planificacion
+  if (!cab) return
+  try {
+    const resp = await api.get("/horas-extras/planificacion/" + cab.id + "/pdf-registros", {
+      responseType: "blob",
+    })
+    const url = URL.createObjectURL(new Blob([resp.data], { type: "application/pdf" }))
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `horas_trabajadas_${filtro.value.anio}_${filtro.value.mes}.pdf`
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch { alert("Error al generar el PDF") }
+}
+
 async function descargarPdf() {
   try {
     const resp = await api.get("/horas-extras/planificacion/" + miPlan.value.id + "/pdf", {

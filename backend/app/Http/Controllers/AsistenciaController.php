@@ -59,6 +59,25 @@ class AsistenciaController extends Controller
         $hoy  = now()->toDateString();
         $concepto = $request->concepto;
 
+        // Validar modalidad de marcación
+        $modalidad = $emp->modalidad_marcacion ?? 'PRESENCIAL';
+
+        if ($modalidad === 'PRESENCIAL') {
+            $vlansConf = DB::table('dbo.d2_configuracion')
+                ->where('concepto', 'vlans_permitidas')
+                ->value('valor');
+
+            $vlans    = array_filter(array_map('trim', explode(',', $vlansConf ?? '')));
+            $ip       = $request->ip();
+            $permitida = empty($vlans) || collect($vlans)->contains(fn($v) => str_starts_with($ip, $v));
+
+            if (!$permitida) {
+                return response()->json([
+                    'message' => 'Solo puede registrar asistencia desde las instalaciones de la institución.',
+                ], 403);
+            }
+        }
+
         // Validar que no haya marcado el mismo concepto hoy
         $yaMarcado = SgControlPersona::where("nro_documento", $emp->id_emp)
             ->whereDate("fecha_hora", $hoy)
@@ -99,7 +118,7 @@ class AsistenciaController extends Controller
             "fecha_hora"     => now(),
             "concepto"       => $concepto,
             "motivo"         => $request->motivo ?? null,
-            "tipo_marcacion" => "WEB",
+            "tipo_marcacion" => $modalidad === 'TELETRABAJO' ? 'TELETRABAJO' : 'WEB',
             "ip"             => $request->ip(),
             "ubicacion"      => $emp->ubicacion ?? "Quito",
             "procesado"      => "NO",

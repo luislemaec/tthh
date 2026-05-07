@@ -9,6 +9,12 @@ const routes = [
     meta: { guest: true },
   },
   {
+    path: '/launcher',
+    name: 'Launcher',
+    component: () => import('@/views/LauncherView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/',
     component: () => import('@/layouts/MainLayout.vue'),
     meta: { requiresAuth: true },
@@ -34,6 +40,7 @@ const routes = [
       { path: 'admin/calendario', name: 'AdminCalendario', component: () => import('@/views/admin/calendario/CalendarioView.vue') },
       { path: 'admin/configuracion', name: 'AdminConfiguracion', component: () => import('@/views/admin/configuracion/ConfiguracionView.vue') },
       { path: 'admin/aportes-iess', name: 'AdminAportesIess', component: () => import('@/views/admin/aportes/AportesIessView.vue') },
+      { path: 'admin/sbu', name: 'AdminSbu', component: () => import('@/views/admin/SbuView.vue') },
       { path: 'acciones-personal', name: 'AccionesPersonal', component: () => import('@/views/acciones/AccionesPersonalView.vue') },
       { path: 'acciones-personal/nueva', name: 'AccionPersonalNueva', component: () => import('@/views/acciones/AccionPersonalForm.vue') },
       { path: 'admin/cuadre', name: 'AdminCuadre', component: () => import('@/views/admin/cuadre/CuadreView.vue') },
@@ -44,6 +51,32 @@ const routes = [
       { path: 'planificacion/reporte', name: 'ReportePlanificacion', component: () => import('@/views/planificacion/ReportePlanificacionView.vue') },
       { path: 'planificacion/liquidacion', name: 'LiquidacionVacaciones', component: () => import('@/views/planificacion/LiquidacionVacView.vue') },
       { path: 'horas-extras', name: 'HorasExtras', component: () => import('@/views/horasextras/HorasExtrasView.vue') },
+      { path: 'nomina/decimos',        name: 'NominaDecimos',       component: () => import('@/views/nomina/DecimosView.vue') },
+      { path: 'nomina/fondos-reserva', name: 'NominaFondosReserva', component: () => import('@/views/nomina/FondosReservaView.vue') },
+      { path: 'nomina/rol-pago',       name: 'NominaRolPago',       component: () => import('@/views/nomina/RolPagoView.vue') },
+    ],
+  },
+  // ── Adquisiciones ──────────────────────────────────────────────────────────
+  {
+    path: '/adquisiciones',
+    component: () => import('@/layouts/AdqLayout.vue'),
+    meta: { requiresAuth: true },
+    children: [
+      { path: '', redirect: '/adquisiciones/dashboard' },
+      { path: 'dashboard',   name: 'AdqDashboard',   component: () => import('@/views/adquisiciones/AdqDashboardView.vue') },
+      { path: 'proveedores', name: 'AdqProveedores', component: () => import('@/views/adquisiciones/ProveedoresView.vue') },
+      { path: 'articulos',   name: 'AdqArticulos',   component: () => import('@/views/adquisiciones/ArticulosView.vue') },
+      { path: 'ingresos',    name: 'AdqIngresos',    component: () => import('@/views/adquisiciones/IngresosBienesView.vue') },
+      { path: 'solicitudes', name: 'AdqSolicitudes', component: () => import('@/views/adquisiciones/SolicitudesView.vue') },
+      { path: 'catalogo',    name: 'AdqCatalogo',    component: () => import('@/views/adquisiciones/CatalogoInventarioView.vue') },
+      { path: 'iva',                  name: 'AdqIva',      component: () => import('@/views/adquisiciones/IvaView.vue') },
+      { path: 'procesos-contratacion', name: 'AdqProcesos', component: () => import('@/views/adquisiciones/ProcesoContratacionView.vue') },
+      { path: 'unidades-medida', name: 'AdqUnidadesMedida', component: () => import('@/views/adquisiciones/UnidadesMedidaView.vue') },
+      { path: 'egresos',        name: 'AdqEgresos',        component: () => import('@/views/adquisiciones/EgresosBienesView.vue') },
+      { path: 'ajustes',        name: 'AdqAjustes',        component: () => import('@/views/adquisiciones/AjusteInventarioView.vue') },
+      { path: 'reportes/kardex',         name: 'AdqReporteKardex',      component: () => import('@/views/adquisiciones/ReporteKardexView.vue') },
+      { path: 'reportes/libro-compras',  name: 'AdqReporteLibroCompras', component: () => import('@/views/adquisiciones/ReporteLibroComprasView.vue') },
+      { path: 'reportes/egresos',        name: 'AdqReporteEgresos',     component: () => import('@/views/adquisiciones/ReporteEgresosView.vue') },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: '/' },
@@ -57,7 +90,7 @@ const router = createRouter({
 router.beforeEach((to, _from, next) => {
   const auth = useAuthStore()
   if (to.meta.requiresAuth && !auth.isAuthenticated) return next('/login')
-  if (to.meta.guest && auth.isAuthenticated) return next('/')
+  if (to.meta.guest && auth.isAuthenticated) return next('/launcher')
   if (to.meta.rol && !auth.roles.includes(to.meta.rol.toUpperCase())) return next('/')
   next()
 })

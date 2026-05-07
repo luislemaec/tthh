@@ -161,16 +161,21 @@
               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
               <option value="OCUPADO">OCUPADO</option>
               <option value="VACANTE">VACANTE</option>
+              <option value="DISPONIBLE">DISPONIBLE</option>
             </select>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Partida Individual *</label>
-            <input v-model="form.partida_individual" list="lista-partidas-vacantes" type="text" required
-              placeholder="Ingrese o seleccione una partida vacante"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
-            <datalist id="lista-partidas-vacantes">
-              <option v-for="p in partidasVacantes" :key="p" :value="p" />
-            </datalist>
+            <div class="flex gap-2">
+              <input v-model="form.partida_individual" type="text" required
+                placeholder="Escriba una nueva o use el botón para seleccionar una libre"
+                class="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+              <button type="button" @click="modalPartidas.show = true"
+                title="Ver partidas disponibles de empleados inactivos"
+                class="shrink-0 text-xs border border-[#00372e] text-[#00372e] px-3 py-2 rounded-lg hover:bg-[#00372e] hover:text-white whitespace-nowrap transition-colors">
+                Seleccionar libre
+              </button>
+            </div>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Fondos de Reserva</label>
@@ -182,25 +187,40 @@
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-600 mb-1">Décimo Tercero</label>
-            <select v-model="form.acumula_decimo_tercero"
+            <label class="block text-sm font-medium text-gray-600 mb-1">Acumula Décimos (13° y 14°)</label>
+            <select v-model="form.acumula_decimos"
               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
               <option :value="true">Acumula</option>
-              <option :value="false">No acumula</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-600 mb-1">Décimo Cuarto</label>
-            <select v-model="form.acumula_decimo_cuarto"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
-              <option :value="true">Acumula</option>
-              <option :value="false">No acumula</option>
+              <option :value="false">Cobra mensualmente</option>
             </select>
           </div>
           <div class="sm:col-span-2">
             <label class="block text-sm font-medium text-gray-600 mb-1">Partida Presupuestaria *</label>
             <input v-model="form.partida_presupuestaria" type="text" placeholder="Ej: 202622000000000..." required
               class="w-full border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Control de Asistencia -->
+      <div class="bg-white rounded-xl shadow p-6 space-y-4">
+        <h2 class="text-lg font-semibold text-gray-700 border-b pb-2">Control de Asistencia</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Modalidad de Marcación</label>
+            <select v-model="form.modalidad_marcacion"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
+              <option value="PRESENCIAL">PRESENCIAL — solo desde red interna</option>
+              <option value="REMOTO">REMOTO — desde cualquier IP (comisión, viaje)</option>
+              <option value="TELETRABAJO">TELETRABAJO — marca como teletrabajo</option>
+            </select>
+          </div>
+          <div class="flex items-end pb-1">
+            <p class="text-xs text-gray-400 leading-relaxed">
+              <b class="text-gray-500">PRESENCIAL:</b> solo puede timbrar desde las VLANs internas configuradas.<br>
+              <b class="text-gray-500">REMOTO:</b> puede timbrar desde cualquier IP (viaje, comisión).<br>
+              <b class="text-gray-500">TELETRABAJO:</b> marca como teletrabajo sin restricción de IP.
+            </p>
           </div>
         </div>
       </div>
@@ -222,6 +242,51 @@
         </button>
       </div>
     </form>
+
+    <!-- Modal: Seleccionar partida disponible -->
+    <div v-if="modalPartidas.show"
+      class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-lg font-bold text-gray-800">Partidas individuales disponibles</h2>
+          <button @click="modalPartidas.show = false" class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+        </div>
+        <p class="text-xs text-gray-500 mb-3">Empleados inactivos con estado del puesto DISPONIBLE. Al seleccionar se llenarán ambas partidas.</p>
+        <div v-if="!partidasVacantes.length" class="text-center py-8 text-gray-400 text-sm">
+          No hay partidas disponibles en este momento.
+        </div>
+        <div v-else class="overflow-auto max-h-80">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 sticky top-0">
+              <tr>
+                <th class="text-left px-3 py-2 text-gray-600 font-medium">Empleado anterior</th>
+                <th class="text-left px-3 py-2 text-gray-600 font-medium">Partida Individual</th>
+                <th class="text-left px-3 py-2 text-gray-600 font-medium">Partida Presupuestaria</th>
+                <th class="px-3 py-2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="p in partidasVacantes" :key="p.id_emp"
+                class="border-b hover:bg-green-50 cursor-pointer"
+                @click="seleccionarPartida(p)">
+                <td class="px-3 py-2">{{ p.apellido_emp }} {{ p.nombre_emp }}</td>
+                <td class="px-3 py-2 font-mono text-xs">{{ p.partida_individual }}</td>
+                <td class="px-3 py-2 font-mono text-xs">{{ p.partida_presupuestaria || '—' }}</td>
+                <td class="px-3 py-2 text-right">
+                  <span class="text-[#00372e] font-semibold text-xs">Seleccionar →</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="flex justify-end mt-4">
+          <button @click="modalPartidas.show = false"
+            class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -239,6 +304,13 @@ const error         = ref("")
 const departamentos    = ref([])
 const jornadas         = ref([])
 const partidasVacantes = ref([])
+const modalPartidas    = ref({ show: false })
+
+function seleccionarPartida(p) {
+  form.value.partida_individual    = p.partida_individual    || ""
+  form.value.partida_presupuestaria = p.partida_presupuestaria || ""
+  modalPartidas.value.show = false
+}
 
 const form = ref({
   nombres:        "",
@@ -263,9 +335,9 @@ const form = ref({
   estado_puesto:           "OCUPADO",
   partida_individual:      "",
   partida_presupuestaria:  "",
-  acumula_fondos_reserva:  0,
-  acumula_decimo_tercero:  false,
-  acumula_decimo_cuarto:   false,
+  acumula_fondos_reserva:    0,
+  acumula_decimos:           false,
+  modalidad_marcacion:       'PRESENCIAL',
 })
 
 const guardar = async () => {
@@ -294,9 +366,10 @@ const guardar = async () => {
       estado_puesto:           form.value.estado_puesto,
       partida_individual:      form.value.partida_individual     || null,
       partida_presupuestaria:  form.value.partida_presupuestaria || null,
-      acumula_fondos_reserva:  form.value.acumula_fondos_reserva,
-      acumula_decimo_tercero:  form.value.acumula_decimo_tercero,
-      acumula_decimo_cuarto:   form.value.acumula_decimo_cuarto,
+      acumula_fondos_reserva:   form.value.acumula_fondos_reserva,
+      acumula_decimo_tercero:   form.value.acumula_decimos,
+      acumula_decimo_cuarto:    form.value.acumula_decimos,
+      modalidad_marcacion:      form.value.modalidad_marcacion,
     }
 
     if (esEdicion.value) {
@@ -351,9 +424,9 @@ onMounted(async () => {
     form.value.estado_puesto          = data.estado_puesto          || "OCUPADO"
     form.value.partida_individual     = data.partida_individual     || ""
     form.value.partida_presupuestaria = data.partida_presupuestaria || ""
-    form.value.acumula_fondos_reserva = data.acumula_fondos_reserva ?? 0
-    form.value.acumula_decimo_tercero = data.acumula_decimo_tercero ?? false
-    form.value.acumula_decimo_cuarto  = data.acumula_decimo_cuarto  ?? false
+    form.value.acumula_fondos_reserva   = data.acumula_fondos_reserva   ?? 0
+    form.value.acumula_decimos          = data.acumula_decimo_tercero   ?? false
+    form.value.modalidad_marcacion      = data.modalidad_marcacion      ?? 'PRESENCIAL'
   }
 })
 </script>

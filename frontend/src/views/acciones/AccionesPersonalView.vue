@@ -149,7 +149,7 @@ const estadoLabel = (a) => {
   if (a.estado === 'ANULADO') return 'Anulado'
   if (a.estado === 'FINALIZADO') return 'Finalizado'
   if (a.fecha_fin && a.fecha_fin.substring(0, 10) < hoy) return 'Vencido'
-  return 'Activo'
+  return 'Vigente'
 }
 
 const estadoClase = (a) => {

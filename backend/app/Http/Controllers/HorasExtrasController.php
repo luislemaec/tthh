@@ -479,6 +479,55 @@ class HorasExtrasController extends Controller
         return $pdf->download($filename);
     }
 
+    // GET /api/horas-extras/planificacion/{id}/pdf-registros
+    public function pdfRegistros(Request $request, $id)
+    {
+        $cab  = HePlanificacionCab::with(['empleado.departamento'])->findOrFail($id);
+        $emp  = $cab->empleado;
+        $user = $request->user();
+
+        if ($cab->id_emp !== $user->id_emp && !$this->esAdminOTH($user->id_emp)) {
+            return response()->json(['message' => 'Acceso no autorizado.'], 403);
+        }
+
+        $registros = HeRegistro::where('cab_id', $cab->id)->orderBy('fecha')->get();
+
+        $config = Configuracion::whereIn('concepto', [
+            'nombre_institucion',
+            'DIRECTOR_TALENTO_HUMANO',
+        ])->pluck('valor', 'concepto');
+
+        $logoPath   = public_path('logo.png');
+        $logoBase64 = file_exists($logoPath)
+            ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath))
+            : null;
+
+        $meses = [
+            1 => 'ENERO', 2 => 'FEBRERO', 3 => 'MARZO', 4 => 'ABRIL',
+            5 => 'MAYO', 6 => 'JUNIO', 7 => 'JULIO', 8 => 'AGOSTO',
+            9 => 'SEPTIEMBRE', 10 => 'OCTUBRE', 11 => 'NOVIEMBRE', 12 => 'DICIEMBRE',
+        ];
+
+        $supervisorEmp = Supervisor::where('id_depto', $emp->id_depto)->first();
+        $supervisorObj = $supervisorEmp ? Empleado::find($supervisorEmp->id_supervisor) : null;
+        $nombreSupervisor = $supervisorObj
+            ? strtoupper(($supervisorObj->apellido_emp ?? '') . ' ' . ($supervisorObj->nombre_emp ?? ''))
+            : ($config['DIRECTOR_TALENTO_HUMANO'] ?? '');
+
+        $pdf = Pdf::loadView('reportes.he_registros', [
+            'cab'             => $cab,
+            'emp'             => $emp,
+            'registros'       => $registros,
+            'config'          => $config,
+            'logo'            => $logoBase64,
+            'meses'           => $meses,
+            'nombreSupervisor' => $nombreSupervisor,
+        ])->setPaper('letter', 'portrait');
+
+        $filename = "horas_trabajadas_{$emp->apellido_emp}_{$emp->nombre_emp}_{$cab->anio}_{$cab->mes}.pdf";
+        return $pdf->download($filename);
+    }
+
     // POST /api/horas-extras/planificacion/{id}/subir-firmado
     public function subirFirmado(Request $request, $id)
     {

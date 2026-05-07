@@ -182,6 +182,7 @@ class AccionPersonalController extends Controller
         $config = Configuracion::whereIn("concepto", [
             "DIRECTOR_TALENTO_HUMANO",
             "PRESIDENTE_INSTITUCION",
+            "APROBADOR_ACCION_PERSONAL",
             "nombre_institucion",
             "PREFIJO_ACCION_PERSONAL",
         ])->pluck("valor", "concepto");

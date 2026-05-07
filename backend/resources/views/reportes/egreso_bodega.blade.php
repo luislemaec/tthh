@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: DejaVu Sans, sans-serif; font-size: 9px; color: #111; }
+  @page { margin: 12mm 20mm 12mm 20mm; }
+
+  table { border-collapse: collapse; width: 100%; }
+  td, th { vertical-align: middle; }
+
+  .header-table td { border: 1px solid #555; padding: 4px 8px; }
+  .header-title { text-align: center; font-size: 12px; font-weight: bold; text-transform: uppercase; }
+  .header-sub   { text-align: center; font-size: 10px; text-transform: uppercase; margin-top: 2px; }
+
+  .info-table { margin-top: 4px; }
+  .info-table td { border: 1px solid #555; padding: 4px 8px; }
+  .info-label { font-weight: bold; text-transform: uppercase; }
+
+  .det-table { margin-top: 8px; table-layout: fixed; }
+  .det-table th {
+    background-color: #808080;
+    color: #fff;
+    border: 1px solid #555;
+    padding: 5px 4px;
+    text-align: center;
+    font-size: 8px;
+    text-transform: uppercase;
+  }
+  .det-table td { border: 1px solid #555; padding: 4px; }
+
+  .totales-inner { float: right; width: 45%; border-collapse: collapse; }
+  .totales-inner td { border: 1px solid #555; padding: 4px 8px; }
+  .totales-label { font-weight: bold; text-align: right; font-size: 8px; text-transform: uppercase; background-color: #e5e7eb; }
+  .totales-valor { text-align: right; font-family: monospace; width: 90px; }
+  .totales-total { font-weight: bold; background-color: #d1d5db; }
+
+  .clearfix::after { content: ""; display: table; clear: both; }
+</style>
+</head>
+<body>
+
+{{-- ══ CABECERA ══ --}}
+<table class="header-table">
+  <tr>
+    <td style="width:18%; text-align:center; padding:6px;">
+      <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}"
+           style="height:96px; width:auto;" />
+    </td>
+    <td style="width:64%;">
+      <div class="header-title">Administración de Bienes</div>
+      <div class="header-sub">Egreso de Bodega</div>
+    </td>
+    <td style="width:18%;"></td>
+  </tr>
+</table>
+
+{{-- ══ DATOS DEL EGRESO ══ --}}
+@php
+  $meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  $fecha = $egreso->fecha_despacho ? \Carbon\Carbon::parse($egreso->fecha_despacho) : now();
+@endphp
+<table class="info-table" style="margin-top:4px;">
+  <tr>
+    <td style="width:50%;">
+      <span class="info-label">Secuencial Egreso No.:</span>
+      <strong style="font-size:13px;">&nbsp;{{ $egreso->numero_secuencial ?? $egreso->id }}</strong>
+    </td>
+    <td colspan="2">
+      <span class="info-label">eSBYE:</span>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="3">
+      <span class="info-label">Dirección:</span>
+      {{ strtoupper($egreso->direccion ?? '—') }}
+    </td>
+  </tr>
+  <tr>
+    <td colspan="3">
+      <span class="info-label">Servidor:</span>
+      {{ strtoupper($egreso->empleado_nombre ?? '—') }}
+    </td>
+  </tr>
+  <tr>
+    <td colspan="3">
+      <span class="info-label">Fecha de Registro:</span>
+      {{ $fecha->day }} de {{ $meses[$fecha->month - 1] }} de {{ $fecha->year }}
+    </td>
+  </tr>
+</table>
+
+{{-- ══ DETALLE ══ --}}
+<table class="det-table" style="margin-top:8px;">
+  <colgroup>
+    <col style="width:5%">
+    <col style="width:57%">
+    <col style="width:5%">
+    <col style="width:17%">
+    <col style="width:16%">
+  </colgroup>
+  <thead>
+    <tr>
+      <th>Ord.</th>
+      <th>Descripción</th>
+      <th>Cant.</th>
+      <th>Precio Unitario</th>
+      <th>Valor Total</th>
+    </tr>
+  </thead>
+  <tbody>
+    @foreach($egreso->detalles as $i => $det)
+    <tr>
+      <td style="text-align:center;">{{ $i + 1 }}</td>
+      <td style="text-transform:uppercase;">{{ $det->articulo->nombre }}</td>
+      <td style="text-align:center;">{{ intval($det->cantidad) == $det->cantidad ? intval($det->cantidad) : $det->cantidad }}</td>
+      <td style="text-align:right; font-family:monospace;">{{ number_format($det->precio_unitario, 5) }}</td>
+      <td style="text-align:right; font-family:monospace;">{{ number_format($det->subtotal, 2) }}</td>
+    </tr>
+    @endforeach
+    @for($i = count($egreso->detalles); $i < 3; $i++)
+    <tr><td style="height:16px;">&nbsp;</td><td></td><td></td><td></td><td></td></tr>
+    @endfor
+  </tbody>
+</table>
+
+{{-- ══ TOTALES + FIRMAS (misma fila) ══ --}}
+@php
+  $tarifa0  = $egreso->detalles->where('iva_porcentaje', 0)->sum('subtotal');
+  $tarifa15 = $egreso->detalles->where('iva_porcentaje', '>', 0)->sum('subtotal');
+@endphp
+<table style="width:100%; margin-top:0; border-collapse:collapse;">
+  <tr style="vertical-align:bottom;">
+    <td style="width:53%; padding-right:6px; vertical-align:bottom;">
+      <table style="width:100%; border-collapse:collapse;">
+        <tr>
+          <td style="border:1px solid #555; padding:36px 8px 4px 8px; text-align:center; width:50%;">&nbsp;</td>
+          <td style="border:1px solid #555; padding:36px 8px 4px 8px; text-align:center; width:50%;">
+            {{ strtoupper($egreso->empleado_nombre ?? '') }}
+          </td>
+        </tr>
+        <tr>
+          <td style="border:1px solid #555; padding:4px 8px; text-align:center; font-weight:bold;
+                     text-transform:uppercase; font-size:8px; background-color:#e5e7eb;">
+            Unidad de Bienes
+          </td>
+          <td style="border:1px solid #555; padding:4px 8px; text-align:center; font-weight:bold;
+                     text-transform:uppercase; font-size:8px; background-color:#e5e7eb;">
+            Servidor Requirente
+          </td>
+        </tr>
+      </table>
+    </td>
+    <td style="width:47%; vertical-align:bottom;">
+      <table style="width:100%; border-collapse:collapse;">
+        <tr>
+          <td class="totales-label">Subtotal</td>
+          <td class="totales-valor">{{ number_format($egreso->subtotal, 2) }}</td>
+        </tr>
+        <tr>
+          <td class="totales-label">Tarifa 0%</td>
+          <td class="totales-valor">{{ number_format($tarifa0, 2) }}</td>
+        </tr>
+        <tr>
+          <td class="totales-label">Tarifa 15%</td>
+          <td class="totales-valor">{{ number_format($tarifa15, 2) }}</td>
+        </tr>
+        <tr>
+          <td class="totales-label">15 % IVA</td>
+          <td class="totales-valor">{{ number_format($egreso->iva_valor, 2) }}</td>
+        </tr>
+        <tr>
+          <td class="totales-label totales-total">Total</td>
+          <td class="totales-valor totales-total">{{ number_format($egreso->total, 2) }}</td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+<p style="font-size:6.5pt; color:#555; text-align:right; margin-top:8px;">
+  Generado el: {{ now()->format('d/m/Y H:i') }} 
+</p>
+
+</body>
+</html>

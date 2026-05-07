@@ -59,7 +59,7 @@
   <tr>
     <td style="width:40%; border:1px solid #000; text-align:center; padding:6px; vertical-align:middle;">
       @if($logo)
-        <img src="{{ $logo }}" style="max-height:62px; max-width:95%;">
+        <img src="{{ $logo }}" style="max-height:124px; max-width:95%;">
       @else
         <div style="font-size:9pt; color:#777; padding:8px;">(LOGO INSTITUCIONAL)</div>
       @endif
@@ -184,15 +184,15 @@
   </div>
   <div style="font-size:7.5pt; margin-top:2px;">
     <b>* PRESENTÓ LA DECLARACIÓN JURADA</b> (número 2 del art. 3 RLOSEP) &nbsp;
-    SI <span class="{{ $declaracionSI ? 'cb cb-on' : 'cb' }}">{{ $declaracionSI ? 'X' : '&nbsp;' }}</span> &nbsp;&nbsp;
-    NO APLICA <span class="{{ !$declaracionSI ? 'cb cb-on' : 'cb' }}">{{ !$declaracionSI ? 'X' : '&nbsp;' }}</span>
+    SI <span class="{{ $declaracionSI ? 'cb cb-on' : 'cb' }}">{!! $declaracionSI ? 'X' : '&nbsp;' !!}</span> &nbsp;&nbsp;
+    NO APLICA <span class="{{ !$declaracionSI ? 'cb cb-on' : 'cb' }}">{!! !$declaracionSI ? 'X' : '&nbsp;' !!}</span>
   </div>
 </div>
 
 {{-- MOTIVACIÓN --}}
 <div style="border:1px solid #000; padding:3px 5px; margin-bottom:3px;">
   <div class="lbl">MOTIVACIÓN: <span style="font-weight:normal;">(adjuntar anexo si lo posee)</span></div>
-  <div style="min-height:52px; font-size:8pt; word-wrap:break-word; overflow:hidden; margin-top:2px; white-space:pre-wrap;">{{ $accion->motivacion ?? '' }}</div>
+  <div style="min-height:52px; font-size:8pt; word-wrap:break-word; overflow:hidden; margin-top:2px; white-space:pre-wrap; text-align:justify;">{{ $accion->motivacion ?? '' }}</div>
 </div>
 
 {{-- SITUACIÓN ACTUAL vs PROPUESTA --}}
@@ -277,13 +277,13 @@
         <div style="min-height:26px;"></div>
         <div style="font-size:7.5pt;">FIRMA: <span style="border-bottom:1px solid #000; display:inline-block; width:68%;">&nbsp;</span></div>
         <div style="font-size:7.5pt; margin-top:1px;">NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">{{ $config['DIRECTOR_TALENTO_HUMANO'] ?? '' }}</span></div>
-        <div style="font-size:7.5pt; margin-top:1px;">PUESTO: <span style="border-bottom:1px solid #000; display:inline-block; width:64%;">DIRECTOR DE ADMINISTRACIÓN DEL TALENTO HUMANO</span></div>
+        <div style="font-size:7.5pt; margin-top:1px;">PUESTO: <span style="border-bottom:1px solid #000; display:inline-block; width:64%;">DIRECTOR (A) DE ADMINISTRACIÓN DEL TALENTO HUMANO</span></div>
       </td>
       <td style="width:50%; padding:5px 6px; vertical-align:bottom;">
         <div class="lbl">AUTORIDAD NOMINADORA O SU DELEGADO</div>
         <div style="min-height:26px;"></div>
         <div style="font-size:7.5pt;">FIRMA: <span style="border-bottom:1px solid #000; display:inline-block; width:68%;">&nbsp;</span></div>
-        <div style="font-size:7.5pt; margin-top:1px;">NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">{{ $config['PRESIDENTE_INSTITUCION'] ?? '' }}</span></div>
+        <div style="font-size:7.5pt; margin-top:1px;">NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">{{ $config['APROBADOR_ACCION_PERSONAL'] ?? '' }}</span></div>
         <div style="font-size:7.5pt; margin-top:1px;">PUESTO: <span style="border-bottom:1px solid #000; display:inline-block; width:64%;">&nbsp;</span></div>
       </td>
     </tr>
@@ -348,13 +348,17 @@
           <div style="font-size:7.5pt; margin-top:2px;">PUESTO: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">{{ $creadorPuesto }}</span></div>
         </div>
       </td>
+      @php
+        $cargoAccion = strtoupper(trim($accion->actual_cargo ?? $accion->propuesto_cargo ?? ''));
+        $esDirectorTH = str_contains($cargoAccion, 'DIRECTOR') && str_contains($cargoAccion, 'TALENTO HUMANO');
+      @endphp
       <td style="width:33.3%; border-right:1px solid #000; padding:0; vertical-align:top;">
         <div class="gray" style="text-align:center; font-weight:bold; font-size:7.5pt; padding:2px; border-bottom:1px solid #000;">RESPONSABLE DE REVISIÓN</div>
         <div style="padding:5px 6px;">
           <div style="min-height:55px;"></div>
           <div style="font-size:7.5pt;">FIRMA: <span style="border-bottom:1px solid #000; display:inline-block; width:68%;">&nbsp;</span></div>
-          <div style="font-size:7.5pt; margin-top:2px;">NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">{{ $directorTH }}</span></div>
-          <div style="font-size:7.5pt; margin-top:2px;">PUESTO: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">DIRECTOR DE ADMINISTRACIÓN DEL TALENTO HUMANO</span></div>
+          <div style="font-size:7.5pt; margin-top:2px;">NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">{{ $esDirectorTH ? '' : $directorTH }}</span></div>
+          <div style="font-size:7.5pt; margin-top:2px;">PUESTO: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">{{ $esDirectorTH ? '' : 'DIRECTOR(A) DE ADMINISTRACIÓN DEL TALENTO HUMANO' }}</span></div>
         </div>
       </td>
       <td style="width:33.4%; padding:0; vertical-align:top;">
