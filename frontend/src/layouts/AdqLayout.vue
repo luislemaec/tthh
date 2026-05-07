@@ -118,7 +118,7 @@
           </svg>
         </button>
         <div class="flex items-center gap-4">
-          <span class="text-sm text-gray-600">{{ auth.empleado?.apellido_emp }} {{ auth.empleado?.nombre_emp }}</span>
+          <span class="text-sm text-gray-600">{{ auth.empleado?.apellido }} {{ auth.empleado?.nombre }}</span>
           <div class="w-9 h-9 rounded-full text-white flex items-center justify-center text-sm font-bold" style="background-color:#4a5e3a;">
             {{ iniciales }}
           </div>
@@ -225,8 +225,8 @@ watch(menuGrupos, (grupos) => {
 }, { immediate: true })
 
 const iniciales = computed(() => {
-  const a = auth.empleado?.apellido_emp?.[0] || ''
-  const n = auth.empleado?.nombre_emp?.[0] || ''
+  const a = auth.empleado?.apellido?.[0] || ''
+  const n = auth.empleado?.nombre?.[0] || ''
   return (a + n).toUpperCase()
 })
 
