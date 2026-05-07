@@ -194,7 +194,7 @@
   </tr>
 </table>
 <p style="font-size:6.5pt; color:#555; text-align:right; margin-top:8px;">
-  Generado el: {{ now()->format('d/m/Y H:i') }} &nbsp;<br>Generado por: {{ $generadoPor }}
+  Generado el: {{ now()->format('d/m/Y H:i') }} 
 </p>
 
 </body>
