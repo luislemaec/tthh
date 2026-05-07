@@ -44,7 +44,7 @@
 @endphp
 
 <div class="header">
-  <img src="data:image/png;base64,{{ $logoB64 }}" style="height:30px; margin-bottom:3px;" /><br>
+  <img src="data:image/png;base64,{{ $logoB64 }}" style="height:60px; margin-bottom:3px;" /><br>
   <div class="header-title">Consejo de Comunicación</div>
   <div class="header-sub">Reporte de Egresos Valorizados</div>
 </div>

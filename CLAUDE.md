@@ -253,6 +253,66 @@ layouts/MainLayout.vue  # Layout del módulo RRHH (menú colapsado, se abre el g
 
 ---
 
+## Módulo Nómina
+
+Rol: `TH NOMINA`. Flujo general: seleccionar mes/año → Calcular → BORRADOR → Cerrar → CERRADO. Un período CERRADO no se puede recalcular.
+
+### Tablas (`dbo.*`)
+
+| Tabla | Descripción |
+|---|---|
+| `nom_auditoria_log` | Log centralizado de auditoría (accion, datos_anteriores/nuevos JSONB, usuario, ip) |
+| `nom_decimo_tercero` | D13 mensual; unique(anio, mes, id_emp) |
+| `nom_sbu_historico` | SBU por año; unique(anio) — administrado desde Admin → SBU |
+| `nom_decimo_cuarto` | D14 mensual; unique(anio, mes, id_emp) |
+| `nom_fondos_reserva` | FR mensual; campo `tipo` MENSUAL/IESS; solo empleados con ≥1 año |
+| `nom_rol_pago_cab` | Cabecera rol de pagos; unique(anio, mes) |
+| `nom_rol_pago_det` | Detalle rol de pagos; unique(cab_id, id_emp) |
+
+### Controladores
+
+- `NominaController` — D13, D14, Fondos de Reserva, Consolidado, SBU
+- `RolPagoController` — Rol de Pagos
+
+### Reglas de negocio clave
+
+**¿Quiénes se calculan?**
+- D13: `acumula_decimo_tercero = false` (cobra mensualmente)
+- D14: `acumula_decimo_cuarto = false`
+- Fondos de Reserva: `acumula_fondos_reserva IN (1,2)` + `fecha_ingreso ≤ primer día del mes - 12 meses`
+- Rol de Pagos: todos los empleados ACTIVOS (depto ≠ 999)
+
+**Días proporcionales** (`calcularDiasEnMes`): ingreso antes del mes → 30 días; ingreso dentro del mes → `30 - día_ingreso + 1`; ingreso después del mes → 0 (excluido).
+
+**Fórmulas:**
+- D13: `(sueldo / 12 / 30) × dias`
+- D14: `(sbu / 12 / 30) × dias`
+- FR: `(sueldo × 8.33 / 100 / 30) × dias`
+- Rol: `valor_rmu = ROUND(sueldo × dias / 30, 2)`; `aporte_patronal/personal = ROUND(valor_rmu × pct / 100, 2)`
+
+**Tasas de aporte** (`dbo.d2_aportes_iess`): `modalidad` debe coincidir con `TRIM(tipo_contrato)` del empleado. Los % almacenados ya incluyen IECE y SECAP:
+- LOSEP: `aporte_individual = 11.45%`, `aporte_patronal = 9.65%`
+- CODIGO DEL TRABAJO: `aporte_individual = 9.45%`, `aporte_patronal = 12.15%`
+
+**Campos manuales en Rol de Pagos:** `quirografario`, `hipotecario`, `impuesto_renta`, `supa` — editables inline (click en celda) o importando CSV con columnas `cedula, quirografario, hipotecario, impuesto_renta`.
+
+### Vistas Frontend (`views/nomina/`)
+
+```
+DecimosView.vue       # Tabs: Décimo Tercero | Décimo Cuarto | Consolidado
+FondosReservaView.vue # Filtro tipo MENSUAL/IESS/Todos
+RolPagoView.vue       # Edición inline de 4 campos manuales + importar CSV + PDF landscape
+```
+
+Vista admin SBU: `views/admin/SbuView.vue` (ruta `admin/sbu`) — el SBU se gestiona aquí, NO en DecimoCuarto.
+
+### PDFs (`resources/views/reportes/`)
+
+- `nom_decimo_tercero.blade.php`, `nom_decimo_cuarto.blade.php`, `nom_fondos_reserva.blade.php`, `nom_consolidado.blade.php` — portrait letter
+- `nom_rol_pago.blade.php` — **landscape** letter, 7pt; % de aportes en encabezado de columna (no en cada fila)
+
+---
+
 ## Módulo Adquisiciones / Bienes
 
 ### Tablas principales (`adq.*`)

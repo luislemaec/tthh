@@ -59,7 +59,7 @@
   <tr>
     <td style="width:40%; border:1px solid #000; text-align:center; padding:6px; vertical-align:middle;">
       @if($logo)
-        <img src="{{ $logo }}" style="max-height:62px; max-width:95%;">
+        <img src="{{ $logo }}" style="max-height:124px; max-width:95%;">
       @else
         <div style="font-size:9pt; color:#777; padding:8px;">(LOGO INSTITUCIONAL)</div>
       @endif

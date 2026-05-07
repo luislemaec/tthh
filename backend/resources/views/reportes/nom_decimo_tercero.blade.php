@@ -43,7 +43,7 @@
   <tr>
     <td style="width:18%; text-align:center; vertical-align:middle;">
       @if($logo)
-        <img src="{{ $logo }}" style="max-height:55px; max-width:80px;">
+        <img src="{{ $logo }}" style="max-height:110px; max-width:160px;">
       @endif
     </td>
     <td style="text-align:center; vertical-align:middle;">
@@ -95,7 +95,7 @@
 </table>
 
 <p style="font-size:7.5pt; color:#555; margin-top:8px; text-align:right;">
-  Generado el {{ now()->format('d/m/Y H:i') }}
+  Generado el: {{ now()->format('d/m/Y H:i') }} &nbsp; <br>Generado por: {{ $generadoPor }}
 </p>
 
 </body>

@@ -46,7 +46,7 @@
   <tr>
     <td style="width:18%; text-align:center; padding:6px;">
       <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}"
-           style="height:48px; width:auto;" />
+           style="height:96px; width:auto;" />
     </td>
     <td style="width:64%;">
       <div class="header-title">Administración de Bienes</div>

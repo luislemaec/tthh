@@ -99,11 +99,17 @@
   }
 @endphp
 
-<div class="header">
-  <img src="data:image/png;base64,{{ $logoB64 }}" style="height:28px; margin-bottom:2px;" /><br>
-  <div class="header-title">Consejo de Comunicación</div>
-  <div class="header-sub">Tarjeta Kardex — Método Promedio Ponderado (NIC 2)</div>
-</div>
+<table style="width:100%; margin-bottom:5px; border-collapse:collapse;">
+  <tr>
+    <td style="width:15%; vertical-align:middle;">
+      <img src="data:image/png;base64,{{ $logoB64 }}" style="height:56px; width:auto;" />
+    </td>
+    <td style="text-align:center; vertical-align:middle;">
+      <div class="header-title">Consejo de Comunicación</div>
+      <div class="header-sub">Tarjeta Kardex — Método Promedio Ponderado (NIC 2)</div>
+    </td>
+  </tr>
+</table>
 
 <div class="info-block">
   <span class="info-row"><span class="label">Artículo:</span> [{{ $articulo->codigo }}] {{ $articulo->nombre }}</span>
