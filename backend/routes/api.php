@@ -19,6 +19,7 @@ use App\Http\Controllers\LiquidacionVacController;
 use App\Http\Controllers\HorasExtrasController;
 use App\Http\Controllers\NominaController;
 use App\Http\Controllers\RolPagoController;
+use App\Http\Controllers\TransporteController;
 use App\Http\Controllers\Adquisiciones\AdqDashboardController;
 use App\Http\Controllers\Adquisiciones\ProveedorController;
 use App\Http\Controllers\Adquisiciones\ArticuloController;
@@ -236,6 +237,24 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post('rol-pago/cerrar',            [RolPagoController::class, 'cerrar']);
         Route::post('rol-pago/importar',          [RolPagoController::class, 'importar']);
         Route::get('rol-pago/pdf',                [RolPagoController::class, 'pdf']);
+    });
+
+    // ── Transportes ───────────────────────────────────────────────────────────
+    Route::prefix('transporte')->group(function () {
+        Route::get('vehiculos',              [TransporteController::class, 'index']);
+        Route::post('vehiculos',             [TransporteController::class, 'store']);
+        Route::put('vehiculos/{id}',         [TransporteController::class, 'update']);
+        Route::get('conductores',            [TransporteController::class, 'conductores']);
+
+        Route::get('mantenimiento',          [TransporteController::class, 'indexMtto']);
+        Route::post('mantenimiento',         [TransporteController::class, 'storeMtto']);
+        Route::put('mantenimiento/{id}',     [TransporteController::class, 'updateMtto']);
+        Route::get('mantenimiento/{id}/pdf', [TransporteController::class, 'pdfMtto']);
+
+        Route::get('movilizacion',           [TransporteController::class, 'indexMov']);
+        Route::post('movilizacion',          [TransporteController::class, 'storeMov']);
+        Route::put('movilizacion/{id}',      [TransporteController::class, 'updateMov']);
+        Route::get('movilizacion/{id}/pdf',  [TransporteController::class, 'pdfMov']);
     });
 
     // ── Adquisiciones ─────────────────────────────────────────────────────────

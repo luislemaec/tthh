@@ -79,6 +79,18 @@ const routes = [
       { path: 'reportes/egresos',        name: 'AdqReporteEgresos',     component: () => import('@/views/adquisiciones/ReporteEgresosView.vue') },
     ],
   },
+  // ── Transportes ────────────────────────────────────────────────────────────
+  {
+    path: '/transporte',
+    component: () => import('@/layouts/TransporteLayout.vue'),
+    meta: { requiresAuth: true },
+    children: [
+      { path: '', redirect: '/transporte/movilizacion' },
+      { path: 'vehiculos',     name: 'TransVehiculos',     component: () => import('@/views/transporte/VehiculosView.vue') },
+      { path: 'mantenimiento', name: 'TransMantenimiento', component: () => import('@/views/transporte/MantenimientoView.vue') },
+      { path: 'movilizacion',  name: 'TransMovilizacion',  component: () => import('@/views/transporte/MovilizacionView.vue') },
+    ],
+  },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]
 

@@ -49,6 +49,22 @@
         </div>
       </button>
 
+      <!-- Transportes -->
+      <button v-if="tieneAccesoTransportes" @click="irA(rutaTransportes)"
+        class="bg-white rounded-2xl shadow-xl p-8 w-64 flex flex-col items-center gap-4 hover:scale-105 transition-transform cursor-pointer group">
+        <div class="w-16 h-16 rounded-full flex items-center justify-center"
+             style="background-color: #1e3a5f;">
+          <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+          </svg>
+        </div>
+        <div class="text-center">
+          <p class="font-bold text-gray-800 text-lg">Transportes</p>
+          <p class="text-gray-500 text-xs mt-1">Vehículos, mantenimiento, movilización</p>
+        </div>
+      </button>
+
       <!-- Solicitudes de materiales (todos los empleados) -->
       <button v-if="!tieneAccesoAdquisiciones" @click="irA('/adquisiciones/solicitudes')"
         class="bg-white rounded-2xl shadow-xl p-8 w-64 flex flex-col items-center gap-4 hover:scale-105 transition-transform cursor-pointer group">
@@ -69,7 +85,7 @@
 
     <!-- Info usuario -->
     <div class="mt-10 text-center text-green-200 text-sm">
-      <p>{{ store.empleado?.apellido_emp }} {{ store.empleado?.nombre_emp }}</p>
+      <p>{{ store.empleado?.apellido }} {{ store.empleado?.nombre }}</p>
       <button @click="logout" class="mt-2 text-green-300 hover:text-white underline text-xs">
         Cerrar sesión
       </button>
@@ -78,7 +94,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/services/api'
@@ -88,6 +104,16 @@ const store  = useAuthStore()
 const alertasStock = ref(0)
 
 const tieneAccesoAdquisiciones = store.tieneAdquisiciones
+
+const tieneAccesoTransportes = computed(() =>
+  store.tieneRol('TRANSPORTE') || store.tieneRol('CONDUCTOR') ||
+  !!store.empleado?.puede_solicitar_vehiculo
+)
+
+const rutaTransportes = computed(() => {
+  if (store.tieneRol('TRANSPORTE')) return '/transporte/vehiculos'
+  return '/transporte/movilizacion'
+})
 
 onMounted(async () => {
   try {
