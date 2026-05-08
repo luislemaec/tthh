@@ -25,6 +25,7 @@ class Empleado extends Authenticatable
         "partida_individual", "partida_presupuestaria", "estado_puesto",
         "grupo_ocupacional", "proceso_institucional",
         "acumula_fondos_reserva", "acumula_decimo_tercero", "acumula_decimo_cuarto",
+        "puede_solicitar_vehiculo",
     ];
 
     protected $hidden = ["password", "clave"];

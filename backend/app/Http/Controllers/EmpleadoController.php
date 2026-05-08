@@ -183,9 +183,10 @@ class EmpleadoController extends Controller
             "estado_puesto"         => $request->estado_puesto           ?? $emp->estado_puesto,
             "grupo_ocupacional"     => $request->grupo_ocupacional       ?? $emp->grupo_ocupacional,
             "proceso_institucional" => $request->proceso_institucional   ?? $emp->proceso_institucional,
-            "acumula_fondos_reserva"  => $request->acumula_fondos_reserva  ?? $emp->acumula_fondos_reserva,
-            "acumula_decimo_tercero"  => $request->acumula_decimo_tercero  ?? $emp->acumula_decimo_tercero,
-            "acumula_decimo_cuarto"   => $request->acumula_decimo_cuarto   ?? $emp->acumula_decimo_cuarto,
+            "acumula_fondos_reserva"    => $request->acumula_fondos_reserva    ?? $emp->acumula_fondos_reserva,
+            "acumula_decimo_tercero"    => $request->acumula_decimo_tercero    ?? $emp->acumula_decimo_tercero,
+            "acumula_decimo_cuarto"     => $request->acumula_decimo_cuarto     ?? $emp->acumula_decimo_cuarto,
+            "puede_solicitar_vehiculo"  => $request->boolean('puede_solicitar_vehiculo', $emp->puede_solicitar_vehiculo ?? false),
         ]);
 
         // Actualizar email

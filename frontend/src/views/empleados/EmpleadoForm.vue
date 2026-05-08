@@ -223,6 +223,13 @@
             </p>
           </div>
         </div>
+        <div class="flex items-center gap-3 pt-1">
+          <input id="puede_solicitar_vehiculo" type="checkbox" v-model="form.puede_solicitar_vehiculo"
+            class="w-4 h-4 rounded accent-[#1e3a5f]" />
+          <label for="puede_solicitar_vehiculo" class="text-sm text-gray-700 select-none cursor-pointer">
+            Puede solicitar vehículo institucional
+          </label>
+        </div>
       </div>
 
       <!-- Error -->
@@ -338,6 +345,7 @@ const form = ref({
   acumula_fondos_reserva:    0,
   acumula_decimos:           false,
   modalidad_marcacion:       'PRESENCIAL',
+  puede_solicitar_vehiculo:  false,
 })
 
 const guardar = async () => {
@@ -370,6 +378,7 @@ const guardar = async () => {
       acumula_decimo_tercero:   form.value.acumula_decimos,
       acumula_decimo_cuarto:    form.value.acumula_decimos,
       modalidad_marcacion:      form.value.modalidad_marcacion,
+      puede_solicitar_vehiculo: form.value.puede_solicitar_vehiculo,
     }
 
     if (esEdicion.value) {
@@ -427,6 +436,7 @@ onMounted(async () => {
     form.value.acumula_fondos_reserva   = data.acumula_fondos_reserva   ?? 0
     form.value.acumula_decimos          = data.acumula_decimo_tercero   ?? false
     form.value.modalidad_marcacion      = data.modalidad_marcacion      ?? 'PRESENCIAL'
+    form.value.puede_solicitar_vehiculo = data.puede_solicitar_vehiculo ?? false
   }
 })
 </script>
