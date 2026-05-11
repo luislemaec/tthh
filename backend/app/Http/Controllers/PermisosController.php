@@ -28,18 +28,29 @@ class PermisosController extends Controller
             ->exists();
     }
 
-    // Obtener IDs de empleados que supervisa
+    // Obtener IDs de empleados que supervisa (incluyendo supervisores de depts hijos)
     private function empleadosDeSupervisor($id_supervisor)
     {
-        // Obtener departamentos que supervisa
         $deptos = Supervisor::where("id_supervisor", $id_supervisor)
             ->pluck("id_depto");
 
-        // Obtener empleados de esos departamentos
-        return Empleado::whereIn("id_depto", $deptos)
+        // Empleados directos en los departamentos supervisados
+        $empleadosDirectos = Empleado::whereIn("id_depto", $deptos)
             ->where("estado", "ACTIVO")
             ->where("id_emp", "!=", $id_supervisor)
             ->pluck("id_emp");
+
+        // Supervisores de departamentos hijos de los supervisados
+        // (ej: coordinador ve al director, presidencia ve al coordinador)
+        $deptosHijos = DB::table("dbo.ad_departamento")
+            ->whereIn("padre_id", $deptos)
+            ->pluck("id_depto");
+
+        $supervisoresHijos = Supervisor::whereIn("id_depto", $deptosHijos)
+            ->where("id_supervisor", "!=", $id_supervisor)
+            ->pluck("id_supervisor");
+
+        return $empleadosDirectos->merge($supervisoresHijos)->unique()->values();
     }
 
     // Listar permisos
@@ -55,9 +66,8 @@ class PermisosController extends Controller
         if ($esAdminOTH) {
             // Admin y TH ven todos
         } elseif ($esSupervisor) {
-            // Supervisor ve sus propios permisos + pendientes de sus empleados
-            $deptos = Supervisor::where("id_supervisor", $emp->id_emp)->pluck("id_depto");
-            $empleados = Empleado::whereIn("id_depto", $deptos)->where("estado", "ACTIVO")->where("id_emp", "!=", $emp->id_emp)->pluck("id_emp");
+            // Supervisor ve sus propios permisos + los de sus empleados (incluyendo supervisores de depts hijos)
+            $empleados = $this->empleadosDeSupervisor($emp->id_emp);
             $query->where(function($q) use ($emp, $empleados) {
                 $q->where("id_emp", $emp->id_emp)
                   ->orWhere(function($q2) use ($empleados) {
