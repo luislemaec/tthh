@@ -13,6 +13,7 @@ class Mantenimiento extends Model
         'vehiculo_id', 'tipo', 'descripcion', 'id_emp_conductor', 'estado',
         'taller', 'fecha_orden', 'numero_orden', 'observacion_responsable',
         'fecha_finalizacion', 'id_emp_responsable',
+        'motivo_negacion', 'fecha_negacion', 'usuario_negacion',
     ];
 
     public function vehiculo()

@@ -51,6 +51,10 @@
             class="text-xs text-blue-700 hover:text-blue-900 font-medium border border-blue-300 px-3 py-1 rounded-lg">
             Generar orden
           </button>
+          <button v-if="esTransporte && m.estado === 'PENDIENTE'" @click="abrirNegar(m)"
+            class="text-xs text-red-600 hover:text-red-800 font-medium border border-red-200 px-3 py-1 rounded-lg">
+            Negar
+          </button>
           <button v-if="esTransporte && m.estado === 'ORDEN_GENERADA'" @click="cambiarEstado(m.id, 'en_taller')"
             class="text-xs text-amber-700 hover:text-amber-900 font-medium border border-amber-300 px-3 py-1 rounded-lg">
             En taller
@@ -122,6 +126,9 @@
               <tr v-if="modalVer.m.observacion_responsable" class="border-b">
                 <td class="py-2 font-semibold text-gray-500">Observación</td>
                 <td class="py-2">{{ modalVer.m.observacion_responsable }}</td></tr>
+              <tr v-if="modalVer.m.motivo_negacion" class="border-b">
+                <td class="py-2 font-semibold text-gray-500">Motivo negación</td>
+                <td class="py-2 text-red-700">{{ modalVer.m.motivo_negacion }}</td></tr>
               <tr v-if="modalVer.m.fecha_finalizacion" class="border-b">
                 <td class="py-2 font-semibold text-gray-500">Fecha Fin</td>
                 <td class="py-2">{{ formatFechaCorta(modalVer.m.fecha_finalizacion) }}</td></tr>
@@ -183,11 +190,8 @@
     <div v-if="modalOrden.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
         <h2 class="text-lg font-bold text-gray-800 mb-4">Generar Orden de Trabajo</h2>
+        <p class="text-xs text-gray-400 mb-3 -mt-2">El número de orden se asigna automáticamente (OT-YYYY-NNNN).</p>
         <div class="space-y-3">
-          <div>
-            <label class="block text-xs font-semibold text-gray-600 mb-1">N° Orden *</label>
-            <input v-model="formOrden.numero_orden" class="w-full border rounded-lg px-3 py-2 text-sm" />
-          </div>
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1">Taller *</label>
             <input v-model="formOrden.taller" class="w-full border rounded-lg px-3 py-2 text-sm"
@@ -211,6 +215,28 @@
             class="px-5 py-2 text-sm text-white rounded-lg hover:opacity-90 disabled:opacity-50"
             style="background-color:#1e3a5f;">
             {{ guardando ? 'Guardando...' : 'Generar' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Negar -->
+    <div v-if="modalNegar.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+        <h2 class="text-lg font-bold text-gray-800 mb-4">Negar Requerimiento</h2>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Motivo de negación *</label>
+          <textarea v-model="formNegar.motivo_negacion" rows="3"
+            class="w-full border rounded-lg px-3 py-2 text-sm resize-none"
+            placeholder="Indique el motivo por el que no procede el requerimiento..."></textarea>
+        </div>
+        <p v-if="errorNegar" class="text-red-600 text-sm mt-3">{{ errorNegar }}</p>
+        <div class="flex justify-end gap-2 mt-5">
+          <button @click="modalNegar.show = false"
+            class="px-4 py-2 text-sm text-gray-600 border rounded-lg">Cancelar</button>
+          <button @click="guardarNegar" :disabled="guardando"
+            class="px-5 py-2 text-sm text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50">
+            {{ guardando ? 'Negando...' : 'Negar' }}
           </button>
         </div>
       </div>
@@ -279,15 +305,18 @@ const listaPaginada = computed(() => {
   return listaFiltrada.value.slice(ini, ini + porPagina.value)
 })
 
-const modalVer      = ref({ show: false, m: null })
-const modalCrear    = ref({ show: false })
-const modalOrden    = ref({ show: false, id: null })
+const modalVer       = ref({ show: false, m: null })
+const modalCrear     = ref({ show: false })
+const modalOrden     = ref({ show: false, id: null })
+const modalNegar     = ref({ show: false, id: null })
 const modalFinalizar = ref({ show: false, id: null })
-const formCrear     = ref({})
-const formOrden     = ref({})
-const formFinalizar = ref({})
-const errorCrear    = ref('')
-const errorOrden    = ref('')
+const formCrear      = ref({})
+const formOrden      = ref({})
+const formNegar      = ref({})
+const formFinalizar  = ref({})
+const errorCrear     = ref('')
+const errorOrden     = ref('')
+const errorNegar     = ref('')
 const errorFinalizar = ref('')
 
 function estadoBadge(e) {
@@ -295,11 +324,14 @@ function estadoBadge(e) {
   if (e === 'ORDEN_GENERADA') return 'bg-blue-100 text-blue-700'
   if (e === 'EN_TALLER')      return 'bg-orange-100 text-orange-700'
   if (e === 'FINALIZADO')     return 'bg-green-100 text-green-700'
+  if (e === 'NEGADO')         return 'bg-red-100 text-red-700'
   return 'bg-gray-100 text-gray-600'
 }
 function estadoLabel(e) {
   if (e === 'ORDEN_GENERADA') return 'Orden generada'
   if (e === 'EN_TALLER')      return 'En taller'
+  if (e === 'NEGADO')         return 'Negado'
+  if (e === 'FINALIZADO')     return 'Finalizado'
   return e.charAt(0) + e.slice(1).toLowerCase()
 }
 function formatFecha(dt) {
@@ -328,9 +360,15 @@ function abrirCrear() {
   modalCrear.value = { show: true }
 }
 
+function abrirNegar(m) {
+  formNegar.value = { motivo_negacion: '' }
+  errorNegar.value = ''
+  modalNegar.value = { show: true, id: m.id }
+}
+
 function abrirOrden(m) {
   const hoy = new Date().toISOString().slice(0, 10)
-  formOrden.value = { numero_orden: '', taller: '', fecha_orden: hoy, observacion_responsable: '' }
+  formOrden.value = { taller: '', fecha_orden: hoy, observacion_responsable: '' }
   errorOrden.value = ''
   modalOrden.value = { show: true, id: m.id }
 }
@@ -351,6 +389,23 @@ async function guardarCrear() {
     await cargar()
   } catch (e) {
     errorCrear.value = e.response?.data?.message || 'Error al enviar'
+  } finally { guardando.value = false }
+}
+
+async function guardarNegar() {
+  if (!formNegar.value.motivo_negacion?.trim()) {
+    errorNegar.value = 'Indique el motivo de negación'
+    return
+  }
+  errorNegar.value = ''
+  guardando.value = true
+  try {
+    await api.put(`/transporte/mantenimiento/${modalNegar.value.id}`,
+      { accion: 'negar', ...formNegar.value })
+    modalNegar.value.show = false
+    await cargar()
+  } catch (e) {
+    errorNegar.value = e.response?.data?.message || 'Error al negar'
   } finally { guardando.value = false }
 }
 

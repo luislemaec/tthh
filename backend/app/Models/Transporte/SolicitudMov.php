@@ -14,6 +14,7 @@ class SolicitudMov extends Model
         'hora_retorno', 'lugar_salida', 'lugar_destino', 'num_personas',
         'estado', 'vehiculo_id', 'id_emp_conductor', 'observacion',
         'km_salida', 'km_retorno', 'hoja_ruta_observacion', 'fecha_completado',
+        'id_emp_responsable', 'fecha_aprobacion', 'fecha_negacion',
     ];
 
     public function solicitante()
@@ -29,5 +30,10 @@ class SolicitudMov extends Model
     public function vehiculo()
     {
         return $this->belongsTo(Vehiculo::class, 'vehiculo_id');
+    }
+
+    public function responsable()
+    {
+        return $this->belongsTo(Empleado::class, 'id_emp_responsable', 'id_emp');
     }
 }

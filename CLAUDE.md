@@ -4,9 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Sistema de Gestión para el Consejo de Comunicación (Ecuador) con dos módulos:
+Sistema de Gestión para el Consejo de Comunicación (Ecuador) con tres módulos:
 1. **Talento Humano** — empleados, asistencia, permisos, vacaciones, acciones de personal
 2. **Adquisiciones/Bienes** — inventario, ingresos, egresos, kardex, reportes
+3. **Transportes** — vehículos institucionales, mantenimiento, solicitudes de movilización
 
 - **Backend:** Laravel 12 (PHP 8.4), PostgreSQL, Laravel Sanctum, DomPDF
 - **Frontend:** Vue 3 (Composition API), Pinia, Vue Router 5, Tailwind CSS 4, Axios, Vite 7
@@ -41,7 +42,7 @@ Después de cualquier cambio: Push → Pull en servidor → `npm run build` (sol
 
 ## Roles
 
-Cinco roles: `ADMINISTRADOR`, `TALENTO HUMANO`, `SUPERVISOR`, `ADQUISICIONES`, `BIENES`. Empleados sin rol = acceso básico.
+Roles: `ADMINISTRADOR`, `TALENTO HUMANO`, `SUPERVISOR`, `ADQUISICIONES`, `BIENES`, `TRANSPORTE`, `CONDUCTOR`. Empleados sin rol = acceso básico.
 - Backend: `DB::table('dbo.admin_usuario_rol')` — sin Laravel policies/gates
 - Frontend: `auth.tieneRol('NOMBRE')` desde Pinia store
 - Menú filtrado por rol desde `dbo.admin_opcion`
@@ -430,6 +431,72 @@ views/adquisiciones/
 layouts/AdqLayout.vue         # Layout verde, roles ADQUISICIONES/BIENES
                               # Menú colapsado por defecto, auto-abre el grupo de la ruta activa
 ```
+
+---
+
+## Módulo Transportes
+
+Layout azul oscuro (`#1e3a5f`), separado de TH y Adquisiciones. Tarjeta en el launcher.
+
+### Roles
+| Rol | Acceso |
+|---|---|
+| `TRANSPORTE` | Todo: vehículos, mantenimiento, movilización (gestión completa) |
+| `CONDUCTOR` | Mantenimiento (crear requerimientos) + movilización (ver asignadas, llenar hoja de ruta) |
+| Sin rol especial | Solo movilización si `puede_solicitar_vehiculo = true` en `ad_empleado` |
+
+Combinación recomendada: EMPLEADO + TRANSPORTE o EMPLEADO + CONDUCTOR.
+
+### Tablas (`dbo.*`)
+
+| Tabla | Descripción |
+|---|---|
+| `trans_vehiculo` | Catálogo de vehículos; estado ACTIVO/INACTIVO/MANTENIMIENTO |
+| `trans_mantenimiento` | Requerimientos de mantenimiento; estados PENDIENTE→ORDEN_GENERADA→EN_TALLER→FINALIZADO |
+| `trans_solicitud_mov` | Solicitudes de movilización; estados PENDIENTE→APROBADO/NEGADO→COMPLETADO |
+
+Campo adicional en `ad_empleado`: `puede_solicitar_vehiculo BOOLEAN DEFAULT false`.
+
+### Flujos
+
+**Mantenimiento:** conductor crea requerimiento → TRANSPORTE genera orden de trabajo (taller + N° orden + fecha) → EN_TALLER → FINALIZAR (actualiza km del vehículo). PDF disponible desde ORDEN_GENERADA.
+
+**Movilización:** empleado autorizado solicita → TRANSPORTE aprueba (asigna vehículo + conductor, valida conflicto de horario) o niega → conductor llena hoja de ruta (km_salida, km_retorno) → COMPLETADO (actualiza km del vehículo). PDF disponible desde APROBADO.
+
+### Controlador y Rutas
+
+`TransporteController` — rutas bajo `/api/transporte/*`:
+- `GET/POST /vehiculos`, `PUT /vehiculos/{id}`
+- `GET/POST /mantenimiento`, `PUT /mantenimiento/{id}`, `GET /mantenimiento/{id}/pdf`
+- `GET/POST /movilizacion`, `PUT /movilizacion/{id}`, `GET /movilizacion/{id}/pdf`
+- `GET /conductores` — lista empleados con rol CONDUCTOR (para selectores)
+
+`PUT` con campo `accion`: `orden` / `en_taller` / `finalizar` (mantenimiento); `aprobar` / `negar` / `hoja_ruta` (movilización).
+
+### PDFs
+
+- `trans_orden_trabajo.blade.php` — portrait letter, secciones: vehículo, requerimiento, orden, firmas (conductor/responsable/taller)
+- `trans_orden_movilizacion.blade.php` — portrait letter, secciones: solicitud, vehículo+conductor, hoja de ruta (solo si COMPLETADO), firmas
+
+### Vistas Frontend
+
+```
+views/transporte/
+  VehiculosView.vue      # CRUD vehículos, solo rol TRANSPORTE
+  MantenimientoView.vue  # Conductor crea; TRANSPORTE gestiona estados y genera PDF
+  MovilizacionView.vue   # Empleado solicita; TRANSPORTE aprueba/niega; conductor llena hoja de ruta
+layouts/TransporteLayout.vue  # Menú dinámico desde auth.menuAgrupado filtrado a transporte/
+```
+
+`MainLayout.vue` excluye `transporte/` y `adquisiciones/` de su menú. `LauncherView.vue` muestra tarjeta Transportes si tiene rol TRANSPORTE, CONDUCTOR, o `puede_solicitar_vehiculo`.
+
+### Opciones de menú a configurar en Admin
+
+| URL | Roles |
+|---|---|
+| `transporte/vehiculos` | TRANSPORTE |
+| `transporte/mantenimiento` | TRANSPORTE, CONDUCTOR |
+| `transporte/movilizacion` | TRANSPORTE, CONDUCTOR |
 
 ---
 

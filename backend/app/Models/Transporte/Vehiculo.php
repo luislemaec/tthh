@@ -10,7 +10,7 @@ class Vehiculo extends Model
 
     protected $fillable = [
         'placa', 'marca', 'modelo', 'anio', 'chasis',
-        'color', 'kilometraje_actual', 'estado',
+        'color', 'kilometraje_actual', 'estado', 'numero_motor',
     ];
 
     public function mantenimientos()

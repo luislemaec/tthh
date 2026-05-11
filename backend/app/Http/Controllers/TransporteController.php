@@ -50,11 +50,12 @@ class TransporteController extends Controller
             'anio'               => 'required|integer|min:1990|max:2100',
             'chasis'             => 'nullable|string|max:50',
             'color'              => 'nullable|string|max:30',
+            'numero_motor'       => 'nullable|string|max:50',
             'kilometraje_actual' => 'required|integer|min:0',
         ]);
 
         $vehiculo = Vehiculo::create($request->only([
-            'placa', 'marca', 'modelo', 'anio', 'chasis', 'color', 'kilometraje_actual',
+            'placa', 'marca', 'modelo', 'anio', 'chasis', 'color', 'numero_motor', 'kilometraje_actual',
         ]));
 
         return response()->json($vehiculo, 201);
@@ -71,12 +72,13 @@ class TransporteController extends Controller
             'anio'               => 'required|integer|min:1990|max:2100',
             'chasis'             => 'nullable|string|max:50',
             'color'              => 'nullable|string|max:30',
+            'numero_motor'       => 'nullable|string|max:50',
             'kilometraje_actual' => 'required|integer|min:0',
             'estado'             => 'required|in:ACTIVO,INACTIVO,MANTENIMIENTO',
         ]);
 
         $vehiculo->update($request->only([
-            'placa', 'marca', 'modelo', 'anio', 'chasis', 'color', 'kilometraje_actual', 'estado',
+            'placa', 'marca', 'modelo', 'anio', 'chasis', 'color', 'numero_motor', 'kilometraje_actual', 'estado',
         ]));
 
         return response()->json($vehiculo);
@@ -123,17 +125,30 @@ class TransporteController extends Controller
 
         if ($accion === 'orden') {
             $request->validate([
-                'taller'       => 'required|string|max:100',
-                'numero_orden' => 'required|string|max:20',
-                'fecha_orden'  => 'required|date',
+                'taller'      => 'required|string|max:100',
+                'fecha_orden' => 'required|date',
             ]);
+            // Número de orden secuencial: OT-YYYY-NNNN
+            $anio = date('Y');
+            $seq  = Mantenimiento::whereNotNull('numero_orden')
+                ->whereRaw("EXTRACT(YEAR FROM created_at) = ?", [$anio])
+                ->count() + 1;
+            $numero_orden = 'OT-' . $anio . '-' . str_pad($seq, 4, '0', STR_PAD_LEFT);
+
             $m->update([
                 'taller'                 => $request->taller,
-                'numero_orden'           => $request->numero_orden,
+                'numero_orden'           => $numero_orden,
                 'fecha_orden'            => $request->fecha_orden,
                 'observacion_responsable'=> $request->observacion_responsable,
                 'id_emp_responsable'     => $this->emp($request)->id_emp,
                 'estado'                 => 'ORDEN_GENERADA',
+            ]);
+        } elseif ($accion === 'negar') {
+            $m->update([
+                'estado'           => 'NEGADO',
+                'motivo_negacion'  => $request->motivo_negacion,
+                'fecha_negacion'   => now(),
+                'usuario_negacion' => $this->emp($request)->id_emp,
             ]);
         } elseif ($accion === 'en_taller') {
             $m->update(['estado' => 'EN_TALLER']);
@@ -240,14 +255,21 @@ class TransporteController extends Controller
             }
 
             $s->update([
-                'estado'           => 'APROBADO',
-                'vehiculo_id'      => $request->vehiculo_id,
-                'id_emp_conductor' => $request->id_emp_conductor,
-                'observacion'      => $request->observacion,
+                'estado'             => 'APROBADO',
+                'vehiculo_id'        => $request->vehiculo_id,
+                'id_emp_conductor'   => $request->id_emp_conductor,
+                'observacion'        => $request->observacion,
+                'id_emp_responsable' => $this->emp($request)->id_emp,
+                'fecha_aprobacion'   => now(),
             ]);
 
         } elseif ($accion === 'negar') {
-            $s->update(['estado' => 'NEGADO', 'observacion' => $request->observacion]);
+            $s->update([
+                'estado'             => 'NEGADO',
+                'observacion'        => $request->observacion,
+                'id_emp_responsable' => $this->emp($request)->id_emp,
+                'fecha_negacion'     => now(),
+            ]);
 
         } elseif ($accion === 'hoja_ruta') {
             $request->validate([
