@@ -155,8 +155,8 @@ class SolicitudMaterialController extends Controller
     public function despachar(Request $request, $id)
     {
         $emp = $request->user();
-        if (!$this->esRol($emp->id_emp, 'BIENES')) {
-            return response()->json(['message' => 'Solo la unidad de Bienes puede despachar.'], 403);
+        if (!$this->esRol($emp->id_emp, 'BIENES') && !$this->esRol($emp->id_emp, 'ADQUISICIONES')) {
+            return response()->json(['message' => 'No tiene permiso para despachar.'], 403);
         }
 
         $request->validate([
