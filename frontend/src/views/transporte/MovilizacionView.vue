@@ -59,11 +59,10 @@
             class="text-xs text-amber-700 hover:text-amber-900 font-medium border border-amber-300 px-3 py-1 rounded-lg">
             Hoja de ruta
           </button>
-          <a v-if="s.estado === 'APROBADO' || s.estado === 'COMPLETADO'"
-            :href="`${apiBase}/transporte/movilizacion/${s.id}/pdf`" target="_blank"
+          <button v-if="s.estado === 'APROBADO' || s.estado === 'COMPLETADO'" @click="verPdf(s.id)"
             class="text-xs text-red-600 hover:text-red-800 font-medium border border-red-200 px-3 py-1 rounded-lg">
             PDF
-          </a>
+          </button>
         </div>
       </div>
     </div>
@@ -327,8 +326,6 @@ const puedeCrear   = computed(() =>
   auth.empleado?.puede_solicitar_vehiculo || esTransporte.value
 )
 
-const apiBase = import.meta.env.VITE_API_URL?.replace('/api', '') || ''
-
 const lista      = ref([])
 const vehiculosActivos = ref([])
 const conductores = ref([])
@@ -459,6 +456,18 @@ async function guardarHojaRuta() {
   } catch (e) {
     errorHojaRuta.value = e.response?.data?.message || 'Error al completar'
   } finally { guardando.value = false }
+}
+
+async function verPdf(id) {
+  try {
+    const { data } = await api.get(`/transporte/movilizacion/${id}/pdf`, { responseType: 'blob' })
+    const url  = window.URL.createObjectURL(new Blob([data], { type: 'application/pdf' }))
+    const link = document.createElement('a')
+    link.href = url
+    link.target = '_blank'
+    link.click()
+    window.URL.revokeObjectURL(url)
+  } catch {}
 }
 
 onMounted(cargar)

@@ -63,10 +63,10 @@
             class="text-xs text-green-700 hover:text-green-900 font-medium border border-green-300 px-3 py-1 rounded-lg">
             Finalizar
           </button>
-          <a v-if="m.numero_orden" :href="`${apiBase}/transporte/mantenimiento/${m.id}/pdf`" target="_blank"
+          <button v-if="m.numero_orden" @click="verPdf(m.id)"
             class="text-xs text-red-600 hover:text-red-800 font-medium border border-red-200 px-3 py-1 rounded-lg">
             PDF
-          </a>
+          </button>
         </div>
       </div>
     </div>
@@ -287,8 +287,6 @@ const auth = useAuthStore()
 const esTransporte = computed(() => auth.tieneRol('TRANSPORTE'))
 const esConductor  = computed(() => auth.tieneRol('CONDUCTOR') || esTransporte.value)
 
-const apiBase = import.meta.env.VITE_API_URL?.replace('/api', '') || ''
-
 const lista      = ref([])
 const vehiculos  = ref([])
 const pagina     = ref(1)
@@ -440,6 +438,18 @@ async function guardarFinalizar() {
   } catch (e) {
     errorFinalizar.value = e.response?.data?.message || 'Error al finalizar'
   } finally { guardando.value = false }
+}
+
+async function verPdf(id) {
+  try {
+    const { data } = await api.get(`/transporte/mantenimiento/${id}/pdf`, { responseType: 'blob' })
+    const url  = window.URL.createObjectURL(new Blob([data], { type: 'application/pdf' }))
+    const link = document.createElement('a')
+    link.href = url
+    link.target = '_blank'
+    link.click()
+    window.URL.revokeObjectURL(url)
+  } catch {}
 }
 
 onMounted(cargar)
