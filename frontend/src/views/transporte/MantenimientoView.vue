@@ -445,11 +445,15 @@ async function verPdf(id) {
     const { data } = await api.get(`/transporte/mantenimiento/${id}/pdf`, { responseType: 'blob' })
     const url  = window.URL.createObjectURL(new Blob([data], { type: 'application/pdf' }))
     const link = document.createElement('a')
-    link.href = url
-    link.target = '_blank'
+    link.href  = url
+    link.setAttribute('download', `orden_trabajo_${id}.pdf`)
+    document.body.appendChild(link)
     link.click()
+    link.remove()
     window.URL.revokeObjectURL(url)
-  } catch {}
+  } catch (e) {
+    alert('Error al generar el PDF: ' + (e.response?.data?.message || e.message))
+  }
 }
 
 onMounted(cargar)
