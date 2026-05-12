@@ -13,7 +13,8 @@ return Application::configure(basePath: dirname(__DIR__))
         __DIR__.'/../app/Console/Commands',
     ])
     ->withMiddleware(function (Middleware $middleware) {
-        //
+        // Apache corre en localhost → leer X-Forwarded-For para obtener la IP real del cliente
+        $middleware->trustProxies(at: '127.0.0.1');
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
