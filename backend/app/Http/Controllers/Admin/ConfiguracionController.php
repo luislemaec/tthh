@@ -27,6 +27,8 @@ class ConfiguracionController extends Controller
         $config->update([
             "valor"       => $request->valor,
             "descripcion" => $request->descripcion,
+            "updated_at"  => now(),
+            "updated_by"  => $request->user()->id_emp,
         ]);
 
         return response()->json($config);
@@ -52,6 +54,10 @@ class ConfiguracionController extends Controller
             "concepto"    => $request->concepto,
             "valor"       => $request->valor,
             "descripcion" => $request->descripcion,
+            "created_at"  => now(),
+            "created_by"  => $request->user()->id_emp,
+            "updated_at"  => now(),
+            "updated_by"  => $request->user()->id_emp,
         ]);
 
         return response()->json($config, 201);

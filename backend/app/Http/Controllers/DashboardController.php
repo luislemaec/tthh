@@ -70,6 +70,60 @@ class DashboardController extends Controller
 
         $vacacionesPendientes = $queryVacaciones->count();
 
+        // Datos exclusivos para supervisores (no admin/TH)
+        $datosSupervisor = null;
+        if ($esSupervisor && !$esAdminOTH) {
+            $deptos = Supervisor::where("id_supervisor", $emp->id_emp)->pluck("id_depto");
+            $empleadosIds = DB::table("dbo.ad_empleado")
+                ->whereIn("id_depto", $deptos)
+                ->where("estado", "ACTIVO")
+                ->where("id_depto", "!=", 999)
+                ->pluck("id_emp");
+
+            $hoy = now()->toDateString();
+
+            $datosSupervisor = [
+                "total_equipo"          => $empleadosIds->count(),
+                "he_pendientes"         => DB::table("dbo.nom_he_planificacion_cab")
+                                            ->whereIn("id_emp", $empleadosIds)
+                                            ->where("estado", "PENDIENTE")
+                                            ->count(),
+                "materiales_pendientes" => DB::table("adq.solicitud_material")
+                                            ->whereIn("id_emp", $empleadosIds)
+                                            ->where("estado", "PENDIENTE")
+                                            ->count(),
+                "presentes_hoy"         => DB::table("dbo.sg_control_persona")
+                                            ->whereIn("nro_documento", $empleadosIds)
+                                            ->whereDate("fecha_hora", $hoy)
+                                            ->where("concepto", "ENTRADA")
+                                            ->distinct()
+                                            ->count("nro_documento"),
+                "con_permiso_hoy"       => DB::table("dbo.d2_permiso")
+                                            ->whereIn("id_emp", $empleadosIds)
+                                            ->where("estado_permiso", "APROBADO")
+                                            ->whereDate("fec_inicio", "<=", $hoy)
+                                            ->whereDate("fec_fin", ">=", $hoy)
+                                            ->distinct()
+                                            ->count("id_emp"),
+                "con_vacaciones_hoy"    => DB::table("dbo.d2_vacacion")
+                                            ->whereIn("id_emp", $empleadosIds)
+                                            ->where("estado_permiso", "APROBADO")
+                                            ->whereDate("fec_inicio", "<=", $hoy)
+                                            ->whereDate("fec_fin", ">=", $hoy)
+                                            ->distinct()
+                                            ->count("id_emp"),
+                "atrasos_mes"           => DB::table("dbo.d2_cuadre_marcacion")
+                                            ->whereIn("id_emp", $empleadosIds)
+                                            ->whereMonth("fecha", now()->month)
+                                            ->whereYear("fecha", now()->year)
+                                            ->where(function ($q) {
+                                                $q->where("atraso_entrada", ">", 0)
+                                                  ->orWhere("atraso_lunch", ">", 0);
+                                            })
+                                            ->count(),
+            ];
+        }
+
         return response()->json([
             "total_activos"         => $totalActivos,
             "por_departamento"      => $porDepartamento,
@@ -77,6 +131,7 @@ class DashboardController extends Controller
             "vacaciones_pendientes" => $vacacionesPendientes,
             "es_supervisor"         => $esSupervisor,
             "es_admin_th"           => $esAdminOTH,
+            "datos_supervisor"      => $datosSupervisor,
         ]);
     }
 }

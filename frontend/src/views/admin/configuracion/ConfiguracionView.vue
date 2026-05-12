@@ -23,15 +23,16 @@
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Concepto</th>
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Valor</th>
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Descripción</th>
+            <th class="text-left px-6 py-3 text-gray-600 font-medium">Última modificación</th>
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Acciones</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="cargando">
-            <td colspan="4" class="text-center py-8 text-gray-400">Cargando...</td>
+            <td colspan="5" class="text-center py-8 text-gray-400">Cargando...</td>
           </tr>
           <tr v-else-if="configuraciones.length === 0">
-            <td colspan="4" class="text-center py-8 text-gray-400">
+            <td colspan="5" class="text-center py-8 text-gray-400">
               No hay parametros registrados.
               <button @click="cargarParametrosBase" class="text-[#0b5447] hover:underline ml-2">
                 Cargar parametros base
@@ -46,6 +47,12 @@
               </span>
             </td>
             <td class="px-6 py-3 text-sm text-gray-500 italic">{{ c.descripcion || '—' }}</td>
+            <td class="px-6 py-3 text-xs text-gray-400">
+              <div v-if="c.updated_by">
+                {{ c.updated_by }}<br>{{ c.updated_at ? new Date(c.updated_at).toLocaleString('es-EC') : '' }}
+              </div>
+              <span v-else>—</span>
+            </td>
             <td class="px-6 py-3 flex gap-3">
               <button @click="abrirModal(c)"
                 class="text-[#0b5447] hover:underline text-xs font-medium">
