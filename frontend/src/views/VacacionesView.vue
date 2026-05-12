@@ -346,8 +346,10 @@ const errorNuevo          = ref("")
 
 const filtros = ref({ estado: "", fecha_desde: "", fecha_hasta: "" })
 
+const hoy = new Date().toISOString().split('T')[0]
+
 const formNuevo = ref({
-  fecha_inicial: "", fecha_final: "",
+  fecha_inicial: hoy, fecha_final: hoy,
   hora_desde: "08:00", hora_hasta: "17:00",
   todo_dia: "SI", observaciones: "",
 })

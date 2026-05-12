@@ -108,9 +108,11 @@ class PlanificacionVacController extends Controller
             ? PlanificacionCab::with('periodos')
                 ->where('id_emp', $emp->id_emp)
                 ->where('anio', $periodo->anio)
+                ->whereNotIn('estado', ['ELIMINADO', 'NEGADO'])
                 ->first()
             : PlanificacionCab::with('periodos')
                 ->where('id_emp', $emp->id_emp)
+                ->whereNotIn('estado', ['ELIMINADO', 'NEGADO'])
                 ->orderByDesc('anio')
                 ->first();
 
@@ -178,9 +180,10 @@ class PlanificacionVacController extends Controller
             return response()->json(['message' => 'No hay un período de planificación activo para este año'], 422);
         }
 
-        // Solo una planificación por empleado por año
+        // Solo una planificación activa por empleado por año (ignora eliminadas y negadas)
         $existe = PlanificacionCab::where('id_emp', $emp->id_emp)
             ->where('anio', $request->anio)
+            ->whereNotIn('estado', ['ELIMINADO', 'NEGADO'])
             ->exists();
 
         if ($existe) {
@@ -194,6 +197,17 @@ class PlanificacionVacController extends Controller
 
         if (empty($periodosValidos)) {
             return response()->json(['message' => 'Debes ingresar al menos un período con fechas completas'], 422);
+        }
+
+        // Validar que todos los períodos pertenezcan al año planificado
+        foreach ($periodosValidos as $p) {
+            $anioInicio = (int) Carbon::parse($p['fecha_inicial'])->format('Y');
+            $anioFin    = (int) Carbon::parse($p['fecha_final'])->format('Y');
+            if ($anioInicio !== (int) $request->anio || $anioFin !== (int) $request->anio) {
+                return response()->json([
+                    'message' => "Las fechas de los períodos deben pertenecer al año {$request->anio}."
+                ], 422);
+            }
         }
 
         // Validar solapamiento
@@ -402,6 +416,18 @@ class PlanificacionVacController extends Controller
 
         if (empty($periodosValidos)) {
             return response()->json(['message' => 'Debes ingresar al menos un período con fechas completas'], 422);
+        }
+
+        // Validar que los períodos de replanificación sean del año actual
+        $anioActual = (int) now()->format('Y');
+        foreach ($periodosValidos as $p) {
+            $anioInicio = (int) Carbon::parse($p['fecha_inicial'])->format('Y');
+            $anioFin    = (int) Carbon::parse($p['fecha_final'])->format('Y');
+            if ($anioInicio !== $anioActual || $anioFin !== $anioActual) {
+                return response()->json([
+                    'message' => "Las fechas de la replanificación deben pertenecer al año {$anioActual}."
+                ], 422);
+            }
         }
 
         if ($this->haysolapamiento($request->periodos)) {

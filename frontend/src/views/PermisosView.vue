@@ -431,8 +431,10 @@ const miRol               = ref({ es_supervisor: false, es_admin_th: false })
 
 const filtros = ref({ estado: "", fecha_desde: "", fecha_hasta: "", descontable: "" })
 
+const hoy = new Date().toISOString().split('T')[0]
+
 const formNuevo = ref({
-  sec_permiso: "", tipo_horario: "", fecha_desde: "", fecha_hasta: "",
+  sec_permiso: "", tipo_horario: "", fecha_desde: hoy, fecha_hasta: hoy,
   hora_desde: "08:00", hora_hasta: "17:00",
   todo_dia: "NO", observaciones: "",
 })
