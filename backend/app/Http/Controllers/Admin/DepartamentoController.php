@@ -19,13 +19,18 @@ class DepartamentoController extends Controller
     public function store(Request $request)
     {
         $request->validate([
+            'id_depto'     => 'nullable|integer|unique:pgsql.dbo.ad_departamento,id_depto',
             'nombre_depto' => 'required|string|max:120',
             'padre_id'     => 'nullable|integer',
         ]);
 
-        // Generar id_depto correlativo (excluye el 999 reservado para sistema)
-        $ultimo = Departamento::where('id_depto', '!=', 999)->max('id_depto');
-        $id     = ($ultimo ?? 0) + 1;
+        // Usar ID manual si se proporcionó, sino generar correlativo
+        if ($request->filled('id_depto')) {
+            $id = (int) $request->id_depto;
+        } else {
+            $ultimo = Departamento::where('id_depto', '!=', 999)->max('id_depto');
+            $id     = ($ultimo ?? 0) + 1;
+        }
 
         $dep = Departamento::create([
             'id_depto'        => $id,
