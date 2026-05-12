@@ -398,7 +398,7 @@ const cargarSaldo = async () => {
 const abrirModalNuevo = () => {
   errorNuevo.value = ""
   formNuevo.value = {
-    fecha_inicial: "", fecha_final: "",
+    fecha_inicial: hoy, fecha_final: hoy,
     hora_desde: "08:00", hora_hasta: "17:00",
     todo_dia: "SI", observaciones: "",
   }

@@ -478,7 +478,7 @@ const abrirModalNuevo = async () => {
   errorNuevo.value = ""
   filtroDescontableForm.value = "SI"
   formNuevo.value = {
-    sec_permiso: "", tipo_horario: "", fecha_desde: "", fecha_hasta: "",
+    sec_permiso: "", tipo_horario: "", fecha_desde: hoy, fecha_hasta: hoy,
     hora_desde: "08:00", hora_hasta: "17:00",
     todo_dia: "NO", observaciones: "",
   }
