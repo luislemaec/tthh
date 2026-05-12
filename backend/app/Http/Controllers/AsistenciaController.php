@@ -64,7 +64,7 @@ class AsistenciaController extends Controller
 
         if ($modalidad === 'PRESENCIAL') {
             $vlansConf = DB::table('dbo.d2_configuracion')
-                ->where('concepto', 'vlans_permitidas')
+                ->whereRaw("LOWER(concepto) = 'vlans_permitidas'")
                 ->value('valor');
 
             $vlans    = array_filter(array_map('trim', explode(',', $vlansConf ?? '')));
