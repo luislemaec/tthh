@@ -23,8 +23,8 @@ class DepartamentoController extends Controller
             'padre_id'     => 'nullable|integer',
         ]);
 
-        // Generar id_depto correlativo
-        $ultimo = Departamento::max('id_depto');
+        // Generar id_depto correlativo (excluye el 999 reservado para sistema)
+        $ultimo = Departamento::where('id_depto', '!=', 999)->max('id_depto');
         $id     = ($ultimo ?? 0) + 1;
 
         $dep = Departamento::create([
