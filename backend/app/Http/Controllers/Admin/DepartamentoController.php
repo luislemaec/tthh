@@ -32,12 +32,18 @@ class DepartamentoController extends Controller
             $id     = ($ultimo ?? 0) + 1;
         }
 
+        $usuario = auth()->user()->id_emp ?? null;
+
         $dep = Departamento::create([
             'id_depto'        => $id,
             'nombre_depto'    => strtoupper($request->nombre_depto),
             'centro_de_costo' => strtoupper($request->centro_de_costo ?? ''),
             'padre_id'        => $request->padre_id ?: null,
             'estado'          => 'ACTIVO',
+            'created_at'      => now(),
+            'created_by'      => $usuario,
+            'updated_at'      => now(),
+            'updated_by'      => $usuario,
         ]);
 
         return response()->json($dep->load('padre'), 201);
@@ -60,6 +66,8 @@ class DepartamentoController extends Controller
             'nombre_depto'    => strtoupper($request->nombre_depto),
             'centro_de_costo' => strtoupper($request->centro_de_costo ?? $dep->centro_de_costo),
             'padre_id'        => $request->padre_id ?: null,
+            'updated_at'      => now(),
+            'updated_by'      => auth()->user()->id_emp ?? null,
         ]);
 
         return response()->json($dep->load('padre'));

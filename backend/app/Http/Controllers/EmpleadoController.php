@@ -85,6 +85,8 @@ class EmpleadoController extends Controller
             "modalidad_laboral"      => "required|string|max:50",
         ]);
 
+        $usuario = auth()->user()->id_emp ?? null;
+
         $emp = Empleado::create([
             "id_emp"         => $this->generarIdEmp(),
             "identificacion" => $request->identificacion,
@@ -103,6 +105,10 @@ class EmpleadoController extends Controller
             "calle_y_numero"   => $request->calle_y_numero,
             "modalidad_laboral"=> $request->modalidad_laboral,
             "id_jornada"       => $request->id_jornada,
+            "created_at"       => now(),
+            "created_by"       => $usuario,
+            "updated_at"       => now(),
+            "updated_by"       => $usuario,
         ]);
 	$emp->password = bcrypt($request->identificacion);
 	$emp->save();
@@ -187,6 +193,8 @@ class EmpleadoController extends Controller
             "acumula_decimo_tercero"    => $request->acumula_decimo_tercero    ?? $emp->acumula_decimo_tercero,
             "acumula_decimo_cuarto"     => $request->acumula_decimo_cuarto     ?? $emp->acumula_decimo_cuarto,
             "puede_solicitar_vehiculo"  => $request->boolean('puede_solicitar_vehiculo', $emp->puede_solicitar_vehiculo ?? false),
+            "updated_at"                => now(),
+            "updated_by"                => auth()->user()->id_emp ?? null,
         ]);
 
         // Actualizar email

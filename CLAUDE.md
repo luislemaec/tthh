@@ -52,7 +52,8 @@ Roles: `ADMINISTRADOR`, `TALENTO HUMANO`, `SUPERVISOR`, `ADQUISICIONES`, `BIENES
 - Schema `dbo` → Talento Humano | Schema `adq` → Adquisiciones (misma BD PostgreSQL)
 - Empleados: PK = `id_emp` (string); estados `ACTIVO`/`INACTIVO` (nunca eliminar)
 - Depto 999 excluido de todas las consultas (placeholder de sistema)
-- `dbo.d2_configuracion` → parámetros globales (clave/valor)
+- `dbo.d2_configuracion` → parámetros globales (clave/valor/descripcion). Campos de auditoría: `created_at`, `created_by`, `updated_at`, `updated_by`. La query siempre usa `LOWER(concepto)` porque los conceptos se guardan en MAYÚSCULAS. Migración `000030` agregó `descripcion`, migración `000031` agregó auditoría.
+- `dbo.ad_departamento` → numeración manual recomendada: padres en múltiplos de 10 (10,50,60,70,80,90), hijos en +1 a +9 del padre. Al crear desde la app, el campo ID es opcional; si se omite genera el siguiente correlativo (excluyendo 999). **Auditoría pendiente de implementar.**
 - Stock: siempre usar `DB::table()->update(['stock_actual' => DB::raw('stock_actual + N')])` — nunca Eloquent para tablas con schema prefix en PostgreSQL
 
 ## PDF (DomPDF)
@@ -82,14 +83,14 @@ Roles: `ADMINISTRADOR`, `TALENTO HUMANO`, `SUPERVISOR`, `ADQUISICIONES`, `BIENES
 | `EmpleadoController` | CRUD empleados + asignación de roles + partidas disponibles |
 | `AccionPersonalController` | Acciones (encargo, subrogación, ingreso, vacaciones, destitución, cesación) |
 | `VacacionesController` | Solicitudes de vacaciones (aprobar/negar/saldo) |
-| `PlanificacionVacController` | Planificación anual de vacaciones |
+| `PlanificacionVacController` | Planificación anual de vacaciones — estados `ELIMINADO` y `NEGADO` permiten re-planificar; fechas de períodos se validan contra el año planificado |
 | `LiquidacionVacController` | Liquidación por comisión/desvinculación |
 | `ReportePlanificacionController` | PDF planificación + subida Alfresco |
 | `PermisosController` | Permisos y licencias |
 | `AsistenciaController` | Marcaciones y reportes de asistencia |
 | `CuadreController` | Conciliación de asistencia (atrasos) |
 | `HorasExtrasController` | Planificación y registro de horas extras |
-| `DashboardController` | Estadísticas del dashboard |
+| `DashboardController` | Estadísticas del dashboard — Admin/TH: métricas globales; Supervisor: pendientes + equipo hoy |
 | `Admin/*` | Departamentos, causas, turnos, horarios, calendario, configuración, aportes IESS |
 
 ### Empleados (`dbo.ad_empleado`)
@@ -109,9 +110,15 @@ Campos relevantes:
 Tabla de marcaciones individuales. Flujo diario en orden estricto: `ENTRADA → SALIDA AL LUNCH → ENTRADA DEL LUNCH → SALIDA`
 
 **modalidad_marcacion** controla cómo puede timbrar el empleado:
-- `PRESENCIAL` (default): la IP del request debe comenzar con algún prefijo de `vlans_permitidas` en `dbo.d2_configuracion`. Formato del valor: `10.10.12.,192.168.1.` (prefijos separados por coma). Si la lista está vacía se permite todo.
+- `PRESENCIAL` (default): la IP del request debe comenzar con algún prefijo de `VLANS_PERMITIDAS` en `dbo.d2_configuracion`. Formato: `10.10.12.,10.10.26.` (prefijos con punto final, separados por coma). Si la lista está vacía se permite todo.
 - `REMOTO`: puede marcar desde cualquier IP sin validación. `tipo_marcacion = 'WEB'`. Uso: comisiones, viajes.
 - `TELETRABAJO`: puede marcar desde cualquier IP. `tipo_marcacion = 'TELETRABAJO'`. Uso: trabajo desde casa.
+
+**Validación de IP:** El backend corre detrás de Apache (proxy a puerto 9000). `bootstrap/app.php` tiene `trustProxies(at: '127.0.0.1')` para leer `X-Forwarded-For` y obtener la IP real del cliente. La query usa `LOWER(concepto) = 'vlans_permitidas'` porque en la BD el concepto está en mayúsculas (`VLANS_PERMITIDAS`).
+
+**Variables de configuración relevantes para asistencia:**
+- `VLANS_PERMITIDAS`: prefijos de red permitidos para marcación PRESENCIAL (ej: `10.10.12.,10.10.26.`)
+- `CONTROL_IP_MARCACION`: valor `1` = una IP solo puede ser usada por un empleado por día (evita timbrar por otro)
 
 Campos clave de `sg_control_persona`: `nro_documento` (= id_emp), `clasificacion` (ENTRADA/SALIDA), `concepto` (ENTRADA/SALIDA AL LUNCH/ENTRADA DEL LUNCH/SALIDA), `fecha_hora`, `tipo_marcacion` (WEB/TELETRABAJO), `ip`, `ubicacion`, `procesado` (SI/NO), `origen`.
 
@@ -240,7 +247,12 @@ views/empleados/        # CRUD empleados, detalle, importación, distributivo
                         #   Partida Individual: input libre + botón "Seleccionar libre" (modal partidas disponibles)
 views/acciones/         # Acciones de personal (lista + formulario + PDF)
 views/planificacion/    # Planificación anual de vacaciones, liquidación, reporte
-views/permisos/         # Permisos y licencias
+views/permisos/         # Permisos y licencias — fecha_desde/fecha_hasta default = hoy al abrir modal
+DashboardView.vue       # Admin/TH: métricas globales + tabla por depto
+                        # Supervisor (no admin): 4 tarjetas pendientes (permisos/vacaciones/HE/materiales)
+                        #   + widget "Mi equipo hoy" (presentes/permiso/vacaciones/sin marcar + barra)
+                        #   + atrasos del mes del equipo
+                        # Las tarjetas originales se ocultan para supervisores (v-if="!es_supervisor||es_admin_th")
 views/asistencia/       # Reporte de asistencia personal y admin
 views/horasextras/
   HorasExtrasView.vue   # 4 tabs:

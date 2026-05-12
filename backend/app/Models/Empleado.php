@@ -26,6 +26,7 @@ class Empleado extends Authenticatable
         "grupo_ocupacional", "proceso_institucional",
         "acumula_fondos_reserva", "acumula_decimo_tercero", "acumula_decimo_cuarto",
         "puede_solicitar_vehiculo",
+        "created_at", "created_by", "updated_at", "updated_by",
     ];
 
     protected $hidden = ["password", "clave"];
