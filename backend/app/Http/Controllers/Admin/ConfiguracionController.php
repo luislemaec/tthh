@@ -19,11 +19,15 @@ class ConfiguracionController extends Controller
     public function update(Request $request, $concepto)
     {
         $request->validate([
-            "valor" => "required|string|max:150",
+            "valor"       => "required|string|max:150",
+            "descripcion" => "nullable|string|max:300",
         ]);
 
         $config = Configuracion::findOrFail($concepto);
-        $config->update(["valor" => $request->valor]);
+        $config->update([
+            "valor"       => $request->valor,
+            "descripcion" => $request->descripcion,
+        ]);
 
         return response()->json($config);
     }
@@ -32,8 +36,9 @@ class ConfiguracionController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            "concepto" => "required|string|max:120",
-            "valor"    => "required|string|max:150",
+            "concepto"    => "required|string|max:120",
+            "valor"       => "required|string|max:150",
+            "descripcion" => "nullable|string|max:300",
         ]);
 
         $existe = Configuracion::where("concepto", $request->concepto)->exists();
@@ -44,8 +49,9 @@ class ConfiguracionController extends Controller
         }
 
         $config = Configuracion::create([
-            "concepto" => $request->concepto,
-            "valor"    => $request->valor,
+            "concepto"    => $request->concepto,
+            "valor"       => $request->valor,
+            "descripcion" => $request->descripcion,
         ]);
 
         return response()->json($config, 201);

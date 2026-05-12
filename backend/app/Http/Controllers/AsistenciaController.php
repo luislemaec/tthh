@@ -78,6 +78,25 @@ class AsistenciaController extends Controller
             }
         }
 
+        // Validar que la IP no haya sido usada por otro empleado hoy (si está habilitado)
+        $controlIp = DB::table('dbo.d2_configuracion')
+            ->whereRaw("LOWER(concepto) = 'control_ip_marcacion'")
+            ->value('valor');
+
+        if (trim($controlIp ?? '0') === '1') {
+            $ip = $request->ip();
+            $ipUsada = SgControlPersona::whereDate('fecha_hora', $hoy)
+                ->where('ip', $ip)
+                ->where('nro_documento', '!=', $emp->id_emp)
+                ->exists();
+
+            if ($ipUsada) {
+                return response()->json([
+                    'message' => 'Esta computadora ya fue utilizada por otro empleado hoy.',
+                ], 403);
+            }
+        }
+
         // Validar que no haya marcado el mismo concepto hoy
         $yaMarcado = SgControlPersona::where("nro_documento", $emp->id_emp)
             ->whereDate("fecha_hora", $hoy)

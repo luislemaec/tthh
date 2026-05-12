@@ -22,15 +22,16 @@
           <tr>
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Concepto</th>
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Valor</th>
+            <th class="text-left px-6 py-3 text-gray-600 font-medium">Descripción</th>
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Acciones</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="cargando">
-            <td colspan="3" class="text-center py-8 text-gray-400">Cargando...</td>
+            <td colspan="4" class="text-center py-8 text-gray-400">Cargando...</td>
           </tr>
           <tr v-else-if="configuraciones.length === 0">
-            <td colspan="3" class="text-center py-8 text-gray-400">
+            <td colspan="4" class="text-center py-8 text-gray-400">
               No hay parametros registrados.
               <button @click="cargarParametrosBase" class="text-[#0b5447] hover:underline ml-2">
                 Cargar parametros base
@@ -44,6 +45,7 @@
                 {{ c.valor }}
               </span>
             </td>
+            <td class="px-6 py-3 text-sm text-gray-500 italic">{{ c.descripcion || '—' }}</td>
             <td class="px-6 py-3 flex gap-3">
               <button @click="abrirModal(c)"
                 class="text-[#0b5447] hover:underline text-xs font-medium">
@@ -80,6 +82,12 @@
             class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]"
             required />
         </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Descripción</label>
+          <textarea v-model="form.descripcion" maxlength="300" rows="2"
+            placeholder="Ej: Minutos de tolerancia para registrar entrada"
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186] resize-none" />
+        </div>
         <div v-if="error" class="text-red-600 text-sm bg-red-50 rounded p-2">{{ error }}</div>
         <div class="flex justify-end gap-3 pt-2">
           <button @click="modal = false"
@@ -105,7 +113,7 @@ const cargando        = ref(false)
 const modal           = ref(false)
 const guardando       = ref(false)
 const error           = ref("")
-const form            = ref({ editando: false, concepto: "", valor: "" })
+const form            = ref({ editando: false, concepto: "", valor: "", descripcion: "" })
 
 async function cargar() {
   cargando.value = true
@@ -122,8 +130,8 @@ async function cargar() {
 function abrirModal(c = null) {
   error.value = ""
   form.value = c
-    ? { editando: true, concepto: c.concepto, valor: c.valor }
-    : { editando: false, concepto: "", valor: "" }
+    ? { editando: true, concepto: c.concepto, valor: c.valor, descripcion: c.descripcion || "" }
+    : { editando: false, concepto: "", valor: "", descripcion: "" }
   modal.value = true
 }
 
@@ -136,7 +144,10 @@ async function guardar() {
   error.value = ""
   try {
     if (form.value.editando) {
-      await api.put("/admin/configuracion/" + form.value.concepto, { valor: form.value.valor })
+      await api.put("/admin/configuracion/" + form.value.concepto, {
+        valor: form.value.valor,
+        descripcion: form.value.descripcion,
+      })
     } else {
       await api.post("/admin/configuracion", form.value)
     }
