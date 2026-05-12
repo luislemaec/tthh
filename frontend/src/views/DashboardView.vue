@@ -2,8 +2,8 @@
   <div class="space-y-6">
     <h1 class="text-2xl font-bold text-gray-800">Dashboard</h1>
 
-    <!-- Tarjetas -->
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <!-- Tarjetas (solo admin/TH y empleados sin rol especial) -->
+    <div v-if="!stats.es_supervisor || stats.es_admin_th" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <div class="bg-white rounded-xl shadow p-6 flex items-center gap-4">
         <div class="bg-blue-100 p-3 rounded-full">
           <svg class="w-6 h-6 text-[#0b5447]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
