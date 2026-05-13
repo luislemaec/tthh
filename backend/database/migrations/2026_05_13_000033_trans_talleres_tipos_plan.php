@@ -25,8 +25,7 @@ return new class extends Migration
         DB::statement("
             CREATE TABLE dbo.trans_tipo_mantenimiento (
                 id        SERIAL PRIMARY KEY,
-                nombre    VARCHAR(100) NOT NULL,
-                categoria VARCHAR(10)  NOT NULL,
+                nombre    VARCHAR(30)  NOT NULL,
                 estado    VARCHAR(10)  NOT NULL DEFAULT 'ACTIVO',
                 created_at TIMESTAMP,
                 updated_at TIMESTAMP

@@ -20,14 +20,12 @@ class TipoMantenimientoController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'nombre'    => 'required|string|max:100',
-            'categoria' => 'required|in:PREVENTIVO,CORRECTIVO,AMBOS',
+            'nombre' => 'required|string|max:30|in:PREVENTIVO,CORRECTIVO,PREVENTIVO Y CORRECTIVO',
         ]);
 
         $tipo = TipoMantenimiento::create([
-            'nombre'    => strtoupper($request->nombre),
-            'categoria' => $request->categoria,
-            'estado'    => 'ACTIVO',
+            'nombre' => $request->nombre,
+            'estado' => 'ACTIVO',
         ]);
 
         return response()->json($tipo, 201);
@@ -38,15 +36,13 @@ class TipoMantenimientoController extends Controller
         $tipo = TipoMantenimiento::findOrFail($id);
 
         $request->validate([
-            'nombre'    => 'required|string|max:100',
-            'categoria' => 'required|in:PREVENTIVO,CORRECTIVO,AMBOS',
-            'estado'    => 'nullable|in:ACTIVO,INACTIVO',
+            'nombre' => 'required|string|max:30|in:PREVENTIVO,CORRECTIVO,PREVENTIVO Y CORRECTIVO',
+            'estado' => 'nullable|in:ACTIVO,INACTIVO',
         ]);
 
         $tipo->update([
-            'nombre'    => strtoupper($request->nombre),
-            'categoria' => $request->categoria,
-            'estado'    => $request->estado ?? $tipo->estado,
+            'nombre' => $request->nombre,
+            'estado' => $request->estado ?? $tipo->estado,
         ]);
 
         return response()->json($tipo);

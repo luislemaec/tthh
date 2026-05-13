@@ -10,7 +10,7 @@
 
     <div class="space-y-2">
       <div v-if="!lista.length" class="bg-white rounded-xl shadow p-8 text-center text-gray-400">
-        Sin tipos de mantenimiento registrados
+        Sin tipos registrados
       </div>
 
       <div v-for="t in lista" :key="t.id"
@@ -19,10 +19,6 @@
           <p class="font-semibold text-gray-800">{{ t.nombre }}</p>
         </div>
         <div class="flex items-center gap-2 flex-shrink-0">
-          <span :class="categoriaBadge(t.categoria)"
-            class="px-2 py-0.5 rounded-full text-xs font-medium">
-            {{ t.categoria }}
-          </span>
           <span :class="t.estado === 'ACTIVO' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
             class="px-2 py-0.5 rounded-full text-xs font-medium">
             {{ t.estado }}
@@ -43,16 +39,12 @@
         </h2>
         <div class="space-y-3">
           <div>
-            <label class="block text-xs font-semibold text-gray-600 mb-1">Nombre *</label>
-            <input v-model="form.nombre" class="w-full border rounded-lg px-3 py-2 text-sm"
-              placeholder="Ej: Cambio de aceite" />
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-gray-600 mb-1">Categoría *</label>
-            <select v-model="form.categoria" class="w-full border rounded-lg px-3 py-2 text-sm">
+            <label class="block text-xs font-semibold text-gray-600 mb-1">Tipo *</label>
+            <select v-model="form.nombre" class="w-full border rounded-lg px-3 py-2 text-sm">
+              <option value="">Seleccione...</option>
               <option value="PREVENTIVO">PREVENTIVO</option>
               <option value="CORRECTIVO">CORRECTIVO</option>
-              <option value="AMBOS">PREVENTIVO Y CORRECTIVO</option>
+              <option value="PREVENTIVO Y CORRECTIVO">PREVENTIVO Y CORRECTIVO</option>
             </select>
           </div>
           <div v-if="modal.id">
@@ -88,19 +80,13 @@ const error     = ref('')
 const modal     = ref({ show: false, id: null })
 const form      = ref({})
 
-function categoriaBadge(c) {
-  if (c === 'PREVENTIVO') return 'bg-blue-100 text-blue-700'
-  if (c === 'CORRECTIVO') return 'bg-orange-100 text-orange-700'
-  return 'bg-purple-100 text-purple-700'
-}
-
 async function cargar() {
   const { data } = await api.get('/transporte/tipos-mantenimiento')
   lista.value = data
 }
 
 function abrirCrear() {
-  form.value = { nombre: '', categoria: 'PREVENTIVO' }
+  form.value = { nombre: '' }
   modal.value = { show: true, id: null }
   error.value = ''
 }

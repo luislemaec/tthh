@@ -8,5 +8,5 @@ class TipoMantenimiento extends Model
     protected $connection = 'pgsql';
     protected $table      = 'dbo.trans_tipo_mantenimiento';
 
-    protected $fillable = ['nombre', 'categoria', 'estado'];
+    protected $fillable = ['nombre', 'estado'];
 }

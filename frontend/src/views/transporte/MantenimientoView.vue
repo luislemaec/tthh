@@ -186,7 +186,7 @@
               class="w-full border rounded-lg px-3 py-2 text-sm">
               <option value="">Seleccione...</option>
               <option v-for="t in tiposActivos" :key="t.id" :value="t.id">
-                {{ t.nombre }} ({{ t.categoria }})
+                {{ t.nombre }}
               </option>
             </select>
           </div>
@@ -196,8 +196,8 @@
               class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Km actuales del vehículo" />
           </div>
 
-          <!-- Plan preventivo (solo si tipo es PREVENTIVO o AMBOS) -->
-          <div v-if="tipoSeleccionado && ['PREVENTIVO','AMBOS'].includes(tipoSeleccionado.categoria)">
+          <!-- Plan preventivo (solo si tipo incluye PREVENTIVO) -->
+          <div v-if="tipoEsPreventivo">
             <label class="block text-xs font-semibold text-gray-600 mb-1">Plan preventivo *</label>
             <select v-model="formCrear.plan_preventivo_id" class="w-full border rounded-lg px-3 py-2 text-sm">
               <option value="">Seleccione un plan...</option>
@@ -209,8 +209,8 @@
               class="text-xs text-amber-600 mt-1">No hay planes preventivos para este vehículo.</p>
           </div>
 
-          <!-- Actividades correctivas (solo si tipo es CORRECTIVO o AMBOS) -->
-          <div v-if="tipoSeleccionado && ['CORRECTIVO','AMBOS'].includes(tipoSeleccionado.categoria)">
+          <!-- Actividades correctivas (solo si tipo incluye CORRECTIVO) -->
+          <div v-if="tipoEsCorrectivo">
             <div class="flex justify-between items-center mb-2">
               <label class="text-xs font-semibold text-gray-600">Actividades correctivas *</label>
               <button @click="agregarActCorr" type="button"
@@ -395,6 +395,13 @@ const tipoSeleccionado = computed(() =>
   tiposActivos.value.find(t => t.id == formCrear.value.tipo_mantenimiento_id) || null
 )
 
+const tipoEsPreventivo = computed(() =>
+  !!tipoSeleccionado.value?.nombre?.includes('PREVENTIVO')
+)
+const tipoEsCorrectivo = computed(() =>
+  !!tipoSeleccionado.value?.nombre?.includes('CORRECTIVO')
+)
+
 const planesDelVehiculo = computed(() =>
   planesPreventivos.value.filter(p => p.vehiculo_id == formCrear.value.vehiculo_id && p.estado === 'ACTIVO')
 )
@@ -402,8 +409,7 @@ const planesDelVehiculo = computed(() =>
 function onTipoChange() {
   formCrear.value.plan_preventivo_id = ''
   formCrear.value.actividades_correctivas = []
-  const tipo = tipoSeleccionado.value
-  if (tipo && ['CORRECTIVO', 'AMBOS'].includes(tipo.categoria)) {
+  if (tipoEsCorrectivo.value) {
     formCrear.value.actividades_correctivas = [{ actividad: '' }]
   }
 }

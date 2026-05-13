@@ -115,7 +115,10 @@ class TransporteController extends Controller
 
         $tipo = TipoMantenimiento::findOrFail($request->tipo_mantenimiento_id);
 
-        if (in_array($tipo->categoria, ['PREVENTIVO', 'AMBOS']) && !$request->plan_preventivo_id) {
+        $esPreventivo = str_contains($tipo->nombre, 'PREVENTIVO');
+        $esCorrectivo = str_contains($tipo->nombre, 'CORRECTIVO');
+
+        if ($esPreventivo && !$request->plan_preventivo_id) {
             return response()->json(['message' => 'Debe seleccionar un plan preventivo para este tipo de mantenimiento.'], 422);
         }
 
@@ -130,7 +133,7 @@ class TransporteController extends Controller
             'estado'                => 'PENDIENTE',
         ]);
 
-        if (in_array($tipo->categoria, ['PREVENTIVO', 'AMBOS']) && $request->plan_preventivo_id) {
+        if ($esPreventivo && $request->plan_preventivo_id) {
             $detalles = PlanPreventivoDet::where('cab_id', $request->plan_preventivo_id)->orderBy('orden')->get();
             foreach ($detalles as $det) {
                 MantenimientoActividad::create([
@@ -142,7 +145,7 @@ class TransporteController extends Controller
             }
         }
 
-        if (in_array($tipo->categoria, ['CORRECTIVO', 'AMBOS']) && $request->actividades_correctivas) {
+        if ($esCorrectivo && $request->actividades_correctivas) {
             foreach ($request->actividades_correctivas as $i => $act) {
                 MantenimientoActividad::create([
                     'mantenimiento_id' => $m->id,
