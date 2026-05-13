@@ -2,10 +2,20 @@
   <div class="space-y-6">
     <div class="flex items-center justify-between">
       <h1 class="text-2xl font-bold text-gray-800">Vacaciones</h1>
-      <button v-if="!saldo.inactivo" @click="abrirModalNuevo"
+      <button v-if="!saldo.inactivo && (!esSupervisorOAdmin || tabActivo === 'mia')" @click="abrirModalNuevo"
         class="bg-[#0b5447] text-white px-4 py-2 rounded-lg hover:bg-[#00372e] text-sm font-medium">
         + Solicitar Vacaciones
       </button>
+    </div>
+
+    <!-- Tabs (solo supervisor/admin) -->
+    <div v-if="esSupervisorOAdmin" class="flex border-b">
+      <button @click="cambiarTab('mia')"
+        :class="tabActivo === 'mia' ? 'border-b-2 border-[#0b5447] text-[#0b5447] font-medium' : 'text-gray-500 hover:text-gray-700'"
+        class="px-6 py-3 text-sm transition">Mis Vacaciones</button>
+      <button @click="cambiarTab('equipo')"
+        :class="tabActivo === 'equipo' ? 'border-b-2 border-[#0b5447] text-[#0b5447] font-medium' : 'text-gray-500 hover:text-gray-700'"
+        class="px-6 py-3 text-sm transition">Vacaciones Equipo</button>
     </div>
 
     <!-- Empleado inactivo -->
@@ -133,7 +143,7 @@
               <div class="flex gap-2">
                 <button @click="verVacacion(v)"
                   class="text-[#0b5447] hover:underline text-xs font-medium">Ver</button>
-                <template v-if="esSupervisorOAdmin && v.estado_permiso === 'PENDIENTE' && v.empleado?.id_emp !== auth.empleado?.id_emp">
+                <template v-if="esSupervisorOAdmin && tabActivo === 'equipo' && v.estado_permiso === 'PENDIENTE'">
                   <button @click="aprobar(v.secuencial_clave)"
                     class="text-green-600 hover:underline text-xs font-medium">Aprobar</button>
                   <button @click="abrirModalNegar(v)"
@@ -317,10 +327,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from "vue"
-import { useAuthStore } from "@/stores/auth"
 import api from "@/services/api"
-
-const auth = useAuthStore()
 
 const vacaciones   = ref([])
 const cargando     = ref(false)
@@ -329,6 +336,7 @@ const total        = ref(0)
 const pagina       = ref(1)
 const totalPaginas = ref(1)
 const miRol        = ref({ es_supervisor: false, es_admin_th: false })
+const tabActivo    = ref("mia")
 
 const saldo               = ref({ cabecera: null, detalle: [] })
 const cargandoSaldo       = ref(false)
@@ -371,7 +379,8 @@ const colorEstado = (estado) => {
 const cargar = async () => {
   cargando.value = true
   try {
-    const params = { page: pagina.value, per_page: 15, ...filtros.value }
+    const vista  = esSupervisorOAdmin.value ? tabActivo.value : ""
+    const params = { page: pagina.value, per_page: 15, ...filtros.value, ...(vista ? { vista } : {}) }
     const { data } = await api.get("/vacaciones", { params })
     vacaciones.value   = data.data
     total.value        = data.total
@@ -381,6 +390,13 @@ const cargar = async () => {
   } finally {
     cargando.value = false
   }
+}
+
+const cambiarTab = (tab) => {
+  tabActivo.value = tab
+  pagina.value    = 1
+  filtros.value   = { estado: "", fecha_desde: "", fecha_hasta: "" }
+  cargar()
 }
 
 const cargarSaldo = async () => {

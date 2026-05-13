@@ -123,18 +123,29 @@ class VacacionesController extends Controller
         $query = Vacacion::with(["empleado.departamento"])
             ->orderBy("fecha_hora", "desc");
 
+        $vista = $request->query("vista", ""); // "mia" | "equipo" | ""
+
         if ($esAdminOTH) {
-            // Admin y TH ven todos
+            if ($vista === "mia") {
+                $query->where("id_emp", $emp->id_emp);
+            }
+            // vista=equipo o sin vista: ve todos
         } elseif ($esSupervisor) {
             $deptos    = Supervisor::where("id_supervisor", $emp->id_emp)->pluck("id_depto");
             $empleados = Empleado::whereIn("id_depto", $deptos)
                 ->where("estado", "ACTIVO")
                 ->where("id_emp", "!=", $emp->id_emp)
                 ->pluck("id_emp");
-            $query->where(function ($q) use ($emp, $empleados) {
-                $q->where("id_emp", $emp->id_emp)
-                  ->orWhereIn("id_emp", $empleados);
-            });
+            if ($vista === "mia") {
+                $query->where("id_emp", $emp->id_emp);
+            } elseif ($vista === "equipo") {
+                $query->whereIn("id_emp", $empleados);
+            } else {
+                $query->where(function ($q) use ($emp, $empleados) {
+                    $q->where("id_emp", $emp->id_emp)
+                      ->orWhereIn("id_emp", $empleados);
+                });
+            }
         } else {
             $query->where("id_emp", $emp->id_emp);
         }
