@@ -106,7 +106,7 @@ class ReportePlanificacionController extends Controller
             });
 
             $totalEmp     = $empsData->count();
-            $aprobados    = $empsData->where('estado_plan', 'APROBADO')->count();
+            $aprobados    = $empsData->whereIn('estado_plan', ['APROBADO', 'REPLANIFICADO'])->count();
             $pendientes   = $empsData->where('estado_plan', 'PENDIENTE')->count();
             $sinPlan      = $empsData->whereNull('estado_plan')->count();
 

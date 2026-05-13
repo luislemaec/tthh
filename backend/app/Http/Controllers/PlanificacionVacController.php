@@ -102,19 +102,14 @@ class PlanificacionVacController extends Controller
             ->where('fecha_fin',    '>=', $hoy)
             ->first();
 
-        // Si hay período activo, buscar la planificación de ese año;
-        // si no, mostrar la más reciente del empleado para que pueda consultarla
-        $planificacion = $periodo
-            ? PlanificacionCab::with('periodos')
-                ->where('id_emp', $emp->id_emp)
-                ->where('anio', $periodo->anio)
-                ->whereNotIn('estado', ['ELIMINADO', 'NEGADO'])
-                ->first()
-            : PlanificacionCab::with('periodos')
-                ->where('id_emp', $emp->id_emp)
-                ->whereNotIn('estado', ['ELIMINADO', 'NEGADO'])
-                ->orderByDesc('anio')
-                ->first();
+        // Si se pasa ?anio= usar ese año; si no, año actual por defecto
+        $anioConsulta = (int) ($request->query('anio') ?? now()->year);
+
+        $planificacion = PlanificacionCab::with('periodos')
+            ->where('id_emp', $emp->id_emp)
+            ->where('anio', $anioConsulta)
+            ->whereNotIn('estado', ['ELIMINADO', 'NEGADO'])
+            ->first();
 
         $fechaCorteConfig = Configuracion::find('FECHA_CORTE_VACACIONES');
         $fechaCorte       = $fechaCorteConfig ? Carbon::parse($fechaCorteConfig->valor) : Carbon::today();
@@ -132,6 +127,7 @@ class PlanificacionVacController extends Controller
         return response()->json([
             'periodo'          => $periodo,
             'planificacion'    => $planificacion,
+            'anio_consulta'    => $anioConsulta,
             'saldo'            => $this->calcularSaldo($emp),
             'meses_servicio'   => $mesesServicio,
             'puede_planificar' => $puedeplanificar,

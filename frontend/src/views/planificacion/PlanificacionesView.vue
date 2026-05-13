@@ -16,6 +16,20 @@
 
     <!-- ── VISTA EMPLEADO ────────────────────────────────────────────────── -->
     <template v-if="!esSupervisorOAdmin || tabActivo === 'mia'">
+
+      <!-- Selector de año cuando hay período activo para año diferente al actual -->
+      <div v-if="periodoActivo && periodoActivo.anio !== new Date().getFullYear()" class="flex gap-2">
+        <button @click="cambiarAnio(new Date().getFullYear())"
+          :class="anioConsulta === new Date().getFullYear() ? 'bg-[#0b5447] text-white' : 'bg-white text-gray-600 border'"
+          class="px-4 py-1.5 rounded-lg text-sm font-medium">
+          {{ new Date().getFullYear() }}
+        </button>
+        <button @click="cambiarAnio(periodoActivo.anio)"
+          :class="anioConsulta === periodoActivo.anio ? 'bg-[#0b5447] text-white' : 'bg-white text-gray-600 border'"
+          class="px-4 py-1.5 rounded-lg text-sm font-medium">
+          {{ periodoActivo.anio }} — Planificación activa
+        </button>
+      </div>
       <!-- Ya tiene planificación: siempre visible aunque el período esté cerrado -->
       <template v-if="miPlanificacion">
         <div class="bg-white rounded-xl shadow p-6 space-y-4">
@@ -361,6 +375,7 @@ import api from '@/services/api'
 const cargando        = ref(false)
 const periodoActivo   = ref(null)
 const miPlanificacion = ref(null)
+const anioConsulta    = ref(new Date().getFullYear())
 const saldo           = ref(0)
 const mesesServicio   = ref(0)
 const puedeplanificar = ref(true)
@@ -464,12 +479,17 @@ const alertaPeriodo = (p) => {
 // ── Carga inicial ──────────────────────────────────────────────────────────
 
 const cargarMiPlanificacion = async () => {
-  const { data } = await api.get('/planificacion/mi-planificacion')
+  const { data } = await api.get('/planificacion/mi-planificacion', { params: { anio: anioConsulta.value } })
   periodoActivo.value   = data.periodo
   miPlanificacion.value = data.planificacion
   saldo.value           = data.saldo
   mesesServicio.value   = data.meses_servicio ?? 0
   puedeplanificar.value = data.puede_planificar ?? true
+}
+
+const cambiarAnio = async (anio) => {
+  anioConsulta.value = anio
+  await cargarMiPlanificacion()
 }
 
 const cargarPlanificaciones = async () => {
