@@ -180,7 +180,7 @@
             <div>
               <label class="block text-xs font-semibold text-gray-600 mb-1">Lugar de salida</label>
               <input v-model="formCrear.lugar_salida" class="w-full border rounded-lg px-3 py-2 text-sm"
-                placeholder="Instalaciones CORDICOM" />
+                placeholder="Instalaciones CONSEJO" />
             </div>
             <div>
               <label class="block text-xs font-semibold text-gray-600 mb-1">Lugar de destino *</label>

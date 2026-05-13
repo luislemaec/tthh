@@ -16,6 +16,7 @@
         <option value="ORDEN_GENERADA">Orden generada</option>
         <option value="EN_TALLER">En taller</option>
         <option value="FINALIZADO">Finalizado</option>
+        <option value="NEGADO">Negado</option>
       </select>
     </div>
 
@@ -35,6 +36,7 @@
           <p class="text-xs text-gray-500">
             {{ m.tipo }} · {{ m.conductor?.apellido_emp }} {{ m.conductor?.nombre_emp }}
             · {{ formatFecha(m.created_at) }}
+            <span v-if="m.km_actual"> · {{ m.km_actual?.toLocaleString() }} km</span>
           </p>
           <p class="text-xs text-gray-500 italic mt-0.5 truncate">{{ m.descripcion }}</p>
         </div>
@@ -107,6 +109,8 @@
                 <td class="py-2">{{ modalVer.m.conductor?.apellido_emp }} {{ modalVer.m.conductor?.nombre_emp }}</td></tr>
               <tr class="border-b"><td class="py-2 font-semibold text-gray-500">Tipo</td>
                 <td class="py-2">{{ modalVer.m.tipo }}</td></tr>
+              <tr v-if="modalVer.m.km_actual" class="border-b"><td class="py-2 font-semibold text-gray-500">Km actual</td>
+                <td class="py-2">{{ modalVer.m.km_actual?.toLocaleString() }} km</td></tr>
               <tr class="border-b"><td class="py-2 font-semibold text-gray-500">Descripción</td>
                 <td class="py-2">{{ modalVer.m.descripcion }}</td></tr>
               <tr class="border-b"><td class="py-2 font-semibold text-gray-500">Estado</td>
@@ -137,6 +141,23 @@
                 <td class="py-2">{{ modalVer.m.responsable?.apellido_emp }} {{ modalVer.m.responsable?.nombre_emp }}</td></tr>
             </tbody>
           </table>
+
+          <!-- Actividades -->
+          <div v-if="modalVer.m.actividades?.length" class="mt-4">
+            <p class="text-xs font-semibold text-gray-500 mb-2">Actividades</p>
+            <ol class="space-y-1">
+              <li v-for="a in modalVer.m.actividades" :key="a.id"
+                class="flex gap-2 text-sm text-gray-700">
+                <span class="flex-shrink-0 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center text-white"
+                  :class="a.tipo === 'PREVENTIVO' ? 'bg-blue-500' : 'bg-orange-500'">
+                  {{ a.orden }}
+                </span>
+                <span>{{ a.actividad }}
+                  <span class="text-xs text-gray-400 ml-1">[{{ a.tipo }}]</span>
+                </span>
+              </li>
+            </ol>
+          </div>
         </template>
         <div class="flex justify-end mt-4">
           <button @click="modalVer.show = false"
@@ -147,7 +168,7 @@
 
     <!-- Modal Nuevo Requerimiento -->
     <div v-if="modalCrear.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
         <h2 class="text-lg font-bold text-gray-800 mb-4">Nuevo Requerimiento de Mantenimiento</h2>
         <div class="space-y-3">
           <div>
@@ -160,17 +181,63 @@
             </select>
           </div>
           <div>
-            <label class="block text-xs font-semibold text-gray-600 mb-1">Tipo *</label>
-            <select v-model="formCrear.tipo" class="w-full border rounded-lg px-3 py-2 text-sm">
-              <option value="PREVENTIVO">PREVENTIVO</option>
-              <option value="CORRECTIVO">CORRECTIVO</option>
+            <label class="block text-xs font-semibold text-gray-600 mb-1">Tipo de mantenimiento *</label>
+            <select v-model="formCrear.tipo_mantenimiento_id" @change="onTipoChange"
+              class="w-full border rounded-lg px-3 py-2 text-sm">
+              <option value="">Seleccione...</option>
+              <option v-for="t in tiposActivos" :key="t.id" :value="t.id">
+                {{ t.nombre }} ({{ t.categoria }})
+              </option>
             </select>
           </div>
           <div>
-            <label class="block text-xs font-semibold text-gray-600 mb-1">Descripción / Problema *</label>
-            <textarea v-model="formCrear.descripcion" rows="3"
+            <label class="block text-xs font-semibold text-gray-600 mb-1">Kilometraje actual *</label>
+            <input v-model.number="formCrear.km_actual" type="number" min="0"
+              class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Km actuales del vehículo" />
+          </div>
+
+          <!-- Plan preventivo (solo si tipo es PREVENTIVO o AMBOS) -->
+          <div v-if="tipoSeleccionado && ['PREVENTIVO','AMBOS'].includes(tipoSeleccionado.categoria)">
+            <label class="block text-xs font-semibold text-gray-600 mb-1">Plan preventivo *</label>
+            <select v-model="formCrear.plan_preventivo_id" class="w-full border rounded-lg px-3 py-2 text-sm">
+              <option value="">Seleccione un plan...</option>
+              <option v-for="p in planesDelVehiculo" :key="p.id" :value="p.id">
+                {{ p.nombre }} · {{ p.km_hito?.toLocaleString() }} km ({{ p.actividades?.length || 0 }} actividades)
+              </option>
+            </select>
+            <p v-if="!planesDelVehiculo.length && formCrear.vehiculo_id"
+              class="text-xs text-amber-600 mt-1">No hay planes preventivos para este vehículo.</p>
+          </div>
+
+          <!-- Actividades correctivas (solo si tipo es CORRECTIVO o AMBOS) -->
+          <div v-if="tipoSeleccionado && ['CORRECTIVO','AMBOS'].includes(tipoSeleccionado.categoria)">
+            <div class="flex justify-between items-center mb-2">
+              <label class="text-xs font-semibold text-gray-600">Actividades correctivas *</label>
+              <button @click="agregarActCorr" type="button"
+                class="text-xs text-orange-700 hover:text-orange-900 font-medium border border-orange-200 px-2 py-0.5 rounded">
+                + Agregar
+              </button>
+            </div>
+            <div class="space-y-2">
+              <div v-for="(act, i) in formCrear.actividades_correctivas" :key="i"
+                   class="flex items-start gap-2">
+                <span class="flex-shrink-0 mt-2 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center bg-orange-500 text-white">
+                  {{ i + 1 }}
+                </span>
+                <textarea v-model="act.actividad" rows="2"
+                  class="flex-1 border rounded-lg px-3 py-2 text-sm resize-none"
+                  :placeholder="'Actividad correctiva ' + (i + 1)"></textarea>
+                <button @click="eliminarActCorr(i)" type="button"
+                  class="flex-shrink-0 mt-1.5 text-red-400 hover:text-red-600 text-lg leading-none">&times;</button>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1">Descripción / Problema</label>
+            <textarea v-model="formCrear.descripcion" rows="2"
               class="w-full border rounded-lg px-3 py-2 text-sm resize-none"
-              placeholder="Describa el mantenimiento o problema..."></textarea>
+              placeholder="Descripción adicional (opcional)..."></textarea>
           </div>
         </div>
         <p v-if="errorCrear" class="text-red-600 text-sm mt-3">{{ errorCrear }}</p>
@@ -194,8 +261,12 @@
         <div class="space-y-3">
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1">Taller *</label>
-            <input v-model="formOrden.taller" class="w-full border rounded-lg px-3 py-2 text-sm"
-              placeholder="Nombre del taller" />
+            <select v-model="formOrden.taller_id" class="w-full border rounded-lg px-3 py-2 text-sm">
+              <option value="">Seleccione un taller...</option>
+              <option v-for="t in talleresActivos" :key="t.id" :value="t.id">
+                {{ t.nombre }}
+              </option>
+            </select>
           </div>
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1">Fecha de Orden *</label>
@@ -279,7 +350,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/services/api'
 
@@ -287,12 +358,15 @@ const auth = useAuthStore()
 const esTransporte = computed(() => auth.tieneRol('TRANSPORTE'))
 const esConductor  = computed(() => auth.tieneRol('CONDUCTOR') || esTransporte.value)
 
-const lista      = ref([])
-const vehiculos  = ref([])
-const pagina     = ref(1)
-const porPagina  = ref(10)
-const filtroEstado = ref('')
-const guardando  = ref(false)
+const lista           = ref([])
+const vehiculos       = ref([])
+const tiposActivos    = ref([])
+const talleresActivos = ref([])
+const planesPreventivos = ref([])
+const pagina          = ref(1)
+const porPagina       = ref(10)
+const filtroEstado    = ref('')
+const guardando       = ref(false)
 
 const listaFiltrada = computed(() =>
   filtroEstado.value ? lista.value.filter(m => m.estado === filtroEstado.value) : lista.value
@@ -316,6 +390,31 @@ const errorCrear     = ref('')
 const errorOrden     = ref('')
 const errorNegar     = ref('')
 const errorFinalizar = ref('')
+
+const tipoSeleccionado = computed(() =>
+  tiposActivos.value.find(t => t.id == formCrear.value.tipo_mantenimiento_id) || null
+)
+
+const planesDelVehiculo = computed(() =>
+  planesPreventivos.value.filter(p => p.vehiculo_id == formCrear.value.vehiculo_id && p.estado === 'ACTIVO')
+)
+
+function onTipoChange() {
+  formCrear.value.plan_preventivo_id = ''
+  formCrear.value.actividades_correctivas = []
+  const tipo = tipoSeleccionado.value
+  if (tipo && ['CORRECTIVO', 'AMBOS'].includes(tipo.categoria)) {
+    formCrear.value.actividades_correctivas = [{ actividad: '' }]
+  }
+}
+
+function agregarActCorr() {
+  formCrear.value.actividades_correctivas.push({ actividad: '' })
+}
+
+function eliminarActCorr(i) {
+  formCrear.value.actividades_correctivas.splice(i, 1)
+}
 
 function estadoBadge(e) {
   if (e === 'PENDIENTE')      return 'bg-yellow-100 text-yellow-700'
@@ -342,18 +441,31 @@ function formatFechaCorta(d) {
 }
 
 async function cargar() {
-  const [r1, r2] = await Promise.all([
+  const [r1, r2, r3, r4, r5] = await Promise.all([
     api.get('/transporte/mantenimiento'),
     api.get('/transporte/vehiculos'),
+    api.get('/transporte/tipos-mantenimiento/activos'),
+    api.get('/transporte/talleres/activos'),
+    api.get('/transporte/plan-preventivo'),
   ])
-  lista.value = r1.data
-  vehiculos.value = r2.data.filter(v => v.estado === 'ACTIVO' || v.estado === 'MANTENIMIENTO')
+  lista.value           = r1.data
+  vehiculos.value       = r2.data.filter(v => v.estado === 'ACTIVO' || v.estado === 'MANTENIMIENTO')
+  tiposActivos.value    = r3.data
+  talleresActivos.value = r4.data
+  planesPreventivos.value = r5.data
 }
 
 function abrirVer(m) { modalVer.value = { show: true, m } }
 
 function abrirCrear() {
-  formCrear.value = { vehiculo_id: '', tipo: 'PREVENTIVO', descripcion: '' }
+  formCrear.value = {
+    vehiculo_id: '',
+    tipo_mantenimiento_id: '',
+    km_actual: null,
+    plan_preventivo_id: '',
+    actividades_correctivas: [],
+    descripcion: '',
+  }
   errorCrear.value = ''
   modalCrear.value = { show: true }
 }
@@ -366,7 +478,7 @@ function abrirNegar(m) {
 
 function abrirOrden(m) {
   const hoy = new Date().toISOString().slice(0, 10)
-  formOrden.value = { taller: '', fecha_orden: hoy, observacion_responsable: '' }
+  formOrden.value = { taller_id: '', fecha_orden: hoy, observacion_responsable: '' }
   errorOrden.value = ''
   modalOrden.value = { show: true, id: m.id }
 }
@@ -386,7 +498,7 @@ async function guardarCrear() {
     modalCrear.value.show = false
     await cargar()
   } catch (e) {
-    errorCrear.value = e.response?.data?.message || 'Error al enviar'
+    errorCrear.value = e.response?.data?.message || Object.values(e.response?.data?.errors || {})[0]?.[0] || 'Error al enviar'
   } finally { guardando.value = false }
 }
 

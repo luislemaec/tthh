@@ -357,4 +357,43 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::patch("/vacaciones/{id}/aprobar",    [VacacionesController::class, "aprobar"]);
     Route::patch("/vacaciones/{id}/negar",      [VacacionesController::class, "negar"]);
     Route::delete("/vacaciones/{id}",           [VacacionesController::class, "destroy"]);
+
+    // Transporte — catálogos
+    Route::prefix('transporte')->group(function () {
+        // Vehículos
+        Route::get('vehiculos',    [TransporteController::class, 'index']);
+        Route::post('vehiculos',   [TransporteController::class, 'store']);
+        Route::put('vehiculos/{id}', [TransporteController::class, 'update']);
+
+        // Talleres
+        Route::get('talleres',        [\App\Http\Controllers\Transporte\TallerController::class, 'index']);
+        Route::get('talleres/activos', [\App\Http\Controllers\Transporte\TallerController::class, 'activos']);
+        Route::post('talleres',       [\App\Http\Controllers\Transporte\TallerController::class, 'store']);
+        Route::put('talleres/{id}',   [\App\Http\Controllers\Transporte\TallerController::class, 'update']);
+
+        // Tipos de mantenimiento
+        Route::get('tipos-mantenimiento',        [\App\Http\Controllers\Transporte\TipoMantenimientoController::class, 'index']);
+        Route::get('tipos-mantenimiento/activos', [\App\Http\Controllers\Transporte\TipoMantenimientoController::class, 'activos']);
+        Route::post('tipos-mantenimiento',       [\App\Http\Controllers\Transporte\TipoMantenimientoController::class, 'store']);
+        Route::put('tipos-mantenimiento/{id}',   [\App\Http\Controllers\Transporte\TipoMantenimientoController::class, 'update']);
+
+        // Plan preventivo
+        Route::get('plan-preventivo',      [\App\Http\Controllers\Transporte\PlanPreventivoController::class, 'index']);
+        Route::post('plan-preventivo',     [\App\Http\Controllers\Transporte\PlanPreventivoController::class, 'store']);
+        Route::put('plan-preventivo/{id}', [\App\Http\Controllers\Transporte\PlanPreventivoController::class, 'update']);
+
+        // Mantenimiento
+        Route::get('mantenimiento',        [TransporteController::class, 'indexMtto']);
+        Route::post('mantenimiento',       [TransporteController::class, 'storeMtto']);
+        Route::put('mantenimiento/{id}',   [TransporteController::class, 'updateMtto']);
+        Route::get('mantenimiento/{id}/pdf', [TransporteController::class, 'pdfMtto']);
+
+        // Movilización
+        Route::get('movilizacion',         [TransporteController::class, 'indexMov']);
+        Route::post('movilizacion',        [TransporteController::class, 'storeMov']);
+        Route::put('movilizacion/{id}',    [TransporteController::class, 'updateMov']);
+        Route::get('movilizacion/{id}/pdf', [TransporteController::class, 'pdfMov']);
+
+        Route::get('conductores', [TransporteController::class, 'conductores']);
+    });
 });

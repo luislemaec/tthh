@@ -10,14 +10,14 @@
     </div>
 
     <!-- Tarjetas de aplicativos -->
-    <div class="flex flex-wrap justify-center gap-6 max-w-3xl w-full">
+    <div class="flex flex-wrap justify-center gap-4 max-w-4xl w-full">
 
       <!-- Talento Humano -->
       <button @click="irA('/dashboard')"
-        class="bg-white rounded-2xl shadow-xl p-8 w-64 flex flex-col items-center gap-4 hover:scale-105 transition-transform cursor-pointer group">
-        <div class="w-16 h-16 rounded-full flex items-center justify-center"
+        class="bg-white rounded-xl shadow-lg p-5 w-44 flex flex-col items-center gap-3 hover:scale-105 transition-transform cursor-pointer">
+        <div class="w-12 h-12 rounded-full flex items-center justify-center"
              style="background-color: #0b5447;">
-          <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857
                  M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857
@@ -25,59 +25,59 @@
           </svg>
         </div>
         <div class="text-center">
-          <p class="font-bold text-gray-800 text-lg">Talento Humano</p>
-          <p class="text-gray-500 text-xs mt-1">Empleados, asistencia, vacaciones, permisos</p>
+          <p class="font-bold text-gray-800 text-sm">Talento Humano</p>
+          <p class="text-gray-500 text-xs mt-0.5">Empleados, asistencia, vacaciones</p>
         </div>
       </button>
 
       <!-- Adquisiciones -->
       <button v-if="tieneAccesoAdquisiciones" @click="irA('/adquisiciones')"
-        class="bg-white rounded-2xl shadow-xl p-8 w-64 flex flex-col items-center gap-4 hover:scale-105 transition-transform cursor-pointer group">
-        <div class="w-16 h-16 rounded-full flex items-center justify-center bg-amber-600">
-          <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        class="bg-white rounded-xl shadow-lg p-5 w-44 flex flex-col items-center gap-3 hover:scale-105 transition-transform cursor-pointer">
+        <div class="w-12 h-12 rounded-full flex items-center justify-center bg-amber-600">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
           </svg>
         </div>
         <div class="text-center">
-          <p class="font-bold text-gray-800 text-lg">Administrativo</p>
-          <p class="text-gray-500 text-xs mt-1">Inventario, ingreso, egreso, solicitudes de materiales</p>
+          <p class="font-bold text-gray-800 text-sm">Administrativo</p>
+          <p class="text-gray-500 text-xs mt-0.5">Inventario, ingresos, egresos</p>
           <span v-if="alertasStock > 0"
-            class="mt-2 inline-block bg-red-100 text-red-700 text-xs font-semibold px-2 py-0.5 rounded-full">
-            {{ alertasStock }} alerta{{ alertasStock > 1 ? 's' : '' }} de stock
+            class="mt-1 inline-block bg-red-100 text-red-700 text-xs font-semibold px-2 py-0.5 rounded-full">
+            {{ alertasStock }} alerta{{ alertasStock > 1 ? 's' : '' }}
           </span>
         </div>
       </button>
 
       <!-- Transportes -->
       <button v-if="tieneAccesoTransportes" @click="irA(rutaTransportes)"
-        class="bg-white rounded-2xl shadow-xl p-8 w-64 flex flex-col items-center gap-4 hover:scale-105 transition-transform cursor-pointer group">
-        <div class="w-16 h-16 rounded-full flex items-center justify-center"
+        class="bg-white rounded-xl shadow-lg p-5 w-44 flex flex-col items-center gap-3 hover:scale-105 transition-transform cursor-pointer">
+        <div class="w-12 h-12 rounded-full flex items-center justify-center"
              style="background-color: #1e3a5f;">
-          <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
           </svg>
         </div>
         <div class="text-center">
-          <p class="font-bold text-gray-800 text-lg">Transporte</p>
-          <p class="text-gray-500 text-xs mt-1">Vehículos, mantenimiento, movilización</p>
+          <p class="font-bold text-gray-800 text-sm">Transporte</p>
+          <p class="text-gray-500 text-xs mt-0.5">Vehículos, mantenimiento, movilización</p>
         </div>
       </button>
 
       <!-- Solicitudes de materiales (todos los empleados) -->
       <button v-if="!tieneAccesoAdquisiciones" @click="irA('/adquisiciones/solicitudes')"
-        class="bg-white rounded-2xl shadow-xl p-8 w-64 flex flex-col items-center gap-4 hover:scale-105 transition-transform cursor-pointer group">
-        <div class="w-16 h-16 rounded-full flex items-center justify-center bg-amber-600">
-          <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        class="bg-white rounded-xl shadow-lg p-5 w-44 flex flex-col items-center gap-3 hover:scale-105 transition-transform cursor-pointer">
+        <div class="w-12 h-12 rounded-full flex items-center justify-center bg-amber-600">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2
                  M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
           </svg>
         </div>
         <div class="text-center">
-          <p class="font-bold text-gray-800 text-lg">Administrativo</p>
-          <p class="text-gray-500 text-xs mt-1">Bienes y Suministros</p>
+          <p class="font-bold text-gray-800 text-sm">Administrativo</p>
+          <p class="text-gray-500 text-xs mt-0.5">Bienes y Suministros</p>
         </div>
       </button>
 

@@ -3,6 +3,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Transporte\Vehiculo;
 use App\Models\Transporte\Mantenimiento;
+use App\Models\Transporte\MantenimientoActividad;
+use App\Models\Transporte\PlanPreventivoDet;
+use App\Models\Transporte\TipoMantenimiento;
 use App\Models\Transporte\SolicitudMov;
 use App\Models\Empleado;
 use Illuminate\Http\Request;
@@ -88,7 +91,7 @@ class TransporteController extends Controller
 
     public function indexMtto(Request $request)
     {
-        $query = Mantenimiento::with(['vehiculo', 'conductor', 'responsable'])
+        $query = Mantenimiento::with(['vehiculo', 'conductor', 'responsable', 'actividades', 'tipoMantenimiento', 'tallerRel'])
             ->orderBy('created_at', 'desc');
 
         if (!$this->esTransporte($request)) {
@@ -101,20 +104,56 @@ class TransporteController extends Controller
     public function storeMtto(Request $request)
     {
         $request->validate([
-            'vehiculo_id' => 'required|exists:pgsql.dbo.trans_vehiculo,id',
-            'tipo'        => 'required|in:PREVENTIVO,CORRECTIVO',
-            'descripcion' => 'required|string',
+            'vehiculo_id'           => 'required|exists:pgsql.dbo.trans_vehiculo,id',
+            'tipo_mantenimiento_id' => 'required|exists:pgsql.dbo.trans_tipo_mantenimiento,id',
+            'km_actual'             => 'required|integer|min:0',
+            'descripcion'           => 'nullable|string',
+            'plan_preventivo_id'    => 'nullable|exists:pgsql.dbo.trans_plan_preventivo_cab,id',
+            'actividades_correctivas'              => 'nullable|array',
+            'actividades_correctivas.*.actividad'  => 'required_with:actividades_correctivas|string',
         ]);
+
+        $tipo = TipoMantenimiento::findOrFail($request->tipo_mantenimiento_id);
+
+        if (in_array($tipo->categoria, ['PREVENTIVO', 'AMBOS']) && !$request->plan_preventivo_id) {
+            return response()->json(['message' => 'Debe seleccionar un plan preventivo para este tipo de mantenimiento.'], 422);
+        }
 
         $m = Mantenimiento::create([
-            'vehiculo_id'      => $request->vehiculo_id,
-            'tipo'             => $request->tipo,
-            'descripcion'      => $request->descripcion,
-            'id_emp_conductor' => $this->emp($request)->id_emp,
-            'estado'           => 'PENDIENTE',
+            'vehiculo_id'           => $request->vehiculo_id,
+            'tipo'                  => $tipo->nombre,
+            'tipo_mantenimiento_id' => $request->tipo_mantenimiento_id,
+            'km_actual'             => $request->km_actual,
+            'descripcion'           => $request->descripcion ?? $tipo->nombre,
+            'plan_preventivo_id'    => $request->plan_preventivo_id,
+            'id_emp_conductor'      => $this->emp($request)->id_emp,
+            'estado'                => 'PENDIENTE',
         ]);
 
-        return response()->json($m->load(['vehiculo', 'conductor']), 201);
+        if (in_array($tipo->categoria, ['PREVENTIVO', 'AMBOS']) && $request->plan_preventivo_id) {
+            $detalles = PlanPreventivoDet::where('cab_id', $request->plan_preventivo_id)->orderBy('orden')->get();
+            foreach ($detalles as $det) {
+                MantenimientoActividad::create([
+                    'mantenimiento_id' => $m->id,
+                    'tipo'             => 'PREVENTIVO',
+                    'actividad'        => $det->actividad,
+                    'orden'            => $det->orden,
+                ]);
+            }
+        }
+
+        if (in_array($tipo->categoria, ['CORRECTIVO', 'AMBOS']) && $request->actividades_correctivas) {
+            foreach ($request->actividades_correctivas as $i => $act) {
+                MantenimientoActividad::create([
+                    'mantenimiento_id' => $m->id,
+                    'tipo'             => 'CORRECTIVO',
+                    'actividad'        => $act['actividad'],
+                    'orden'            => $i + 1,
+                ]);
+            }
+        }
+
+        return response()->json($m->load(['vehiculo', 'conductor', 'actividades', 'tipoMantenimiento']), 201);
     }
 
     public function updateMtto(Request $request, $id)
@@ -125,10 +164,12 @@ class TransporteController extends Controller
 
         if ($accion === 'orden') {
             $request->validate([
-                'taller'      => 'required|string|max:100',
+                'taller_id'   => 'required|exists:pgsql.dbo.trans_taller,id',
                 'fecha_orden' => 'required|date',
             ]);
-            // Número de orden secuencial: OT-YYYY-NNNN
+
+            $tallerNombre = \App\Models\Transporte\Taller::findOrFail($request->taller_id)->nombre;
+
             $anio = date('Y');
             $seq  = Mantenimiento::whereNotNull('numero_orden')
                 ->whereRaw("EXTRACT(YEAR FROM created_at) = ?", [$anio])
@@ -136,7 +177,8 @@ class TransporteController extends Controller
             $numero_orden = 'OT-' . $anio . '-' . str_pad($seq, 4, '0', STR_PAD_LEFT);
 
             $m->update([
-                'taller'                 => $request->taller,
+                'taller_id'              => $request->taller_id,
+                'taller'                 => $tallerNombre,
                 'numero_orden'           => $numero_orden,
                 'fecha_orden'            => $request->fecha_orden,
                 'observacion_responsable'=> $request->observacion_responsable,

@@ -1,0 +1,266 @@
+<template>
+  <div>
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-2xl font-bold text-gray-800">Planes Preventivos</h1>
+      <button @click="abrirCrear" class="text-white px-4 py-2 rounded-lg text-sm hover:opacity-90"
+        style="background-color:#1e3a5f;">
+        + Nuevo plan
+      </button>
+    </div>
+
+    <!-- Filtro vehículo -->
+    <div class="flex gap-3 mb-4">
+      <select v-model="filtroVehiculo" @change="pagina = 1" class="border rounded-lg px-3 py-2 text-sm">
+        <option value="">Todos los vehículos</option>
+        <option v-for="v in vehiculos" :key="v.id" :value="v.id">
+          {{ v.placa }} — {{ v.marca }} {{ v.modelo }}
+        </option>
+      </select>
+    </div>
+
+    <div class="space-y-2">
+      <div v-if="!listaFiltrada.length" class="bg-white rounded-xl shadow p-8 text-center text-gray-400">
+        Sin planes registrados
+      </div>
+
+      <div v-for="p in listaPaginada" :key="p.id"
+           class="bg-white rounded-xl shadow px-5 py-3 flex justify-between items-center gap-3">
+        <div class="min-w-0 flex-1">
+          <p class="font-semibold text-gray-800">
+            {{ p.nombre }}
+            <span class="text-gray-400 font-normal text-xs ml-2">
+              {{ p.vehiculo?.placa }} · {{ p.vehiculo?.marca }} {{ p.vehiculo?.modelo }}
+            </span>
+          </p>
+          <p class="text-xs text-gray-500 mt-0.5">
+            Hito: {{ p.km_hito?.toLocaleString() }} km ·
+            {{ p.actividades?.length || 0 }} actividad{{ (p.actividades?.length || 0) !== 1 ? 'es' : '' }}
+          </p>
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <span :class="p.estado === 'ACTIVO' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
+            class="px-2 py-0.5 rounded-full text-xs font-medium">
+            {{ p.estado }}
+          </span>
+          <button @click="abrirVer(p)"
+            class="text-xs text-gray-600 hover:text-gray-900 font-medium border border-gray-300 px-3 py-1 rounded-lg">
+            Ver
+          </button>
+          <button @click="abrirEditar(p)"
+            class="text-xs text-gray-600 hover:text-gray-900 font-medium border border-gray-300 px-3 py-1 rounded-lg">
+            Editar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Paginador -->
+    <div v-if="listaFiltrada.length > 0" class="flex items-center justify-between mt-4">
+      <div class="flex items-center gap-2 text-sm text-gray-600">
+        <span>Mostrar</span>
+        <select v-model="porPagina" @change="pagina = 1" class="border rounded px-2 py-1 text-sm">
+          <option :value="10">10</option>
+          <option :value="25">25</option>
+          <option :value="50">50</option>
+        </select>
+        <span>por página · {{ listaFiltrada.length }} total</span>
+      </div>
+      <div class="flex gap-1">
+        <button @click="pagina--" :disabled="pagina === 1"
+          class="px-3 py-1 text-sm border rounded disabled:opacity-40">‹</button>
+        <span class="px-3 py-1 text-sm text-gray-600">{{ pagina }} / {{ totalPaginas }}</span>
+        <button @click="pagina++" :disabled="pagina === totalPaginas"
+          class="px-3 py-1 text-sm border rounded disabled:opacity-40">›</button>
+      </div>
+    </div>
+
+    <!-- Modal Ver actividades -->
+    <div v-if="modalVer.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 max-h-[85vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-lg font-bold text-gray-800">{{ modalVer.plan?.nombre }}</h2>
+          <button @click="modalVer.show = false" class="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+        </div>
+        <p class="text-xs text-gray-500 mb-4">
+          {{ modalVer.plan?.vehiculo?.placa }} · {{ modalVer.plan?.vehiculo?.marca }} {{ modalVer.plan?.vehiculo?.modelo }}
+          · Hito {{ modalVer.plan?.km_hito?.toLocaleString() }} km
+        </p>
+        <ol class="space-y-1">
+          <li v-for="a in modalVer.plan?.actividades" :key="a.id"
+            class="flex gap-2 text-sm text-gray-700">
+            <span class="flex-shrink-0 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center text-white"
+              style="background-color:#1e3a5f;">{{ a.orden }}</span>
+            <span>{{ a.actividad }}</span>
+          </li>
+        </ol>
+        <div class="flex justify-end mt-5">
+          <button @click="modalVer.show = false"
+            class="px-4 py-2 text-sm border rounded-lg text-gray-600">Cerrar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal crear/editar -->
+    <div v-if="modal.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+        <h2 class="text-lg font-bold text-gray-800 mb-4">
+          {{ modal.id ? 'Editar Plan Preventivo' : 'Nuevo Plan Preventivo' }}
+        </h2>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1">Vehículo *</label>
+            <select v-model="form.vehiculo_id" class="w-full border rounded-lg px-3 py-2 text-sm">
+              <option value="">Seleccione...</option>
+              <option v-for="v in vehiculos" :key="v.id" :value="v.id">
+                {{ v.placa }} — {{ v.marca }} {{ v.modelo }}
+              </option>
+            </select>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1">Km Hito *</label>
+              <input v-model.number="form.km_hito" type="number" min="1"
+                class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="5000" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1">Nombre del plan *</label>
+              <input v-model="form.nombre" class="w-full border rounded-lg px-3 py-2 text-sm"
+                placeholder="Ej: Mantenimiento 5000km" />
+            </div>
+          </div>
+          <div v-if="modal.id">
+            <label class="block text-xs font-semibold text-gray-600 mb-1">Estado</label>
+            <select v-model="form.estado" class="w-full border rounded-lg px-3 py-2 text-sm">
+              <option value="ACTIVO">ACTIVO</option>
+              <option value="INACTIVO">INACTIVO</option>
+            </select>
+          </div>
+
+          <!-- Actividades -->
+          <div>
+            <div class="flex justify-between items-center mb-2">
+              <label class="text-xs font-semibold text-gray-600">Actividades *</label>
+              <button @click="agregarActividad" type="button"
+                class="text-xs text-blue-700 hover:text-blue-900 font-medium border border-blue-200 px-2 py-0.5 rounded">
+                + Agregar
+              </button>
+            </div>
+            <div class="space-y-2 max-h-64 overflow-y-auto pr-1">
+              <div v-for="(act, i) in form.actividades" :key="i"
+                   class="flex items-start gap-2">
+                <span class="flex-shrink-0 mt-2 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center text-white"
+                  style="background-color:#1e3a5f;">{{ i + 1 }}</span>
+                <textarea v-model="act.actividad" rows="2"
+                  class="flex-1 border rounded-lg px-3 py-2 text-sm resize-none"
+                  :placeholder="'Actividad ' + (i + 1)"></textarea>
+                <button @click="eliminarActividad(i)" type="button"
+                  class="flex-shrink-0 mt-1.5 text-red-400 hover:text-red-600 text-lg leading-none">&times;</button>
+              </div>
+            </div>
+            <p v-if="form.actividades?.length === 0" class="text-xs text-gray-400 mt-1">
+              Agregue al menos una actividad.
+            </p>
+          </div>
+        </div>
+        <p v-if="error" class="text-red-600 text-sm mt-3">{{ error }}</p>
+        <div class="flex justify-end gap-2 mt-5">
+          <button @click="modal.show = false"
+            class="px-4 py-2 text-sm text-gray-600 border rounded-lg">Cancelar</button>
+          <button @click="guardar" :disabled="guardando"
+            class="px-5 py-2 text-sm text-white rounded-lg hover:opacity-90 disabled:opacity-50"
+            style="background-color:#1e3a5f;">
+            {{ guardando ? 'Guardando...' : 'Guardar' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import api from '@/services/api'
+
+const lista         = ref([])
+const vehiculos     = ref([])
+const guardando     = ref(false)
+const error         = ref('')
+const pagina        = ref(1)
+const porPagina     = ref(10)
+const filtroVehiculo = ref('')
+const modal         = ref({ show: false, id: null })
+const modalVer      = ref({ show: false, plan: null })
+const form          = ref({ actividades: [] })
+
+const listaFiltrada = computed(() =>
+  filtroVehiculo.value
+    ? lista.value.filter(p => p.vehiculo_id == filtroVehiculo.value)
+    : lista.value
+)
+const totalPaginas = computed(() => Math.max(1, Math.ceil(listaFiltrada.value.length / porPagina.value)))
+const listaPaginada = computed(() => {
+  const ini = (pagina.value - 1) * porPagina.value
+  return listaFiltrada.value.slice(ini, ini + porPagina.value)
+})
+
+async function cargar() {
+  const [r1, r2] = await Promise.all([
+    api.get('/transporte/plan-preventivo'),
+    api.get('/transporte/vehiculos'),
+  ])
+  lista.value = r1.data
+  vehiculos.value = r2.data
+}
+
+function abrirVer(p) {
+  modalVer.value = { show: true, plan: p }
+}
+
+function abrirCrear() {
+  form.value = { vehiculo_id: '', km_hito: null, nombre: '', actividades: [{ actividad: '' }] }
+  modal.value = { show: true, id: null }
+  error.value = ''
+}
+
+function abrirEditar(p) {
+  form.value = {
+    vehiculo_id: p.vehiculo_id,
+    km_hito:     p.km_hito,
+    nombre:      p.nombre,
+    estado:      p.estado,
+    actividades: (p.actividades || []).map(a => ({ actividad: a.actividad })),
+  }
+  modal.value = { show: true, id: p.id }
+  error.value = ''
+}
+
+function agregarActividad() {
+  if (form.value.actividades.length < 20) {
+    form.value.actividades.push({ actividad: '' })
+  }
+}
+
+function eliminarActividad(i) {
+  form.value.actividades.splice(i, 1)
+}
+
+async function guardar() {
+  error.value = ''
+  guardando.value = true
+  try {
+    if (modal.value.id) {
+      await api.put(`/transporte/plan-preventivo/${modal.value.id}`, form.value)
+    } else {
+      await api.post('/transporte/plan-preventivo', form.value)
+    }
+    modal.value.show = false
+    await cargar()
+  } catch (e) {
+    error.value = e.response?.data?.message || Object.values(e.response?.data?.errors || {})[0]?.[0] || 'Error al guardar'
+  } finally {
+    guardando.value = false
+  }
+}
+
+onMounted(cargar)
+</script>
