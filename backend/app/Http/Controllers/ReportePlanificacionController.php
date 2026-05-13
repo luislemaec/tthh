@@ -105,20 +105,22 @@ class ReportePlanificacionController extends Controller
                 ];
             });
 
-            $totalEmp     = $empsData->count();
-            $aprobados    = $empsData->whereIn('estado_plan', ['APROBADO', 'REPLANIFICADO'])->count();
-            $pendientes   = $empsData->where('estado_plan', 'PENDIENTE')->count();
-            $sinPlan      = $empsData->whereNull('estado_plan')->count();
+            $totalEmp           = $empsData->count();
+            $aprobados          = $empsData->whereIn('estado_plan', ['APROBADO', 'REPLANIFICADO'])->count();
+            $pendientes         = $empsData->where('estado_plan', 'PENDIENTE')->count();
+            $sinPlan            = $empsData->whereNull('estado_plan')->count();
+            $tieneReplanificados = $empsData->where('estado_plan', 'REPLANIFICADO')->count() > 0;
 
             return [
-                'id_depto'     => $depto->id_depto,
-                'nombre_depto' => $depto->nombre_depto,
-                'total'        => $totalEmp,
-                'aprobados'    => $aprobados,
-                'pendientes'   => $pendientes,
-                'sin_plan'     => $sinPlan,
-                'completo'     => $aprobados === $totalEmp,
-                'empleados'    => $empsData->values(),
+                'id_depto'            => $depto->id_depto,
+                'nombre_depto'        => $depto->nombre_depto,
+                'total'               => $totalEmp,
+                'aprobados'           => $aprobados,
+                'pendientes'          => $pendientes,
+                'sin_plan'            => $sinPlan,
+                'completo'            => $aprobados === $totalEmp,
+                'tiene_replanificados'=> $tieneReplanificados,
+                'empleados'           => $empsData->values(),
             ];
         })->filter()->values();
 
