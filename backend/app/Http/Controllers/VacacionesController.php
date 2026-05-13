@@ -67,10 +67,21 @@ class VacacionesController extends Controller
     private function empleadosDeSupervisor($id_supervisor)
     {
         $deptos = Supervisor::where("id_supervisor", $id_supervisor)->pluck("id_depto");
-        return Empleado::whereIn("id_depto", $deptos)
+
+        $empleadosDirectos = Empleado::whereIn("id_depto", $deptos)
             ->where("estado", "ACTIVO")
             ->where("id_emp", "!=", $id_supervisor)
             ->pluck("id_emp");
+
+        $deptosHijos = DB::table("dbo.ad_departamento")
+            ->whereIn("padre_id", $deptos)
+            ->pluck("id_depto");
+
+        $supervisoresHijos = Supervisor::whereIn("id_depto", $deptosHijos)
+            ->where("id_supervisor", "!=", $id_supervisor)
+            ->pluck("id_supervisor");
+
+        return $empleadosDirectos->merge($supervisoresHijos)->unique()->values();
     }
 
     // Rol del usuario autenticado
@@ -131,11 +142,7 @@ class VacacionesController extends Controller
             }
             // vista=equipo o sin vista: ve todos
         } elseif ($esSupervisor) {
-            $deptos    = Supervisor::where("id_supervisor", $emp->id_emp)->pluck("id_depto");
-            $empleados = Empleado::whereIn("id_depto", $deptos)
-                ->where("estado", "ACTIVO")
-                ->where("id_emp", "!=", $emp->id_emp)
-                ->pluck("id_emp");
+            $empleados = $this->empleadosDeSupervisor($emp->id_emp);
             if ($vista === "mia") {
                 $query->where("id_emp", $emp->id_emp);
             } elseif ($vista === "equipo") {
