@@ -63,20 +63,28 @@ class PermisosController extends Controller
         $query = Permiso::with(["empleado.departamento", "razonPermiso"])
             ->orderBy("fecha_hora", "desc");
 
+        $vista = $request->query("vista", ""); // "mia" | "equipo" | "" (todos)
+
         if ($esAdminOTH) {
-            // Admin y TH ven todos
+            if ($vista === "mia") {
+                $query->where("id_emp", $emp->id_emp);
+            }
+            // vista=equipo o sin vista: ve todos (admin/TH)
         } elseif ($esSupervisor) {
-            // Supervisor ve sus propios permisos + los de sus empleados (incluyendo supervisores de depts hijos)
             $empleados = $this->empleadosDeSupervisor($emp->id_emp);
-            $query->where(function($q) use ($emp, $empleados) {
-                $q->where("id_emp", $emp->id_emp)
-                  ->orWhere(function($q2) use ($empleados) {
-                      $q2->whereIn("id_emp", $empleados)
-                         ->whereIn("estado_permiso", ["PENDIENTE", "APROBADO", "NEGADO", "ELIMINADO"]);
-                  });
-            });
+            if ($vista === "mia") {
+                $query->where("id_emp", $emp->id_emp);
+            } elseif ($vista === "equipo") {
+                $query->whereIn("id_emp", $empleados);
+            } else {
+                // Sin vista: comportamiento anterior (propio + equipo)
+                $query->where(function($q) use ($emp, $empleados) {
+                    $q->where("id_emp", $emp->id_emp)
+                      ->orWhereIn("id_emp", $empleados);
+                });
+            }
         } else {
-            // Empleado solo ve sus propios permisos
+            // Empleado sin rol especial: solo ve los suyos
             $query->where("id_emp", $emp->id_emp);
         }
 

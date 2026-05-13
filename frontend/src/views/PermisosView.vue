@@ -7,11 +7,21 @@
           class="bg-[#0b5447] text-white px-4 py-2 rounded-lg hover:bg-[#00372e] text-sm font-medium">
           📊 Estadística
         </button>
-        <button @click="abrirModalNuevo"
+        <button v-if="!esSupervisorOAdmin || tabActivo === 'mia'" @click="abrirModalNuevo"
           class="bg-[#0b5447] text-white px-4 py-2 rounded-lg hover:bg-[#00372e] text-sm font-medium">
           + Solicitar Permiso
         </button>
       </div>
+    </div>
+
+    <!-- Tabs (solo supervisor/admin) -->
+    <div v-if="esSupervisorOAdmin" class="flex border-b">
+      <button @click="cambiarTab('mia')"
+        :class="tabActivo === 'mia' ? 'border-b-2 border-[#0b5447] text-[#0b5447] font-medium' : 'text-gray-500 hover:text-gray-700'"
+        class="px-6 py-3 text-sm transition">Mis Permisos</button>
+      <button @click="cambiarTab('equipo')"
+        :class="tabActivo === 'equipo' ? 'border-b-2 border-[#0b5447] text-[#0b5447] font-medium' : 'text-gray-500 hover:text-gray-700'"
+        class="px-6 py-3 text-sm transition">Permisos Equipo</button>
     </div>
 
     <!-- Filtros -->
@@ -98,7 +108,7 @@
               <div class="flex gap-2">
                 <button @click="verPermiso(p)"
                   class="text-[#0b5447] hover:underline text-xs font-medium">Ver</button>
-                <template v-if="esSupervisorOAdmin && p.estado_permiso === 'PENDIENTE' && p.empleado?.id_emp !== auth.empleado?.id_emp">
+                <template v-if="esSupervisorOAdmin && tabActivo === 'equipo' && p.estado_permiso === 'PENDIENTE'">
                   <button @click="aprobar(p.secuencial_clave)"
                     class="text-green-600 hover:underline text-xs font-medium">Aprobar</button>
                   <button @click="abrirModalNegar(p)"
@@ -406,10 +416,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from "vue"
-import { useAuthStore } from "@/stores/auth"
 import api from "@/services/api"
-
-const auth = useAuthStore()
 
 const permisos            = ref([])
 const razones             = ref([])
@@ -428,6 +435,7 @@ const total               = ref(0)
 const pagina              = ref(1)
 const totalPaginas        = ref(1)
 const miRol               = ref({ es_supervisor: false, es_admin_th: false })
+const tabActivo           = ref("mia")
 
 const filtros = ref({ estado: "", fecha_desde: "", fecha_hasta: "", descontable: "" })
 
@@ -462,7 +470,8 @@ const colorEstado = (estado) => {
 const cargar = async () => {
   cargando.value = true
   try {
-    const params = { page: pagina.value, per_page: 15, ...filtros.value }
+    const vista  = esSupervisorOAdmin.value ? tabActivo.value : ""
+    const params = { page: pagina.value, per_page: 15, ...filtros.value, ...(vista ? { vista } : {}) }
     const { data } = await api.get("/permisos", { params })
     permisos.value     = data.data
     total.value        = data.total
@@ -472,6 +481,13 @@ const cargar = async () => {
   } finally {
     cargando.value = false
   }
+}
+
+const cambiarTab = (tab) => {
+  tabActivo.value = tab
+  pagina.value    = 1
+  filtros.value   = { estado: "", fecha_desde: "", fecha_hasta: "", descontable: "" }
+  cargar()
 }
 
 const abrirModalNuevo = async () => {
