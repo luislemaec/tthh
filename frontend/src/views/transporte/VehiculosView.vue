@@ -42,11 +42,13 @@
 
     <!-- Modal crear/editar -->
     <div v-if="modal.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-        <h2 class="text-lg font-bold text-gray-800 mb-4">
-          {{ modal.id ? 'Editar Vehículo' : 'Nuevo Vehículo' }}
-        </h2>
-
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+        <div class="px-6 py-4" style="background-color:#1e3a5f;">
+          <h2 class="text-lg font-bold text-white">
+            {{ modal.id ? 'Editar Vehículo' : 'Nuevo Vehículo' }}
+          </h2>
+        </div>
+        <div class="p-6">
         <div class="space-y-3">
           <div class="grid grid-cols-2 gap-3">
             <div>
@@ -113,6 +115,7 @@
             style="background-color:#1e3a5f;">
             {{ guardando ? 'Guardando...' : 'Guardar' }}
           </button>
+        </div>
         </div>
       </div>
     </div>

@@ -95,11 +95,12 @@
 
     <!-- Modal Ver -->
     <div v-if="modalVer.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
-        <div class="flex justify-between items-center mb-4">
-          <h2 class="text-lg font-bold text-gray-800">Detalle Requerimiento #{{ modalVer.m?.id }}</h2>
-          <button @click="modalVer.show = false" class="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+        <div class="px-6 py-4 flex justify-between items-center flex-shrink-0" style="background-color:#1e3a5f;">
+          <h2 class="text-lg font-bold text-white">Detalle Requerimiento #{{ modalVer.m?.id }}</h2>
+          <button @click="modalVer.show = false" class="text-white/70 hover:text-white text-xl leading-none">&times;</button>
         </div>
+        <div class="p-6 overflow-y-auto">
         <template v-if="modalVer.m">
           <table class="w-full text-sm">
             <tbody>
@@ -163,13 +164,17 @@
           <button @click="modalVer.show = false"
             class="px-4 py-2 text-sm border rounded-lg text-gray-600 hover:text-gray-800">Cerrar</button>
         </div>
+        </div>
       </div>
     </div>
 
     <!-- Modal Nuevo Requerimiento -->
     <div v-if="modalCrear.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
-        <h2 class="text-lg font-bold text-gray-800 mb-4">Nuevo Requerimiento de Mantenimiento</h2>
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+        <div class="px-6 py-4 flex-shrink-0" style="background-color:#1e3a5f;">
+          <h2 class="text-lg font-bold text-white">Nuevo Requerimiento de Mantenimiento</h2>
+        </div>
+        <div class="p-6 overflow-y-auto">
         <div class="space-y-3">
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1">Vehículo *</label>
@@ -250,14 +255,18 @@
             {{ guardando ? 'Enviando...' : 'Enviar' }}
           </button>
         </div>
+        </div>
       </div>
     </div>
 
     <!-- Modal Generar Orden -->
     <div v-if="modalOrden.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-        <h2 class="text-lg font-bold text-gray-800 mb-4">Generar Orden de Trabajo</h2>
-        <p class="text-xs text-gray-400 mb-3 -mt-2">El número de orden se asigna automáticamente por tipo (ej. 0001-2026).</p>
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+        <div class="px-6 py-4" style="background-color:#1e3a5f;">
+          <h2 class="text-lg font-bold text-white">Generar Orden de Trabajo</h2>
+          <p class="text-xs text-blue-200 mt-0.5">El número de orden se asigna automáticamente por tipo (ej. 0001-2026).</p>
+        </div>
+        <div class="p-6">
         <div class="space-y-3">
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1">Taller *</label>
@@ -288,13 +297,17 @@
             {{ guardando ? 'Guardando...' : 'Generar' }}
           </button>
         </div>
+        </div>
       </div>
     </div>
 
     <!-- Modal Negar -->
     <div v-if="modalNegar.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-        <h2 class="text-lg font-bold text-gray-800 mb-4">Negar Requerimiento</h2>
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+        <div class="px-6 py-4" style="background-color:#1e3a5f;">
+          <h2 class="text-lg font-bold text-white">Negar Requerimiento</h2>
+        </div>
+        <div class="p-6">
         <div>
           <label class="block text-xs font-semibold text-gray-600 mb-1">Motivo de negación *</label>
           <textarea v-model="formNegar.motivo_negacion" rows="3"
@@ -310,13 +323,17 @@
             {{ guardando ? 'Negando...' : 'Negar' }}
           </button>
         </div>
+        </div>
       </div>
     </div>
 
     <!-- Modal Finalizar -->
     <div v-if="modalFinalizar.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-        <h2 class="text-lg font-bold text-gray-800 mb-4">Finalizar Mantenimiento</h2>
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+        <div class="px-6 py-4" style="background-color:#1e3a5f;">
+          <h2 class="text-lg font-bold text-white">Finalizar Mantenimiento</h2>
+        </div>
+        <div class="p-6">
         <div class="space-y-3">
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1">Fecha de Finalización *</label>
@@ -344,13 +361,14 @@
             {{ guardando ? 'Guardando...' : 'Finalizar' }}
           </button>
         </div>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/services/api'
 

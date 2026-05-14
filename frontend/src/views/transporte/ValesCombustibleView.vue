@@ -62,9 +62,11 @@
 
     <!-- Modal Nuevo Vale -->
     <div v-if="modal.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
-        <h2 class="text-lg font-bold text-gray-800 mb-4">Nuevo Vale de Combustible</h2>
-
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+        <div class="px-6 py-4 flex-shrink-0" style="background-color:#1e3a5f;">
+          <h2 class="text-lg font-bold text-white">Nuevo Vale de Combustible</h2>
+        </div>
+        <div class="p-6 overflow-y-auto">
         <div class="space-y-3">
           <!-- Gasolinera -->
           <div>
@@ -148,6 +150,7 @@
             style="background-color:#1e3a5f;">
             {{ guardando ? 'Guardando...' : 'Guardar y generar PDF' }}
           </button>
+        </div>
         </div>
       </div>
     </div>

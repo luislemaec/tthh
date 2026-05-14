@@ -95,11 +95,12 @@
 
     <!-- Modal Ver actividades -->
     <div v-if="modalVer.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 max-h-[85vh] overflow-y-auto">
-        <div class="flex justify-between items-center mb-4">
-          <h2 class="text-lg font-bold text-gray-800">{{ modalVer.plan?.nombre }}</h2>
-          <button @click="modalVer.show = false" class="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[85vh]">
+        <div class="px-6 py-4 flex justify-between items-center flex-shrink-0" style="background-color:#1e3a5f;">
+          <h2 class="text-lg font-bold text-white">{{ modalVer.plan?.nombre }}</h2>
+          <button @click="modalVer.show = false" class="text-white/70 hover:text-white text-xl leading-none">&times;</button>
         </div>
+        <div class="p-6 overflow-y-auto">
         <p class="text-xs text-gray-500 mb-4">
           {{ modalVer.plan?.vehiculo?.placa }} · {{ modalVer.plan?.vehiculo?.marca }} {{ modalVer.plan?.vehiculo?.modelo }}
           · Hito {{ modalVer.plan?.km_hito?.toLocaleString() }} km
@@ -131,15 +132,19 @@
           <button @click="modalVer.show = false"
             class="px-4 py-2 text-sm border rounded-lg text-gray-600">Cerrar</button>
         </div>
+        </div>
       </div>
     </div>
 
     <!-- Modal crear/editar -->
     <div v-if="modal.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
-        <h2 class="text-lg font-bold text-gray-800 mb-4">
-          {{ modal.id ? 'Editar Plan Preventivo' : 'Nuevo Plan Preventivo' }}
-        </h2>
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div class="px-6 py-4 flex-shrink-0" style="background-color:#1e3a5f;">
+          <h2 class="text-lg font-bold text-white">
+            {{ modal.id ? 'Editar Plan Preventivo' : 'Nuevo Plan Preventivo' }}
+          </h2>
+        </div>
+        <div class="p-6 overflow-y-auto">
         <div class="space-y-3">
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1">Vehículo *</label>
@@ -214,6 +219,7 @@
             style="background-color:#1e3a5f;">
             {{ guardando ? 'Guardando...' : 'Guardar' }}
           </button>
+        </div>
         </div>
       </div>
     </div>
