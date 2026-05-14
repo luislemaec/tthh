@@ -363,7 +363,7 @@ class PermisosController extends Controller
     // Listar razones
     public function razones()
     {
-        return response()->json(Razon::orderBy("descripcion")->get());
+        return response()->json(Razon::where('estado', 'ACTIVO')->orderBy("descripcion")->get());
     }
 
 // Estadística de permisos por supervisor

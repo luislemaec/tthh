@@ -17,15 +17,16 @@
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Tipo</th>
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Descontable</th>
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Nomenclatura</th>
+            <th class="text-left px-6 py-3 text-gray-600 font-medium">Estado</th>
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Acciones</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="cargando">
-            <td colspan="6" class="text-center py-8 text-gray-400">Cargando...</td>
+            <td colspan="7" class="text-center py-8 text-gray-400">Cargando...</td>
           </tr>
           <tr v-else-if="razones.length === 0">
-            <td colspan="6" class="text-center py-8 text-gray-400">No hay razones registradas.</td>
+            <td colspan="7" class="text-center py-8 text-gray-400">No hay razones registradas.</td>
           </tr>
           <tr v-for="r in razones" :key="r.secuencial" class="border-b hover:bg-gray-50">
             <td class="px-6 py-3 text-gray-500">{{ r.secuencial }}</td>
@@ -36,9 +37,14 @@
                 class="px-2 py-0.5 rounded-full text-xs font-medium">{{ r.descontable?.trim() }}</span>
             </td>
             <td class="px-6 py-3 text-gray-600">{{ r.nomenclatura || '—' }}</td>
+            <td class="px-6 py-3">
+              <span :class="r.estado === 'ACTIVO' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
+                class="px-2 py-0.5 rounded-full text-xs font-medium">{{ r.estado ?? 'ACTIVO' }}</span>
+            </td>
             <td class="px-6 py-3 flex gap-3">
               <button @click="abrirModal(r)" class="text-yellow-600 hover:underline text-xs">Editar</button>
-              <button @click="eliminar(r.secuencial)" class="text-red-600 hover:underline text-xs">Eliminar</button>
+              <button v-if="r.estado !== 'INACTIVO'" @click="inactivar(r.secuencial)"
+                class="text-red-600 hover:underline text-xs">Inactivo</button>
             </td>
           </tr>
         </tbody>
@@ -151,13 +157,13 @@ const guardar = async () => {
   }
 }
 
-const eliminar = async (id) => {
-  if (!confirm('¿Seguro que deseas eliminar esta razón?')) return
+const inactivar = async (id) => {
+  if (!confirm('¿Seguro que deseas marcar esta razón como inactiva?')) return
   try {
-    await api.delete(`/admin/razones/${id}`)
+    await api.patch(`/admin/razones/${id}/inactivar`)
     cargar()
   } catch (e) {
-    alert(e.response?.data?.message || 'Error al eliminar.')
+    alert(e.response?.data?.message || 'Error al inactivar.')
   }
 }
 

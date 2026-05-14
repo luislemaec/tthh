@@ -18,5 +18,10 @@ class Razon extends Model
         'nomina',
         'nomenclatura',
         'leyenda_justificacion',
+        'estado',
+        'created_at',
+        'created_by',
+        'updated_at',
+        'updated_by',
     ];
 }
