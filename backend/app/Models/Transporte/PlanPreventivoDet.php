@@ -9,5 +9,5 @@ class PlanPreventivoDet extends Model
     protected $table      = 'dbo.trans_plan_preventivo_det';
     public    $timestamps = false;
 
-    protected $fillable = ['cab_id', 'orden', 'actividad'];
+    protected $fillable = ['cab_id', 'orden', 'tipo_actividad', 'cantidad', 'actividad'];
 }

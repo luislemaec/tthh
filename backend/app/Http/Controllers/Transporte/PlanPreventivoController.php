@@ -26,7 +26,9 @@ class PlanPreventivoController extends Controller
             'km_hito'      => 'required|integer|min:1',
             'nombre'       => 'required|string|max:100',
             'actividades'  => 'required|array|min:1',
-            'actividades.*.actividad' => 'required|string',
+            'actividades.*.tipo_actividad' => 'required|in:MO,RE,CL',
+            'actividades.*.actividad'      => 'required|string',
+            'actividades.*.cantidad'       => 'required|integer|min:1',
         ]);
 
         $cab = PlanPreventivoCab::create([
@@ -38,9 +40,11 @@ class PlanPreventivoController extends Controller
 
         foreach ($request->actividades as $i => $act) {
             PlanPreventivoDet::create([
-                'cab_id'    => $cab->id,
-                'orden'     => $i + 1,
-                'actividad' => $act['actividad'],
+                'cab_id'         => $cab->id,
+                'orden'          => $i + 1,
+                'tipo_actividad' => $act['tipo_actividad'],
+                'cantidad'       => $act['cantidad'] ?? 1,
+                'actividad'      => $act['actividad'],
             ]);
         }
 
@@ -55,7 +59,9 @@ class PlanPreventivoController extends Controller
             'km_hito'      => 'required|integer|min:1',
             'nombre'       => 'required|string|max:100',
             'actividades'  => 'required|array|min:1',
-            'actividades.*.actividad' => 'required|string',
+            'actividades.*.tipo_actividad' => 'required|in:MO,RE,CL',
+            'actividades.*.actividad'      => 'required|string',
+            'actividades.*.cantidad'       => 'required|integer|min:1',
             'estado'       => 'nullable|in:ACTIVO,INACTIVO',
         ]);
 
@@ -65,14 +71,15 @@ class PlanPreventivoController extends Controller
             'estado'  => $request->estado ?? $cab->estado,
         ]);
 
-        // Replace all activities
         PlanPreventivoDet::where('cab_id', $cab->id)->delete();
 
         foreach ($request->actividades as $i => $act) {
             PlanPreventivoDet::create([
-                'cab_id'    => $cab->id,
-                'orden'     => $i + 1,
-                'actividad' => $act['actividad'],
+                'cab_id'         => $cab->id,
+                'orden'          => $i + 1,
+                'tipo_actividad' => $act['tipo_actividad'],
+                'cantidad'       => $act['cantidad'] ?? 1,
+                'actividad'      => $act['actividad'],
             ]);
         }
 

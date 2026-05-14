@@ -85,14 +85,29 @@
           {{ modalVer.plan?.vehiculo?.placa }} · {{ modalVer.plan?.vehiculo?.marca }} {{ modalVer.plan?.vehiculo?.modelo }}
           · Hito {{ modalVer.plan?.km_hito?.toLocaleString() }} km
         </p>
-        <ol class="space-y-1">
-          <li v-for="a in modalVer.plan?.actividades" :key="a.id"
-            class="flex gap-2 text-sm text-gray-700">
-            <span class="flex-shrink-0 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center text-white"
-              style="background-color:#1e3a5f;">{{ a.orden }}</span>
-            <span>{{ a.actividad }}</span>
-          </li>
-        </ol>
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-xs text-gray-500 border-b">
+              <th class="text-left py-1 w-8">#</th>
+              <th class="text-left py-1 w-10">Tipo</th>
+              <th class="text-left py-1 w-12">Cant.</th>
+              <th class="text-left py-1">Descripción</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="a in modalVer.plan?.actividades" :key="a.id" class="border-b last:border-0">
+              <td class="py-1.5 text-gray-400 text-xs">{{ a.orden }}</td>
+              <td class="py-1.5">
+                <span class="text-xs font-bold px-1.5 py-0.5 rounded"
+                  :class="a.tipo_actividad === 'MO' ? 'bg-blue-100 text-blue-700' : a.tipo_actividad === 'RE' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'">
+                  {{ a.tipo_actividad }}
+                </span>
+              </td>
+              <td class="py-1.5 text-gray-600 text-center">{{ a.cantidad }}</td>
+              <td class="py-1.5 text-gray-700">{{ a.actividad }}</td>
+            </tr>
+          </tbody>
+        </table>
         <div class="flex justify-end mt-5">
           <button @click="modalVer.show = false"
             class="px-4 py-2 text-sm border rounded-lg text-gray-600">Cerrar</button>
@@ -145,14 +160,23 @@
                 + Agregar
               </button>
             </div>
-            <div class="space-y-2 max-h-64 overflow-y-auto pr-1">
+            <div class="space-y-2 max-h-72 overflow-y-auto pr-1">
               <div v-for="(act, i) in form.actividades" :key="i"
                    class="flex items-start gap-2">
                 <span class="flex-shrink-0 mt-2 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center text-white"
                   style="background-color:#1e3a5f;">{{ i + 1 }}</span>
+                <select v-model="act.tipo_actividad"
+                  class="flex-shrink-0 border rounded-lg px-2 py-2 text-xs w-20">
+                  <option value="MO">MO</option>
+                  <option value="RE">RE</option>
+                  <option value="CL">CL</option>
+                </select>
+                <input v-model.number="act.cantidad" type="number" min="1"
+                  class="flex-shrink-0 border rounded-lg px-2 py-2 text-xs w-16 text-center"
+                  placeholder="Cant." />
                 <textarea v-model="act.actividad" rows="2"
                   class="flex-1 border rounded-lg px-3 py-2 text-sm resize-none"
-                  :placeholder="'Actividad ' + (i + 1)"></textarea>
+                  :placeholder="'Descripción ' + (i + 1)"></textarea>
                 <button @click="eliminarActividad(i)" type="button"
                   class="flex-shrink-0 mt-1.5 text-red-400 hover:text-red-600 text-lg leading-none">&times;</button>
               </div>
@@ -217,7 +241,7 @@ function abrirVer(p) {
 }
 
 function abrirCrear() {
-  form.value = { vehiculo_id: '', km_hito: null, nombre: '', actividades: [{ actividad: '' }] }
+  form.value = { vehiculo_id: '', km_hito: null, nombre: '', actividades: [{ tipo_actividad: 'MO', cantidad: 1, actividad: '' }] }
   modal.value = { show: true, id: null }
   error.value = ''
 }
@@ -228,7 +252,11 @@ function abrirEditar(p) {
     km_hito:     p.km_hito,
     nombre:      p.nombre,
     estado:      p.estado,
-    actividades: (p.actividades || []).map(a => ({ actividad: a.actividad })),
+    actividades: (p.actividades || []).map(a => ({
+      tipo_actividad: a.tipo_actividad || 'MO',
+      cantidad:       a.cantidad || 1,
+      actividad:      a.actividad,
+    })),
   }
   modal.value = { show: true, id: p.id }
   error.value = ''
@@ -236,7 +264,7 @@ function abrirEditar(p) {
 
 function agregarActividad() {
   if (form.value.actividades.length < 20) {
-    form.value.actividades.push({ actividad: '' })
+    form.value.actividades.push({ tipo_actividad: 'MO', cantidad: 1, actividad: '' })
   }
 }
 
