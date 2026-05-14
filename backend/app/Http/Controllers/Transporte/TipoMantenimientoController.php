@@ -20,7 +20,7 @@ class TipoMantenimientoController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'nombre' => 'required|string|max:30|in:PREVENTIVO,CORRECTIVO,PREVENTIVO Y CORRECTIVO',
+            'nombre' => 'required|in:PREVENTIVO,CORRECTIVO,PREVENTIVO Y CORRECTIVO',
         ]);
 
         $tipo = TipoMantenimiento::create([
@@ -36,7 +36,7 @@ class TipoMantenimientoController extends Controller
         $tipo = TipoMantenimiento::findOrFail($id);
 
         $request->validate([
-            'nombre' => 'required|string|max:30|in:PREVENTIVO,CORRECTIVO,PREVENTIVO Y CORRECTIVO',
+            'nombre' => 'required|in:PREVENTIVO,CORRECTIVO,PREVENTIVO Y CORRECTIVO',
             'estado' => 'nullable|in:ACTIVO,INACTIVO',
         ]);
 
