@@ -117,7 +117,7 @@
 
     <!-- Modal crear/editar -->
     <div v-if="modal.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
         <h2 class="text-lg font-bold text-gray-800 mb-4">
           {{ modal.id ? 'Editar Plan Preventivo' : 'Nuevo Plan Preventivo' }}
         </h2>
@@ -160,9 +160,9 @@
                 + Agregar
               </button>
             </div>
-            <div class="space-y-2 max-h-72 overflow-y-auto pr-1">
+            <div ref="listaActRef" class="space-y-2 max-h-72 overflow-y-auto">
               <div v-for="(act, i) in form.actividades" :key="i"
-                   class="flex items-start gap-2">
+                   class="flex items-start gap-2 pr-2">
                 <span class="flex-shrink-0 mt-2 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center text-white"
                   style="background-color:#1e3a5f;">{{ i + 1 }}</span>
                 <select v-model="act.tipo_actividad"
@@ -178,7 +178,7 @@
                   class="flex-1 border rounded-lg px-3 py-2 text-sm resize-none"
                   :placeholder="'Descripción ' + (i + 1)"></textarea>
                 <button @click="eliminarActividad(i)" type="button"
-                  class="flex-shrink-0 mt-1.5 text-red-400 hover:text-red-600 text-lg leading-none">&times;</button>
+                  class="flex-shrink-0 mt-1.5 w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-100 text-red-400 hover:text-red-600 text-lg leading-none">&times;</button>
               </div>
             </div>
             <p v-if="form.actividades?.length === 0" class="text-xs text-gray-400 mt-1">
@@ -202,7 +202,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, nextTick, onMounted } from 'vue'
 import api from '@/services/api'
 
 const lista         = ref([])
@@ -214,6 +214,7 @@ const porPagina     = ref(10)
 const filtroVehiculo = ref('')
 const modal         = ref({ show: false, id: null })
 const modalVer      = ref({ show: false, plan: null })
+const listaActRef   = ref(null)
 const form          = ref({ actividades: [] })
 
 const listaFiltrada = computed(() =>
@@ -262,9 +263,13 @@ function abrirEditar(p) {
   error.value = ''
 }
 
-function agregarActividad() {
+async function agregarActividad() {
   if (form.value.actividades.length < 20) {
     form.value.actividades.push({ tipo_actividad: 'MO', cantidad: 1, actividad: '' })
+    await nextTick()
+    if (listaActRef.value) {
+      listaActRef.value.scrollTop = listaActRef.value.scrollHeight
+    }
   }
 }
 
