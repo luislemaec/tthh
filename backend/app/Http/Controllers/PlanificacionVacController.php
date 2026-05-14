@@ -227,18 +227,39 @@ class PlanificacionVacController extends Controller
         // Supervisores auto-aprueban su propia planificación
         $esSupervisor = $this->esSupervisor($emp->id_emp);
 
-        // Crear cabecera
-        $cab = PlanificacionCab::create([
-            'id_emp'                  => $emp->id_emp,
-            'anio'                    => $request->anio,
-            'estado'                  => $esSupervisor ? 'APROBADO' : 'PENDIENTE',
-            'total_dias_planificados' => $totalDias,
-            'fecha_registro'          => now(),
-            'usuario_registro'        => $emp->id_emp,
-            'fecha_decision'          => $esSupervisor ? now() : null,
-            'usuario_decision'        => $esSupervisor ? $emp->id_emp : null,
-            'replanificada'           => 'NO',
-        ]);
+        // Si existe un registro NEGADO o ELIMINADO, reutilizarlo (UPDATE) en vez de INSERT
+        // para no violar la constraint unique(id_emp, anio)
+        $cabExistente = PlanificacionCab::where('id_emp', $emp->id_emp)
+            ->where('anio', $request->anio)
+            ->whereIn('estado', ['NEGADO', 'ELIMINADO'])
+            ->first();
+
+        if ($cabExistente) {
+            $cabExistente->update([
+                'estado'                  => $esSupervisor ? 'APROBADO' : 'PENDIENTE',
+                'total_dias_planificados' => $totalDias,
+                'fecha_registro'          => now(),
+                'usuario_registro'        => $emp->id_emp,
+                'fecha_decision'          => $esSupervisor ? now() : null,
+                'usuario_decision'        => $esSupervisor ? $emp->id_emp : null,
+                'observacion'             => null,
+                'replanificada'           => 'NO',
+            ]);
+            PlanificacionDet::where('cab_id', $cabExistente->id)->delete();
+            $cab = $cabExistente;
+        } else {
+            $cab = PlanificacionCab::create([
+                'id_emp'                  => $emp->id_emp,
+                'anio'                    => $request->anio,
+                'estado'                  => $esSupervisor ? 'APROBADO' : 'PENDIENTE',
+                'total_dias_planificados' => $totalDias,
+                'fecha_registro'          => now(),
+                'usuario_registro'        => $emp->id_emp,
+                'fecha_decision'          => $esSupervisor ? now() : null,
+                'usuario_decision'        => $esSupervisor ? $emp->id_emp : null,
+                'replanificada'           => 'NO',
+            ]);
+        }
 
         // Crear períodos
         foreach ($request->periodos as $i => $p) {
