@@ -137,8 +137,11 @@
 
     <!-- Modal Solicitar Permiso -->
     <div v-if="modalNuevo" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-lg space-y-4">
-        <h2 class="text-lg font-semibold text-gray-700">Solicitar Permiso</h2>
+      <div class="bg-white rounded-xl shadow-lg w-full max-w-lg overflow-hidden">
+        <div class="px-6 py-4" style="background-color:#0b5447;">
+          <h2 class="text-lg font-semibold text-white">Solicitar Permiso</h2>
+        </div>
+        <div class="p-6">
         <div class="space-y-4">
           <div class="space-y-2">
             <label class="block text-sm font-medium text-gray-600">Descontable *</label>
@@ -218,6 +221,7 @@
               {{ guardando ? "Enviando..." : "Solicitar" }}
             </button>
           </div>
+        </div>
         </div>
       </div>
     </div>
