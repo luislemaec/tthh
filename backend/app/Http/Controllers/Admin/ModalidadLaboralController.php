@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ModalidadLaboral;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class ModalidadLaboralController extends Controller
 {
@@ -19,11 +20,17 @@ class ModalidadLaboralController extends Controller
         ]);
 
         $orden = ModalidadLaboral::max('orden') + 1;
+        $user  = Auth::user()->id_emp ?? Auth::id();
+        $now   = now();
 
         $m = ModalidadLaboral::create([
-            'nombre' => trim($request->nombre),
-            'estado' => 'ACTIVO',
-            'orden'  => $orden,
+            'nombre'     => trim($request->nombre),
+            'estado'     => 'ACTIVO',
+            'orden'      => $orden,
+            'created_at' => $now,
+            'created_by' => $user,
+            'updated_at' => $now,
+            'updated_by' => $user,
         ]);
 
         return response()->json($m, 201);
@@ -38,9 +45,13 @@ class ModalidadLaboralController extends Controller
             'estado' => 'required|in:ACTIVO,INACTIVO',
         ]);
 
+        $user = Auth::user()->id_emp ?? Auth::id();
+
         $m->update([
-            'nombre' => trim($request->nombre),
-            'estado' => $request->estado,
+            'nombre'     => trim($request->nombre),
+            'estado'     => $request->estado,
+            'updated_at' => now(),
+            'updated_by' => $user,
         ]);
 
         return response()->json($m);

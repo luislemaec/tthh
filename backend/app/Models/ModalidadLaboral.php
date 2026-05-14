@@ -7,5 +7,5 @@ class ModalidadLaboral extends Model
 {
     protected $table      = 'dbo.d2_modalidad_laboral';
     public    $timestamps = false;
-    protected $fillable   = ['nombre', 'estado', 'orden'];
+    protected $fillable   = ['nombre', 'estado', 'orden', 'created_at', 'created_by', 'updated_at', 'updated_by'];
 }
