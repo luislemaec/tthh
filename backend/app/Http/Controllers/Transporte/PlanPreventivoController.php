@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Transporte;
 use App\Http\Controllers\Controller;
 use App\Models\Transporte\PlanPreventivoCab;
 use App\Models\Transporte\PlanPreventivoDet;
+use App\Models\Transporte\Vehiculo;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class PlanPreventivoController extends Controller
 {
@@ -84,5 +86,81 @@ class PlanPreventivoController extends Controller
         }
 
         return response()->json($cab->load('actividades'));
+    }
+
+    public function importarCsv(Request $request)
+    {
+        $request->validate(['archivo' => 'required|file|mimes:csv,txt|max:2048']);
+
+        $handle = fopen($request->file('archivo')->getRealPath(), 'r');
+        $encabezado = fgetcsv($handle); // skip header
+
+        $errores  = [];
+        $grupos   = [];
+        $fila     = 1;
+
+        while (($row = fgetcsv($handle)) !== false) {
+            $fila++;
+            if (count($row) < 6) {
+                $errores[] = "Fila $fila: faltan columnas.";
+                continue;
+            }
+
+            [$placa, $km_hito, $nombre, $tipo_actividad, $actividad, $cantidad] = array_map('trim', $row);
+
+            if (!in_array(strtoupper($tipo_actividad), ['MO', 'RE', 'CL'])) {
+                $errores[] = "Fila $fila: tipo_actividad '$tipo_actividad' inválido (MO/RE/CL).";
+                continue;
+            }
+
+            $vehiculo = Vehiculo::where('placa', strtoupper($placa))->first();
+            if (!$vehiculo) {
+                $errores[] = "Fila $fila: placa '$placa' no encontrada.";
+                continue;
+            }
+
+            $clave = $vehiculo->id . '|' . (int)$km_hito . '|' . trim($nombre);
+            if (!isset($grupos[$clave])) {
+                $grupos[$clave] = [
+                    'vehiculo_id' => $vehiculo->id,
+                    'km_hito'     => (int)$km_hito,
+                    'nombre'      => trim($nombre),
+                    'actividades' => [],
+                ];
+            }
+            $grupos[$clave]['actividades'][] = [
+                'tipo_actividad' => strtoupper($tipo_actividad),
+                'actividad'      => strtoupper(trim($actividad)),
+                'cantidad'       => max(1, (int)$cantidad),
+            ];
+        }
+        fclose($handle);
+
+        if (!empty($errores)) {
+            return response()->json(['message' => 'Errores en el CSV.', 'errores' => $errores], 422);
+        }
+
+        DB::transaction(function () use ($grupos) {
+            foreach ($grupos as $data) {
+                $cab = PlanPreventivoCab::create([
+                    'vehiculo_id' => $data['vehiculo_id'],
+                    'km_hito'     => $data['km_hito'],
+                    'nombre'      => $data['nombre'],
+                    'estado'      => 'ACTIVO',
+                ]);
+                foreach ($data['actividades'] as $i => $act) {
+                    PlanPreventivoDet::create([
+                        'cab_id'         => $cab->id,
+                        'orden'          => $i + 1,
+                        'tipo_actividad' => $act['tipo_actividad'],
+                        'cantidad'       => $act['cantidad'],
+                        'actividad'      => $act['actividad'],
+                    ]);
+                }
+            }
+        });
+
+        $total = count($grupos);
+        return response()->json(['message' => "Se importaron $total plan(es) correctamente."]);
     }
 }

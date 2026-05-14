@@ -2,10 +2,29 @@
   <div>
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-2xl font-bold text-gray-800">Planes Preventivos</h1>
-      <button @click="abrirCrear" class="text-white px-4 py-2 rounded-lg text-sm hover:opacity-90"
-        style="background-color:#1e3a5f;">
-        + Nuevo plan
-      </button>
+      <div class="flex gap-2">
+        <button @click="descargarPlantilla"
+          class="px-4 py-2 rounded-lg text-sm border border-gray-300 text-gray-600 hover:bg-gray-50">
+          Plantilla CSV
+        </button>
+        <label class="px-4 py-2 rounded-lg text-sm border border-green-600 text-green-700 hover:bg-green-50 cursor-pointer">
+          Importar CSV
+          <input type="file" accept=".csv" class="hidden" @change="importarCsv" />
+        </label>
+        <button @click="abrirCrear" class="text-white px-4 py-2 rounded-lg text-sm hover:opacity-90"
+          style="background-color:#1e3a5f;">
+          + Nuevo plan
+        </button>
+      </div>
+    </div>
+
+    <!-- Mensaje importación -->
+    <div v-if="msgImport.texto" class="mb-4 px-4 py-3 rounded-lg text-sm font-medium"
+      :class="msgImport.ok ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
+      {{ msgImport.texto }}
+      <ul v-if="msgImport.errores?.length" class="mt-1 list-disc pl-4 text-xs">
+        <li v-for="e in msgImport.errores" :key="e">{{ e }}</li>
+      </ul>
     </div>
 
     <!-- Filtro vehículo -->
@@ -207,6 +226,7 @@ import api from '@/services/api'
 
 const lista         = ref([])
 const vehiculos     = ref([])
+const msgImport     = ref({ texto: '', ok: true, errores: [] })
 const guardando     = ref(false)
 const error         = ref('')
 const pagina        = ref(1)
@@ -227,6 +247,44 @@ const listaPaginada = computed(() => {
   const ini = (pagina.value - 1) * porPagina.value
   return listaFiltrada.value.slice(ini, ini + porPagina.value)
 })
+
+function descargarPlantilla() {
+  const contenido = [
+    'placa,km_hito,nombre,tipo_actividad,actividad,cantidad',
+    'GEA-2502,5000,Mantenimiento 5000km,MO,CAMBIAR ACEITE Y FILTRO MOTOR,1',
+    'GEA-2502,5000,Mantenimiento 5000km,RE,FILTRO DE ACEITE,1',
+    'GEA-2502,5000,Mantenimiento 5000km,CL,ACEITE 15W40,8',
+    'GEA-2502,10000,Mantenimiento 10000km,MO,CAMBIAR FILTRO AIRE,1',
+  ].join('\n')
+  const blob = new Blob([contenido], { type: 'text/csv;charset=utf-8;' })
+  const url  = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href  = url
+  link.setAttribute('download', 'plantilla_plan_preventivo.csv')
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}
+
+async function importarCsv(e) {
+  const archivo = e.target.files[0]
+  e.target.value = ''
+  if (!archivo) return
+  msgImport.value = { texto: '', ok: true, errores: [] }
+  const formData = new FormData()
+  formData.append('archivo', archivo)
+  try {
+    const { data } = await api.post('/transporte/plan-preventivo/importar-csv', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    msgImport.value = { texto: data.message, ok: true, errores: [] }
+    await cargar()
+  } catch (err) {
+    const d = err.response?.data
+    msgImport.value = { texto: d?.message || 'Error al importar.', ok: false, errores: d?.errores || [] }
+  }
+}
 
 async function cargar() {
   const [r1, r2] = await Promise.all([

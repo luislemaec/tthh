@@ -378,9 +378,10 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::put('tipos-mantenimiento/{id}',   [\App\Http\Controllers\Transporte\TipoMantenimientoController::class, 'update']);
 
         // Plan preventivo
-        Route::get('plan-preventivo',      [\App\Http\Controllers\Transporte\PlanPreventivoController::class, 'index']);
-        Route::post('plan-preventivo',     [\App\Http\Controllers\Transporte\PlanPreventivoController::class, 'store']);
-        Route::put('plan-preventivo/{id}', [\App\Http\Controllers\Transporte\PlanPreventivoController::class, 'update']);
+        Route::get('plan-preventivo',               [\App\Http\Controllers\Transporte\PlanPreventivoController::class, 'index']);
+        Route::post('plan-preventivo',              [\App\Http\Controllers\Transporte\PlanPreventivoController::class, 'store']);
+        Route::put('plan-preventivo/{id}',          [\App\Http\Controllers\Transporte\PlanPreventivoController::class, 'update']);
+        Route::post('plan-preventivo/importar-csv', [\App\Http\Controllers\Transporte\PlanPreventivoController::class, 'importarCsv']);
 
         // Mantenimiento
         Route::get('mantenimiento',        [TransporteController::class, 'indexMtto']);
