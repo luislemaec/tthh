@@ -13,7 +13,8 @@
     <div class="flex flex-wrap justify-center gap-4 max-w-4xl w-full">
 
       <!-- Talento Humano -->
-      <button @click="irA('/dashboard')"
+      <button @click="irA('/dashboard')" @animationend="onAnimEnd"
+        :class="cardAnimClass"
         class="bg-white rounded-xl shadow-lg p-5 w-44 flex flex-col items-center gap-3 hover:scale-105 transition-transform cursor-pointer">
         <div class="w-12 h-12 rounded-full flex items-center justify-center"
              style="background-color: #0b5447;">
@@ -31,7 +32,8 @@
       </button>
 
       <!-- Adquisiciones -->
-      <button v-if="tieneAccesoAdquisiciones" @click="irA('/adquisiciones')"
+      <button v-if="tieneAccesoAdquisiciones" @click="irA('/adquisiciones')" @animationend="onAnimEnd"
+        :class="cardAnimClass"
         class="bg-white rounded-xl shadow-lg p-5 w-44 flex flex-col items-center gap-3 hover:scale-105 transition-transform cursor-pointer">
         <div class="w-12 h-12 rounded-full flex items-center justify-center bg-amber-600">
           <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -50,7 +52,8 @@
       </button>
 
       <!-- Transportes -->
-      <button v-if="tieneAccesoTransportes" @click="irA(rutaTransportes)"
+      <button v-if="tieneAccesoTransportes" @click="irA(rutaTransportes)" @animationend="onAnimEnd"
+        :class="cardAnimClass"
         class="bg-white rounded-xl shadow-lg p-5 w-44 flex flex-col items-center gap-3 hover:scale-105 transition-transform cursor-pointer">
         <div class="w-12 h-12 rounded-full flex items-center justify-center"
              style="background-color: #1e3a5f;">
@@ -66,7 +69,8 @@
       </button>
 
       <!-- Solicitudes de materiales (todos los empleados) -->
-      <button v-if="!tieneAccesoAdquisiciones" @click="irA('/adquisiciones/solicitudes')"
+      <button v-if="!tieneAccesoAdquisiciones" @click="irA('/adquisiciones/solicitudes')" @animationend="onAnimEnd"
+        :class="cardAnimClass"
         class="bg-white rounded-xl shadow-lg p-5 w-44 flex flex-col items-center gap-3 hover:scale-105 transition-transform cursor-pointer">
         <div class="w-12 h-12 rounded-full flex items-center justify-center bg-amber-600">
           <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -102,6 +106,22 @@ import api from '@/services/api'
 const router = useRouter()
 const store  = useAuthStore()
 const alertasStock = ref(0)
+const cardAnimClass = ref('')
+
+const ANIMATIONS = [
+  'anim-flip-scale-up-hor',
+  'anim-flip-scale-up-diag-2',
+  'anim-flip-scale-down-hor',
+  'anim-flip-scale-down-diag-2',
+  'anim-flip-scale-up-ver',
+  'anim-flip-scale-down-ver',
+  'anim-flip-scale-up-diag-1',
+  'anim-flip-scale-down-diag-1',
+]
+
+function onAnimEnd() {
+  cardAnimClass.value = ''
+}
 
 const tieneAccesoAdquisiciones = store.tieneAdquisiciones
 
@@ -116,6 +136,7 @@ const rutaTransportes = computed(() => {
 })
 
 onMounted(async () => {
+  cardAnimClass.value = ANIMATIONS[Math.floor(Math.random() * ANIMATIONS.length)]
   try {
     const { data } = await api.get('/adquisiciones/articulos/alertas')
     alertasStock.value = data.length
@@ -131,3 +152,55 @@ async function logout() {
   router.push('/login')
 }
 </script>
+
+<style>
+.anim-flip-scale-up-hor    { animation: flip-scale-up-hor    0.5s linear both; }
+.anim-flip-scale-up-diag-2 { animation: flip-scale-up-diag-2 0.5s linear both; }
+.anim-flip-scale-down-hor  { animation: flip-scale-down-hor  0.5s linear both; }
+.anim-flip-scale-down-diag-2{ animation: flip-scale-down-diag-2 0.5s linear both; }
+.anim-flip-scale-up-ver    { animation: flip-scale-up-ver    0.5s linear both; }
+.anim-flip-scale-down-ver  { animation: flip-scale-down-ver  0.5s linear both; }
+.anim-flip-scale-up-diag-1 { animation: flip-scale-up-diag-1 0.5s linear both; }
+.anim-flip-scale-down-diag-1{ animation: flip-scale-down-diag-1 0.5s linear both; }
+
+@keyframes flip-scale-up-hor {
+  0%   { transform: scale(1)   rotateX(0);      }
+  50%  { transform: scale(2.5) rotateX(-90deg); }
+  100% { transform: scale(1)   rotateX(-180deg);}
+}
+@keyframes flip-scale-up-diag-2 {
+  0%   { transform: scale(1)   rotate3d(-1,1,0,0deg);   }
+  50%  { transform: scale(2.5) rotate3d(-1,1,0,90deg);  }
+  100% { transform: scale(1)   rotate3d(-1,1,0,180deg); }
+}
+@keyframes flip-scale-down-hor {
+  0%   { transform: scale(1)   rotateX(0);     }
+  50%  { transform: scale(0.4) rotateX(90deg); }
+  100% { transform: scale(1)   rotateX(180deg);}
+}
+@keyframes flip-scale-down-diag-2 {
+  0%   { transform: scale(1)   rotate3d(-1,1,0,0deg);    }
+  50%  { transform: scale(0.4) rotate3d(-1,1,0,-90deg);  }
+  100% { transform: scale(1)   rotate3d(-1,1,0,-180deg); }
+}
+@keyframes flip-scale-up-ver {
+  0%   { transform: scale(1)   rotateY(0);      }
+  50%  { transform: scale(2.5) rotateY(90deg);  }
+  100% { transform: scale(1)   rotateY(180deg); }
+}
+@keyframes flip-scale-down-ver {
+  0%   { transform: scale(1)   rotateY(0);       }
+  50%  { transform: scale(0.4) rotateY(-90deg);  }
+  100% { transform: scale(1)   rotateY(-180deg); }
+}
+@keyframes flip-scale-up-diag-1 {
+  0%   { transform: scale(1)   rotate3d(1,1,0,0deg);   }
+  50%  { transform: scale(2.5) rotate3d(1,1,0,90deg);  }
+  100% { transform: scale(1)   rotate3d(1,1,0,180deg); }
+}
+@keyframes flip-scale-down-diag-1 {
+  0%   { transform: scale(1)   rotate3d(1,1,0,0deg);    }
+  50%  { transform: scale(0.4) rotate3d(1,1,0,-90deg);  }
+  100% { transform: scale(1)   rotate3d(1,1,0,-180deg); }
+}
+</style>
