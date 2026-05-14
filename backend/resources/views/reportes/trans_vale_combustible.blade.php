@@ -3,24 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <style>
-  @page { margin: 18px 20px; }
+  @page { margin: 14px 18px; }
   * { box-sizing: border-box; }
-  body { font-family: Arial, sans-serif; font-size: 9pt; color: #000; margin: 0; }
+  body { font-family: Arial, sans-serif; font-size: 9.5pt; color: #000; margin: 0; }
   table { width: 100%; border-collapse: collapse; table-layout: fixed; }
   .border-all td, .border-all th { border: 1px solid #000; }
-  .header-table td { padding: 4px 6px; vertical-align: middle; }
-  .titulo { font-size: 11pt; font-weight: bold; text-align: center; }
-  .codigo { font-size: 7.5pt; text-align: center; }
-  .numero { text-align: right; font-size: 8pt; padding: 2px 6px; }
+  .header-table td { padding: 5px 8px; vertical-align: middle; }
+  .titulo { font-size: 12pt; font-weight: bold; text-align: center; }
+  .numero { text-align: right; font-size: 9pt; padding: 2px 6px; }
   .label { font-weight: bold; }
-  .campo { border-bottom: 1px solid #000; min-height: 14px; display: inline-block; width: 78%; }
-  .items-table th { background: #fff; font-size: 8.5pt; font-weight: bold; text-align: center; padding: 3px 4px; }
-  .items-table td { font-size: 8.5pt; padding: 3px 4px; }
+  .campo { border-bottom: 1px solid #000; min-height: 15px; display: inline-block; width: 78%; }
+  .items-table th { background: #fff; font-size: 9pt; font-weight: bold; text-align: center; padding: 4px 4px; }
+  .items-table td { font-size: 9pt; padding: 4px 4px; }
   .items-table .desc { width: 44%; }
   .items-table .num  { width: 19%; text-align: center; }
-  .firmas td { padding: 18px 10px 4px 10px; text-align: center; font-size: 8pt; font-weight: bold; vertical-align: bottom; }
-  .section { padding: 6px 8px; }
-  .mt4 { margin-top: 4px; }
+  .firmas-label td { text-align: center; font-size: 9pt; padding: 4px 8px 2px; }
+  .firmas-firma td { text-align: center; font-size: 9pt; font-weight: bold; padding: 0 10px 6px 10px; vertical-align: bottom; height: 60px; }
 </style>
 </head>
 <body>
@@ -30,26 +28,23 @@
   <tr>
     <td style="width:22%; text-align:center; padding:6px;">
       @if($logo)
-        <img src="{{ $logo }}" style="height:36px; width:auto;">
+        <img src="{{ $logo }}" style="height:48px; width:auto;">
       @endif
     </td>
-    <td style="width:50%;" class="titulo">VALE DE COMBUSTIBLE</td>
-    <td style="width:28%;" class="codigo">
-      <strong>Código:</strong><br>FR05-PRO.GA-TR.001
-    </td>
+    <td class="titulo">VALE DE COMBUSTIBLE</td>
   </tr>
 </table>
 
 <!-- No. y destinatario -->
 <table class="border-all" style="margin-top:-1px;">
   <tr>
-    <td style="padding:5px 8px;">
+    <td style="padding:6px 10px;">
       <div class="numero">No. {{ str_pad($vale->numero, 4, '0', STR_PAD_LEFT) }}</div>
-      <div style="margin-top:4px;">
+      <div style="margin-top:5px;">
         <span class="label">Sr. (es):</span>
         <span class="campo">{{ $vale->gasolinera }}</span>
       </div>
-      <div style="margin-top:4px;">
+      <div style="margin-top:5px;">
         <span class="label">Conductor:</span>
         <span class="campo">{{ $vale->conductor?->apellido_emp }} {{ $vale->conductor?->nombre_emp }}</span>
       </div>
@@ -92,14 +87,14 @@
 <!-- Kilometraje, vehículo, fecha -->
 <table class="border-all" style="margin-top:-1px;">
   <tr>
-    <td style="padding:6px 8px;">
+    <td style="padding:7px 10px;">
       <div><strong>KILOMETRAJE</strong> {{ $vale->kilometraje ? number_format($vale->kilometraje) : '________________' }}</div>
-      <div style="margin-top:4px;">
+      <div style="margin-top:5px;">
         <strong>VEHÍCULO</strong> {{ $vale->vehiculo?->marca }} {{ $vale->vehiculo?->modelo }}
         &nbsp;&nbsp;&nbsp;
         <strong>PLACAS No.</strong> {{ $vale->vehiculo?->placa }}
       </div>
-      <div style="margin-top:6px; text-align:center;">
+      <div style="margin-top:8px; text-align:center;">
         Quito, a <u>&nbsp;{{ $dia }}&nbsp;</u> de <u>&nbsp;{{ $mes }}&nbsp;</u> de <u>&nbsp;{{ $anio }}&nbsp;</u>
       </div>
     </td>
@@ -108,16 +103,16 @@
 
 <!-- Firmas -->
 <table class="border-all" style="margin-top:-1px;">
-  <tr>
-    <td style="width:50%; text-align:center; padding:3px 8px 2px;">Autorizado:</td>
-    <td style="width:50%; text-align:center; padding:3px 8px 2px; border-left:1px solid #000;">Recibido:</td>
+  <tr class="firmas-label">
+    <td style="border-right:1px solid #000;">Autorizado:</td>
+    <td>Recibido:</td>
   </tr>
-  <tr class="firmas">
-    <td style="border-right:1px solid #000;">
-      <div style="border-top:1px solid #000; padding-top:2px;">Responsable de Transportes</div>
+  <tr class="firmas-firma">
+    <td style="border-right:1px solid #000; vertical-align:bottom;">
+      <div style="border-top:1px solid #000; padding-top:3px;">Responsable de Transportes</div>
     </td>
-    <td>
-      <div style="border-top:1px solid #000; padding-top:2px;">CONDUCTOR/A</div>
+    <td style="vertical-align:bottom;">
+      <div style="border-top:1px solid #000; padding-top:3px;">CONDUCTOR/A</div>
     </td>
   </tr>
 </table>

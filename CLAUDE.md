@@ -454,8 +454,8 @@ Layout azul oscuro (`#1e3a5f`), separado de TH y Adquisiciones. Tarjeta en el la
 ### Roles
 | Rol | Acceso |
 |---|---|
-| `TRANSPORTE` | Todo: vehículos, mantenimiento, movilización (gestión completa) |
-| `CONDUCTOR` | Mantenimiento (crear requerimientos) + movilización (ver asignadas, llenar hoja de ruta) |
+| `TRANSPORTE` | Todo: vehículos, talleres, tipos, plan preventivo, mantenimiento, movilización, vales |
+| `CONDUCTOR` | Mantenimiento (crear requerimientos) + movilización (ver asignadas, hoja de ruta) + vales combustible |
 | Sin rol especial | Solo movilización si `puede_solicitar_vehiculo = true` en `ad_empleado` |
 
 Combinación recomendada: EMPLEADO + TRANSPORTE o EMPLEADO + CONDUCTOR.
@@ -465,51 +465,106 @@ Combinación recomendada: EMPLEADO + TRANSPORTE o EMPLEADO + CONDUCTOR.
 | Tabla | Descripción |
 |---|---|
 | `trans_vehiculo` | Catálogo de vehículos; estado ACTIVO/INACTIVO/MANTENIMIENTO |
-| `trans_mantenimiento` | Requerimientos de mantenimiento; estados PENDIENTE→ORDEN_GENERADA→EN_TALLER→FINALIZADO |
+| `trans_taller` | Talleres mecánicos externos; estado ACTIVO/INACTIVO |
+| `trans_tipo_mantenimiento` | Categorías: PREVENTIVO, CORRECTIVO, PREVENTIVO Y CORRECTIVO; estado ACTIVO/INACTIVO |
+| `trans_plan_preventivo_cab` | Plan preventivo cabecera: vehiculo_id, km_hito, nombre del plan |
+| `trans_plan_preventivo_det` | Actividades del plan: cab_id, orden, tipo_actividad (MO/RE/CL), cantidad, actividad |
+| `trans_mantenimiento` | Requerimientos; estados PENDIENTE→ORDEN_GENERADA→EN_TALLER→FINALIZADO |
+| `trans_mantenimiento_actividad` | Actividades del requerimiento de mantenimiento |
 | `trans_solicitud_mov` | Solicitudes de movilización; estados PENDIENTE→APROBADO/NEGADO→COMPLETADO |
+| `trans_vale_combustible` | Vales de combustible; formato FR05-PRO.GA-TR.001; numero auto-secuencial |
 
 Campo adicional en `ad_empleado`: `puede_solicitar_vehiculo BOOLEAN DEFAULT false`.
 
+### Tipos de Mantenimiento — lógica clave
+
+`trans_tipo_mantenimiento.nombre` es la categoría: `PREVENTIVO`, `CORRECTIVO`, o `PREVENTIVO Y CORRECTIVO`.
+- Backend: `str_contains($tipo->nombre, 'PREVENTIVO')` y `str_contains($tipo->nombre, 'CORRECTIVO')` para determinar qué secciones aplican
+- Frontend: `tipoSeleccionado?.nombre?.includes('PREVENTIVO')` / `includes('CORRECTIVO')`
+- "PREVENTIVO Y CORRECTIVO" contiene ambas cadenas → activa ambas secciones simultáneamente
+- El CRUD permite activar/desactivar tipos y agregar nuevos (ej. EMERGENCIA)
+
+### Plan Preventivo
+
+Actividades agrupadas por vehículo + km_hito + nombre. Cada actividad tiene:
+- `tipo_actividad`: MO (Mano de Obra), RE (Repuesto), CL (Combustibles/Lubricantes)
+- `cantidad`: entero ≥ 1
+- `actividad`: descripción de la tarea
+
+Importación CSV: columnas `placa,km_hito,nombre,tipo_actividad,actividad,cantidad`. Agrupa por clave compuesta `vehiculo_id|km_hito|nombre`, crea una cabecera por grupo y los detalles correspondientes.
+
+### Vales de Combustible
+
+Formato oficial FR05-PRO.GA-TR.001. PDF media carta (`[0, 0, 396, 504]`).
+- Numeración secuencial: `MAX(numero) + 1`, semilla desde `VALE_COMBUSTIBLE_INICIO` en `dbo.d2_configuracion`
+- Agregar `VALE_COMBUSTIBLE_INICIO` en Admin > Configuración con el último número de vale en papel
+- Combustibles: Extra (glns/pu/valor), Super, Diesel — valor se calcula automáticamente
+- PDF se abre en nueva pestaña al guardar (para imprimir y firmar)
+- Conductor ve solo sus propios vales; TRANSPORTE ve todos
+
 ### Flujos
 
-**Mantenimiento:** conductor crea requerimiento → TRANSPORTE genera orden de trabajo (taller + N° orden + fecha) → EN_TALLER → FINALIZAR (actualiza km del vehículo). PDF disponible desde ORDEN_GENERADA.
+**Mantenimiento:** conductor crea requerimiento (tipo + km_actual + actividades) → TRANSPORTE genera orden de trabajo (asigna taller de la lista, N° orden, fecha) → EN_TALLER → FINALIZAR (actualiza km del vehículo). PDF disponible desde ORDEN_GENERADA.
 
 **Movilización:** empleado autorizado solicita → TRANSPORTE aprueba (asigna vehículo + conductor, valida conflicto de horario) o niega → conductor llena hoja de ruta (km_salida, km_retorno) → COMPLETADO (actualiza km del vehículo). PDF disponible desde APROBADO.
 
-### Controlador y Rutas
+**Vale combustible:** conductor abre formulario → selecciona vehículo, gasolinera, fecha, combustibles → guarda → PDF se abre automáticamente en nueva pestaña.
 
-`TransporteController` — rutas bajo `/api/transporte/*`:
+### Controladores y Rutas
+
+Controladores en `app/Http/Controllers/Transporte/`:
+- `TransporteController` — vehículos, mantenimiento, movilización, conductores
+- `TallerController` — CRUD talleres
+- `TipoMantenimientoController` — CRUD tipos
+- `PlanPreventivoController` — CRUD plan + importar CSV
+- `ValeController` — vales combustible + PDF
+
+Rutas bajo `/api/transporte/*`:
 - `GET/POST /vehiculos`, `PUT /vehiculos/{id}`
+- `GET/POST /talleres`, `GET /talleres/activos`, `PUT /talleres/{id}`
+- `GET/POST /tipos-mantenimiento`, `GET /tipos-mantenimiento/activos`, `PUT /tipos-mantenimiento/{id}`
+- `GET/POST /plan-preventivo`, `PUT /plan-preventivo/{id}`, `POST /plan-preventivo/importar-csv`
 - `GET/POST /mantenimiento`, `PUT /mantenimiento/{id}`, `GET /mantenimiento/{id}/pdf`
 - `GET/POST /movilizacion`, `PUT /movilizacion/{id}`, `GET /movilizacion/{id}/pdf`
-- `GET /conductores` — lista empleados con rol CONDUCTOR (para selectores)
+- `GET/POST /vales-combustible`, `GET /vales-combustible/{id}/pdf`
+- `GET /conductores` — lista empleados con rol CONDUCTOR
 
-`PUT` con campo `accion`: `orden` / `en_taller` / `finalizar` (mantenimiento); `aprobar` / `negar` / `hoja_ruta` (movilización).
+`PUT /mantenimiento/{id}` con campo `accion`: `orden` / `en_taller` / `finalizar`.
+`PUT /movilizacion/{id}` con campo `accion`: `aprobar` / `negar` / `hoja_ruta`.
 
-### PDFs
+### PDFs (`resources/views/reportes/`)
 
-- `trans_orden_trabajo.blade.php` — portrait letter, secciones: vehículo, requerimiento, orden, firmas (conductor/responsable/taller)
-- `trans_orden_movilizacion.blade.php` — portrait letter, secciones: solicitud, vehículo+conductor, hoja de ruta (solo si COMPLETADO), firmas
+- `trans_orden_trabajo.blade.php` — portrait letter; secciones: vehículo, requerimiento, actividades, orden, firmas (conductor/responsable/taller)
+- `trans_orden_movilizacion.blade.php` — portrait letter; secciones: solicitud, vehículo+conductor, hoja de ruta (solo si COMPLETADO), firmas
+- `trans_vale_combustible.blade.php` — **media carta** `[0,0,396,504]`; formato FR05-PRO.GA-TR.001; tabla combustibles, km/vehículo/fecha, firmas
 
 ### Vistas Frontend
 
 ```
 views/transporte/
-  VehiculosView.vue      # CRUD vehículos, solo rol TRANSPORTE
-  MantenimientoView.vue  # Conductor crea; TRANSPORTE gestiona estados y genera PDF
-  MovilizacionView.vue   # Empleado solicita; TRANSPORTE aprueba/niega; conductor llena hoja de ruta
+  VehiculosView.vue           # CRUD vehículos; solo TRANSPORTE
+  TalleresView.vue            # CRUD talleres; solo TRANSPORTE
+  TiposMantenimientoView.vue  # CRUD tipos (activar/desactivar); solo TRANSPORTE
+  PlanPreventivoView.vue      # CRUD plan preventivo + importar CSV; solo TRANSPORTE
+  MantenimientoView.vue       # Conductor crea; TRANSPORTE gestiona estados, asigna taller de lista, PDF
+  MovilizacionView.vue        # Empleado solicita; TRANSPORTE aprueba/niega; conductor llena hoja de ruta
+  ValesCombustibleView.vue    # CONDUCTOR + TRANSPORTE; guarda y abre PDF automáticamente
 layouts/TransporteLayout.vue  # Menú dinámico desde auth.menuAgrupado filtrado a transporte/
 ```
 
-`MainLayout.vue` excluye `transporte/` y `adquisiciones/` de su menú. `LauncherView.vue` muestra tarjeta Transportes si tiene rol TRANSPORTE, CONDUCTOR, o `puede_solicitar_vehiculo`.
+`MainLayout.vue` excluye `transporte/` y `adquisiciones/` de su menú. `LauncherView.vue` muestra tarjeta Transportes si tiene rol TRANSPORTE, CONDUCTOR, o `puede_solicitar_vehiculo`. Tarjetas del launcher: `w-44 p-5` con íconos `w-12 h-12`.
 
 ### Opciones de menú a configurar en Admin
 
 | URL | Roles |
 |---|---|
 | `transporte/vehiculos` | TRANSPORTE |
+| `transporte/talleres` | TRANSPORTE |
+| `transporte/tipos-mantenimiento` | TRANSPORTE |
+| `transporte/plan-preventivo` | TRANSPORTE |
 | `transporte/mantenimiento` | TRANSPORTE, CONDUCTOR |
 | `transporte/movilizacion` | TRANSPORTE, CONDUCTOR |
+| `transporte/vales-combustible` | TRANSPORTE, CONDUCTOR |
 
 ---
 
