@@ -257,7 +257,7 @@
     <div v-if="modalOrden.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
         <h2 class="text-lg font-bold text-gray-800 mb-4">Generar Orden de Trabajo</h2>
-        <p class="text-xs text-gray-400 mb-3 -mt-2">El número de orden se asigna automáticamente (OT-YYYY-NNNN).</p>
+        <p class="text-xs text-gray-400 mb-3 -mt-2">El número de orden se asigna automáticamente por tipo (ej. 0001-2026).</p>
         <div class="space-y-3">
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1">Taller *</label>

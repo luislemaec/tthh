@@ -173,11 +173,12 @@ class TransporteController extends Controller
 
             $tallerNombre = \App\Models\Transporte\Taller::findOrFail($request->taller_id)->nombre;
 
-            $anio = date('Y');
-            $seq  = Mantenimiento::whereNotNull('numero_orden')
-                ->whereRaw("EXTRACT(YEAR FROM created_at) = ?", [$anio])
-                ->count() + 1;
-            $numero_orden = 'OT-' . $anio . '-' . str_pad($seq, 4, '0', STR_PAD_LEFT);
+            $anio   = date('Y', strtotime($request->fecha_orden));
+            $maxNum = Mantenimiento::where('tipo_mantenimiento_id', $m->tipo_mantenimiento_id)
+                ->whereNotNull('numero_orden')
+                ->whereRaw("EXTRACT(YEAR FROM fecha_orden) = ?", [$anio])
+                ->max(DB::raw("CAST(SPLIT_PART(numero_orden, '-', 1) AS INTEGER)"));
+            $numero_orden = str_pad(($maxNum ?? 0) + 1, 4, '0', STR_PAD_LEFT) . '-' . $anio;
 
             $m->update([
                 'taller_id'              => $request->taller_id,
