@@ -41,10 +41,7 @@
       <select v-model="filtro.modalidad_laboral" @change="cargarEmpleados"
         class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
         <option value="">Todas las modalidades</option>
-        <option value="Nombramiento Definitivo">Nombramiento Definitivo</option>
-        <option value="Nombramiento Provisional">Nombramiento Provisional</option>
-        <option value="Contrato Ocasional">Contrato Ocasional</option>
-        <option value="Comisión de Servicios">Comisión de Servicios</option>
+        <option v-for="m in modalidadesLaborales" :key="m.id" :value="m.nombre">{{ m.nombre }}</option>
       </select>
     </div>
 
@@ -116,12 +113,13 @@
 import { ref, watch, onMounted } from 'vue'
 import api from '@/services/api'
 
-const empleados    = ref([])
-const departamentos = ref([])
-const cargando     = ref(false)
-const total        = ref(0)
-const pagina       = ref(1)
-const porPagina    = 10
+const empleados         = ref([])
+const departamentos      = ref([])
+const modalidadesLaborales = ref([])
+const cargando          = ref(false)
+const total             = ref(0)
+const pagina            = ref(1)
+const porPagina         = 10
 
 const filtro = ref({ buscar: '', departamento: '', estado: '', tipo_contrato: '', modalidad_laboral: '' })
 
@@ -156,7 +154,11 @@ watch(pagina, cargarEmpleados)
 
 onMounted(async () => {
   cargarEmpleados()
-  const { data } = await api.get('/departamentos')
-  departamentos.value = data
+  const [{ data: deptos }, { data: mods }] = await Promise.all([
+    api.get('/departamentos'),
+    api.get('/admin/modalidades-laborales'),
+  ])
+  departamentos.value      = deptos
+  modalidadesLaborales.value = mods.filter(m => m.estado === 'ACTIVO')
 })
 </script>

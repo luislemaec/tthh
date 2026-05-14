@@ -73,6 +73,11 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::put("configuracion/{concepto}",          [\App\Http\Controllers\Admin\ConfiguracionController::class, "update"]);
         Route::delete("configuracion/{concepto}",       [\App\Http\Controllers\Admin\ConfiguracionController::class, "destroy"]);
 
+        // Modalidades Laborales
+        Route::get("modalidades-laborales",       [\App\Http\Controllers\Admin\ModalidadLaboralController::class, "index"]);
+        Route::post("modalidades-laborales",      [\App\Http\Controllers\Admin\ModalidadLaboralController::class, "store"]);
+        Route::put("modalidades-laborales/{id}",  [\App\Http\Controllers\Admin\ModalidadLaboralController::class, "update"]);
+
         // Aportes IESS
         Route::get("aportes-iess",          [\App\Http\Controllers\Admin\AportesIessController::class, "index"]);
         Route::get("aportes-iess/vigentes", [\App\Http\Controllers\Admin\AportesIessController::class, "vigentes"]);

@@ -26,8 +26,8 @@
               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-600 mb-1">Cedula *</label>
-            <input v-model="form.cedula" type="text" required maxlength="10"
+            <label class="block text-sm font-medium text-gray-600 mb-1">Cédula / Pasaporte *</label>
+            <input v-model="form.cedula" type="text" required maxlength="20"
               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
           <div>
@@ -81,11 +81,7 @@
             <select v-model="form.modalidad_laboral" required
               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
               <option value="">Seleccionar...</option>
-              <option value="Nombramiento Definitivo">Nombramiento Definitivo</option>
-              <option value="Nombramiento Provisional">Nombramiento Provisional</option>
-              <option value="Libre Nombramiento y Remoción">Libre Nombramiento y Remoción</option>
-              <option value="Contrato Ocasional">Contrato Ocasional</option>
-              <option value="Comisión de Servicios">Comisión de Servicios</option>
+              <option v-for="m in modalidadesLaborales" :key="m.id" :value="m.nombre">{{ m.nombre }}</option>
             </select>
           </div>
           <div>
@@ -308,9 +304,10 @@ const router = useRouter()
 const esEdicion     = computed(() => !!route.params.id)
 const guardando     = ref(false)
 const error         = ref("")
-const departamentos    = ref([])
-const jornadas         = ref([])
-const partidasVacantes = ref([])
+const departamentos       = ref([])
+const jornadas            = ref([])
+const partidasVacantes    = ref([])
+const modalidadesLaborales = ref([])
 const modalPartidas    = ref({ show: false })
 
 function seleccionarPartida(p) {
@@ -400,14 +397,16 @@ const guardar = async () => {
 }
 
 onMounted(async () => {
-  const [{ data: deps }, { data: jors }, { data: partidas }] = await Promise.all([
+  const [{ data: deps }, { data: jors }, { data: partidas }, { data: mods }] = await Promise.all([
     api.get("/departamentos"),
     api.get("/admin/jornadas"),
     api.get("/empleados/partidas-vacantes"),
+    api.get("/admin/modalidades-laborales"),
   ])
-  departamentos.value    = deps
-  jornadas.value         = jors
-  partidasVacantes.value = partidas
+  departamentos.value        = deps
+  jornadas.value             = jors
+  partidasVacantes.value     = partidas
+  modalidadesLaborales.value = mods.filter(m => m.estado === 'ACTIVO')
 
   if (esEdicion.value) {
     const { data } = await api.get("/empleados/" + route.params.id)
