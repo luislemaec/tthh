@@ -5,7 +5,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Aviso extends Model
 {
-    protected $table      = 'dbo.d2_aviso';
+    protected $table      = 'dbo.d2_aviso_ticker';
     protected $fillable   = ['texto', 'activo', 'orden'];
     protected $casts      = ['activo' => 'boolean'];
 }
