@@ -3,6 +3,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Supervisor;
 use App\Models\Empleado;
+use App\Models\CabeceraVacacion;
+use App\Models\Configuracion;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -124,6 +127,48 @@ class DashboardController extends Controller
             ];
         }
 
+        // Datos exclusivos para empleado sin rol especial
+        $datosEmpleado = null;
+        if (!$esAdminOTH && !$esSupervisor) {
+            $tasas = ['LOSEP' => 2.50, 'CODIGO DEL TRABAJO' => 1.25];
+            $tasa  = $tasas[trim($emp->tipo_contrato ?? '')] ?? 0;
+
+            $fechaCorteConfig = Configuracion::find('FECHA_CORTE_VACACIONES');
+            $fechaCorte       = $fechaCorteConfig ? Carbon::parse($fechaCorteConfig->valor) : Carbon::today();
+            if ($emp->fecha_ingreso && Carbon::parse($emp->fecha_ingreso)->gt($fechaCorte)) {
+                $fechaCorte = Carbon::parse($emp->fecha_ingreso);
+            }
+            $diasCalendario = max(0, $fechaCorte->diffInDays(Carbon::today()));
+            $diasAcumulados = round($diasCalendario / 360 * ($tasa * 12), 2);
+
+            $cabecera = CabeceraVacacion::where('id_emp', $emp->id_emp)->first();
+            $tomados  = (float) ($cabecera->total_dias_tomados ?? 0);
+            $adicional= (float) ($cabecera->dias_adicionales   ?? 0);
+            $saldo    = max(0, round($adicional + $diasAcumulados - $tomados, 2));
+
+            // Atrasos por mes: días con atraso en cada mes del año actual
+            $anio = now()->year;
+            $atrasosPorMes = array_fill(1, 12, 0);
+            $rows = DB::table('dbo.d2_cuadre_marcacion')
+                ->where('id_emp', $emp->id_emp)
+                ->whereYear('fecha', $anio)
+                ->where(function ($q) {
+                    $q->where('atraso_entrada', '>', 0)
+                      ->orWhere('atraso_lunch', '>', 0);
+                })
+                ->selectRaw('EXTRACT(MONTH FROM fecha)::int as mes, COUNT(*) as dias')
+                ->groupByRaw('EXTRACT(MONTH FROM fecha)::int')
+                ->get();
+            foreach ($rows as $row) {
+                $atrasosPorMes[$row->mes] = (int) $row->dias;
+            }
+
+            $datosEmpleado = [
+                'saldo_vacaciones' => $saldo,
+                'atrasos_por_mes'  => array_values($atrasosPorMes),
+            ];
+        }
+
         return response()->json([
             "total_activos"         => $totalActivos,
             "por_departamento"      => $porDepartamento,
@@ -132,6 +177,7 @@ class DashboardController extends Controller
             "es_supervisor"         => $esSupervisor,
             "es_admin_th"           => $esAdminOTH,
             "datos_supervisor"      => $datosSupervisor,
+            "datos_empleado"        => $datosEmpleado,
         ]);
     }
 }

@@ -2,8 +2,75 @@
   <div class="space-y-6">
     <h1 class="text-2xl font-bold text-gray-800">Dashboard</h1>
 
-    <!-- Tarjetas (solo admin/TH y empleados sin rol especial) -->
-    <div v-if="!stats.es_supervisor || stats.es_admin_th" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <!-- ── EMPLEADO SIN ROL ESPECIAL ─────────────────────────────────────── -->
+    <template v-if="esEmpleadoSolo">
+      <!-- Tarjetas -->
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+
+        <!-- Permisos pendientes -->
+        <div class="rounded-2xl p-6 flex items-center gap-5 text-white"
+          style="background: linear-gradient(135deg,#1e3a5f,#2d5f8a);">
+          <div class="bg-white/20 p-4 rounded-2xl flex-shrink-0">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+            </svg>
+          </div>
+          <div>
+            <p class="text-sm text-white/70 font-medium uppercase tracking-wide">Permisos pendientes</p>
+            <p class="text-5xl font-extrabold leading-none mt-1">{{ stats.permisos_pendientes }}</p>
+            <p class="text-xs text-white/60 mt-1">{{ stats.permisos_pendientes === 1 ? 'solicitud en espera' : 'solicitudes en espera' }}</p>
+          </div>
+        </div>
+
+        <!-- Saldo de vacaciones -->
+        <div class="rounded-2xl p-6 flex items-center gap-5 text-white"
+          style="background: linear-gradient(135deg,#0b5447,#1a8a6f);">
+          <div class="bg-white/20 p-4 rounded-2xl flex-shrink-0">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 3v1m0 16v1m8.66-9h-1M4.34 12h-1m15.07-6.07l-.71.71M6.34 17.66l-.71.71M17.66 17.66l-.71-.71M6.34 6.34l-.71-.71M12 7a5 5 0 100 10A5 5 0 0012 7z"/>
+            </svg>
+          </div>
+          <div>
+            <p class="text-sm text-white/70 font-medium uppercase tracking-wide">Saldo de vacaciones</p>
+            <p class="text-5xl font-extrabold leading-none mt-1">{{ stats.datos_empleado?.saldo_vacaciones ?? 0 }}</p>
+            <p class="text-xs text-white/60 mt-1">días disponibles</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gráfico de atrasos por mes -->
+      <div class="bg-white rounded-2xl shadow p-6">
+        <h2 class="text-base font-semibold text-gray-700 mb-1">Días de atraso por mes</h2>
+        <p class="text-xs text-gray-400 mb-5">Año {{ anioActual }}</p>
+        <div class="flex items-end gap-2 h-36">
+          <div v-for="(val, i) in atrasosMeses" :key="i"
+            class="flex-1 flex flex-col items-center gap-1">
+            <span class="text-xs font-bold text-gray-700" style="min-height:1rem;">
+              {{ val > 0 ? val : '' }}
+            </span>
+            <div class="w-full rounded-t-lg transition-all"
+              :style="{
+                height: val > 0 ? Math.max(8, Math.round(val / maxAtraso * 100)) + 'px' : '4px',
+                backgroundColor: val > 0 ? (val >= umbralAlto ? '#dc2626' : val >= umbralMedio ? '#f59e0b' : '#3b82f6') : '#e5e7eb'
+              }">
+            </div>
+            <span class="text-xs text-gray-400">{{ MESES_CORTOS[i] }}</span>
+          </div>
+        </div>
+        <!-- Leyenda -->
+        <div class="flex gap-4 mt-4 text-xs text-gray-500">
+          <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm inline-block bg-blue-500"></span>Pocos</span>
+          <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm inline-block bg-amber-400"></span>Moderado</span>
+          <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm inline-block bg-red-600"></span>Alto</span>
+          <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm inline-block bg-gray-200"></span>Sin atrasos</span>
+        </div>
+      </div>
+    </template>
+
+    <!-- ── ADMIN / TH ──────────────────────────────────────────────────────── -->
+    <div v-if="esAdmin" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <div class="bg-white rounded-xl shadow p-6 flex items-center gap-4">
         <div class="bg-blue-100 p-3 rounded-full">
           <svg class="w-6 h-6 text-[#0b5447]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -52,7 +119,6 @@
         </div>
         <div>
           <p class="text-sm text-gray-500">Vacaciones Pendientes</p>
-          <!-- ✅ CORREGIDO: era text="gray-800" -->
           <p class="text-2xl font-bold text-gray-800">{{ stats.vacaciones_pendientes }}</p>
         </div>
       </div>
@@ -176,8 +242,12 @@ import { ref, computed, onMounted } from 'vue'
 import api from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 
-const auth    = useAuthStore()
-const esAdmin = computed(() => auth.tieneRol('ADMINISTRADOR') || auth.tieneRol('TALENTO HUMANO'))
+const auth          = useAuthStore()
+const esAdmin       = computed(() => auth.tieneRol('ADMINISTRADOR') || auth.tieneRol('TALENTO HUMANO'))
+const esEmpleadoSolo = computed(() => !stats.value.es_supervisor && !stats.value.es_admin_th)
+
+const anioActual = new Date().getFullYear()
+const MESES_CORTOS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
 
 const stats = ref({
   total_activos: 0,
@@ -187,7 +257,13 @@ const stats = ref({
   es_supervisor: false,
   es_admin_th: false,
   datos_supervisor: null,
+  datos_empleado: null,
 })
+
+const atrasosMeses = computed(() => stats.value.datos_empleado?.atrasos_por_mes ?? Array(12).fill(0))
+const maxAtraso    = computed(() => Math.max(1, ...atrasosMeses.value))
+const umbralAlto   = computed(() => Math.ceil(maxAtraso.value * 0.66))
+const umbralMedio  = computed(() => Math.ceil(maxAtraso.value * 0.33))
 
 const ICONO_PERMISO    = 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'
 const ICONO_VACACIONES = 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z'
@@ -195,9 +271,9 @@ const ICONO_HE         = 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'
 const ICONO_MATERIAL   = 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2'
 
 const pendientes = computed(() => [
-  { label: 'Permisos por aprobar',      valor: stats.value.permisos_pendientes,                       icono: ICONO_PERMISO },
-  { label: 'Vacaciones por aprobar',    valor: stats.value.vacaciones_pendientes,                     icono: ICONO_VACACIONES },
-  { label: 'Horas extras por aprobar',  valor: stats.value.datos_supervisor?.he_pendientes ?? 0,      icono: ICONO_HE },
+  { label: 'Permisos por aprobar',      valor: stats.value.permisos_pendientes,                          icono: ICONO_PERMISO },
+  { label: 'Vacaciones por aprobar',    valor: stats.value.vacaciones_pendientes,                        icono: ICONO_VACACIONES },
+  { label: 'Horas extras por aprobar',  valor: stats.value.datos_supervisor?.he_pendientes ?? 0,         icono: ICONO_HE },
   { label: 'Materiales por despachar',  valor: stats.value.datos_supervisor?.materiales_pendientes ?? 0, icono: ICONO_MATERIAL },
 ])
 
