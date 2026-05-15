@@ -139,6 +139,15 @@ class EmpleadoController extends Controller
             ]);
         }
 
+        // Marcar como OCUPADO al titular inactivo/disponible que tenía esta partida
+        if ($request->filled("partida_individual")) {
+            Empleado::where("estado", "INACTIVO")
+                ->where("estado_puesto", "DISPONIBLE")
+                ->where("partida_individual", $request->partida_individual)
+                ->where("id_emp", "!=", $emp->id_emp)
+                ->update(["estado_puesto" => "OCUPADO"]);
+        }
+
         return response()->json($emp->load(["departamento", "emails"]), 201);
     }
 
@@ -186,7 +195,9 @@ class EmpleadoController extends Controller
             "id_jornada"            => $request->id_jornada              ?? $emp->id_jornada,
             "partida_individual"    => $request->partida_individual      ?? $emp->partida_individual,
             "partida_presupuestaria"=> $request->partida_presupuestaria  ?? $emp->partida_presupuestaria,
-            "estado_puesto"         => $request->estado_puesto           ?? $emp->estado_puesto,
+            "estado_puesto"         => strtoupper($request->estado ?? $emp->estado) === 'INACTIVO'
+                                        ? 'DISPONIBLE'
+                                        : ($request->estado_puesto ?? $emp->estado_puesto),
             "grupo_ocupacional"     => $request->grupo_ocupacional       ?? $emp->grupo_ocupacional,
             "proceso_institucional" => $request->proceso_institucional   ?? $emp->proceso_institucional,
             "acumula_fondos_reserva"    => $request->acumula_fondos_reserva    ?? $emp->acumula_fondos_reserva,
@@ -207,6 +218,15 @@ class EmpleadoController extends Controller
                 "mail"   => $request->email,
                 "estado" => "ACTIVO",
             ]);
+        }
+
+        // Marcar como OCUPADO al titular inactivo/disponible que tenía esta partida
+        if ($request->filled("partida_individual")) {
+            Empleado::where("estado", "INACTIVO")
+                ->where("estado_puesto", "DISPONIBLE")
+                ->where("partida_individual", $request->partida_individual)
+                ->where("id_emp", "!=", $emp->id_emp)
+                ->update(["estado_puesto" => "OCUPADO"]);
         }
 
         return response()->json($emp->load(["departamento", "emails"]));
