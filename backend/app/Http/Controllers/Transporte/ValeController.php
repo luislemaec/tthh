@@ -105,7 +105,7 @@ class ValeController extends Controller
 
         $pdf = Pdf::loadView('reportes.trans_vale_combustible',
             compact('vale', 'logo', 'dia', 'mes', 'anio', 'diaComp', 'mesComp', 'anioComp'))
-            ->setPaper([0, 0, 396, 504], 'portrait'); // media carta
+            ->setPaper('a4', 'portrait'); // media carta
 
         return $pdf->stream('vale_combustible_' . str_pad($vale->numero, 4, '0', STR_PAD_LEFT) . '.pdf');
     }

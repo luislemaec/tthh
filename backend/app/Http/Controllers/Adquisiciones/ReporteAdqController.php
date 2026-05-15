@@ -28,7 +28,7 @@ class ReporteAdqController extends Controller
         if ($request->formato === 'pdf') {
             $meses = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
             $pdf = Pdf::loadView('reportes.kardex', compact('articulo', 'filas', 'meses', 'request'))
-                ->setPaper('legal', 'landscape');
+                ->setPaper('a4'), 'landscape');
             return $pdf->download("kardex-{$articulo->codigo}.pdf");
         }
 
@@ -71,7 +71,7 @@ class ReporteAdqController extends Controller
         if ($request->formato === 'pdf') {
             $meses = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
             $pdf = Pdf::loadView('reportes.libro_compras', compact('filas', 'meses', 'request'))
-                ->setPaper('legal', 'landscape');
+                ->setPaper('a4'), 'landscape');
             return $pdf->download("libro-compras.pdf");
         }
 
@@ -115,7 +115,7 @@ class ReporteAdqController extends Controller
         if ($request->formato === 'pdf') {
             $meses = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
             $pdf = Pdf::loadView('reportes.egresos_valorizados', compact('filas', 'meses', 'request'))
-                ->setPaper('legal', 'landscape');
+                ->setPaper('a4'), 'landscape');
             return $pdf->download("egresos-valorizados.pdf");
         }
 

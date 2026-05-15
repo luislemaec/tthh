@@ -473,7 +473,7 @@ class HorasExtrasController extends Controller
             'logo'             => $logoBase64,
             'meses'            => $meses,
             'nombreSupervisor' => $nombreSupervisor,
-        ])->setPaper('letter', 'portrait');
+        ])->setPaper('a4'), 'portrait');
 
         $filename = "horas_extras_{$emp->apellido_emp}_{$emp->nombre_emp}_{$cab->anio}_{$cab->mes}.pdf";
         return $pdf->download($filename);
@@ -522,7 +522,7 @@ class HorasExtrasController extends Controller
             'logo'            => $logoBase64,
             'meses'           => $meses,
             'nombreSupervisor' => $nombreSupervisor,
-        ])->setPaper('letter', 'portrait');
+        ])->setPaper('a4'), 'portrait');
 
         $filename = "horas_trabajadas_{$emp->apellido_emp}_{$emp->nombre_emp}_{$cab->anio}_{$cab->mes}.pdf";
         return $pdf->download($filename);

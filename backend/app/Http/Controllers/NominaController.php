@@ -259,7 +259,7 @@ class NominaController extends Controller
             'nombreMes' => $this->nombreMes($mes),
             'logo'      => $this->logoBase64(),
             'estado'    => $registros->first()->estado,
-        ])->setPaper('letter', 'portrait');
+        ])->setPaper('a4'), 'portrait');
 
         return $pdf->download("decimo_tercero_{$anio}_{$mes}.pdf");
     }
@@ -415,7 +415,7 @@ class NominaController extends Controller
             'logo'      => $this->logoBase64(),
             'estado'    => $registros->first()->estado,
             'sbu'       => $registros->first()->sbu,
-        ])->setPaper('letter', 'portrait');
+        ])->setPaper('a4'), 'portrait');
 
         return $pdf->download("decimo_cuarto_{$anio}_{$mes}.pdf");
     }
@@ -494,7 +494,7 @@ class NominaController extends Controller
             'mes'       => $mes,
             'nombreMes' => $this->nombreMes($mes),
             'logo'      => $this->logoBase64(),
-        ]))->setPaper('letter', 'portrait');
+        ]))->setPaper('a4'), 'portrait');
 
         return $pdf->download("consolidado_decimos_{$anio}_{$mes}.pdf");
     }
@@ -637,7 +637,7 @@ class NominaController extends Controller
             'logo'           => $this->logoBase64(),
             'estado'         => $registros->first()->estado,
             'generadoPor'    => $emp->nombre_emp . ' ' . $emp->apellido_emp,
-        ])->setPaper('letter', 'portrait');
+        ])->setPaper('a4'), 'portrait');
 
         return $pdf->download("fondos_reserva_{$anio}_{$mes}.pdf");
     }

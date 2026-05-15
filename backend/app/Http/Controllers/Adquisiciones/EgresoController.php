@@ -278,7 +278,7 @@ class EgresoController extends Controller
             return response()->json(['message' => 'El PDF solo está disponible para egresos confirmados.'], 422);
         }
         $pdf = Pdf::loadView('reportes.egreso_bodega', compact('egreso'))
-            ->setPaper('letter', 'portrait');
+            ->setPaper('a4'), 'portrait');
         return $pdf->download("egreso-bodega-{$egreso->id}.pdf");
     }
 

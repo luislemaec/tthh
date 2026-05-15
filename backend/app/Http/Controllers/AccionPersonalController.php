@@ -197,7 +197,7 @@ class AccionPersonalController extends Controller
             "config"   => $config,
             "logo"     => $logoBase64,
             "creador"  => $creador,
-        ])->setPaper("letter", "portrait");
+        ])->setPaper("a4", "portrait");
 
         $filename = "accion_personal_{$accion->numero_accion}.pdf";
         return $pdf->download($filename);
