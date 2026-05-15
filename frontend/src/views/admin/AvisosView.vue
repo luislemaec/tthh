@@ -106,7 +106,7 @@ const modal    = ref({ show: false, id: null })
 const form     = ref({})
 
 async function cargar() {
-  const { data } = await api.get('/avisos')
+  const { data } = await api.get('/admin/avisos')
   avisos.value   = data.avisos
   direccion.value = data.direccion
 }
@@ -128,9 +128,9 @@ async function guardar() {
   guardando.value = true
   try {
     if (modal.value.id) {
-      await api.put(`/avisos/${modal.value.id}`, form.value)
+      await api.put(`/admin/avisos/${modal.value.id}`, form.value)
     } else {
-      await api.post('/avisos', form.value)
+      await api.post('/admin/avisos', form.value)
     }
     modal.value.show = false
     await cargar()
@@ -143,12 +143,12 @@ async function guardar() {
 
 async function eliminar(a) {
   if (!confirm(`¿Eliminar el aviso "${a.texto.slice(0, 50)}..."?`)) return
-  await api.delete(`/avisos/${a.id}`)
+  await api.delete(`/admin/avisos/${a.id}`)
   await cargar()
 }
 
 async function guardarDireccion() {
-  await api.put('/avisos-direccion', { direccion: direccion.value })
+  await api.put('/admin/avisos-direccion', { direccion: direccion.value })
   msgDir.value = 'Guardado'
   setTimeout(() => { msgDir.value = '' }, 2000)
 }

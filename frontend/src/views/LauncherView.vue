@@ -179,7 +179,7 @@ onMounted(async () => {
     alertasStock.value = data.length
   } catch {}
   try {
-    const { data } = await api.get('/avisos/activos')
+    const { data } = await api.get('/admin/avisos/activos')
     avisos.value    = data.avisos
     direccion.value = data.direccion
   } catch {}
