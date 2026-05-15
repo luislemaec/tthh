@@ -13,18 +13,24 @@ return new class extends Migration {
                 ADD COLUMN IF NOT EXISTS orden_compra        VARCHAR(50) NULL
         ");
 
-        // 2 — Todos los proveedores existentes son de bienes
-        DB::statement("UPDATE adq.proveedor SET es_proveedor_bienes = true");
+        // 2 — Todos los proveedores existentes son de bienes (solo los que no sean talleres)
+        DB::statement("UPDATE adq.proveedor SET es_proveedor_bienes = true WHERE es_taller = false");
 
         // 3 — Migrar trans_taller → adq.proveedor y construir mapa de IDs
+        //     Idempotente: busca por RUC o por ruc='TALLER-{id}' para no duplicar en re-runs
         $talleres = DB::table('dbo.trans_taller')->get();
-        $mapa     = []; // trans_taller.id => adq.proveedor.id
+        $mapa     = [];
 
         foreach ($talleres as $taller) {
-            // Buscar por RUC si existe
             $existente = null;
+
             if (!empty($taller->ruc)) {
                 $existente = DB::table('adq.proveedor')->where('ruc', $taller->ruc)->first();
+            }
+
+            // Buscar por ruc sintético si ya fue insertado en un run anterior
+            if (!$existente) {
+                $existente = DB::table('adq.proveedor')->where('ruc', 'TALLER-' . $taller->id)->first();
             }
 
             if ($existente) {
@@ -34,7 +40,7 @@ return new class extends Migration {
                 ]);
                 $mapa[$taller->id] = $existente->id;
             } else {
-                $ruc = !empty($taller->ruc) ? $taller->ruc : 'TALLER-' . $taller->id;
+                $ruc   = !empty($taller->ruc) ? $taller->ruc : 'TALLER-' . $taller->id;
                 $newId = DB::table('adq.proveedor')->insertGetId([
                     'ruc'                => $ruc,
                     'nombre'             => $taller->nombre,
@@ -50,12 +56,20 @@ return new class extends Migration {
             }
         }
 
-        // 4 — Remapear trans_mantenimiento.taller_id a adq.proveedor.id
+        // 4 — Soltar FK (referenciaba trans_taller), remapear IDs, re-crear FK → adq.proveedor
+        DB::statement('ALTER TABLE dbo.trans_mantenimiento DROP CONSTRAINT IF EXISTS trans_mantenimiento_taller_id_fkey');
+
         foreach ($mapa as $viejoId => $nuevoId) {
             DB::table('dbo.trans_mantenimiento')
                 ->where('taller_id', $viejoId)
                 ->update(['taller_id' => $nuevoId]);
         }
+
+        DB::statement('
+            ALTER TABLE dbo.trans_mantenimiento
+                ADD CONSTRAINT trans_mantenimiento_taller_id_fkey
+                FOREIGN KEY (taller_id) REFERENCES adq.proveedor(id)
+        ');
     }
 
     public function down(): void
