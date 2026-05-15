@@ -15,6 +15,11 @@
         <option value="ACTIVO">Activos</option>
         <option value="INACTIVO">Inactivos</option>
       </select>
+      <select v-model="filtroTipo" class="border rounded-lg px-3 py-2 text-sm">
+        <option value="">Todos</option>
+        <option value="bienes">Solo Bienes</option>
+        <option value="taller">Solo Transporte</option>
+      </select>
     </div>
 
     <!-- Contador -->
@@ -37,21 +42,19 @@
             <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Nombre</th>
             <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Contacto</th>
             <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Email</th>
-            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Catálogo</th>
             <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Estado</th>
             <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Acciones</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="!proveedoresFiltrados.length">
-            <td colspan="7" class="text-center py-8 text-gray-400">Sin proveedores</td>
+            <td colspan="6" class="text-center py-8 text-gray-400">Sin proveedores</td>
           </tr>
           <tr v-for="p in proveedoresPaginados" :key="p.id" class="border-b hover:bg-amber-50">
             <td class="px-4 py-3 font-mono text-xs whitespace-nowrap">{{ p.ruc }}</td>
             <td class="px-4 py-3 font-medium">{{ p.nombre }}</td>
             <td class="px-4 py-3 text-gray-500">{{ p.contacto || '-' }}</td>
             <td class="px-4 py-3 text-gray-500">{{ p.email || '-' }}</td>
-            <td class="px-4 py-3 text-gray-500 whitespace-nowrap">{{ p.catalogo?.length || 0 }} ítem(s)</td>
             <td class="px-4 py-3 whitespace-nowrap">
               <span v-if="p.es_taller"
                 class="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 mr-1">
@@ -198,6 +201,7 @@ import api from '@/services/api'
 const proveedores  = ref([])
 const busqueda     = ref('')
 const filtroEstado = ref('ACTIVO')
+const filtroTipo   = ref('bienes')
 const guardando    = ref(false)
 const errorModal   = ref('')
 const paginaActual = ref(1)
@@ -207,8 +211,12 @@ const modal = ref({ show: false, editando: false, id: null, form: { ruc: '', nom
 const proveedoresFiltrados = computed(() =>
   proveedores.value.filter(p => {
     const q = busqueda.value.toLowerCase()
-    const coincide = !q || p.nombre.toLowerCase().includes(q) || p.ruc.includes(q)
-    return coincide && (!filtroEstado.value || p.estado === filtroEstado.value)
+    const coincide = !q || p.nombre.toLowerCase().includes(q) || (p.ruc || '').toLowerCase().includes(q)
+    const porEstado = !filtroEstado.value || p.estado === filtroEstado.value
+    const porTipo = !filtroTipo.value
+      || (filtroTipo.value === 'bienes'  && p.es_proveedor_bienes)
+      || (filtroTipo.value === 'taller'  && p.es_taller)
+    return coincide && porEstado && porTipo
   })
 )
 
@@ -219,7 +227,7 @@ const proveedoresPaginados = computed(() => {
   return proveedoresFiltrados.value.slice(inicio, inicio + porPagina.value)
 })
 
-watch([busqueda, filtroEstado], () => { paginaActual.value = 1 })
+watch([busqueda, filtroEstado, filtroTipo], () => { paginaActual.value = 1 })
 
 async function cargar() {
   const { data } = await api.get('/adquisiciones/proveedores')

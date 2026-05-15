@@ -9,7 +9,7 @@ class TallerController extends Controller
 {
     public function index()
     {
-        return response()->json(Proveedor::where('es_taller', true)->orderBy('nombre')->get());
+        return response()->json(Proveedor::orderBy('nombre')->get());
     }
 
     public function activos()
@@ -28,6 +28,7 @@ class TallerController extends Controller
             'email'               => 'nullable|email|max:100',
             'telefono'            => 'nullable|string|max:20',
             'orden_compra'        => 'nullable|string|max:50',
+            'es_taller'           => 'boolean',
             'es_proveedor_bienes' => 'boolean',
         ]);
 
@@ -39,7 +40,7 @@ class TallerController extends Controller
             'telefono'            => $request->telefono ?? null,
             'orden_compra'        => $request->orden_compra ?? null,
             'estado'              => 'ACTIVO',
-            'es_taller'           => true,
+            'es_taller'           => $request->boolean('es_taller', true),
             'es_proveedor_bienes' => $request->boolean('es_proveedor_bienes', false),
         ]);
 
@@ -48,7 +49,7 @@ class TallerController extends Controller
 
     public function update(Request $request, $id)
     {
-        $proveedor = Proveedor::where('es_taller', true)->findOrFail($id);
+        $proveedor = Proveedor::findOrFail($id);
 
         $request->validate([
             'nombre'              => 'required|string|max:100',
@@ -58,6 +59,7 @@ class TallerController extends Controller
             'telefono'            => 'nullable|string|max:20',
             'orden_compra'        => 'nullable|string|max:50',
             'estado'              => 'nullable|in:ACTIVO,INACTIVO',
+            'es_taller'           => 'boolean',
             'es_proveedor_bienes' => 'boolean',
         ]);
 
@@ -69,6 +71,7 @@ class TallerController extends Controller
             'telefono'            => $request->telefono,
             'orden_compra'        => $request->orden_compra,
             'estado'              => $request->estado ?? $proveedor->estado,
+            'es_taller'           => $request->boolean('es_taller', $proveedor->es_taller),
             'es_proveedor_bienes' => $request->boolean('es_proveedor_bienes', $proveedor->es_proveedor_bienes),
         ]);
 

@@ -494,7 +494,7 @@ const formInicial = () => ({
 })
 const form = ref(formInicial())
 
-const proveedoresActivos = computed(() => proveedores.value.filter(p => p.estado === 'ACTIVO'))
+const proveedoresActivos = computed(() => proveedores.value.filter(p => p.estado === 'ACTIVO' && p.es_proveedor_bienes))
 
 const totales = computed(() => {
   let subtotal = 0, ivaLineas = 0

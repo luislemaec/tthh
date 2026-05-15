@@ -11,7 +11,7 @@ class ProveedorController extends Controller
     public function index()
     {
         return response()->json(
-            Proveedor::with('catalogo')->where('es_proveedor_bienes', true)->orderBy('nombre')->get()
+            Proveedor::with('catalogo')->orderBy('nombre')->get()
         );
     }
 
