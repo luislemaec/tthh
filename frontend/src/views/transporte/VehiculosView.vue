@@ -53,8 +53,8 @@
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-xs font-semibold text-gray-600 mb-1">Placa *</label>
-              <input v-model="form.placa" class="w-full border rounded-lg px-3 py-2 text-sm"
-                placeholder="ABC-1234" style="text-transform:uppercase" />
+              <input v-model="form.placa" v-uppercase class="w-full border rounded-lg px-3 py-2 text-sm"
+                placeholder="ABC-1234" />
             </div>
             <div>
               <label class="block text-xs font-semibold text-gray-600 mb-1">Año *</label>
@@ -65,17 +65,17 @@
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-xs font-semibold text-gray-600 mb-1">Marca *</label>
-              <input v-model="form.marca" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Toyota" />
+              <input v-model="form.marca" v-uppercase class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Toyota" />
             </div>
             <div>
               <label class="block text-xs font-semibold text-gray-600 mb-1">Modelo *</label>
-              <input v-model="form.modelo" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Hilux" />
+              <input v-model="form.modelo" v-uppercase class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Hilux" />
             </div>
           </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-xs font-semibold text-gray-600 mb-1">Color</label>
-              <input v-model="form.color" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Blanco" />
+              <input v-model="form.color" v-uppercase class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Blanco" />
             </div>
             <div>
               <label class="block text-xs font-semibold text-gray-600 mb-1">Km Actual *</label>
@@ -86,11 +86,11 @@
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-xs font-semibold text-gray-600 mb-1">Chasis</label>
-              <input v-model="form.chasis" class="w-full border rounded-lg px-3 py-2 text-sm" />
+              <input v-model="form.chasis" v-uppercase class="w-full border rounded-lg px-3 py-2 text-sm" />
             </div>
             <div>
               <label class="block text-xs font-semibold text-gray-600 mb-1">N° Motor</label>
-              <input v-model="form.numero_motor" class="w-full border rounded-lg px-3 py-2 text-sm" />
+              <input v-model="form.numero_motor" v-uppercase class="w-full border rounded-lg px-3 py-2 text-sm" />
             </div>
           </div>
           <div v-if="modal.id">

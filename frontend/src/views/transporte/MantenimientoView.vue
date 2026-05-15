@@ -229,7 +229,7 @@
                 <span class="flex-shrink-0 mt-2 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center bg-orange-500 text-white">
                   {{ i + 1 }}
                 </span>
-                <textarea v-model="act.actividad" rows="2"
+                <textarea v-model="act.actividad" v-uppercase rows="2"
                   class="flex-1 border rounded-lg px-3 py-2 text-sm resize-none"
                   :placeholder="'Actividad correctiva ' + (i + 1)"></textarea>
                 <button @click="eliminarActCorr(i)" type="button"
@@ -240,7 +240,7 @@
 
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1">Descripción / Problema</label>
-            <textarea v-model="formCrear.descripcion" rows="2"
+            <textarea v-model="formCrear.descripcion" v-uppercase rows="2"
               class="w-full border rounded-lg px-3 py-2 text-sm resize-none"
               placeholder="Descripción adicional (opcional)..."></textarea>
           </div>
@@ -283,7 +283,7 @@
           </div>
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1">Observaciones</label>
-            <textarea v-model="formOrden.observacion_responsable" rows="2"
+            <textarea v-model="formOrden.observacion_responsable" v-uppercase rows="2"
               class="w-full border rounded-lg px-3 py-2 text-sm resize-none"></textarea>
           </div>
         </div>
@@ -310,7 +310,7 @@
         <div class="p-6">
         <div>
           <label class="block text-xs font-semibold text-gray-600 mb-1">Motivo de negación *</label>
-          <textarea v-model="formNegar.motivo_negacion" rows="3"
+          <textarea v-model="formNegar.motivo_negacion" v-uppercase rows="3"
             class="w-full border rounded-lg px-3 py-2 text-sm resize-none"
             placeholder="Indique el motivo por el que no procede el requerimiento..."></textarea>
         </div>
@@ -347,7 +347,7 @@
           </div>
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1">Observaciones</label>
-            <textarea v-model="formFinalizar.observacion_responsable" rows="2"
+            <textarea v-model="formFinalizar.observacion_responsable" v-uppercase rows="2"
               class="w-full border rounded-lg px-3 py-2 text-sm resize-none"></textarea>
           </div>
         </div>

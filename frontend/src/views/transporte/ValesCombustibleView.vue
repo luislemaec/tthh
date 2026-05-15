@@ -32,9 +32,15 @@
           </p>
         </div>
         <div class="flex items-center gap-2 flex-shrink-0">
-          <button @click="verPdf(v.id)"
+          <span v-if="v.estado === 'ANULADO'"
+            class="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">ANULADO</span>
+          <button v-if="v.estado !== 'ANULADO'" @click="verPdf(v.id)"
             class="text-xs text-red-600 hover:text-red-800 font-medium border border-red-200 px-3 py-1 rounded-lg">
             PDF
+          </button>
+          <button v-if="v.estado === 'EMITIDO'" @click="anularVale(v)"
+            class="text-xs text-gray-500 hover:text-red-700 font-medium border border-gray-300 hover:border-red-300 px-3 py-1 rounded-lg">
+            Anular
           </button>
         </div>
       </div>
@@ -71,7 +77,7 @@
           <!-- Gasolinera -->
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1">Gasolinera / Sr.(es) *</label>
-            <input v-model="form.gasolinera" class="w-full border rounded-lg px-3 py-2 text-sm"
+            <input v-model="form.gasolinera" v-uppercase class="w-full border rounded-lg px-3 py-2 text-sm"
               placeholder="Nombre de la gasolinera" />
           </div>
 
@@ -252,6 +258,16 @@ async function guardar() {
     error.value = e.response?.data?.message || Object.values(e.response?.data?.errors || {})[0]?.[0] || 'Error al guardar'
   } finally {
     guardando.value = false
+  }
+}
+
+async function anularVale(v) {
+  if (!confirm(`¿Anular el vale N° ${String(v.numero).padStart(4, '0')}? Esta acción no se puede deshacer.`)) return
+  try {
+    await api.patch(`/transporte/vales-combustible/${v.id}/anular`)
+    await cargar()
+  } catch (e) {
+    alert('Error al anular el vale')
   }
 }
 

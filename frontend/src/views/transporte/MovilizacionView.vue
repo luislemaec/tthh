@@ -161,7 +161,7 @@
         <div class="space-y-3">
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1">Motivo *</label>
-            <textarea v-model="formCrear.motivo" rows="2"
+            <textarea v-model="formCrear.motivo" v-uppercase rows="2"
               class="w-full border rounded-lg px-3 py-2 text-sm resize-none"></textarea>
           </div>
           <div class="grid grid-cols-3 gap-3">
@@ -184,12 +184,12 @@
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-xs font-semibold text-gray-600 mb-1">Lugar de salida</label>
-              <input v-model="formCrear.lugar_salida" class="w-full border rounded-lg px-3 py-2 text-sm"
+              <input v-model="formCrear.lugar_salida" v-uppercase class="w-full border rounded-lg px-3 py-2 text-sm"
                 placeholder="Instalaciones CONSEJO" />
             </div>
             <div>
               <label class="block text-xs font-semibold text-gray-600 mb-1">Lugar de destino *</label>
-              <input v-model="formCrear.lugar_destino" class="w-full border rounded-lg px-3 py-2 text-sm" />
+              <input v-model="formCrear.lugar_destino" v-uppercase class="w-full border rounded-lg px-3 py-2 text-sm" />
             </div>
           </div>
           <div class="w-28">
@@ -244,7 +244,7 @@
           </div>
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1">Observación</label>
-            <input v-model="formAprobar.observacion" class="w-full border rounded-lg px-3 py-2 text-sm" />
+            <input v-model="formAprobar.observacion" v-uppercase class="w-full border rounded-lg px-3 py-2 text-sm" />
           </div>
         </div>
         <p v-if="errorAprobar" class="text-red-600 text-sm mt-3">{{ errorAprobar }}</p>
@@ -270,7 +270,7 @@
         <div class="p-6">
         <div>
           <label class="block text-xs font-semibold text-gray-600 mb-1">Motivo de negación</label>
-          <textarea v-model="formNegar.observacion" rows="3"
+          <textarea v-model="formNegar.observacion" v-uppercase rows="3"
             class="w-full border rounded-lg px-3 py-2 text-sm resize-none"></textarea>
         </div>
         <div class="flex justify-end gap-2 mt-5">
@@ -312,7 +312,7 @@
           </div>
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1">Observaciones</label>
-            <textarea v-model="formHojaRuta.hoja_ruta_observacion" rows="2"
+            <textarea v-model="formHojaRuta.hoja_ruta_observacion" v-uppercase rows="2"
               class="w-full border rounded-lg px-3 py-2 text-sm resize-none"></textarea>
           </div>
         </div>

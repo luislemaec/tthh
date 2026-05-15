@@ -390,9 +390,10 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post('plan-preventivo/importar-csv', [\App\Http\Controllers\Transporte\PlanPreventivoController::class, 'importarCsv']);
 
         // Vales de combustible
-        Route::get('vales-combustible',          [\App\Http\Controllers\Transporte\ValeController::class, 'index']);
-        Route::post('vales-combustible',         [\App\Http\Controllers\Transporte\ValeController::class, 'store']);
-        Route::get('vales-combustible/{id}/pdf', [\App\Http\Controllers\Transporte\ValeController::class, 'pdf']);
+        Route::get('vales-combustible',               [\App\Http\Controllers\Transporte\ValeController::class, 'index']);
+        Route::post('vales-combustible',              [\App\Http\Controllers\Transporte\ValeController::class, 'store']);
+        Route::get('vales-combustible/{id}/pdf',      [\App\Http\Controllers\Transporte\ValeController::class, 'pdf']);
+        Route::patch('vales-combustible/{id}/anular', [\App\Http\Controllers\Transporte\ValeController::class, 'anular']);
 
         // Mantenimiento
         Route::get('mantenimiento',        [TransporteController::class, 'indexMtto']);

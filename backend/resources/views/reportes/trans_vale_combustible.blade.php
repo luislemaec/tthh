@@ -102,8 +102,9 @@
           <u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>
         @endif
       </div>
-      <div style="margin-top:5px; text-align:center;">
-        Quito, a <u>&nbsp;{{ $dia }}&nbsp;</u> de <u>&nbsp;{{ $mes }}&nbsp;</u> de <u>&nbsp;{{ $anio }}&nbsp;</u>
+      <div style="margin-top:5px;">
+        <strong>Fecha elaboración:</strong>
+        <u>&nbsp;{{ $dia }}&nbsp;</u> de <u>&nbsp;{{ $mes }}&nbsp;</u> de <u>&nbsp;{{ $anio }}&nbsp;</u>
       </div>
     </td>
   </tr>

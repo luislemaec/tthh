@@ -163,7 +163,7 @@
             </div>
             <div>
               <label class="block text-xs font-semibold text-gray-600 mb-1">Nombre del plan *</label>
-              <input v-model="form.nombre" class="w-full border rounded-lg px-3 py-2 text-sm"
+              <input v-model="form.nombre" v-uppercase class="w-full border rounded-lg px-3 py-2 text-sm"
                 placeholder="Ej: Mantenimiento 5000km" />
             </div>
           </div>
@@ -198,7 +198,7 @@
                 <input v-model.number="act.cantidad" type="number" min="1"
                   class="flex-shrink-0 border rounded-lg px-2 py-2 text-xs w-16 text-center"
                   placeholder="Cant." />
-                <textarea v-model="act.actividad" rows="2"
+                <textarea v-model="act.actividad" v-uppercase rows="2"
                   class="flex-1 border rounded-lg px-3 py-2 text-sm resize-none"
                   :placeholder="'Descripción ' + (i + 1)"></textarea>
                 <button @click="eliminarActividad(i)" type="button"

@@ -83,6 +83,19 @@ class ValeController extends Controller
         return response()->json($vale->load(['conductor', 'vehiculo']), 201);
     }
 
+    public function anular($id)
+    {
+        $vale = ValeCombustible::findOrFail($id);
+
+        if ($vale->estado !== 'EMITIDO') {
+            return response()->json(['message' => 'Solo se pueden anular vales en estado EMITIDO.'], 422);
+        }
+
+        $vale->update(['estado' => 'ANULADO']);
+
+        return response()->json($vale);
+    }
+
     public function pdf($id)
     {
         $vale = ValeCombustible::with(['conductor', 'vehiculo'])->findOrFail($id);
