@@ -1,6 +1,7 @@
 <?php
 namespace App\Models\Transporte;
 
+use App\Models\Adq\Proveedor;
 use App\Models\Empleado;
 use Illuminate\Database\Eloquent\Model;
 
@@ -44,6 +45,6 @@ class Mantenimiento extends Model
 
     public function tallerRel()
     {
-        return $this->belongsTo(Taller::class, 'taller_id');
+        return $this->belongsTo(Proveedor::class, 'taller_id');
     }
 }

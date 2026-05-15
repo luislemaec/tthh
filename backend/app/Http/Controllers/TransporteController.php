@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
+use App\Models\Adq\Proveedor;
 use App\Models\Transporte\Vehiculo;
 use App\Models\Transporte\Mantenimiento;
 use App\Models\Transporte\MantenimientoActividad;
@@ -167,11 +168,11 @@ class TransporteController extends Controller
 
         if ($accion === 'orden') {
             $request->validate([
-                'taller_id'   => 'required|exists:pgsql.dbo.trans_taller,id',
+                'taller_id'   => 'required|exists:pgsql.adq.proveedor,id',
                 'fecha_orden' => 'required|date',
             ]);
 
-            $tallerNombre = \App\Models\Transporte\Taller::findOrFail($request->taller_id)->nombre;
+            $tallerNombre = Proveedor::findOrFail($request->taller_id)->nombre;
 
             $anio   = date('Y', strtotime($request->fecha_orden));
             $maxNum = Mantenimiento::where('tipo_mantenimiento_id', $m->tipo_mantenimiento_id)

@@ -53,6 +53,10 @@
             <td class="px-4 py-3 text-gray-500">{{ p.email || '-' }}</td>
             <td class="px-4 py-3 text-gray-500 whitespace-nowrap">{{ p.catalogo?.length || 0 }} ítem(s)</td>
             <td class="px-4 py-3 whitespace-nowrap">
+              <span v-if="p.es_taller"
+                class="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 mr-1">
+                Taller
+              </span>
               <span :class="p.estado === 'ACTIVO' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'"
                 class="px-2 py-0.5 rounded-full text-xs font-medium">{{ p.estado }}</span>
             </td>
@@ -132,11 +136,15 @@
               class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none" />
           </div>
         </div>
-        <div class="mb-4">
+        <div class="mb-3">
           <label class="block text-xs text-gray-600 mb-1">Dirección</label>
           <input v-model="modal.form.direccion" v-uppercase type="text" maxlength="300"
             class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none" />
         </div>
+        <label class="flex items-center gap-2 cursor-pointer select-none mb-4">
+          <input type="checkbox" v-model="modal.form.es_taller" class="w-4 h-4 rounded" />
+          <span class="text-xs text-gray-700 font-medium">También aparece como taller en Transportes</span>
+        </label>
 
         <!-- Catálogo -->
         <div class="border-t pt-4">
@@ -194,7 +202,7 @@ const guardando    = ref(false)
 const errorModal   = ref('')
 const paginaActual = ref(1)
 const porPagina    = ref(25)
-const modal = ref({ show: false, editando: false, id: null, form: { ruc: '', nombre: '', direccion: '', contacto: '', email: '', telefono: '', catalogo: [] } })
+const modal = ref({ show: false, editando: false, id: null, form: { ruc: '', nombre: '', direccion: '', contacto: '', email: '', telefono: '', es_taller: false, catalogo: [] } })
 
 const proveedoresFiltrados = computed(() =>
   proveedores.value.filter(p => {
@@ -221,12 +229,12 @@ async function cargar() {
 onMounted(cargar)
 
 function abrirCrear() {
-  modal.value = { show: true, editando: false, id: null, form: { ruc: '', nombre: '', direccion: '', contacto: '', email: '', telefono: '', catalogo: [] } }
+  modal.value = { show: true, editando: false, id: null, form: { ruc: '', nombre: '', direccion: '', contacto: '', email: '', telefono: '', es_taller: false, catalogo: [] } }
   errorModal.value = ''
 }
 
 function abrirEditar(p) {
-  modal.value = { show: true, editando: true, id: p.id, form: { ruc: p.ruc, nombre: p.nombre, direccion: p.direccion, contacto: p.contacto, email: p.email, telefono: p.telefono, catalogo: (p.catalogo || []).map(c => ({ ...c })) } }
+  modal.value = { show: true, editando: true, id: p.id, form: { ruc: p.ruc, nombre: p.nombre, direccion: p.direccion, contacto: p.contacto, email: p.email, telefono: p.telefono, es_taller: p.es_taller, catalogo: (p.catalogo || []).map(c => ({ ...c })) } }
   errorModal.value = ''
 }
 

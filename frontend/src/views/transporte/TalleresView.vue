@@ -22,10 +22,14 @@
           <p class="text-xs text-gray-500 mt-0.5 truncate">
             <span v-if="t.direccion">{{ t.direccion }}</span>
             <span v-if="t.telefono"> · {{ t.telefono }}</span>
-            <span v-if="t.correo"> · {{ t.correo }}</span>
+            <span v-if="t.email"> · {{ t.email }}</span>
           </p>
         </div>
         <div class="flex items-center gap-2 flex-shrink-0">
+          <span v-if="t.es_proveedor_bienes"
+            class="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+            Bienes
+          </span>
           <span :class="t.estado === 'ACTIVO' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
             class="px-2 py-0.5 rounded-full text-xs font-medium">
             {{ t.estado }}
@@ -68,7 +72,7 @@
           </div>
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1">Correo</label>
-            <input v-model="form.correo" type="email" class="w-full border rounded-lg px-3 py-2 text-sm" />
+            <input v-model="form.email" type="email" class="w-full border rounded-lg px-3 py-2 text-sm" />
           </div>
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1">N° Orden de Compra</label>
@@ -81,6 +85,10 @@
               <option value="INACTIVO">INACTIVO</option>
             </select>
           </div>
+          <label class="flex items-center gap-2 cursor-pointer select-none">
+            <input type="checkbox" v-model="form.es_proveedor_bienes" class="w-4 h-4 rounded" />
+            <span class="text-xs text-gray-700 font-medium">También aparece como proveedor en Bienes</span>
+          </label>
         </div>
         <p v-if="error" class="text-red-600 text-sm mt-3">{{ error }}</p>
         <div class="flex justify-end gap-2 mt-5">
@@ -114,13 +122,17 @@ async function cargar() {
 }
 
 function abrirCrear() {
-  form.value = { nombre: '', ruc: '', telefono: '', direccion: '', correo: '', orden_compra: '' }
+  form.value = { nombre: '', ruc: '', telefono: '', direccion: '', email: '', orden_compra: '', es_proveedor_bienes: false }
   modal.value = { show: true, id: null }
   error.value = ''
 }
 
 function abrirEditar(t) {
-  form.value = { ...t }
+  form.value = {
+    nombre: t.nombre, ruc: t.ruc, telefono: t.telefono,
+    direccion: t.direccion, email: t.email, orden_compra: t.orden_compra,
+    estado: t.estado, es_proveedor_bienes: t.es_proveedor_bienes,
+  }
   modal.value = { show: true, id: t.id }
   error.value = ''
 }

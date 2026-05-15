@@ -9,6 +9,7 @@ class Proveedor extends Model
 
     protected $fillable = [
         'ruc', 'nombre', 'direccion', 'contacto', 'email', 'telefono', 'estado',
+        'es_proveedor_bienes', 'es_taller', 'orden_compra',
     ];
 
     public function catalogo()
