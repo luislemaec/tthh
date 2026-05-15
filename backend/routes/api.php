@@ -74,6 +74,14 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::put("configuracion/{concepto}",          [\App\Http\Controllers\Admin\ConfiguracionController::class, "update"]);
         Route::delete("configuracion/{concepto}",       [\App\Http\Controllers\Admin\ConfiguracionController::class, "destroy"]);
 
+        // Avisos (ticker launcher)
+        Route::get("avisos/activos",              [\App\Http\Controllers\Admin\AvisoController::class, "activos"]);
+        Route::get("avisos",                      [\App\Http\Controllers\Admin\AvisoController::class, "index"]);
+        Route::post("avisos",                     [\App\Http\Controllers\Admin\AvisoController::class, "store"]);
+        Route::put("avisos-direccion",            [\App\Http\Controllers\Admin\AvisoController::class, "setDireccion"]);
+        Route::put("avisos/{id}",                 [\App\Http\Controllers\Admin\AvisoController::class, "update"]);
+        Route::delete("avisos/{id}",              [\App\Http\Controllers\Admin\AvisoController::class, "destroy"]);
+
         // Modalidades Laborales
         Route::get("modalidades-laborales",       [\App\Http\Controllers\Admin\ModalidadLaboralController::class, "index"]);
         Route::post("modalidades-laborales",      [\App\Http\Controllers\Admin\ModalidadLaboralController::class, "store"]);

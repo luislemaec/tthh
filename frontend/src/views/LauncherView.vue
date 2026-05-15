@@ -1,16 +1,34 @@
 <template>
-  <div class="min-h-screen flex flex-col items-center justify-center p-8"
-       style="background: linear-gradient(135deg, #0b5447 0%, #00372e 100%);">
+  <div class="min-h-screen flex flex-col" style="background: linear-gradient(135deg, #0b5447 0%, #00372e 100%);">
 
-    <!-- Logo + nombre institución -->
-    <div class="text-center mb-10">
-      <img src="@/assets/LOGOS-CONSEJOBLANCOH.png" alt="Logo" class="h-16 mx-auto mb-4 object-contain" />
-      <h1 class="text-2xl font-bold text-white tracking-wide">CONSEJO DE COMUNICACIÓN</h1>
-      <p class="text-green-200 text-sm mt-1">Sistema Integral Tecnológico - SIT</p>
-    </div>
+    <!-- Layout principal -->
+    <div class="flex flex-1">
 
-    <!-- Tarjetas de aplicativos -->
-    <div class="flex flex-wrap justify-center gap-4 max-w-4xl w-full">
+      <!-- Panel lateral vertical (solo si hay avisos y dirección=vertical) -->
+      <div v-if="avisos.length && direccion === 'vertical'"
+           class="w-56 flex-shrink-0 flex flex-col justify-center overflow-hidden py-8 pl-6">
+        <p class="text-xs font-semibold text-green-300 uppercase tracking-widest mb-4">Avisos</p>
+        <div class="relative h-80 overflow-hidden">
+          <div class="ticker-vertical" :style="{ '--n': avisos.length }">
+            <div v-for="(a, i) in [...avisos, ...avisos]" :key="i"
+                 class="py-3 pr-4 border-b border-white/10 last:border-0">
+              <p class="text-white text-xs leading-relaxed">{{ a.texto }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Contenido central -->
+      <div class="flex-1 flex flex-col items-center justify-center p-8">
+        <!-- Logo + nombre institución -->
+        <div class="text-center mb-10">
+          <img src="@/assets/LOGOS-CONSEJOBLANCOH.png" alt="Logo" class="h-16 mx-auto mb-4 object-contain" />
+          <h1 class="text-2xl font-bold text-white tracking-wide">CONSEJO DE COMUNICACIÓN</h1>
+          <p class="text-green-200 text-sm mt-1">Sistema Integral Tecnológico - SIT</p>
+        </div>
+
+        <!-- Tarjetas de aplicativos -->
+        <div class="flex flex-wrap justify-center gap-4 max-w-4xl w-full">
 
       <!-- Talento Humano -->
       <button @click="irA('/dashboard')" @animationend="onAnimEnd"
@@ -85,15 +103,32 @@
         </div>
       </button>
 
+        </div>
+
+        <!-- Info usuario -->
+        <div class="mt-10 text-center text-green-200 text-sm">
+          <p>{{ store.empleado?.apellido }} {{ store.empleado?.nombre }}</p>
+          <button @click="logout" class="mt-2 text-green-300 hover:text-white underline text-xs">
+            Cerrar sesión
+          </button>
+        </div>
+      </div>
     </div>
 
-    <!-- Info usuario -->
-    <div class="mt-10 text-center text-green-200 text-sm">
-      <p>{{ store.empleado?.apellido }} {{ store.empleado?.nombre }}</p>
-      <button @click="logout" class="mt-2 text-green-300 hover:text-white underline text-xs">
-        Cerrar sesión
-      </button>
+    <!-- Ticker horizontal (barra inferior) -->
+    <div v-if="avisos.length && direccion === 'horizontal'"
+         class="w-full overflow-hidden bg-black/25 py-2.5 flex-shrink-0">
+      <div class="ticker-horizontal whitespace-nowrap">
+        <span v-for="(a, i) in avisos" :key="i" class="inline-block text-white text-sm font-medium mx-12">
+          <span class="text-green-300 mr-2">&#9679;</span>{{ a.texto }}
+        </span>
+        <!-- Duplicado para loop continuo -->
+        <span v-for="(a, i) in avisos" :key="'d'+i" class="inline-block text-white text-sm font-medium mx-12">
+          <span class="text-green-300 mr-2">&#9679;</span>{{ a.texto }}
+        </span>
+      </div>
     </div>
+
   </div>
 </template>
 
@@ -103,10 +138,12 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/services/api'
 
-const router = useRouter()
-const store  = useAuthStore()
+const router    = useRouter()
+const store     = useAuthStore()
 const alertasStock = ref(0)
 const cardAnimClass = ref('')
+const avisos    = ref([])
+const direccion = ref('horizontal')
 
 const ANIMATIONS = [
   'anim-flip-scale-up-hor',
@@ -141,6 +178,11 @@ onMounted(async () => {
     const { data } = await api.get('/adquisiciones/articulos/alertas')
     alertasStock.value = data.length
   } catch {}
+  try {
+    const { data } = await api.get('/avisos/activos')
+    avisos.value    = data.avisos
+    direccion.value = data.direccion
+  } catch {}
 })
 
 function irA(ruta) {
@@ -154,6 +196,30 @@ async function logout() {
 </script>
 
 <style>
+/* ── Ticker horizontal ───────────────────────────────────────────────── */
+.ticker-horizontal {
+  display: inline-block;
+  animation: scroll-left 30s linear infinite;
+}
+.ticker-horizontal:hover { animation-play-state: paused; }
+
+@keyframes scroll-left {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* ── Ticker vertical ─────────────────────────────────────────────────── */
+.ticker-vertical {
+  animation: scroll-up 20s linear infinite;
+}
+.ticker-vertical:hover { animation-play-state: paused; }
+
+@keyframes scroll-up {
+  0%   { transform: translateY(0); }
+  100% { transform: translateY(-50%); }
+}
+
+/* ── Animaciones tarjetas ────────────────────────────────────────────── */
 .anim-flip-scale-up-hor    { animation: flip-scale-up-hor    0.5s linear both; }
 .anim-flip-scale-up-diag-2 { animation: flip-scale-up-diag-2 0.5s linear both; }
 .anim-flip-scale-down-hor  { animation: flip-scale-down-hor  0.5s linear both; }

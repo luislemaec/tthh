@@ -41,6 +41,7 @@ const routes = [
       { path: 'admin/configuracion', name: 'AdminConfiguracion', component: () => import('@/views/admin/configuracion/ConfiguracionView.vue') },
       { path: 'admin/aportes-iess', name: 'AdminAportesIess', component: () => import('@/views/admin/aportes/AportesIessView.vue') },
       { path: 'admin/sbu', name: 'AdminSbu', component: () => import('@/views/admin/SbuView.vue') },
+      { path: 'admin/avisos', name: 'AdminAvisos', component: () => import('@/views/admin/AvisosView.vue') },
       { path: 'admin/modalidades-laborales', name: 'AdminModalidadesLaborales', component: () => import('@/views/admin/ModalidadLaboralView.vue') },
       { path: 'acciones-personal', name: 'AccionesPersonal', component: () => import('@/views/acciones/AccionesPersonalView.vue') },
       { path: 'acciones-personal/nueva', name: 'AccionPersonalNueva', component: () => import('@/views/acciones/AccionPersonalForm.vue') },
