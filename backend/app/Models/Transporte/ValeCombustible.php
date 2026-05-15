@@ -11,7 +11,7 @@ class ValeCombustible extends Model
 
     protected $fillable = [
         'numero', 'gasolinera', 'id_emp_conductor', 'vehiculo_id',
-        'kilometraje', 'fecha',
+        'kilometraje', 'fecha', 'fecha_comprobante',
         'glns_extra', 'pu_extra', 'valor_extra',
         'glns_super', 'pu_super', 'valor_super',
         'glns_diesel', 'pu_diesel', 'valor_diesel',

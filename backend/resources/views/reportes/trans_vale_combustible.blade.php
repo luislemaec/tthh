@@ -18,7 +18,7 @@
   .items-table .desc { width: 44%; }
   .items-table .num  { width: 19%; text-align: center; }
   .firmas-label td { text-align: center; font-size: 9pt; padding: 4px 8px 2px; }
-  .firmas-firma td { text-align: center; font-size: 9pt; font-weight: bold; padding: 0 10px 6px 10px; vertical-align: bottom; height: 60px; }
+  .firmas-firma td { text-align: center; font-size: 9pt; font-weight: bold; padding: 0 10px 6px 10px; vertical-align: bottom; height: 120px; }
 </style>
 </head>
 <body>
@@ -94,7 +94,13 @@
         &nbsp;&nbsp;&nbsp;
         <strong>PLACAS No.</strong> {{ $vale->vehiculo?->placa }}
       </div>
-      <div style="margin-top:8px; text-align:center;">
+      @if($diaComp)
+      <div style="margin-top:5px;">
+        <strong>FECHA COMPROBANTE:</strong>
+        <u>&nbsp;{{ $diaComp }}&nbsp;</u> de <u>&nbsp;{{ $mesComp }}&nbsp;</u> de <u>&nbsp;{{ $anioComp }}&nbsp;</u>
+      </div>
+      @endif
+      <div style="margin-top:5px; text-align:center;">
         Quito, a <u>&nbsp;{{ $dia }}&nbsp;</u> de <u>&nbsp;{{ $mes }}&nbsp;</u> de <u>&nbsp;{{ $anio }}&nbsp;</u>
       </div>
     </td>

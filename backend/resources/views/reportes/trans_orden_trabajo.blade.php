@@ -110,6 +110,42 @@
   @endif
 </table>
 
+@php
+  $actPreventivas = $m->actividades->where('tipo', 'PREVENTIVO');
+  $actCorrectivas = $m->actividades->where('tipo', 'CORRECTIVO');
+  $tipoLabels = ['MO' => 'Mano de Obra', 'RE' => 'Repuesto', 'CL' => 'Comb./Lubricante'];
+@endphp
+
+@if($m->actividades->count() > 0)
+<div class="section-title">Actividades a Realizar</div>
+<table style="border-collapse:collapse; width:100%; margin-bottom:6px; font-size:8.5pt;">
+  <thead>
+    <tr style="background-color:#e5e7eb;">
+      <th style="border:1px solid #555; padding:4px 6px; width:5%; text-align:center;">N°</th>
+      <th style="border:1px solid #555; padding:4px 6px; width:12%; text-align:center;">Cód.</th>
+      <th style="border:1px solid #555; padding:4px 6px; width:23%; text-align:center;">Tipo</th>
+      <th style="border:1px solid #555; padding:4px 6px; text-align:left;">Actividad</th>
+      <th style="border:1px solid #555; padding:4px 6px; width:15%; text-align:center;">Categoría</th>
+    </tr>
+  </thead>
+  <tbody>
+    @foreach($m->actividades->sortBy([['tipo','desc'],['orden','asc']]) as $i => $act)
+    <tr style="{{ $loop->even ? 'background-color:#f9fafb;' : '' }}">
+      <td style="border:1px solid #555; padding:3px 6px; text-align:center;">{{ $loop->iteration }}</td>
+      <td style="border:1px solid #555; padding:3px 6px; text-align:center; font-weight:bold;">
+        {{ $act->tipo_actividad ?? '—' }}
+      </td>
+      <td style="border:1px solid #555; padding:3px 6px; text-align:center;">
+        {{ isset($tipoLabels[$act->tipo_actividad]) ? $tipoLabels[$act->tipo_actividad] : '' }}
+      </td>
+      <td style="border:1px solid #555; padding:3px 6px;">{{ $act->actividad }}</td>
+      <td style="border:1px solid #555; padding:3px 6px; text-align:center;">{{ $act->tipo }}</td>
+    </tr>
+    @endforeach
+  </tbody>
+</table>
+@endif
+
 <div class="section-title">Firmas</div>
 <table class="firmas" style="margin-top:4px;">
   <tr>

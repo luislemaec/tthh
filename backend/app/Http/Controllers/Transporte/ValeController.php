@@ -40,7 +40,8 @@ class ValeController extends Controller
             'gasolinera'  => 'required|string|max:200',
             'vehiculo_id' => 'required|exists:pgsql.dbo.trans_vehiculo,id',
             'kilometraje' => 'required|integer|min:0',
-            'fecha'       => 'required|date',
+            'fecha'            => 'required|date',
+            'fecha_comprobante'=> 'nullable|date',
             'glns_extra'  => 'nullable|numeric|min:0',
             'pu_extra'    => 'nullable|numeric|min:0',
             'glns_super'  => 'nullable|numeric|min:0',
@@ -61,8 +62,9 @@ class ValeController extends Controller
             'gasolinera'       => $request->gasolinera,
             'id_emp_conductor' => $this->emp($request)->id_emp,
             'vehiculo_id'      => $request->vehiculo_id,
-            'kilometraje'      => $request->kilometraje,
-            'fecha'            => $request->fecha,
+            'kilometraje'       => $request->kilometraje,
+            'fecha'             => $request->fecha,
+            'fecha_comprobante' => $request->fecha_comprobante ?? null,
             'glns_extra'       => $request->glns_extra,
             'pu_extra'         => $request->pu_extra,
             'valor_extra'      => $request->glns_extra && $request->pu_extra
@@ -88,12 +90,21 @@ class ValeController extends Controller
 
         $meses = ['', 'enero','febrero','marzo','abril','mayo','junio',
                   'julio','agosto','septiembre','octubre','noviembre','diciembre'];
-        $fecha = $vale->fecha ? \Carbon\Carbon::parse($vale->fecha) : now();
-        $dia   = $fecha->day;
-        $mes   = $meses[$fecha->month];
-        $anio  = $fecha->year;
 
-        $pdf = Pdf::loadView('reportes.trans_vale_combustible', compact('vale', 'logo', 'dia', 'mes', 'anio'))
+        $fechaElab = $vale->fecha ? \Carbon\Carbon::parse($vale->fecha) : now();
+        $dia  = $fechaElab->day;
+        $mes  = $meses[$fechaElab->month];
+        $anio = $fechaElab->year;
+
+        $fechaComp = $vale->fecha_comprobante
+            ? \Carbon\Carbon::parse($vale->fecha_comprobante)
+            : null;
+        $diaComp  = $fechaComp?->day;
+        $mesComp  = $fechaComp ? $meses[$fechaComp->month] : null;
+        $anioComp = $fechaComp?->year;
+
+        $pdf = Pdf::loadView('reportes.trans_vale_combustible',
+            compact('vale', 'logo', 'dia', 'mes', 'anio', 'diaComp', 'mesComp', 'anioComp'))
             ->setPaper([0, 0, 396, 504], 'portrait'); // media carta
 
         return $pdf->stream('vale_combustible_' . str_pad($vale->numero, 4, '0', STR_PAD_LEFT) . '.pdf');

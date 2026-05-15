@@ -140,6 +140,7 @@ class TransporteController extends Controller
                 MantenimientoActividad::create([
                     'mantenimiento_id' => $m->id,
                     'tipo'             => 'PREVENTIVO',
+                    'tipo_actividad'   => $det->tipo_actividad,
                     'actividad'        => $det->actividad,
                     'orden'            => $det->orden,
                 ]);
@@ -217,7 +218,7 @@ class TransporteController extends Controller
 
     public function pdfMtto($id)
     {
-        $m = Mantenimiento::with(['vehiculo', 'conductor', 'responsable'])->findOrFail($id);
+        $m = Mantenimiento::with(['vehiculo', 'conductor', 'responsable', 'actividades'])->findOrFail($id);
         $logo = $this->logoBase64();
 
         $pdf = Pdf::loadView('reportes.trans_orden_trabajo', compact('m', 'logo'))

@@ -93,15 +93,21 @@
             </select>
           </div>
 
-          <!-- Km y fecha -->
+          <!-- Km -->
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1">Kilometraje *</label>
+            <input v-model.number="form.kilometraje" type="number" min="0"
+              class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Km actuales" />
+          </div>
+
+          <!-- Fechas -->
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-semibold text-gray-600 mb-1">Kilometraje *</label>
-              <input v-model.number="form.kilometraje" type="number" min="0"
-                class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Km actuales" />
+              <label class="block text-xs font-semibold text-gray-600 mb-1">Fecha comprobante</label>
+              <input v-model="form.fecha_comprobante" type="date" class="w-full border rounded-lg px-3 py-2 text-sm" />
             </div>
             <div>
-              <label class="block text-xs font-semibold text-gray-600 mb-1">Fecha *</label>
+              <label class="block text-xs font-semibold text-gray-600 mb-1">Fecha elaboración *</label>
               <input v-model="form.fecha" type="date" class="w-full border rounded-lg px-3 py-2 text-sm" />
             </div>
           </div>
@@ -212,7 +218,7 @@ async function cargar() {
 function abrirCrear() {
   const hoy = new Date().toISOString().slice(0, 10)
   form.value = {
-    gasolinera: '', vehiculo_id: '', kilometraje: null, fecha: hoy,
+    gasolinera: '', vehiculo_id: '', kilometraje: null, fecha: hoy, fecha_comprobante: '',
     extra_glns: null, extra_pu: null, extra_valor: null,
     super_glns: null, super_pu: null, super_valor: null,
     diesel_glns: null, diesel_pu: null, diesel_valor: null,
@@ -226,10 +232,11 @@ async function guardar() {
   guardando.value = true
   try {
     const payload = {
-      gasolinera:   form.value.gasolinera,
-      vehiculo_id:  form.value.vehiculo_id,
-      kilometraje:  form.value.kilometraje,
-      fecha:        form.value.fecha,
+      gasolinera:        form.value.gasolinera,
+      vehiculo_id:       form.value.vehiculo_id,
+      kilometraje:       form.value.kilometraje,
+      fecha:             form.value.fecha,
+      fecha_comprobante: form.value.fecha_comprobante || null,
       glns_extra:   form.value.extra_glns  || null,
       pu_extra:     form.value.extra_pu    || null,
       glns_super:   form.value.super_glns  || null,
