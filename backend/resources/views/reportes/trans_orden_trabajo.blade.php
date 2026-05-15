@@ -17,7 +17,7 @@
   .section-title { font-weight: bold; font-size: 9pt; text-transform: uppercase;
                    background-color: #1e3a5f; color: #fff; padding: 4px 8px; margin: 10px 0 4px 0; }
 
-  .firmas td { border: 1px solid #555; padding: 40px 8px 6px 8px; text-align: center;
+  .firmas td { border: 1px solid #555; padding: 80px 8px 6px 8px; text-align: center;
                font-weight: bold; font-size: 8pt; text-transform: uppercase;
                background-color: #e5e7eb; width: 33%; }
 </style>

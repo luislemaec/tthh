@@ -94,12 +94,14 @@
         &nbsp;&nbsp;&nbsp;
         <strong>PLACAS No.</strong> {{ $vale->vehiculo?->placa }}
       </div>
-      @if($diaComp)
       <div style="margin-top:5px;">
-        <strong>FECHA COMPROBANTE:</strong>
-        <u>&nbsp;{{ $diaComp }}&nbsp;</u> de <u>&nbsp;{{ $mesComp }}&nbsp;</u> de <u>&nbsp;{{ $anioComp }}&nbsp;</u>
+        <strong>Fecha comprobante:</strong>
+        @if($diaComp)
+          <u>&nbsp;{{ $diaComp }}&nbsp;</u> de <u>&nbsp;{{ $mesComp }}&nbsp;</u> de <u>&nbsp;{{ $anioComp }}&nbsp;</u>
+        @else
+          <u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>
+        @endif
       </div>
-      @endif
       <div style="margin-top:5px; text-align:center;">
         Quito, a <u>&nbsp;{{ $dia }}&nbsp;</u> de <u>&nbsp;{{ $mes }}&nbsp;</u> de <u>&nbsp;{{ $anio }}&nbsp;</u>
       </div>
