@@ -222,7 +222,7 @@ class TransporteController extends Controller
         $logo = $this->logoBase64();
 
         $pdf = Pdf::loadView('reportes.trans_orden_trabajo', compact('m', 'logo'))
-            ->setPaper('a4'), 'portrait');
+            ->setPaper('a4', 'portrait');
 
         return $pdf->stream('orden_trabajo_' . $m->numero_orden . '.pdf');
     }
@@ -346,7 +346,7 @@ class TransporteController extends Controller
         $logo = $this->logoBase64();
 
         $pdf = Pdf::loadView('reportes.trans_orden_movilizacion', compact('s', 'logo'))
-            ->setPaper('a4'), 'portrait');
+            ->setPaper('a4', 'portrait');
 
         return $pdf->stream('orden_movilizacion_' . $s->id . '.pdf');
     }

@@ -387,7 +387,7 @@ class RolPagoController extends Controller
             'anio'        => $request->anio,
             'logo'        => $this->logoBase64(),
             'generadoPor' => $emp->nombre_emp . ' ' . $emp->apellido_emp,
-        ])->setPaper('a4'), 'landscape');
+        ])->setPaper('a4', 'landscape');
 
         return $pdf->stream("rol-pago-{$request->anio}-{$request->mes}.pdf");
     }

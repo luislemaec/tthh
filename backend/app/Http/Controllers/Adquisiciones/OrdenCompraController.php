@@ -289,7 +289,7 @@ class OrdenCompraController extends Controller
             return response()->json(['message' => 'El PDF solo está disponible para ingresos confirmados.'], 422);
         }
         $pdf = Pdf::loadView('reportes.ingreso_bodega', compact('orden'))
-            ->setPaper('a4'), 'portrait');
+            ->setPaper('a4', 'portrait');
         return $pdf->download("ingreso-bodega-{$orden->id}.pdf");
     }
 
