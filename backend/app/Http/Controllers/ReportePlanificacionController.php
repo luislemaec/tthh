@@ -144,7 +144,7 @@ class ReportePlanificacionController extends Controller
         $empleados       = $this->empleadosElegibles($anio);
         $planificaciones = PlanificacionCab::with('periodos')
             ->where('anio', $anio)
-            ->where('estado', 'APROBADO')
+            ->whereIn('estado', ['APROBADO', 'REPLANIFICADO'])
             ->whereIn('id_emp', $empleados->pluck('id_emp'))
             ->get()
             ->keyBy('id_emp');
