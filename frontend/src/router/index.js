@@ -51,6 +51,7 @@ const routes = [
       { path: 'reportes', name: 'Reportes', component: () => import('@/views/reportes/ReportesView.vue') },
       { path: 'planificacion', name: 'Planificacion', component: () => import('@/views/planificacion/PlanificacionesView.vue') },
       { path: 'planificacion/reporte', name: 'ReportePlanificacion', component: () => import('@/views/planificacion/ReportePlanificacionView.vue') },
+      { path: 'planificacion/reporte-saldo', name: 'ReporteSaldoVac', component: () => import('@/views/planificacion/ReporteSaldoVacView.vue') },
       { path: 'planificacion/liquidacion', name: 'LiquidacionVacaciones', component: () => import('@/views/planificacion/LiquidacionVacView.vue') },
       { path: 'horas-extras', name: 'HorasExtras', component: () => import('@/views/horasextras/HorasExtrasView.vue') },
       { path: 'nomina/decimos',        name: 'NominaDecimos',       component: () => import('@/views/nomina/DecimosView.vue') },

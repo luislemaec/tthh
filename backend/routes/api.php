@@ -186,6 +186,10 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::delete("/planificacion/{id}",                 [PlanificacionVacController::class, "destroy"]);
     Route::patch("/planificacion/{id}/replanificar",     [PlanificacionVacController::class, "replanificar"]);
 
+    // Reporte saldo de vacaciones (TH)
+    Route::get("/reporte-vacaciones",            [\App\Http\Controllers\ReporteVacacionesController::class, "index"]);
+    Route::get("/reporte-vacaciones/{id_emp}",   [\App\Http\Controllers\ReporteVacacionesController::class, "detalle"]);
+
     // Reporte planificación de vacaciones (TH)
     Route::get("/reporte-planificacion/{anio}/estado",            [ReportePlanificacionController::class, "estado"]);
     Route::get("/reporte-planificacion/{anio}/pdf",               [ReportePlanificacionController::class, "generarPdf"]);

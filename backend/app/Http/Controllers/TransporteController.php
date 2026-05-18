@@ -259,18 +259,22 @@ class TransporteController extends Controller
         }
 
         $request->validate([
-            'motivo'            => 'required|string',
-            'fecha_movilizacion'=> 'required|date',
-            'hora_salida'       => 'required',
-            'hora_retorno'      => 'required',
-            'lugar_salida'      => 'nullable|string|max:100',
-            'lugar_destino'     => 'required|string|max:200',
-            'num_personas'      => 'required|integer|min:1',
+            'motivo'              => 'required|string',
+            'fecha_movilizacion'  => 'required|date',
+            'hora_salida'         => 'required',
+            'hora_retorno'        => 'required',
+            'lugar_salida'        => 'nullable|string|max:100',
+            'lugar_destino'       => 'required|string|max:200',
+            'direccion_salida'    => 'nullable|string|max:200',
+            'direccion_destino'   => 'nullable|string|max:200',
+            'pasajeros'           => 'nullable|string',
+            'num_personas'        => 'required|integer|min:1',
         ]);
 
         $s = SolicitudMov::create(array_merge(
             $request->only(['motivo', 'fecha_movilizacion', 'hora_salida', 'hora_retorno',
-                            'lugar_salida', 'lugar_destino', 'num_personas']),
+                            'lugar_salida', 'lugar_destino', 'direccion_salida',
+                            'direccion_destino', 'pasajeros', 'num_personas']),
             ['id_emp_solicitante' => $emp->id_emp, 'estado' => 'PENDIENTE']
         ));
 

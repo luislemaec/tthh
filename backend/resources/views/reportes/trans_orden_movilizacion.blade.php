@@ -71,6 +71,20 @@
     <td class="info-label">Lugar de Destino</td>
     <td>{{ $s->lugar_destino }}</td>
   </tr>
+  @if($s->direccion_salida || $s->direccion_destino)
+  <tr>
+    <td class="info-label">Dirección de Salida</td>
+    <td>{{ $s->direccion_salida ?? '—' }}</td>
+    <td class="info-label">Dirección de Destino</td>
+    <td>{{ $s->direccion_destino ?? '—' }}</td>
+  </tr>
+  @endif
+  @if($s->pasajeros)
+  <tr>
+    <td class="info-label">Pasajeros</td>
+    <td colspan="3">{{ $s->pasajeros }}</td>
+  </tr>
+  @endif
 </table>
 
 <div class="section-title">Vehículo y Conductor Asignado</div>

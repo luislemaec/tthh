@@ -108,8 +108,17 @@
                 <td class="py-2">{{ modalVer.s.hora_salida?.slice(0,5) }} — {{ modalVer.s.hora_retorno?.slice(0,5) }}</td></tr>
               <tr class="border-b"><td class="py-2 font-semibold text-gray-500">Lugar salida</td>
                 <td class="py-2">{{ modalVer.s.lugar_salida || '—' }}</td></tr>
+              <tr v-if="modalVer.s.direccion_salida" class="border-b">
+                <td class="py-2 font-semibold text-gray-500">Dirección salida</td>
+                <td class="py-2">{{ modalVer.s.direccion_salida }}</td></tr>
               <tr class="border-b"><td class="py-2 font-semibold text-gray-500">Lugar destino</td>
                 <td class="py-2">{{ modalVer.s.lugar_destino }}</td></tr>
+              <tr v-if="modalVer.s.direccion_destino" class="border-b">
+                <td class="py-2 font-semibold text-gray-500">Dirección destino</td>
+                <td class="py-2">{{ modalVer.s.direccion_destino }}</td></tr>
+              <tr v-if="modalVer.s.pasajeros" class="border-b">
+                <td class="py-2 font-semibold text-gray-500">Pasajeros</td>
+                <td class="py-2">{{ modalVer.s.pasajeros }}</td></tr>
               <tr class="border-b"><td class="py-2 font-semibold text-gray-500">N° Personas</td>
                 <td class="py-2">{{ modalVer.s.num_personas }}</td></tr>
               <tr class="border-b"><td class="py-2 font-semibold text-gray-500">Estado</td>
@@ -191,6 +200,24 @@
               <label class="block text-xs font-semibold text-gray-600 mb-1">Lugar de destino *</label>
               <input v-model="formCrear.lugar_destino" v-uppercase class="w-full border rounded-lg px-3 py-2 text-sm" />
             </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1">Dirección de salida</label>
+              <input v-model="formCrear.direccion_salida" v-uppercase class="w-full border rounded-lg px-3 py-2 text-sm"
+                placeholder="Calle / referencia" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1">Dirección de destino</label>
+              <input v-model="formCrear.direccion_destino" v-uppercase class="w-full border rounded-lg px-3 py-2 text-sm"
+                placeholder="Calle / referencia" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1">Pasajeros (opcional)</label>
+            <textarea v-model="formCrear.pasajeros" v-uppercase rows="2"
+              class="w-full border rounded-lg px-3 py-2 text-sm resize-none"
+              placeholder="Nombres de las personas que utilizan el vehículo"></textarea>
           </div>
           <div class="w-28">
             <label class="block text-xs font-semibold text-gray-600 mb-1">N° Personas *</label>
@@ -402,7 +429,8 @@ function abrirVer(s) { modalVer.value = { show: true, s } }
 function abrirCrear() {
   const hoy = new Date().toISOString().slice(0, 10)
   formCrear.value = { motivo: '', fecha_movilizacion: hoy, hora_salida: '08:00',
-    hora_retorno: '17:00', lugar_salida: '', lugar_destino: '', num_personas: 1 }
+    hora_retorno: '17:00', lugar_salida: '', lugar_destino: '',
+    direccion_salida: '', direccion_destino: '', pasajeros: '', num_personas: 1 }
   errorCrear.value = ''
   modalCrear.value = { show: true }
 }

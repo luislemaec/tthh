@@ -12,6 +12,7 @@ class SolicitudMov extends Model
     protected $fillable = [
         'id_emp_solicitante', 'motivo', 'fecha_movilizacion', 'hora_salida',
         'hora_retorno', 'lugar_salida', 'lugar_destino', 'num_personas',
+        'direccion_salida', 'direccion_destino', 'pasajeros',
         'estado', 'vehiculo_id', 'id_emp_conductor', 'observacion',
         'km_salida', 'km_retorno', 'hoja_ruta_observacion', 'fecha_completado',
         'id_emp_responsable', 'fecha_aprobacion', 'fecha_negacion',

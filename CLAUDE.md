@@ -261,7 +261,7 @@ views/horasextras/
                         #   MIS HORAS TRABAJADAS: registrar horas, PDF horas trabajadas
                         #   PLANIFICACIONES DEL EQUIPO: aprobar/negar (supervisor/admin)
                         #   REGISTROS DEL EQUIPO: revisar/confirmar/negar + desglose monetario (TH NOMINA)
-views/admin/            # Roles, departamentos, turnos, configuración, IESS
+views/admin/            # Roles, departamentos, turnos, configuración, IESS, avisos ticker
 layouts/MainLayout.vue  # Layout del módulo RRHH (menú colapsado, se abre el grupo activo)
 ```
 
@@ -565,6 +565,35 @@ layouts/TransporteLayout.vue  # Menú dinámico desde auth.menuAgrupado filtrado
 | `transporte/mantenimiento` | TRANSPORTE, CONDUCTOR |
 | `transporte/movilizacion` | TRANSPORTE, CONDUCTOR |
 | `transporte/vales-combustible` | TRANSPORTE, CONDUCTOR |
+
+---
+
+## Avisos Ticker (Launcher)
+
+Mensajes de publicidad/información que se muestran en `LauncherView.vue` con animación CSS.
+
+### Tabla
+`dbo.d2_aviso_ticker` — campos: `id`, `texto`, `activo`, `orden`, `created_at`, `updated_at`
+
+> **Nota:** existe también `dbo.d2_aviso` (tabla anterior del sistema, diferente estructura). El modelo `Aviso.php` apunta a `d2_aviso_ticker`, no a `d2_aviso`.
+
+### Configuración de dirección
+`dbo.d2_configuracion` concepto `AVISOS_DIRECCION` → valor `horizontal` o `vertical`.
+
+### Backend
+- Modelo: `App\Models\Aviso` (`$table = 'dbo.d2_aviso_ticker'`)
+- Controlador: `Admin\AvisoController` — métodos: `index`, `activos`, `store`, `update`, `destroy`, `setDireccion`
+- Rutas bajo `/api/admin/avisos`:
+  - `GET /admin/avisos/activos` — público (sin auth de rol); devuelve `{ avisos: [...], direccion: 'horizontal'|'vertical' }`
+  - `GET/POST /admin/avisos`, `PUT /admin/avisos-direccion`, `PUT/DELETE /admin/avisos/{id}`
+
+### Frontend
+- CRUD en `views/admin/AvisosView.vue` (ruta `admin/avisos`) — agregar opción de menú en Admin > Opciones de Menú
+- `LauncherView.vue` carga `/admin/avisos/activos` en `onMounted`
+- **Horizontal:** barra inferior con `.ticker-horizontal` (CSS `scroll-left`, `translateX -50%`) — texto duplicado para loop continuo
+- **Vertical:** panel lateral izquierdo `w-56` con `.ticker-vertical` (CSS `scroll-up`, `translateY -50%`) — texto duplicado para loop continuo
+- Ambas animaciones pausan al hacer hover
+- **campo Orden:** número para ordenar los avisos (menor = primero); la query ordena `ORDER BY orden ASC`
 
 ---
 
