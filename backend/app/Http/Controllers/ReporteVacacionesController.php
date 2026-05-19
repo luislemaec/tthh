@@ -58,18 +58,10 @@ class ReporteVacacionesController extends Controller
         ));
     }
 
-    // ── Contar días hábiles entre dos fechas (excluyendo sábados y domingos) ──
-    private function diasHabiles(string $desde, string $hasta): float
+    // Días calendario incluyendo fines de semana — igual que aprobar() en VacacionesController
+    private function diasVacacion(string $desde, string $hasta): float
     {
-        $inicio = Carbon::parse($desde)->startOfDay();
-        $fin    = Carbon::parse($hasta)->startOfDay();
-        $dias   = 0;
-        $current = $inicio->copy();
-        while ($current->lte($fin)) {
-            if (!$current->isWeekend()) $dias++;
-            $current->addDay();
-        }
-        return (float) $dias;
+        return (float)(Carbon::parse($desde)->diffInDays(Carbon::parse($hasta)) + 1);
     }
 
     // ── Listado resumido de empleados ────────────────────────────────────────
@@ -206,10 +198,9 @@ class ReporteVacacionesController extends Controller
             ];
         }
 
-        // 3. Vacaciones tomadas en período actual
+        // 3. Vacaciones tomadas — solo informativo, sin saldo por fila
         foreach ($vacaciones as $vac) {
-            $dias    = $this->diasHabiles($vac->fecha_inicial, $vac->fecha_final);
-            $saldoAcum = round($saldoAcum - $dias, 2);
+            $dias = $this->diasVacacion($vac->fecha_inicial, $vac->fecha_final);
             $movimientos[] = [
                 'tipo'        => 'VACACION',
                 'fecha'       => $vac->fecha_inicial,
@@ -217,28 +208,29 @@ class ReporteVacacionesController extends Controller
                     . ' al ' . Carbon::parse($vac->fecha_final)->format('d/m/Y'),
                 'entrada'     => null,
                 'salida'      => $dias,
-                'saldo'       => $saldoAcum,
+                'saldo'       => null,
             ];
         }
 
-        // 4. Devengado
-        $saldoAcum = round($saldoAcum + $devengado, 2);
+        // 4. Subtotal tomados (valor exacto de cabecera — base del cálculo oficial)
+        $totalTomados = (float)($cabecera?->total_dias_tomados ?? 0);
+        $saldoTrasTomados = round($diasAdicionales - $totalTomados, 2);
+        $movimientos[] = [
+            'tipo'        => 'TOMADOS',
+            'fecha'       => null,
+            'descripcion' => 'Total días tomados',
+            'entrada'     => null,
+            'salida'      => $totalTomados,
+            'saldo'       => $saldoTrasTomados,
+        ];
+
+        // 5. Devengado
+        $saldoFinal = $this->calcularSaldoActual($emp);
         $movimientos[] = [
             'tipo'        => 'DEVENGADO',
             'fecha'       => Carbon::today()->toDateString(),
             'descripcion' => 'Días devengados a la fecha (desde ' . $fechaCorte->format('d/m/Y') . ')',
             'entrada'     => $devengado,
-            'salida'      => null,
-            'saldo'       => $saldoAcum,
-        ];
-
-        // 5. Total final (usa calcularSaldoActual para garantizar coincidencia exacta)
-        $saldoFinal = $this->calcularSaldoActual($emp);
-        $movimientos[] = [
-            'tipo'        => 'TOTAL',
-            'fecha'       => null,
-            'descripcion' => 'Saldo disponible',
-            'entrada'     => null,
             'salida'      => null,
             'saldo'       => $saldoFinal,
         ];

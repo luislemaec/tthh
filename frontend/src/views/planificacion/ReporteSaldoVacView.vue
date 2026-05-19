@@ -225,9 +225,10 @@ function fmtFecha(f) {
 
 function rowClass(tipo) {
   if (tipo === 'INICIAL')    return 'bg-blue-50 border-b border-blue-100'
-  if (tipo === 'DEVENGADO')  return 'bg-green-50 border-b border-green-100 font-medium'
+  if (tipo === 'DEVENGADO')  return 'bg-green-50 border-b border-green-100 font-semibold'
   if (tipo === 'VACACION')   return 'bg-amber-50 border-b border-amber-100'
   if (tipo === 'LIQUIDACION') return 'bg-purple-50 border-b border-purple-100 italic'
+  if (tipo === 'TOMADOS')    return 'bg-orange-50 border-b border-orange-200 font-semibold'
   if (tipo === 'TOTAL')      return 'bg-gray-100 border-b font-bold'
   return 'border-b'
 }
