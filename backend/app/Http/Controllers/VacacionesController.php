@@ -257,7 +257,13 @@ class VacacionesController extends Controller
             return response()->json(["message" => "La solicitud no está en estado PENDIENTE"], 422);
         }
 
-        $vacacion->update(["estado_permiso" => "APROBADO"]);
+        $vacacion->update([
+            "estado_permiso" => "APROBADO",
+            "aprobado_en"    => now(),
+            "aprobado_por"   => $supervisor->id_emp,
+            "updated_at"     => now(),
+            "updated_by"     => $supervisor->id_emp,
+        ]);
 
         // Descontar días del saldo
         $dias     = Carbon::parse($vacacion->fecha_inicial)

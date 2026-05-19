@@ -21,6 +21,10 @@
         class="bg-[#0b5447] text-white px-5 py-2 rounded-lg text-sm hover:bg-[#00372e] disabled:opacity-50">
         {{ cargando ? 'Cargando...' : 'Consultar' }}
       </button>
+      <button v-if="lista.length" @click="descargarPdf" :disabled="generandoPdf"
+        class="border border-red-600 text-red-600 px-5 py-2 rounded-lg text-sm hover:bg-red-50 disabled:opacity-50">
+        {{ generandoPdf ? 'Generando...' : 'Descargar PDF' }}
+      </button>
       <!-- Toggle vista -->
       <div class="ml-auto flex items-center gap-2">
         <label class="text-xs text-gray-500">Vista:</label>
@@ -159,6 +163,7 @@ const consultado     = ref(false)
 const pagina         = ref(1)
 const porPagina      = ref(10)
 const expandido      = ref(null)
+const generandoPdf   = ref(false)
 
 onMounted(async () => {
   const { data } = await api.get('/departamentos')
@@ -197,6 +202,25 @@ async function cargar() {
     alert('Error al cargar el reporte')
   } finally {
     cargando.value = false
+  }
+}
+
+async function descargarPdf() {
+  generandoPdf.value = true
+  try {
+    const params = {}
+    if (filtroDep.value) params.id_depto = filtroDep.value
+    const resp = await api.get('/reporte-vacaciones/pdf', { params, responseType: 'blob' })
+    const url  = URL.createObjectURL(new Blob([resp.data], { type: 'application/pdf' }))
+    const link = document.createElement('a')
+    link.href  = url
+    link.download = 'reporte_saldo_vacaciones.pdf'
+    link.click()
+    URL.revokeObjectURL(url)
+  } catch {
+    alert('Error al generar el PDF')
+  } finally {
+    generandoPdf.value = false
   }
 }
 

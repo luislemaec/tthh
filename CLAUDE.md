@@ -64,6 +64,49 @@ Roles: `ADMINISTRADOR`, `TALENTO HUMANO`, `SUPERVISOR`, `ADQUISICIONES`, `BIENES
 - Márgenes en `@page { margin: ... }` (no en `.page` div)
 - `table-layout: fixed` en todas las tablas
 - Fechas en español: array manual `$meses` — NO usar `Carbon::translatedFormat()`
+- Papel: **siempre A4** (`->setPaper('a4', 'portrait')` o `'landscape'`) — nunca `'letter'` en reportes nuevos
+
+### Estándar de encabezado para todos los PDFs
+
+Todo PDF del sistema sigue esta estructura de encabezado:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  [LOGO]  │  CONSEJO DE COMUNICACIÓN (negrita, centrado)         │
+│ izquierda│  TÍTULO DEL REPORTE (negrita, mayúsculas, centrado)  │
+│          │  Subtítulo opcional (ej: período, año)               │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+Implementación HTML estándar:
+```html
+<table style="width:100%; margin-bottom:10px; border-collapse:collapse;">
+  <tr>
+    <td style="width:15%; vertical-align:middle; text-align:center;">
+      @if($logo)<img src="{{ $logo }}" style="max-height:80px; max-width:110px;">@endif
+    </td>
+    <td style="text-align:center; vertical-align:middle; padding:0 10px;">
+      <div style="font-size:11pt; font-weight:bold; text-transform:uppercase;">{{ $nombreInst }}</div>
+      <div style="font-size:10pt; font-weight:bold; text-transform:uppercase; margin-top:3px;">TÍTULO DEL REPORTE</div>
+      {{-- subtítulo opcional --}}
+    </td>
+  </tr>
+</table>
+```
+
+### Pie de página estándar
+
+- **Reportes sin firma** (listados, kardex, estadísticas): solo línea `Generado por` al final
+- **Reportes con firma** (acciones de personal, órdenes, planificaciones): tabla de firmas + línea `Generado por`
+
+Línea generado por (siempre al final, antes de cerrar body):
+```html
+<p style="font-size:7.5pt; color:#555; margin-top:12px; text-align:right;">
+  Generado por: {{ strtoupper($generadoPor) }} &nbsp;&nbsp;|&nbsp;&nbsp; {{ now()->format('d/m/Y H:i') }}
+</p>
+```
+
+Variable `$generadoPor` = `trim($request->user()->apellido_emp) . ' ' . trim($request->user()->nombre_emp)` desde el controlador.
 
 ## Alfresco (documentos firmados)
 

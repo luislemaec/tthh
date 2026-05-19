@@ -24,6 +24,10 @@ class Vacacion extends Model
         "estado_permiso",
         "observacion_negacion",
         "ip",
+        "aprobado_en",
+        "aprobado_por",
+        "updated_at",
+        "updated_by",
     ];
 
     public function empleado()
