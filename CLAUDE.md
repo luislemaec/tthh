@@ -348,11 +348,11 @@ Implementada para trazabilidad ante la Contraloría General del Estado. Todas la
 
 ### Endpoint y vista
 
-- `GET /api/admin/auditoria` — solo rol ADMINISTRADOR; filtros: `modulo`, `accion`, `usuario_id`, `fecha_desde`, `fecha_hasta`, `descripcion`; paginado 50/página
+- `GET /api/admin/auditoria` — roles ADMINISTRADOR o TALENTO HUMANO; filtros: `modulo`, `accion`, `usuario_id`, `fecha_desde`, `fecha_hasta`, `descripcion`; paginado 50/página
 - Vista: `views/admin/AuditoriaView.vue` (ruta `admin/auditoria`)
 - Tabla muestra fecha/hora, usuario, tabla, acción (con badge de color), descripción, IP
 - Clic en fila expande JSON datos_anteriores / datos_nuevos
-- Agregar opción de menú en Admin > Opciones de Menú con URL `admin/auditoria`, rol ADMINISTRADOR
+- Usa `@/services/api` (no axios directamente) para enviar el token de autenticación
 
 ### Si se agrega un nuevo módulo
 
