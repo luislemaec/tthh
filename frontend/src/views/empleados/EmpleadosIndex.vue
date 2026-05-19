@@ -10,10 +10,6 @@
         class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm font-medium">
         Importar CSV
       </router-link>
-      <router-link to="/empleados/distributivo"
-        class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-sm font-medium">
-        Importar Distributivo
-      </router-link>
     </div>
 
     <!-- Filtros -->
