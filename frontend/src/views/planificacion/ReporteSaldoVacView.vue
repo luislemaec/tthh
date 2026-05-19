@@ -25,6 +25,10 @@
         class="border border-red-600 text-red-600 px-5 py-2 rounded-lg text-sm hover:bg-red-50 disabled:opacity-50">
         {{ generandoPdf ? 'Generando...' : 'Descargar PDF' }}
       </button>
+      <button @click="abrirCargaSaldos"
+        class="border border-[#0b5447] text-[#0b5447] px-5 py-2 rounded-lg text-sm hover:bg-[#f0f9f7]">
+        Cargar Saldos
+      </button>
       <!-- Toggle vista -->
       <div class="ml-auto flex items-center gap-2">
         <label class="text-xs text-gray-500">Vista:</label>
@@ -144,6 +148,95 @@
       class="bg-white rounded-xl shadow p-8 text-center text-gray-400 text-sm">
       Sin resultados para los filtros aplicados.
     </div>
+
+    <!-- Modal Cargar Saldos -->
+    <div v-if="modalCarga" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        <div class="flex items-center justify-between px-6 py-4 border-b">
+          <h2 class="text-lg font-bold text-gray-800">Cargar Saldos de Vacaciones</h2>
+          <button @click="modalCarga = false" class="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+        </div>
+
+        <div class="p-6 space-y-4 overflow-y-auto flex-1">
+          <!-- Fecha de corte -->
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Nueva fecha de corte <span class="text-red-500">*</span></label>
+            <input type="date" v-model="cargaFecha"
+              class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186] w-52" />
+          </div>
+
+          <!-- Instrucciones + plantilla -->
+          <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700 space-y-1">
+            <p class="font-semibold">Formato del archivo CSV:</p>
+            <p>Columnas requeridas: <code class="bg-blue-100 px-1 rounded">cedula</code> y <code class="bg-blue-100 px-1 rounded">saldo</code></p>
+            <p>Ejemplo: <code class="bg-blue-100 px-1 rounded">1234567890,25.50</code></p>
+            <p class="text-amber-700 font-medium">Al confirmar: se resetea total_dias_tomados a 0 para todos los empleados del archivo y se actualiza la fecha de corte global.</p>
+          </div>
+
+          <div class="flex gap-3 items-center">
+            <button @click="descargarPlantilla"
+              class="border border-gray-400 text-gray-600 px-4 py-2 rounded-lg text-sm hover:bg-gray-50">
+              Descargar plantilla
+            </button>
+            <label class="bg-[#0b5447] text-white px-4 py-2 rounded-lg text-sm hover:bg-[#00372e] cursor-pointer">
+              Seleccionar CSV
+              <input type="file" accept=".csv,.txt" class="hidden" @change="parsearCsv" />
+            </label>
+            <span v-if="cargaFilas.length" class="text-xs text-gray-500">{{ cargaFilas.length }} empleados cargados</span>
+          </div>
+
+          <!-- Preview -->
+          <div v-if="cargaFilas.length" class="border rounded-lg overflow-hidden">
+            <table class="w-full text-xs">
+              <thead class="bg-gray-100">
+                <tr>
+                  <th class="px-3 py-2 text-left">#</th>
+                  <th class="px-3 py-2 text-left">Cédula</th>
+                  <th class="px-3 py-2 text-right">Saldo (días)</th>
+                  <th class="px-3 py-2 text-center">Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(f, i) in cargaFilas.slice(0, 10)" :key="i" class="border-t">
+                  <td class="px-3 py-1 text-gray-400">{{ i + 1 }}</td>
+                  <td class="px-3 py-1">{{ f.cedula }}</td>
+                  <td class="px-3 py-1 text-right font-medium">{{ f.saldo }}</td>
+                  <td class="px-3 py-1 text-center">
+                    <span v-if="f.error" class="text-red-500">{{ f.error }}</span>
+                    <span v-else class="text-green-600">OK</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <p v-if="cargaFilas.length > 10" class="text-xs text-gray-400 px-3 py-2 border-t">
+              ... y {{ cargaFilas.length - 10 }} más
+            </p>
+          </div>
+
+          <!-- Resultado post-carga -->
+          <div v-if="cargaResultado" class="rounded-lg p-3 text-sm space-y-1"
+            :class="cargaResultado.error ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'">
+            <p v-if="!cargaResultado.error">
+              <strong>{{ cargaResultado.actualizados }}</strong> empleados actualizados correctamente.
+            </p>
+            <p v-if="cargaResultado.no_encontrados?.length">
+              No encontrados: {{ cargaResultado.no_encontrados.join(', ') }}
+            </p>
+            <p v-if="cargaResultado.error">{{ cargaResultado.error }}</p>
+          </div>
+        </div>
+
+        <div class="px-6 py-4 border-t flex justify-end gap-3">
+          <button @click="modalCarga = false" class="border px-4 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
+            Cerrar
+          </button>
+          <button @click="confirmarCarga" :disabled="!cargaFecha || !cargaFilasValidas.length || cargando2"
+            class="bg-[#0b5447] text-white px-5 py-2 rounded-lg text-sm hover:bg-[#00372e] disabled:opacity-50">
+            {{ cargando2 ? 'Procesando...' : `Confirmar carga (${cargaFilasValidas.length})` }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -164,6 +257,15 @@ const pagina         = ref(1)
 const porPagina      = ref(10)
 const expandido      = ref(null)
 const generandoPdf   = ref(false)
+
+// Carga masiva de saldos
+const modalCarga     = ref(false)
+const cargaFecha     = ref('')
+const cargaFilas     = ref([])
+const cargaResultado = ref(null)
+const cargando2      = ref(false)
+
+const cargaFilasValidas = computed(() => cargaFilas.value.filter(f => !f.error))
 
 onMounted(async () => {
   const { data } = await api.get('/departamentos')
@@ -255,5 +357,65 @@ function rowClass(tipo) {
   if (tipo === 'TOMADOS')    return 'bg-orange-50 border-b border-orange-200 font-semibold'
   if (tipo === 'TOTAL')      return 'bg-gray-100 border-b font-bold'
   return 'border-b'
+}
+
+function abrirCargaSaldos() {
+  cargaFecha.value     = ''
+  cargaFilas.value     = []
+  cargaResultado.value = null
+  modalCarga.value     = true
+}
+
+function parsearCsv(e) {
+  const file = e.target.files[0]
+  if (!file) return
+  const reader = new FileReader()
+  reader.onload = (ev) => {
+    const lineas = ev.target.result.split('\n').map(l => l.trim()).filter(l => l)
+    const resultado = []
+    for (const linea of lineas) {
+      const partes = linea.split(',')
+      const cedula = partes[0]?.trim()
+      const saldo  = parseFloat(partes[1]?.trim())
+      if (!cedula || cedula.toLowerCase() === 'cedula') continue
+      const fila = { cedula, saldo: isNaN(saldo) ? null : saldo, error: null }
+      if (!cedula) fila.error = 'Cédula vacía'
+      else if (fila.saldo === null || fila.saldo < 0) fila.error = 'Saldo inválido'
+      resultado.push(fila)
+    }
+    cargaFilas.value     = resultado
+    cargaResultado.value = null
+  }
+  reader.readAsText(file)
+  e.target.value = ''
+}
+
+function descargarPlantilla() {
+  const contenido = 'cedula,saldo\n1234567890,25.50\n0987654321,12.00'
+  const blob = new Blob([contenido], { type: 'text/csv' })
+  const url  = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href  = url
+  link.download = 'plantilla_saldos_vacaciones.csv'
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
+async function confirmarCarga() {
+  if (!cargaFecha.value || !cargaFilasValidas.value.length) return
+  cargando2.value      = true
+  cargaResultado.value = null
+  try {
+    const { data } = await api.post('/reporte-vacaciones/cargar-saldos', {
+      fecha_corte: cargaFecha.value,
+      saldos: cargaFilasValidas.value.map(f => ({ cedula: f.cedula, saldo: f.saldo })),
+    })
+    cargaResultado.value = data
+    if (lista.value.length) cargar()
+  } catch (err) {
+    cargaResultado.value = { error: err.response?.data?.message ?? 'Error al procesar la carga' }
+  } finally {
+    cargando2.value = false
+  }
 }
 </script>

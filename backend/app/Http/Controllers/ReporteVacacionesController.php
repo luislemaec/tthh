@@ -252,6 +252,66 @@ class ReporteVacacionesController extends Controller
         ]);
     }
 
+    // ── Carga masiva de saldos de vacaciones ────────────────────────────────
+    public function cargarSaldos(Request $request)
+    {
+        if (!$this->esAdminOTH($request)) {
+            return response()->json(['message' => 'Acceso no autorizado'], 403);
+        }
+
+        $request->validate([
+            'fecha_corte' => 'required|date',
+            'saldos'      => 'required|array|min:1',
+            'saldos.*.cedula' => 'required|string',
+            'saldos.*.saldo'  => 'required|numeric|min:0',
+        ]);
+
+        $actualizados  = 0;
+        $noEncontrados = [];
+
+        DB::beginTransaction();
+        try {
+            foreach ($request->saldos as $fila) {
+                $emp = Empleado::where('identificacion', trim($fila['cedula']))
+                    ->where('estado', 'ACTIVO')
+                    ->where('id_depto', '!=', 999)
+                    ->first();
+
+                if (!$emp) {
+                    $noEncontrados[] = $fila['cedula'];
+                    continue;
+                }
+
+                CabeceraVacacion::updateOrCreate(
+                    ['id_emp' => $emp->id_emp],
+                    [
+                        'dias_adicionales'    => round((float)$fila['saldo'], 2),
+                        'total_dias_tomados'  => 0,
+                        'total_tomados'       => 0,
+                        'dias_x_tomar_normal' => round((float)$fila['saldo'], 2),
+                        'fecha_proceso'       => $request->fecha_corte,
+                    ]
+                );
+
+                $actualizados++;
+            }
+
+            // Actualizar fecha de corte global
+            Configuracion::where('concepto', 'FECHA_CORTE_VACACIONES')
+                ->update(['valor' => $request->fecha_corte]);
+
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['message' => 'Error al procesar: ' . $e->getMessage()], 500);
+        }
+
+        return response()->json([
+            'actualizados'  => $actualizados,
+            'no_encontrados' => $noEncontrados,
+        ]);
+    }
+
     // ── PDF resumen (todos los empleados filtrados) ──────────────────────────
     public function pdf(Request $request)
     {
