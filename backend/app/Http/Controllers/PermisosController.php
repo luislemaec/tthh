@@ -6,6 +6,7 @@ use App\Models\Razon;
 use App\Models\Empleado;
 use App\Models\Supervisor;
 use App\Models\CabeceraVacacion;
+use App\Services\AuditoriaService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -280,6 +281,11 @@ class PermisosController extends Controller
             $fechaActual->addDay();
         }
 
+        AuditoriaService::log('dbo.d2_permiso', $permiso->id, 'APROBAR',
+            ['estado_permiso' => 'PENDIENTE'],
+            ['estado_permiso' => 'APROBADO', 'fecha_desde' => $permiso->fecha_desde, 'fecha_hasta' => $permiso->fecha_hasta, 'descontable' => $permiso->descontable],
+            $request, "Aprobación de permiso: {$permiso->nombre_emp}");
+
         return response()->json([
             "message" => "Permiso aprobado correctamente",
             "permiso" => $permiso->load(["empleado", "razonPermiso"]),
@@ -323,6 +329,11 @@ class PermisosController extends Controller
             "observacion_negacion" => $request->observacion_negacion,
         ]);
 
+        AuditoriaService::log('dbo.d2_permiso', $permiso->id, 'NEGAR',
+            ['estado_permiso' => 'PENDIENTE'],
+            ['estado_permiso' => 'NEGADO', 'observacion' => $request->observacion_negacion],
+            $request, "Negación de permiso: {$permiso->nombre_emp}");
+
         return response()->json([
             "message" => "Permiso negado",
             "permiso" => $permiso->load(["empleado", "razonPermiso"]),
@@ -356,6 +367,11 @@ class PermisosController extends Controller
             "estado_permiso"       => "ELIMINADO",
             "observacion_negacion" => $request->observacion_negacion,
         ]);
+
+        AuditoriaService::log('dbo.d2_permiso', $permiso->id, 'ELIMINAR',
+            ['estado_permiso' => 'PENDIENTE', 'fecha_desde' => $permiso->fecha_desde, 'fecha_hasta' => $permiso->fecha_hasta],
+            ['estado_permiso' => 'ELIMINADO', 'observacion' => $request->observacion_negacion],
+            $request, "Eliminación de permiso: {$permiso->nombre_emp}");
 
         return response()->json(["message" => "Permiso eliminado correctamente"]);
     }

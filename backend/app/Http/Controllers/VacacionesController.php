@@ -7,6 +7,7 @@ use App\Models\Configuracion;
 use App\Models\DetalleVacacion;
 use App\Models\Empleado;
 use App\Models\Supervisor;
+use App\Services\AuditoriaService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -276,6 +277,11 @@ class VacacionesController extends Controller
             $cabecera->save();
         }
 
+        AuditoriaService::log('dbo.d2_vacacion', $vacacion->id, 'APROBAR',
+            ['estado_permiso' => 'PENDIENTE'],
+            ['estado_permiso' => 'APROBADO', 'fecha_inicial' => $vacacion->fecha_inicial, 'fecha_final' => $vacacion->fecha_final, 'dias' => $dias],
+            $request, "Aprobación de vacación: {$vacacion->nombre_emp}");
+
         return response()->json(["message" => "Vacación aprobada correctamente", "vacacion" => $vacacion->load("empleado")]);
     }
 
@@ -307,6 +313,11 @@ class VacacionesController extends Controller
             "observacion_negacion" => $request->observacion_negacion,
         ]);
 
+        AuditoriaService::log('dbo.d2_vacacion', $vacacion->id, 'NEGAR',
+            ['estado_permiso' => 'PENDIENTE'],
+            ['estado_permiso' => 'NEGADO', 'observacion' => $request->observacion_negacion],
+            $request, "Negación de vacación: {$vacacion->nombre_emp}");
+
         return response()->json(["message" => "Vacación negada", "vacacion" => $vacacion->load("empleado")]);
     }
 
@@ -337,6 +348,11 @@ class VacacionesController extends Controller
             "estado_permiso"       => "ELIMINADO",
             "observacion_negacion" => $request->observacion_negacion,
         ]);
+
+        AuditoriaService::log('dbo.d2_vacacion', $vacacion->id, 'ELIMINAR',
+            ['estado_permiso' => 'PENDIENTE', 'fecha_inicial' => $vacacion->fecha_inicial, 'fecha_final' => $vacacion->fecha_final],
+            ['estado_permiso' => 'ELIMINADO', 'observacion' => $request->observacion_negacion],
+            $request, "Eliminación de vacación: {$vacacion->nombre_emp}");
 
         return response()->json(["message" => "Vacación eliminada correctamente"]);
     }

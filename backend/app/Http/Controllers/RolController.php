@@ -3,6 +3,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AdminRol;
 use App\Models\AdminUsuarioRol;
+use App\Services\AuditoriaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -80,6 +81,12 @@ class RolController extends Controller
                 'id_rol'         => $request->id_rol,
             ]);
         }
+        $rol = AdminRol::find($request->id_rol);
+        AuditoriaService::log('dbo.admin_usuario_rol', 0, 'ASIGNAR_ROL',
+            null,
+            ['id_emp' => $id_emp, 'rol' => $rol?->descripcion],
+            $request, "Asignación de rol {$rol?->descripcion} a empleado {$id_emp}");
+
         return response()->json(['message' => 'Rol asignado']);
     }
 
@@ -91,10 +98,15 @@ class RolController extends Controller
         return response()->json($roles);
     }
 
-    public function quitarRolEmpleado($id_emp, $id_rol)
+    public function quitarRolEmpleado(Request $request, $id_emp, $id_rol)
     {
+        $rol = AdminRol::find($id_rol);
         AdminUsuarioRol::where('id_emp', $id_emp)
             ->where('id_rol', $id_rol)->delete();
+        AuditoriaService::log('dbo.admin_usuario_rol', 0, 'REVOCAR_ROL',
+            ['id_emp' => $id_emp, 'rol' => $rol?->descripcion],
+            null,
+            $request, "Revocación de rol {$rol?->descripcion} a empleado {$id_emp}");
         return response()->json(['message' => 'Rol removido']);
     }
 }

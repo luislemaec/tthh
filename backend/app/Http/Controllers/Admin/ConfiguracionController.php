@@ -3,6 +3,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Configuracion;
+use App\Services\AuditoriaService;
 use Illuminate\Http\Request;
 
 class ConfiguracionController extends Controller
@@ -24,12 +25,18 @@ class ConfiguracionController extends Controller
         ]);
 
         $config = Configuracion::findOrFail($concepto);
+        $valorAnterior = $config->valor;
         $config->update([
             "valor"       => $request->valor,
             "descripcion" => $request->descripcion,
             "updated_at"  => now(),
             "updated_by"  => $request->user()->id_emp,
         ]);
+
+        AuditoriaService::log('dbo.d2_configuracion', 0, 'ACTUALIZAR',
+            ['concepto' => $concepto, 'valor' => $valorAnterior],
+            ['concepto' => $concepto, 'valor' => $request->valor],
+            $request, "Cambio de configuración: {$concepto}");
 
         return response()->json($config);
     }

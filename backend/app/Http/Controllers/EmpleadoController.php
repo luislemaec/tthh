@@ -5,6 +5,7 @@ use App\Models\Empleado;
 use App\Models\Departamento;
 use App\Models\EmpleadoMail;
 use App\Models\CabeceraVacacion;
+use App\Services\AuditoriaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -148,6 +149,11 @@ class EmpleadoController extends Controller
                 ->update(["estado_puesto" => "OCUPADO"]);
         }
 
+        AuditoriaService::log('dbo.ad_empleado', $emp->id_emp, 'CREAR',
+            null,
+            ['identificacion' => $emp->identificacion, 'nombre' => $emp->apellido_emp . ' ' . $emp->nombre_emp, 'id_depto' => $emp->id_depto, 'sueldo' => $emp->sueldo],
+            $request, 'Creación de empleado');
+
         return response()->json($emp->load(["departamento", "emails"]), 201);
     }
 
@@ -155,6 +161,7 @@ class EmpleadoController extends Controller
     public function update(Request $request, $id)
     {
         $emp = Empleado::findOrFail($id);
+        $anterior = ['sueldo' => $emp->sueldo, 'estado' => $emp->estado, 'id_depto' => $emp->id_depto, 'cargo_empleado' => $emp->cargo_empleado];
 
         $request->validate([
             "identificacion"         => "nullable|string|max:15",
@@ -228,6 +235,11 @@ class EmpleadoController extends Controller
                 ->where("id_emp", "!=", $emp->id_emp)
                 ->update(["estado_puesto" => "OCUPADO"]);
         }
+
+        AuditoriaService::log('dbo.ad_empleado', $emp->id_emp, 'ACTUALIZAR',
+            $anterior,
+            ['sueldo' => $emp->sueldo, 'estado' => $emp->estado, 'id_depto' => $emp->id_depto, 'cargo_empleado' => $emp->cargo_empleado],
+            $request, 'Actualización de empleado: ' . trim($emp->apellido_emp . ' ' . $emp->nombre_emp));
 
         return response()->json($emp->load(["departamento", "emails"]));
     }

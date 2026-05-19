@@ -3,6 +3,7 @@ namespace App\Http\Controllers\Adquisiciones;
 
 use App\Http\Controllers\Controller;
 use App\Models\Adq\Articulo;
+use App\Services\AuditoriaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -100,6 +101,12 @@ class AjusteController extends Controller
         });
 
         $articulo->refresh();
+
+        AuditoriaService::log('adq.articulo', $articulo->id, $tipo,
+            ['stock_actual' => $stockAntes],
+            ['stock_actual' => $stockDespues, 'motivo' => $request->motivo],
+            $request, "Ajuste de inventario: {$articulo->nombre} ({$tipo})");
+
         return response()->json([
             'message'      => 'Ajuste registrado correctamente.',
             'tipo'         => $tipo,

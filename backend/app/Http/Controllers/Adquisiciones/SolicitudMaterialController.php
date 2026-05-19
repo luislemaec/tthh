@@ -6,6 +6,7 @@ use App\Models\Adq\Articulo;
 use App\Models\Adq\SolicitudMaterial;
 use App\Models\Adq\SolicitudMaterialDet;
 use App\Models\Supervisor;
+use App\Services\AuditoriaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -126,6 +127,11 @@ class SolicitudMaterialController extends Controller
             ]);
         });
 
+        AuditoriaService::log('adq.solicitud_material', $solicitud->id, 'APROBAR',
+            ['estado' => 'PENDIENTE'],
+            ['estado' => 'APROBADO'],
+            $request, "Aprobación de solicitud de material #{$solicitud->id}");
+
         return response()->json($solicitud->load('detalles.articulo'));
     }
 
@@ -147,6 +153,11 @@ class SolicitudMaterialController extends Controller
             'usuario_aprobacion'  => $emp->id_emp,
             'fecha_aprobacion'    => now(),
         ]);
+
+        AuditoriaService::log('adq.solicitud_material', $solicitud->id, 'NEGAR',
+            ['estado' => 'PENDIENTE'],
+            ['estado' => 'NEGADO'],
+            $request, "Negación de solicitud de material #{$solicitud->id}");
 
         return response()->json($solicitud->load('detalles.articulo'));
     }
@@ -226,7 +237,14 @@ class SolicitudMaterialController extends Controller
             ]);
         });
 
-        return response()->json($solicitud->fresh(['detalles.articulo', 'empleado']));
+        $solicitudFresh = $solicitud->fresh(['detalles.articulo', 'empleado']);
+
+        AuditoriaService::log('adq.solicitud_material', $solicitud->id, 'DESPACHAR',
+            ['estado' => 'APROBADO'],
+            ['estado' => $solicitudFresh->estado],
+            $request, "Despacho de solicitud de material #{$solicitud->id}");
+
+        return response()->json($solicitudFresh);
     }
 
     public function show($id)

@@ -2,6 +2,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Adq\Proveedor;
+use App\Services\AuditoriaService;
 use App\Models\Transporte\Vehiculo;
 use App\Models\Transporte\Mantenimiento;
 use App\Models\Transporte\MantenimientoActividad;
@@ -191,6 +192,12 @@ class TransporteController extends Controller
                 'id_emp_responsable'     => $this->emp($request)->id_emp,
                 'estado'                 => 'ORDEN_GENERADA',
             ]);
+
+            AuditoriaService::log('dbo.trans_mantenimiento', $m->id, 'ORDEN_TRABAJO',
+                ['estado' => 'PENDIENTE'],
+                ['estado' => 'ORDEN_GENERADA', 'numero_orden' => $numero_orden, 'taller' => $tallerNombre],
+                $request, "Orden de trabajo #{$numero_orden} generada");
+
         } elseif ($accion === 'negar') {
             $m->update([
                 'estado'           => 'NEGADO',
@@ -198,8 +205,20 @@ class TransporteController extends Controller
                 'fecha_negacion'   => now(),
                 'usuario_negacion' => $this->emp($request)->id_emp,
             ]);
+
+            AuditoriaService::log('dbo.trans_mantenimiento', $m->id, 'NEGAR_MANT',
+                ['estado' => 'PENDIENTE'],
+                ['estado' => 'NEGADO', 'motivo' => $request->motivo_negacion],
+                $request, "Negación de mantenimiento #{$m->id}");
+
         } elseif ($accion === 'en_taller') {
             $m->update(['estado' => 'EN_TALLER']);
+
+            AuditoriaService::log('dbo.trans_mantenimiento', $m->id, 'EN_TALLER',
+                ['estado' => 'ORDEN_GENERADA'],
+                ['estado' => 'EN_TALLER'],
+                $request, "Mantenimiento #{$m->id} en taller");
+
         } elseif ($accion === 'finalizar') {
             $request->validate(['fecha_finalizacion' => 'required|date']);
             $m->update([
@@ -211,6 +230,11 @@ class TransporteController extends Controller
             if ($request->filled('km_nuevo')) {
                 $m->vehiculo->update(['kilometraje_actual' => $request->km_nuevo]);
             }
+
+            AuditoriaService::log('dbo.trans_mantenimiento', $m->id, 'FINALIZAR_MANT',
+                ['estado' => 'EN_TALLER'],
+                ['estado' => 'FINALIZADO', 'fecha_finalizacion' => $request->fecha_finalizacion],
+                $request, "Finalización de mantenimiento #{$m->id}");
         }
 
         return response()->json($m->load(['vehiculo', 'conductor', 'responsable']));
@@ -315,6 +339,11 @@ class TransporteController extends Controller
                 'fecha_aprobacion'   => now(),
             ]);
 
+            AuditoriaService::log('dbo.trans_solicitud_mov', $s->id, 'APROBAR_MOV',
+                ['estado' => 'PENDIENTE'],
+                ['estado' => 'APROBADO', 'vehiculo_id' => $request->vehiculo_id, 'id_emp_conductor' => $request->id_emp_conductor],
+                $request, "Aprobación de movilización #{$s->id}: {$s->motivo}");
+
         } elseif ($accion === 'negar') {
             $s->update([
                 'estado'             => 'NEGADO',
@@ -322,6 +351,11 @@ class TransporteController extends Controller
                 'id_emp_responsable' => $this->emp($request)->id_emp,
                 'fecha_negacion'     => now(),
             ]);
+
+            AuditoriaService::log('dbo.trans_solicitud_mov', $s->id, 'NEGAR_MOV',
+                ['estado' => 'PENDIENTE'],
+                ['estado' => 'NEGADO', 'observacion' => $request->observacion],
+                $request, "Negación de movilización #{$s->id}: {$s->motivo}");
 
         } elseif ($accion === 'hoja_ruta') {
             $request->validate([

@@ -6,6 +6,7 @@ use App\Models\Adq\Articulo;
 use App\Models\Adq\Iva;
 use App\Models\Adq\OrdenCompra;
 use App\Models\Adq\OrdenCompraDet;
+use App\Services\AuditoriaService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -209,6 +210,11 @@ class OrdenCompraController extends Controller
             ]);
         });
 
+        AuditoriaService::log('adq.orden_compra', $orden->id, 'CONFIRMAR_INGRESO',
+            ['estado' => 'BORRADOR'],
+            ['estado' => 'RECIBIDO', 'numero_documento' => $orden->numero_documento, 'total' => $orden->total],
+            $request, "Confirmación de ingreso de bodega #{$orden->numero_secuencial}/{$orden->anio}");
+
         return response()->json($orden->load(['proveedor', 'detalles.articulo']));
     }
 
@@ -278,6 +284,11 @@ class OrdenCompraController extends Controller
                 'fecha_reverso'     => now(),
             ]);
         });
+
+        AuditoriaService::log('adq.orden_compra', $orden->id, 'REVERSAR_INGRESO',
+            ['estado' => 'RECIBIDO'],
+            ['estado' => 'BORRADOR', 'motivo_reverso' => $request->motivo_reverso],
+            $request, "Reverso de ingreso de bodega #{$orden->numero_secuencial}/{$orden->anio}");
 
         return response()->json($orden->load(['proveedor', 'detalles.articulo']));
     }

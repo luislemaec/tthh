@@ -8,6 +8,7 @@ use App\Models\HePlanificacionCab;
 use App\Models\HePlanificacionDet;
 use App\Models\HeRegistro;
 use App\Models\Configuracion;
+use App\Services\AuditoriaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -372,6 +373,10 @@ class HorasExtrasController extends Controller
             'observacion'      => null,
         ]);
 
+        AuditoriaService::log('dbo.nom_he_planificacion_cab', $cab->id, 'APROBAR',
+            ['estado' => 'PENDIENTE'], ['estado' => 'APROBADO'],
+            $request, "Aprobación planificación HE: empleado {$cab->id_emp} {$cab->anio}/{$cab->mes}");
+
         return response()->json(['message' => 'Planificación aprobada correctamente.']);
     }
 
@@ -406,6 +411,10 @@ class HorasExtrasController extends Controller
             'observacion'      => $request->observacion,
         ]);
 
+        AuditoriaService::log('dbo.nom_he_planificacion_cab', $cab->id, 'NEGAR',
+            ['estado' => 'PENDIENTE'], ['estado' => 'NEGADO', 'observacion' => $request->observacion],
+            $request, "Negación planificación HE: empleado {$cab->id_emp} {$cab->anio}/{$cab->mes}");
+
         return response()->json(['message' => 'Planificación negada.']);
     }
 
@@ -431,6 +440,10 @@ class HorasExtrasController extends Controller
             'usuario_autorizacion' => $user->id_emp,
             'fecha_autorizacion'   => now(),
         ]);
+
+        AuditoriaService::log('dbo.nom_he_planificacion_cab', $cab->id, 'AUTORIZAR',
+            ['estado' => 'APROBADO'], ['estado' => 'AUTORIZADO', 'memorando' => $request->memorando],
+            $request, "Autorización planificación HE: empleado {$cab->id_emp} {$cab->anio}/{$cab->mes}");
 
         return response()->json(['message' => 'Planificación autorizada.']);
     }
@@ -842,6 +855,10 @@ class HorasExtrasController extends Controller
             'observacion'      => null,
         ]);
 
+        AuditoriaService::log('dbo.nom_he_registro', $registro->id, 'CONFIRMAR',
+            ['estado' => 'PENDIENTE'], ['estado' => 'APROBADO'],
+            $request, "Confirmación registro HE: empleado {$registro->id_emp} fecha {$registro->fecha}");
+
         return response()->json(['message' => 'Registro confirmado correctamente.']);
     }
 
@@ -875,6 +892,10 @@ class HorasExtrasController extends Controller
             'fecha_decision'   => now(),
             'observacion'      => $request->observacion,
         ]);
+
+        AuditoriaService::log('dbo.nom_he_registro', $registro->id, 'NEGAR',
+            ['estado' => 'PENDIENTE'], ['estado' => 'NEGADO', 'observacion' => $request->observacion],
+            $request, "Negación registro HE: empleado {$registro->id_emp} fecha {$registro->fecha}");
 
         return response()->json(['message' => 'Registro negado.']);
     }

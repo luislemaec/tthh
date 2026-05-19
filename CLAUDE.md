@@ -291,6 +291,17 @@ views/empleados/        # CRUD empleados, detalle, importación, distributivo
                         #   Partida Individual: input libre + botón "Seleccionar libre" (modal partidas disponibles)
 views/acciones/         # Acciones de personal (lista + formulario + PDF)
 views/planificacion/    # Planificación anual de vacaciones, liquidación, reporte
+                        # ReporteSaldoVacView.vue — reporte de saldo de vacaciones (TH/ADMIN)
+                        #   Vista resumida: tabla paginada por empleado con saldo actual
+                        #   Vista detallada: kardex expandible inline por empleado (INICIAL→VACACIONES→DEVENGADO→TOMADOS)
+                        #   Botón "Cargar Saldos": modal para subir CSV (cedula,saldo) + nueva fecha de corte
+                        #     → actualiza dias_adicionales + total_dias_tomados=0 en d2_cabecera_vacacion
+                        #     → actualiza FECHA_CORTE_VACACIONES en d2_configuracion
+                        #   PDF descargable (resumido): GET /api/reporte-vacaciones/pdf
+                        #   Rutas: GET /api/reporte-vacaciones, GET /api/reporte-vacaciones/{id_emp},
+                        #          GET /api/reporte-vacaciones/pdf, POST /api/reporte-vacaciones/cargar-saldos
+                        #   Controlador: ReporteVacacionesController.php
+                        #   Kardex: dias legados (sin registro en d2_vacacion) aparecen como fila "registros anteriores"
 views/permisos/         # Permisos y licencias — fecha_desde/fecha_hasta default = hoy al abrir modal
 DashboardView.vue       # Admin/TH: métricas globales + tabla por depto
                         # Supervisor (no admin): 4 tarjetas pendientes (permisos/vacaciones/HE/materiales)
@@ -307,6 +318,45 @@ views/horasextras/
 views/admin/            # Roles, departamentos, turnos, configuración, IESS, avisos ticker
 layouts/MainLayout.vue  # Layout del módulo RRHH (menú colapsado, se abre el grupo activo)
 ```
+
+---
+
+## Auditoría Centralizada
+
+Implementada para trazabilidad ante la Contraloría General del Estado. Todas las acciones críticas se registran en `dbo.nom_auditoria_log`.
+
+### Servicio
+
+`App\Services\AuditoriaService::log($tabla, $registroId, $accion, $datosAnteriores, $datosNuevos, $request, $descripcion)` — estático, nunca lanza excepciones (try/catch interno). Insertar en cualquier controlador con `use App\Services\AuditoriaService;`.
+
+### Controladores instrumentados
+
+| Controlador | Acciones auditadas |
+|---|---|
+| `EmpleadoController` | CREAR, ACTUALIZAR |
+| `RolController` | ASIGNAR_ROL, REVOCAR_ROL |
+| `VacacionesController` | APROBAR, NEGAR, ELIMINAR |
+| `PermisosController` | APROBAR, NEGAR, ELIMINAR |
+| `HorasExtrasController` | APROBAR, NEGAR, AUTORIZAR, CONFIRMAR, NEGAR (registro) |
+| `Admin/ConfiguracionController` | ACTUALIZAR (valor anterior/nuevo) |
+| `NominaController` | (vía AuditoriaService desde registrarAuditoria()) |
+| `Adquisiciones/OrdenCompraController` | CONFIRMAR_INGRESO, REVERSAR_INGRESO |
+| `Adquisiciones/EgresoController` | CONFIRMAR_EGRESO, REVERSAR_EGRESO |
+| `Adquisiciones/SolicitudMaterialController` | APROBAR, NEGAR, DESPACHAR |
+| `Adquisiciones/AjusteController` | AJUSTE_POSITIVO / AJUSTE_NEGATIVO |
+| `TransporteController` | APROBAR_MOV, NEGAR_MOV, ORDEN_TRABAJO, NEGAR_MANT, EN_TALLER, FINALIZAR_MANT |
+
+### Endpoint y vista
+
+- `GET /api/admin/auditoria` — solo rol ADMINISTRADOR; filtros: `modulo`, `accion`, `usuario_id`, `fecha_desde`, `fecha_hasta`, `descripcion`; paginado 50/página
+- Vista: `views/admin/AuditoriaView.vue` (ruta `admin/auditoria`)
+- Tabla muestra fecha/hora, usuario, tabla, acción (con badge de color), descripción, IP
+- Clic en fila expande JSON datos_anteriores / datos_nuevos
+- Agregar opción de menú en Admin > Opciones de Menú con URL `admin/auditoria`, rol ADMINISTRADOR
+
+### Si se agrega un nuevo módulo
+
+Instrumentar sus controladores con `AuditoriaService::log()` en las acciones irreversibles (aprobar, confirmar, eliminar, cambios de estado).
 
 ---
 
@@ -514,7 +564,7 @@ Combinación recomendada: EMPLEADO + TRANSPORTE o EMPLEADO + CONDUCTOR.
 | `trans_plan_preventivo_det` | Actividades del plan: cab_id, orden, tipo_actividad (MO/RE/CL), cantidad, actividad |
 | `trans_mantenimiento` | Requerimientos; estados PENDIENTE→ORDEN_GENERADA→EN_TALLER→FINALIZADO |
 | `trans_mantenimiento_actividad` | Actividades del requerimiento de mantenimiento |
-| `trans_solicitud_mov` | Solicitudes de movilización; estados PENDIENTE→APROBADO/NEGADO→COMPLETADO |
+| `trans_solicitud_mov` | Solicitudes de movilización; estados PENDIENTE→APROBADO/NEGADO→COMPLETADO. Campos adicionales: `direccion_salida`, `direccion_destino` (VARCHAR 200), `pasajeros` (TEXT) |
 | `trans_vale_combustible` | Vales de combustible; formato FR05-PRO.GA-TR.001; numero auto-secuencial |
 
 Campo adicional en `ad_empleado`: `puede_solicitar_vehiculo BOOLEAN DEFAULT false`.
@@ -549,7 +599,7 @@ Formato oficial FR05-PRO.GA-TR.001. PDF media carta (`[0, 0, 396, 504]`).
 
 **Mantenimiento:** conductor crea requerimiento (tipo + km_actual + actividades) → TRANSPORTE genera orden de trabajo (asigna taller de la lista, N° orden, fecha) → EN_TALLER → FINALIZAR (actualiza km del vehículo). PDF disponible desde ORDEN_GENERADA.
 
-**Movilización:** empleado autorizado solicita → TRANSPORTE aprueba (asigna vehículo + conductor, valida conflicto de horario) o niega → conductor llena hoja de ruta (km_salida, km_retorno) → COMPLETADO (actualiza km del vehículo). PDF disponible desde APROBADO.
+**Movilización:** empleado autorizado solicita (con lugar_salida, lugar_destino, direccion_salida, direccion_destino opcionales, y pasajeros opcional) → TRANSPORTE aprueba (asigna vehículo + conductor, valida conflicto de horario) o niega → conductor llena hoja de ruta (km_salida, km_retorno) → COMPLETADO (actualiza km del vehículo). PDF disponible desde APROBADO.
 
 **Vale combustible:** conductor abre formulario → selecciona vehículo, gasolinera, fecha, combustibles → guarda → PDF se abre automáticamente en nueva pestaña.
 

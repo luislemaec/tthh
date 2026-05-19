@@ -93,6 +93,9 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post("aportes-iess",         [\App\Http\Controllers\Admin\AportesIessController::class, "store"]);
         Route::put("aportes-iess/{id}",     [\App\Http\Controllers\Admin\AportesIessController::class, "update"]);
         Route::delete("aportes-iess/{id}", [\App\Http\Controllers\Admin\AportesIessController::class, "destroy"]);
+
+        // Auditoría centralizada (solo ADMINISTRADOR)
+        Route::get("auditoria", [\App\Http\Controllers\Admin\AuditoriaController::class, "index"]);
     });
 
     // Opciones de menú

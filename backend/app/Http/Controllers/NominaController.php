@@ -6,6 +6,7 @@ use App\Models\Nomina\DecimoTercero;
 use App\Models\Nomina\DecimoCuarto;
 use App\Models\Nomina\FondosReserva;
 use App\Models\Nomina\SbuHistorico;
+use App\Services\AuditoriaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -24,19 +25,7 @@ class NominaController extends Controller
 
     private function registrarAuditoria(Request $request, string $tabla, int $registroId, string $accion, $datosAnt, $datosNuevos, string $descripcion = null): void
     {
-        $emp = $request->user();
-        DB::table('dbo.nom_auditoria_log')->insert([
-            'tabla'            => $tabla,
-            'registro_id'      => $registroId,
-            'accion'           => $accion,
-            'datos_anteriores' => $datosAnt ? json_encode($datosAnt) : null,
-            'datos_nuevos'     => $datosNuevos ? json_encode($datosNuevos) : null,
-            'usuario_id'       => $emp->id_emp,
-            'nombre_usuario'   => $emp->nombre_emp . ' ' . $emp->apellido_emp,
-            'ip_origen'        => $request->ip(),
-            'descripcion'      => $descripcion,
-            'created_at'       => now(),
-        ]);
+        AuditoriaService::log($tabla, $registroId, $accion, $datosAnt, $datosNuevos, $request, $descripcion);
     }
 
     private function calcularDiasEnMes(?string $fechaIngreso, int $anio, int $mes): int
