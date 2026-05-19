@@ -29,8 +29,8 @@ class AuditoriaService
                 'descripcion'      => $descripcion,
                 'created_at'       => now(),
             ]);
-        } catch (\Exception) {
-            // La auditoría nunca debe romper el flujo principal
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('AuditoriaService error: ' . $e->getMessage());
         }
     }
 }
