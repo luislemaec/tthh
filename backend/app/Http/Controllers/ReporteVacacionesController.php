@@ -134,8 +134,10 @@ class ReporteVacacionesController extends Controller
         }
 
         // 3. Vacaciones — fecha = aprobado_en (cuando el jefe aprobó)
+        $diasIndividuales = 0;
         foreach ($vacaciones as $vac) {
             $dias = $this->diasVacacion($vac->fecha_inicial, $vac->fecha_final);
+            $diasIndividuales += $dias;
             $movimientos[] = [
                 'tipo'        => 'VACACION',
                 'fecha'       => $vac->aprobado_en
@@ -145,6 +147,19 @@ class ReporteVacacionesController extends Controller
                     . ' al ' . Carbon::parse($vac->fecha_final)->format('d/m/Y'),
                 'entrada'     => null,
                 'salida'      => $dias,
+                'saldo'       => null,
+            ];
+        }
+
+        // Si hay días tomados que no están respaldados por registros individuales (datos legados)
+        $diasLegado = round($totalTomados - $diasIndividuales, 2);
+        if ($diasLegado > 0) {
+            $movimientos[] = [
+                'tipo'        => 'VACACION',
+                'fecha'       => null,
+                'descripcion' => 'Vacaciones tomadas (registros anteriores al sistema)',
+                'entrada'     => null,
+                'salida'      => $diasLegado,
                 'saldo'       => null,
             ];
         }
