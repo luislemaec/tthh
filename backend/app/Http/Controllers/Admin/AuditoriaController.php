@@ -9,14 +9,14 @@ class AuditoriaController extends Controller
 {
     public function index(Request $request)
     {
-        $esAdmin = DB::table('dbo.admin_usuario_rol as ur')
+        $tieneAcceso = DB::table('dbo.admin_usuario_rol as ur')
             ->join('dbo.admin_rol as r', 'ur.id_rol', '=', 'r.id')
             ->where('ur.id_emp', $request->user()->id_emp)
-            ->where('r.descripcion', 'ADMINISTRADOR')
+            ->whereIn('r.descripcion', ['ADMINISTRADOR', 'TALENTO HUMANO'])
             ->exists();
 
-        if (!$esAdmin) {
-            return response()->json(['message' => 'Acceso restringido a ADMINISTRADOR.'], 403);
+        if (!$tieneAcceso) {
+            return response()->json(['message' => 'Acceso restringido.'], 403);
         }
 
         $query = DB::table('dbo.nom_auditoria_log')

@@ -38,8 +38,10 @@
       </div>
     </div>
 
+    <div v-if="errorMsg" class="bg-red-50 border border-red-300 text-red-700 rounded px-4 py-2 mb-3 text-sm">{{ errorMsg }}</div>
+
     <div class="flex gap-2 mb-4">
-      <button @click="buscar" class="bg-blue-600 text-white px-4 py-1.5 rounded text-sm hover:bg-blue-700">Buscar</button>
+      <button @click="() => buscar()" class="bg-blue-600 text-white px-4 py-1.5 rounded text-sm hover:bg-blue-700">Buscar</button>
       <button @click="limpiar" class="bg-gray-200 text-gray-700 px-4 py-1.5 rounded text-sm hover:bg-gray-300">Limpiar</button>
       <span class="ml-auto text-sm text-gray-500">{{ total }} registros</span>
     </div>
@@ -112,7 +114,7 @@
 
 <script setup>
 import { ref, reactive } from 'vue'
-import axios from 'axios'
+import api from '@/services/api'
 
 const registros     = ref([])
 const total         = ref(0)
@@ -120,6 +122,7 @@ const lastPage      = ref(1)
 const paginaActual  = ref(1)
 const cargando      = ref(false)
 const expandido     = ref(null)
+const errorMsg      = ref('')
 
 const acciones = [
   'CREAR', 'ACTUALIZAR', 'ASIGNAR_ROL', 'REVOCAR_ROL',
@@ -140,13 +143,14 @@ async function buscar(pagina = 1) {
   try {
     const params = { ...filtros, page: pagina, per_page: 50 }
     Object.keys(params).forEach(k => { if (!params[k]) delete params[k] })
-    const { data } = await axios.get('/api/admin/auditoria', { params })
+    const { data } = await api.get('/admin/auditoria', { params })
     registros.value    = data.data
     total.value        = data.total
     lastPage.value     = data.last_page
     paginaActual.value = pagina
   } catch (e) {
     registros.value = []
+    errorMsg.value = e.response?.data?.message ?? 'Error al cargar registros'
   } finally {
     cargando.value = false
   }
@@ -154,6 +158,7 @@ async function buscar(pagina = 1) {
 
 function limpiar() {
   Object.assign(filtros, { modulo: '', accion: '', usuario_id: '', fecha_desde: '', fecha_hasta: '', descripcion: '' })
+  errorMsg.value = ''
   buscar()
 }
 
