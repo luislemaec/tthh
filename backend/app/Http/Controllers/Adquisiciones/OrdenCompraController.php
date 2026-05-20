@@ -152,7 +152,9 @@ class OrdenCompraController extends Controller
             return response()->json(['message' => 'Solo se puede confirmar un ingreso en BORRADOR.'], 422);
         }
 
-        DB::transaction(function () use ($orden, $request) {
+        $esCajaChica = $orden->proceso_contratacion === 'CAJA CHICA';
+
+        DB::transaction(function () use ($orden, $request, $esCajaChica) {
             foreach ($orden->detalles as $det) {
                 $articulo       = Articulo::findOrFail($det->articulo_id);
                 $precioAnterior = (float) $articulo->precio_unitario;
@@ -160,23 +162,34 @@ class OrdenCompraController extends Controller
                 $stockAntes     = (float) $articulo->stock_actual;
                 $stockDespues   = $stockAntes + (float) $det->cantidad;
 
-                // Promedio ponderado: (stock_anterior × costo_anterior + cantidad_nueva × costo_nuevo) / stock_nuevo
-                $precioPromedio = ($stockAntes > 0 && $precioAnterior > 0)
-                    ? round(($stockAntes * $precioAnterior + (float) $det->cantidad * $nuevoPrecio) / $stockDespues, 5)
-                    : $nuevoPrecio;
-
                 DB::table('adq.orden_compra_det')
                     ->where('id', $det->id)
                     ->update(['precio_anterior' => $precioAnterior]);
 
-                DB::table('adq.articulo')
-                    ->where('id', $det->articulo_id)
-                    ->update([
-                        'stock_actual'           => DB::raw("stock_actual + {$det->cantidad}"),
-                        'stock_maximo_historico' => DB::raw("GREATEST(stock_maximo_historico, stock_actual + {$det->cantidad})"),
-                        'precio_unitario'        => $precioPromedio,
-                        'updated_at'             => now(),
-                    ]);
+                if ($esCajaChica) {
+                    // CAJA CHICA: no se aplica promedio ponderado, precio del artículo no cambia
+                    $precioDespues = $precioAnterior;
+                    DB::table('adq.articulo')
+                        ->where('id', $det->articulo_id)
+                        ->update([
+                            'stock_actual'           => DB::raw("stock_actual + {$det->cantidad}"),
+                            'stock_maximo_historico' => DB::raw("GREATEST(stock_maximo_historico, stock_actual + {$det->cantidad})"),
+                            'updated_at'             => now(),
+                        ]);
+                } else {
+                    // Promedio ponderado: (stock_anterior × costo_anterior + cantidad_nueva × costo_nuevo) / stock_nuevo
+                    $precioDespues = ($stockAntes > 0 && $precioAnterior > 0)
+                        ? round(($stockAntes * $precioAnterior + (float) $det->cantidad * $nuevoPrecio) / $stockDespues, 5)
+                        : $nuevoPrecio;
+                    DB::table('adq.articulo')
+                        ->where('id', $det->articulo_id)
+                        ->update([
+                            'stock_actual'           => DB::raw("stock_actual + {$det->cantidad}"),
+                            'stock_maximo_historico' => DB::raw("GREATEST(stock_maximo_historico, stock_actual + {$det->cantidad})"),
+                            'precio_unitario'        => $precioDespues,
+                            'updated_at'             => now(),
+                        ]);
+                }
 
                 DB::table('adq.kardex')->insert([
                     'articulo_id'       => $det->articulo_id,
@@ -191,12 +204,12 @@ class OrdenCompraController extends Controller
                     'stock_antes'       => $stockAntes,
                     'stock_despues'     => $stockDespues,
                     'precio_antes'      => $precioAnterior,
-                    'precio_despues'    => $precioPromedio,
+                    'precio_despues'    => $precioDespues,
                     'precio_movimiento' => $det->precio_unitario,
                     'subtotal'          => $det->subtotal ?? 0,
                     'iva_valor'         => $det->iva_valor ?? 0,
                     'total_linea'       => $det->total_linea ?? 0,
-                    'valor_saldo'       => round($stockDespues * $precioPromedio, 2),
+                    'valor_saldo'       => round($stockDespues * $precioDespues, 2),
                     'usuario'           => $request->user()->id_emp,
                     'observacion'       => $orden->observacion,
                     'created_at'        => now(),
@@ -216,6 +229,196 @@ class OrdenCompraController extends Controller
             $request, "Confirmación de ingreso de bodega #{$orden->numero_secuencial}/{$orden->anio}");
 
         return response()->json($orden->load(['proveedor', 'detalles.articulo']));
+    }
+
+    public function confirmarConEgreso(Request $request, $id)
+    {
+        $orden = OrdenCompra::with('detalles')->findOrFail($id);
+
+        if ($orden->estado !== 'BORRADOR') {
+            return response()->json(['message' => 'Solo se puede confirmar un ingreso en BORRADOR.'], 422);
+        }
+        if ($orden->proceso_contratacion !== 'CAJA CHICA') {
+            return response()->json(['message' => 'Este flujo solo aplica para ingresos de CAJA CHICA.'], 422);
+        }
+
+        $request->validate([
+            'direccion'       => 'required|string|max:200',
+            'empleado_id'     => 'required|string|max:20',
+            'empleado_nombre' => 'required|string|max:200',
+            'observacion'     => 'nullable|string|max:500',
+        ]);
+
+        $egresoId  = null;
+        $egresoSec = null;
+        $anio      = now()->year;
+
+        DB::transaction(function () use ($orden, $request, &$egresoId, &$egresoSec, $anio) {
+
+            // ── PASO 1: Confirmar ingreso CAJA CHICA (sin promedio ponderado) ──
+            foreach ($orden->detalles as $det) {
+                $articulo       = Articulo::findOrFail($det->articulo_id);
+                $precioAnterior = (float) $articulo->precio_unitario;
+                $stockAntes     = (float) $articulo->stock_actual;
+                $stockDespues   = $stockAntes + (float) $det->cantidad;
+
+                DB::table('adq.orden_compra_det')
+                    ->where('id', $det->id)
+                    ->update(['precio_anterior' => $precioAnterior]);
+
+                DB::table('adq.articulo')
+                    ->where('id', $det->articulo_id)
+                    ->update([
+                        'stock_actual'           => DB::raw("stock_actual + {$det->cantidad}"),
+                        'stock_maximo_historico' => DB::raw("GREATEST(stock_maximo_historico, stock_actual + {$det->cantidad})"),
+                        'updated_at'             => now(),
+                    ]);
+
+                DB::table('adq.kardex')->insert([
+                    'articulo_id'       => $det->articulo_id,
+                    'fecha'             => now(),
+                    'tipo_movimiento'   => 'INGRESO',
+                    'referencia_tipo'   => 'orden_compra',
+                    'referencia_id'     => $orden->id,
+                    'referencia_det_id' => $det->id,
+                    'numero_documento'  => $orden->numero_documento,
+                    'cantidad_entrada'  => $det->cantidad,
+                    'cantidad_salida'   => 0,
+                    'stock_antes'       => $stockAntes,
+                    'stock_despues'     => $stockDespues,
+                    'precio_antes'      => $precioAnterior,
+                    'precio_despues'    => $precioAnterior,
+                    'precio_movimiento' => $det->precio_unitario,
+                    'subtotal'          => $det->subtotal ?? 0,
+                    'iva_valor'         => $det->iva_valor ?? 0,
+                    'total_linea'       => $det->total_linea ?? 0,
+                    'valor_saldo'       => round($stockDespues * $precioAnterior, 2),
+                    'usuario'           => $request->user()->id_emp,
+                    'observacion'       => 'CAJA CHICA - ' . ($orden->observacion ?? ''),
+                    'created_at'        => now(),
+                ]);
+            }
+
+            $orden->update([
+                'estado'            => 'RECIBIDO',
+                'usuario_recepcion' => $request->user()->id_emp,
+                'fecha_recepcion'   => now(),
+            ]);
+
+            // ── PASO 2: Crear y confirmar egreso automático ──
+            $ultimo    = DB::table('adq.egreso')->where('anio', $anio)->max('numero_secuencial') ?? 0;
+            $egresoSec = $ultimo + 1;
+            $obsEgreso = $request->observacion ?? ("CAJA CHICA - Ingreso #{$orden->numero_secuencial}/{$orden->anio}");
+
+            $egresoId = DB::table('adq.egreso')->insertGetId([
+                'numero_secuencial' => $egresoSec,
+                'anio'              => $anio,
+                'direccion'         => $request->direccion,
+                'empleado_id'       => $request->empleado_id,
+                'empleado_nombre'   => $request->empleado_nombre,
+                'observacion'       => $obsEgreso,
+                'estado'            => 'BORRADOR',
+                'subtotal'          => 0,
+                'iva_valor'         => 0,
+                'total'             => 0,
+                'usuario_registro'  => $request->user()->id_emp,
+                'created_at'        => now(),
+                'updated_at'        => now(),
+            ]);
+
+            $subtotalTotal = 0;
+            $ivaTotal      = 0;
+
+            foreach ($orden->detalles as $det) {
+                $articulo       = Articulo::findOrFail($det->articulo_id);
+                $precioAnterior = (float) $articulo->precio_unitario;
+                $ivaPct         = 0;
+
+                if ($articulo->iva_id) {
+                    $iva    = Iva::find($articulo->iva_id);
+                    $ivaPct = $iva ? (float) $iva->porcentaje : 0;
+                }
+
+                $subCents   = (int) round((float) $det->cantidad * $precioAnterior * 100);
+                $ivaCents   = (int) round($subCents * $ivaPct / 100);
+                $subtotal   = $subCents / 100;
+                $ivaValor   = $ivaCents / 100;
+                $totalLinea = ($subCents + $ivaCents) / 100;
+
+                $subtotalTotal += $subtotal;
+                $ivaTotal      += $ivaValor;
+
+                $egresoDetId = DB::table('adq.egreso_det')->insertGetId([
+                    'egreso_id'       => $egresoId,
+                    'articulo_id'     => $det->articulo_id,
+                    'cantidad'        => $det->cantidad,
+                    'precio_unitario' => $precioAnterior,
+                    'precio_anterior' => $precioAnterior,
+                    'iva_id'          => $articulo->iva_id,
+                    'iva_porcentaje'  => $ivaPct,
+                    'subtotal'        => $subtotal,
+                    'iva_valor'       => $ivaValor,
+                    'total_linea'     => $totalLinea,
+                    'created_at'      => now(),
+                    'updated_at'      => now(),
+                ]);
+
+                $stockAntes  = (float) $articulo->stock_actual;
+                $nuevoStock  = max(0, $stockAntes - (float) $det->cantidad);
+                $nuevoPrecio = $nuevoStock == 0 ? 0 : $precioAnterior;
+
+                DB::table('adq.articulo')->where('id', $det->articulo_id)->update([
+                    'stock_actual'    => $nuevoStock,
+                    'precio_unitario' => $nuevoPrecio,
+                    'updated_at'      => now(),
+                ]);
+
+                DB::table('adq.kardex')->insert([
+                    'articulo_id'       => $det->articulo_id,
+                    'fecha'             => now(),
+                    'tipo_movimiento'   => 'EGRESO',
+                    'referencia_tipo'   => 'egreso',
+                    'referencia_id'     => $egresoId,
+                    'referencia_det_id' => $egresoDetId,
+                    'numero_documento'  => null,
+                    'cantidad_entrada'  => 0,
+                    'cantidad_salida'   => $det->cantidad,
+                    'stock_antes'       => $stockAntes,
+                    'stock_despues'     => $nuevoStock,
+                    'precio_antes'      => $precioAnterior,
+                    'precio_despues'    => $nuevoPrecio,
+                    'precio_movimiento' => $precioAnterior,
+                    'subtotal'          => $subtotal,
+                    'iva_valor'         => $ivaValor,
+                    'total_linea'       => $totalLinea,
+                    'valor_saldo'       => round($nuevoStock * $nuevoPrecio, 2),
+                    'usuario'           => $request->user()->id_emp,
+                    'observacion'       => $obsEgreso,
+                    'created_at'        => now(),
+                ]);
+            }
+
+            DB::table('adq.egreso')->where('id', $egresoId)->update([
+                'subtotal'         => round($subtotalTotal, 2),
+                'iva_valor'        => round($ivaTotal, 2),
+                'total'            => round($subtotalTotal + $ivaTotal, 2),
+                'estado'           => 'DESPACHADO',
+                'usuario_despacho' => $request->user()->id_emp,
+                'fecha_despacho'   => now(),
+                'updated_at'       => now(),
+            ]);
+        });
+
+        AuditoriaService::log('adq.orden_compra', $orden->id, 'CONFIRMAR_INGRESO',
+            ['estado' => 'BORRADOR'],
+            ['estado' => 'RECIBIDO', 'numero_documento' => $orden->numero_documento, 'egreso_automatico' => "{$egresoSec}/{$anio}"],
+            $request, "CAJA CHICA confirmado + egreso automático #{$egresoSec}/{$anio}");
+
+        return response()->json([
+            'orden'              => $orden->fresh(['proveedor', 'detalles.articulo']),
+            'egreso_secuencial'  => $egresoSec,
+            'egreso_anio'        => $anio,
+        ]);
     }
 
     public function reversar(Request $request, $id)

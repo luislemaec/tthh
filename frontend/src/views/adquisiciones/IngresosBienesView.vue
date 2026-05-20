@@ -422,6 +422,77 @@
       </div>
     </div>
 
+    <!-- ══ MODAL CAJA CHICA ══ -->
+    <div v-if="modalCajaChica.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden">
+        <div class="px-6 py-4" style="background-color:#4a5e3a;">
+          <h2 class="text-lg font-bold text-white">Confirmar Ingreso — Caja Chica</h2>
+        </div>
+        <div class="p-6">
+
+          <!-- Fase 1: pregunta -->
+          <div v-if="modalCajaChica.fase === 'pregunta'">
+            <p class="text-sm text-gray-600 mb-5">
+              Este ingreso es de <b>Caja Chica</b>. El precio del artículo no se modificará.<br>
+              ¿Desea generar un egreso automático con los mismos artículos?
+            </p>
+            <div class="flex justify-end gap-3">
+              <button @click="modalCajaChica.show = false" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">
+                Cancelar
+              </button>
+              <button @click="confirmarSinEgreso" :disabled="modalCajaChica.cargando"
+                class="border border-gray-400 px-4 py-2 text-sm rounded-lg hover:bg-gray-50 disabled:opacity-50">
+                {{ modalCajaChica.cargando ? 'Confirmando...' : 'Confirmar sin Egreso' }}
+              </button>
+              <button @click="modalCajaChica.fase = 'formulario'"
+                class="text-white px-4 py-2 text-sm rounded-lg hover:opacity-90" style="background-color:#4a5e3a;">
+                Confirmar con Egreso
+              </button>
+            </div>
+          </div>
+
+          <!-- Fase 2: formulario egreso -->
+          <div v-else>
+            <p class="text-sm text-gray-500 mb-4">Complete los datos del destinatario del egreso automático.</p>
+            <div class="mb-3">
+              <label class="block text-xs text-gray-600 mb-1">Dirección / Área *</label>
+              <select v-model="modalCajaChica.form.direccion_id" @change="onDireccionChangeCajaChica"
+                class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none">
+                <option value="">Seleccionar...</option>
+                <option v-for="d in direcciones" :key="d.id_depto" :value="d.id_depto">{{ d.nombre_depto }}</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="block text-xs text-gray-600 mb-1">Empleado destinatario *</label>
+              <select v-model="modalCajaChica.form.empleado_id"
+                :disabled="!modalCajaChica.form.direccion_id || cargandoEmpleadosCaja"
+                @change="onEmpleadoChangeCajaChica"
+                class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none disabled:bg-gray-50">
+                <option value="">{{ cargandoEmpleadosCaja ? 'Cargando...' : 'Seleccionar...' }}</option>
+                <option v-for="e in empleadosCajaChica" :key="e.id_emp" :value="e.id_emp">{{ e.nombre_completo }}</option>
+              </select>
+            </div>
+            <div class="mb-4">
+              <label class="block text-xs text-gray-600 mb-1">Observación (opcional)</label>
+              <input v-model="modalCajaChica.form.observacion" type="text" maxlength="300"
+                class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none" />
+            </div>
+            <p v-if="modalCajaChica.error" class="text-red-600 text-sm mb-3">{{ modalCajaChica.error }}</p>
+            <div class="flex justify-end gap-3">
+              <button @click="modalCajaChica.fase = 'pregunta'" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">
+                Atrás
+              </button>
+              <button @click="confirmarConEgreso" :disabled="modalCajaChica.cargando"
+                class="text-white px-5 py-2 rounded-lg text-sm hover:opacity-90 disabled:opacity-50" style="background-color:#4a5e3a;">
+                {{ modalCajaChica.cargando ? 'Procesando...' : 'Confirmar y Generar Egreso' }}
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
     <!-- ══ MODAL REVERSO ══ -->
     <div v-if="modalReverso.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
@@ -480,6 +551,15 @@ const tabs = [
 const modalForm    = ref({ show: false, editando: false, id: null })
 const modalDetalle = ref({ show: false, orden: null })
 const modalReverso = ref({ show: false, id: null, motivo: '', error: '', guardando: false })
+
+const modalCajaChica = ref({
+  show: false, fase: 'pregunta', ordenId: null,
+  form: { direccion_id: '', direccion_nombre: '', empleado_id: '', empleado_nombre: '', observacion: '' },
+  error: '', cargando: false,
+})
+const direcciones         = ref([])
+const empleadosCajaChica  = ref([])
+const cargandoEmpleadosCaja = ref(false)
 
 const formInicial = () => ({
   tipo_ingreso: 'COMPRA',
@@ -754,6 +834,19 @@ async function guardar() {
 }
 
 async function confirmar(id) {
+  const orden = ordenes.value.find(o => o.id === id)
+  if (orden?.proceso_contratacion === 'CAJA CHICA') {
+    modalCajaChica.value = {
+      show: true, fase: 'pregunta', ordenId: id,
+      form: { direccion_id: '', direccion_nombre: '', empleado_id: '', empleado_nombre: '', observacion: '' },
+      error: '', cargando: false,
+    }
+    if (!direcciones.value.length) {
+      const { data } = await api.get('/adquisiciones/departamentos-activos')
+      direcciones.value = data
+    }
+    return
+  }
   if (!confirm('¿Confirmar recepción? Se actualizará el stock y precio promedio de los artículos.')) return
   try {
     await api.patch(`/adquisiciones/ordenes/${id}/confirmar`)
@@ -761,6 +854,66 @@ async function confirmar(id) {
   } catch (e) {
     alert(e.response?.data?.message || 'Error al confirmar')
   }
+}
+
+async function confirmarSinEgreso() {
+  modalCajaChica.value.cargando = true
+  modalCajaChica.value.error    = ''
+  try {
+    await api.patch(`/adquisiciones/ordenes/${modalCajaChica.value.ordenId}/confirmar`)
+    modalCajaChica.value.show = false
+    await cargar()
+  } catch (e) {
+    modalCajaChica.value.error = e.response?.data?.message || 'Error al confirmar'
+  } finally { modalCajaChica.value.cargando = false }
+}
+
+async function onDireccionChangeCajaChica() {
+  const dir = direcciones.value.find(d => d.id_depto == modalCajaChica.value.form.direccion_id)
+  modalCajaChica.value.form.direccion_nombre = dir?.nombre_depto || ''
+  modalCajaChica.value.form.empleado_id      = ''
+  modalCajaChica.value.form.empleado_nombre  = ''
+  empleadosCajaChica.value = []
+  if (!modalCajaChica.value.form.direccion_id) return
+  cargandoEmpleadosCaja.value = true
+  try {
+    const { data } = await api.get('/adquisiciones/empleados-activos', {
+      params: { depto: modalCajaChica.value.form.direccion_id },
+    })
+    empleadosCajaChica.value = data
+  } finally { cargandoEmpleadosCaja.value = false }
+}
+
+function onEmpleadoChangeCajaChica() {
+  const emp = empleadosCajaChica.value.find(e => e.id_emp === modalCajaChica.value.form.empleado_id)
+  modalCajaChica.value.form.empleado_nombre = emp?.nombre_completo || ''
+}
+
+async function confirmarConEgreso() {
+  modalCajaChica.value.error = ''
+  if (!modalCajaChica.value.form.direccion_id) {
+    modalCajaChica.value.error = 'Seleccione la dirección.'; return
+  }
+  if (!modalCajaChica.value.form.empleado_id) {
+    modalCajaChica.value.error = 'Seleccione el empleado destinatario.'; return
+  }
+  modalCajaChica.value.cargando = true
+  try {
+    const { data } = await api.patch(
+      `/adquisiciones/ordenes/${modalCajaChica.value.ordenId}/confirmar-con-egreso`,
+      {
+        direccion:       modalCajaChica.value.form.direccion_nombre,
+        empleado_id:     modalCajaChica.value.form.empleado_id,
+        empleado_nombre: modalCajaChica.value.form.empleado_nombre,
+        observacion:     modalCajaChica.value.form.observacion || null,
+      }
+    )
+    modalCajaChica.value.show = false
+    await cargar()
+    alert(`Ingreso confirmado y egreso #${data.egreso_secuencial}/${data.egreso_anio} generado automáticamente.`)
+  } catch (e) {
+    modalCajaChica.value.error = e.response?.data?.message || 'Error al procesar'
+  } finally { modalCajaChica.value.cargando = false }
 }
 
 function abrirReverso(id) {

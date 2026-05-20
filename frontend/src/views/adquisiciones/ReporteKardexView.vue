@@ -7,8 +7,31 @@
     <!-- Filtros -->
     <div class="bg-white rounded-xl shadow p-5 mb-5">
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+        <!-- Nivel 1 -->
+        <div>
+          <label class="block text-xs text-gray-600 mb-1">Nivel 1 MEF</label>
+          <select v-model="filtro.nivel1" @change="onNivel1Change"
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none">
+            <option value="">Todos los niveles</option>
+            <option v-for="n in nivel1s" :key="n.nivel1" :value="n.nivel1">
+              {{ n.nivel1 }} — {{ n.descripcion }}
+            </option>
+          </select>
+        </div>
+        <!-- Nivel 2 -->
+        <div>
+          <label class="block text-xs text-gray-600 mb-1">Nivel 2 MEF</label>
+          <select v-model="filtro.nivel2" :disabled="!filtro.nivel1"
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none disabled:bg-gray-50">
+            <option value="">Todos los sub-niveles</option>
+            <option v-for="n in nivel2s" :key="n.nivel2" :value="n.nivel2">
+              {{ n.nivel2 }} — {{ n.descripcion }}
+            </option>
+          </select>
+        </div>
+        <!-- Artículo -->
         <div class="md:col-span-2 relative">
-          <label class="block text-xs text-gray-600 mb-1">Artículo *</label>
+          <label class="block text-xs text-gray-600 mb-1">Artículo (opcional)</label>
           <input v-model="busquedaArticulo" @input="buscarArticulos" @blur="cerrarSugerencias"
             type="text" placeholder="Buscar por código o nombre..."
             class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none" />
@@ -20,10 +43,15 @@
               <span class="font-mono text-xs text-gray-500 mr-2">{{ a.codigo }}</span>{{ a.nombre }}
             </li>
           </ul>
-          <p v-if="articuloSeleccionado" class="text-xs text-green-700 mt-1 font-medium">
-            Seleccionado: [{{ articuloSeleccionado.codigo }}] {{ articuloSeleccionado.nombre }}
-          </p>
+          <div class="flex items-center justify-between mt-1">
+            <p v-if="articuloSeleccionado" class="text-xs text-green-700 font-medium">
+              Seleccionado: [{{ articuloSeleccionado.codigo }}] {{ articuloSeleccionado.nombre }}
+            </p>
+            <button v-if="articuloSeleccionado" @click="limpiarArticulo"
+              class="text-xs text-red-500 hover:text-red-700 ml-2">✕ Quitar</button>
+          </div>
         </div>
+        <!-- Fechas -->
         <div>
           <label class="block text-xs text-gray-600 mb-1">Desde *</label>
           <input v-model="filtro.desde" type="date"
@@ -40,7 +68,7 @@
           class="bg-green-700 text-white px-5 py-2 rounded-lg text-sm hover:bg-green-800 disabled:opacity-50">
           {{ cargando ? 'Consultando...' : 'Consultar' }}
         </button>
-        <button v-if="filas.length" @click="exportarPdf" :disabled="descargandoPdf"
+        <button v-if="resultados.length" @click="exportarPdf" :disabled="descargandoPdf"
           class="border border-green-700 text-green-700 px-5 py-2 rounded-lg text-sm hover:bg-green-50 disabled:opacity-50">
           {{ descargandoPdf ? 'Generando PDF...' : 'Descargar PDF' }}
         </button>
@@ -48,129 +76,134 @@
       <p v-if="error" class="text-red-600 text-sm mt-2">{{ error }}</p>
     </div>
 
-    <!-- Resumen artículo -->
-    <div v-if="articulo" class="bg-white rounded-xl shadow p-4 mb-4 flex flex-wrap gap-6 text-sm">
-      <div><span class="text-gray-500 text-xs uppercase font-semibold">Artículo</span><br>
-        <span class="font-medium">[{{ articulo.codigo }}] {{ articulo.nombre }}</span></div>
-      <div><span class="text-gray-500 text-xs uppercase font-semibold">Stock Actual</span><br>
-        <span class="font-bold">{{ fmt2(articulo.stock_actual) }}</span></div>
-      <div><span class="text-gray-500 text-xs uppercase font-semibold">Costo Promedio</span><br>
-        <span class="font-bold font-mono">$ {{ fmt5(articulo.precio_unitario) }}</span></div>
-      <div><span class="text-gray-500 text-xs uppercase font-semibold">Valor Inventario</span><br>
-        <span class="font-bold font-mono text-green-800">$ {{ fmt2(articulo.stock_actual * articulo.precio_unitario) }}</span></div>
-      <div><span class="text-gray-500 text-xs uppercase font-semibold">Movimientos</span><br>
-        <span class="font-medium">{{ filas.length }}</span></div>
+    <!-- Secciones por artículo -->
+    <div v-for="item in resultados" :key="item.articulo.id" class="mb-6">
+
+      <!-- Resumen artículo -->
+      <div class="bg-white rounded-xl shadow p-4 mb-2 flex flex-wrap gap-6 text-sm">
+        <div><span class="text-gray-500 text-xs uppercase font-semibold">Artículo</span><br>
+          <span class="font-medium">[{{ item.articulo.codigo }}] {{ item.articulo.nombre }}</span></div>
+        <div><span class="text-gray-500 text-xs uppercase font-semibold">Niv. MEF</span><br>
+          <span class="font-medium">{{ item.articulo.nivel1 }} / {{ item.articulo.nivel2 }}</span></div>
+        <div><span class="text-gray-500 text-xs uppercase font-semibold">Stock Actual</span><br>
+          <span class="font-bold">{{ fmt2(item.articulo.stock_actual) }}</span></div>
+        <div><span class="text-gray-500 text-xs uppercase font-semibold">Costo Promedio</span><br>
+          <span class="font-bold font-mono">$ {{ fmt5(item.articulo.precio_unitario) }}</span></div>
+        <div><span class="text-gray-500 text-xs uppercase font-semibold">Valor Inventario</span><br>
+          <span class="font-bold font-mono text-green-800">$ {{ fmt2(item.articulo.stock_actual * item.articulo.precio_unitario) }}</span></div>
+        <div><span class="text-gray-500 text-xs uppercase font-semibold">Movimientos</span><br>
+          <span class="font-medium">{{ item.filas.length }}</span></div>
+      </div>
+
+      <!-- Tabla Kardex NIC 2 -->
+      <div class="bg-white rounded-xl shadow overflow-x-auto">
+        <table class="w-full text-xs border-collapse">
+          <thead>
+            <tr>
+              <th rowspan="2" class="px-2 py-2 text-white text-center border border-gray-600 whitespace-nowrap" style="background-color:#4a5e3a;">Fecha</th>
+              <th rowspan="2" class="px-2 py-2 text-white text-center border border-gray-600 whitespace-nowrap" style="background-color:#4a5e3a;">N° Doc.</th>
+              <th rowspan="2" class="px-2 py-2 text-white text-center border border-gray-600 whitespace-nowrap" style="background-color:#4a5e3a;">Detalle</th>
+              <th colspan="3" class="px-2 py-2 text-white text-center border border-gray-600" style="background-color:#1a5c2a;">INGRESO</th>
+              <th colspan="3" class="px-2 py-2 text-white text-center border border-gray-600" style="background-color:#7b1d1d;">EGRESO</th>
+              <th colspan="3" class="px-2 py-2 text-white text-center border border-gray-600" style="background-color:#1e3a5f;">SALDO</th>
+              <th rowspan="2" class="px-2 py-2 text-white text-center border border-gray-600 whitespace-nowrap" style="background-color:#4a5e3a;">Usuario</th>
+            </tr>
+            <tr>
+              <th class="px-2 py-1 text-white text-right border border-gray-600" style="background-color:#1a5c2a;">Cant.</th>
+              <th class="px-2 py-1 text-white text-right border border-gray-600" style="background-color:#1a5c2a;">P.Unit</th>
+              <th class="px-2 py-1 text-white text-right border border-gray-600" style="background-color:#1a5c2a;">Total</th>
+              <th class="px-2 py-1 text-white text-right border border-gray-600" style="background-color:#7b1d1d;">Cant.</th>
+              <th class="px-2 py-1 text-white text-right border border-gray-600" style="background-color:#7b1d1d;">P.Unit</th>
+              <th class="px-2 py-1 text-white text-right border border-gray-600" style="background-color:#7b1d1d;">Total</th>
+              <th class="px-2 py-1 text-white text-right border border-gray-600" style="background-color:#1e3a5f;">Cant.</th>
+              <th class="px-2 py-1 text-white text-right border border-gray-600" style="background-color:#1e3a5f;">P.Unit</th>
+              <th class="px-2 py-1 text-white text-right border border-gray-600" style="background-color:#1e3a5f;">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(f, i) in item.filas" :key="f.id"
+              :class="i % 2 === 0 ? 'bg-white' : 'bg-gray-50'"
+              class="border-b hover:bg-yellow-50">
+              <td class="px-2 py-1.5 text-center border border-gray-200 whitespace-nowrap">{{ fmtFecha(f.fecha) }}</td>
+              <td class="px-2 py-1.5 text-center border border-gray-200 font-mono whitespace-nowrap">{{ f.numero_documento || '—' }}</td>
+              <td class="px-2 py-1.5 border border-gray-200 whitespace-nowrap">
+                <span :class="badgeClass(f.tipo_movimiento)" class="px-2 py-0.5 rounded-full font-medium">
+                  {{ tipoLabel(f.tipo_movimiento) }}
+                </span>
+              </td>
+              <!-- INGRESO -->
+              <td class="px-2 py-1.5 text-right border border-gray-200 font-mono" style="background-color:#f0faf3;">
+                {{ esIngreso(f) ? fmt2(f.cantidad_entrada) : '' }}
+              </td>
+              <td class="px-2 py-1.5 text-right border border-gray-200 font-mono" style="background-color:#f0faf3;">
+                {{ esIngreso(f) ? fmt5(f.precio_movimiento) : '' }}
+              </td>
+              <td class="px-2 py-1.5 text-right border border-gray-200 font-mono font-semibold" style="background-color:#f0faf3;">
+                {{ esIngreso(f) ? fmt2(f.cantidad_entrada * f.precio_movimiento) : '' }}
+              </td>
+              <!-- EGRESO -->
+              <td class="px-2 py-1.5 text-right border border-gray-200 font-mono" style="background-color:#fff5f5;">
+                {{ esEgreso(f) ? fmt2(f.cantidad_salida) : '' }}
+              </td>
+              <td class="px-2 py-1.5 text-right border border-gray-200 font-mono" style="background-color:#fff5f5;">
+                {{ esEgreso(f) ? fmt5(f.precio_movimiento) : '' }}
+              </td>
+              <td class="px-2 py-1.5 text-right border border-gray-200 font-mono font-semibold" style="background-color:#fff5f5;">
+                {{ esEgreso(f) ? fmt2(f.cantidad_salida * f.precio_movimiento) : '' }}
+              </td>
+              <!-- SALDO -->
+              <td class="px-2 py-1.5 text-right border border-gray-200 font-mono font-bold" style="background-color:#eff6ff;">
+                {{ fmt2(f.stock_despues) }}
+              </td>
+              <td class="px-2 py-1.5 text-right border border-gray-200 font-mono" style="background-color:#eff6ff;">
+                {{ fmt5(f.precio_despues) }}
+              </td>
+              <td class="px-2 py-1.5 text-right border border-gray-200 font-mono font-bold" style="background-color:#eff6ff; color:#1e3a5f;">
+                {{ fmt2(f.valor_saldo) }}
+              </td>
+              <td class="px-2 py-1.5 text-center border border-gray-200 text-gray-500">{{ f.usuario }}</td>
+            </tr>
+          </tbody>
+          <!-- Totales por artículo -->
+          <tfoot>
+            <tr class="font-bold text-xs" style="background-color:#e8f0e0;">
+              <td colspan="3" class="px-2 py-2 text-right border border-gray-400">TOTALES</td>
+              <td class="px-2 py-2 text-right border border-gray-400 font-mono">{{ fmt2(totIngCant(item.filas)) }}</td>
+              <td class="px-2 py-2 border border-gray-400"></td>
+              <td class="px-2 py-2 text-right border border-gray-400 font-mono">{{ fmt2(totIngVal(item.filas)) }}</td>
+              <td class="px-2 py-2 text-right border border-gray-400 font-mono">{{ fmt2(totEgrCant(item.filas)) }}</td>
+              <td class="px-2 py-2 border border-gray-400"></td>
+              <td class="px-2 py-2 text-right border border-gray-400 font-mono">{{ fmt2(totEgrVal(item.filas)) }}</td>
+              <td class="px-2 py-2 text-right border border-gray-400 font-mono">{{ fmt2(item.filas[item.filas.length-1]?.stock_despues) }}</td>
+              <td class="px-2 py-2 text-right border border-gray-400 font-mono">{{ fmt5(item.filas[item.filas.length-1]?.precio_despues) }}</td>
+              <td class="px-2 py-2 text-right border border-gray-400 font-mono font-bold" style="color:#1e3a5f;">
+                {{ fmt2(item.filas[item.filas.length-1]?.valor_saldo) }}
+              </td>
+              <td class="border border-gray-400"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
     </div>
 
-    <!-- Tabla Kardex NIC 2 -->
-    <div v-if="filas.length" class="bg-white rounded-xl shadow overflow-x-auto">
-      <table class="w-full text-xs border-collapse">
-        <thead>
-          <!-- Fila 1: grupos -->
-          <tr>
-            <th rowspan="2" class="px-2 py-2 text-white text-center border border-gray-600 whitespace-nowrap" style="background-color:#4a5e3a;">Fecha</th>
-            <th rowspan="2" class="px-2 py-2 text-white text-center border border-gray-600 whitespace-nowrap" style="background-color:#4a5e3a;">N° Doc.</th>
-            <th rowspan="2" class="px-2 py-2 text-white text-center border border-gray-600 whitespace-nowrap" style="background-color:#4a5e3a;">Detalle</th>
-            <th colspan="3" class="px-2 py-2 text-white text-center border border-gray-600" style="background-color:#1a5c2a;">INGRESO</th>
-            <th colspan="3" class="px-2 py-2 text-white text-center border border-gray-600" style="background-color:#7b1d1d;">EGRESO</th>
-            <th colspan="3" class="px-2 py-2 text-white text-center border border-gray-600" style="background-color:#1e3a5f;">SALDO</th>
-            <th rowspan="2" class="px-2 py-2 text-white text-center border border-gray-600 whitespace-nowrap" style="background-color:#4a5e3a;">Usuario</th>
-          </tr>
-          <!-- Fila 2: subencabezados -->
-          <tr>
-            <th class="px-2 py-1 text-white text-right border border-gray-600" style="background-color:#1a5c2a;">Cant.</th>
-            <th class="px-2 py-1 text-white text-right border border-gray-600" style="background-color:#1a5c2a;">P.Unit</th>
-            <th class="px-2 py-1 text-white text-right border border-gray-600" style="background-color:#1a5c2a;">Total</th>
-            <th class="px-2 py-1 text-white text-right border border-gray-600" style="background-color:#7b1d1d;">Cant.</th>
-            <th class="px-2 py-1 text-white text-right border border-gray-600" style="background-color:#7b1d1d;">P.Unit</th>
-            <th class="px-2 py-1 text-white text-right border border-gray-600" style="background-color:#7b1d1d;">Total</th>
-            <th class="px-2 py-1 text-white text-right border border-gray-600" style="background-color:#1e3a5f;">Cant.</th>
-            <th class="px-2 py-1 text-white text-right border border-gray-600" style="background-color:#1e3a5f;">P.Unit</th>
-            <th class="px-2 py-1 text-white text-right border border-gray-600" style="background-color:#1e3a5f;">Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(f, i) in filas" :key="f.id"
-            :class="i % 2 === 0 ? 'bg-white' : 'bg-gray-50'"
-            class="border-b hover:bg-yellow-50">
-            <td class="px-2 py-1.5 text-center border border-gray-200 whitespace-nowrap">{{ fmtFecha(f.fecha) }}</td>
-            <td class="px-2 py-1.5 text-center border border-gray-200 font-mono whitespace-nowrap">{{ f.numero_documento || '—' }}</td>
-            <td class="px-2 py-1.5 border border-gray-200 whitespace-nowrap">
-              <span :class="badgeClass(f.tipo_movimiento)" class="px-2 py-0.5 rounded-full font-medium">
-                {{ tipoLabel(f.tipo_movimiento) }}
-              </span>
-            </td>
-            <!-- INGRESO -->
-            <td class="px-2 py-1.5 text-right border border-gray-200 font-mono" style="background-color:#f0faf3;">
-              {{ esIngreso(f) ? fmt2(f.cantidad_entrada) : '' }}
-            </td>
-            <td class="px-2 py-1.5 text-right border border-gray-200 font-mono" style="background-color:#f0faf3;">
-              {{ esIngreso(f) ? fmt5(f.precio_movimiento) : '' }}
-            </td>
-            <td class="px-2 py-1.5 text-right border border-gray-200 font-mono font-semibold" style="background-color:#f0faf3;">
-              {{ esIngreso(f) ? fmt2(f.cantidad_entrada * f.precio_movimiento) : '' }}
-            </td>
-            <!-- EGRESO -->
-            <td class="px-2 py-1.5 text-right border border-gray-200 font-mono" style="background-color:#fff5f5;">
-              {{ esEgreso(f) ? fmt2(f.cantidad_salida) : '' }}
-            </td>
-            <td class="px-2 py-1.5 text-right border border-gray-200 font-mono" style="background-color:#fff5f5;">
-              {{ esEgreso(f) ? fmt5(f.precio_movimiento) : '' }}
-            </td>
-            <td class="px-2 py-1.5 text-right border border-gray-200 font-mono font-semibold" style="background-color:#fff5f5;">
-              {{ esEgreso(f) ? fmt2(f.cantidad_salida * f.precio_movimiento) : '' }}
-            </td>
-            <!-- SALDO -->
-            <td class="px-2 py-1.5 text-right border border-gray-200 font-mono font-bold" style="background-color:#eff6ff;">
-              {{ fmt2(f.stock_despues) }}
-            </td>
-            <td class="px-2 py-1.5 text-right border border-gray-200 font-mono" style="background-color:#eff6ff;">
-              {{ fmt5(f.precio_despues) }}
-            </td>
-            <td class="px-2 py-1.5 text-right border border-gray-200 font-mono font-bold" style="background-color:#eff6ff; color:#1e3a5f;">
-              {{ fmt2(f.valor_saldo) }}
-            </td>
-            <td class="px-2 py-1.5 text-center border border-gray-200 text-gray-500">{{ f.usuario }}</td>
-          </tr>
-        </tbody>
-        <!-- Totales -->
-        <tfoot>
-          <tr class="font-bold text-xs" style="background-color:#e8f0e0;">
-            <td colspan="3" class="px-2 py-2 text-right border border-gray-400">TOTALES</td>
-            <td class="px-2 py-2 text-right border border-gray-400 font-mono">{{ fmt2(totIngresosCant) }}</td>
-            <td class="px-2 py-2 border border-gray-400"></td>
-            <td class="px-2 py-2 text-right border border-gray-400 font-mono">{{ fmt2(totIngresosVal) }}</td>
-            <td class="px-2 py-2 text-right border border-gray-400 font-mono">{{ fmt2(totEgresosCant) }}</td>
-            <td class="px-2 py-2 border border-gray-400"></td>
-            <td class="px-2 py-2 text-right border border-gray-400 font-mono">{{ fmt2(totEgresosVal) }}</td>
-            <td class="px-2 py-2 text-right border border-gray-400 font-mono">{{ fmt2(filas[filas.length-1]?.stock_despues) }}</td>
-            <td class="px-2 py-2 text-right border border-gray-400 font-mono">{{ fmt5(filas[filas.length-1]?.precio_despues) }}</td>
-            <td class="px-2 py-2 text-right border border-gray-400 font-mono font-bold" style="color:#1e3a5f;">
-              {{ fmt2(filas[filas.length-1]?.valor_saldo) }}
-            </td>
-            <td class="border border-gray-400"></td>
-          </tr>
-        </tfoot>
-      </table>
-    </div>
-
-    <div v-if="consultado && !filas.length"
+    <div v-if="consultado && !resultados.length"
       class="bg-white rounded-xl shadow p-8 text-center text-gray-400">
-      Sin movimientos en el período seleccionado
+      Sin movimientos en el período seleccionado para los filtros indicados
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import api from '@/services/api'
 
-const filtro               = ref({ desde: '', hasta: '' })
+const filtro               = ref({ nivel1: '', nivel2: '', desde: '', hasta: '' })
 const busquedaArticulo     = ref('')
 const sugerencias          = ref([])
 const articuloSeleccionado = ref(null)
-const articulo             = ref(null)
-const filas                = ref([])
+const resultados           = ref([])
+const nivel1s              = ref([])
+const nivel2s              = ref([])
 const cargando             = ref(false)
 const descargandoPdf       = ref(false)
 const consultado           = ref(false)
@@ -184,10 +217,29 @@ const TIPOS_EGRESO  = ['EGRESO', 'REVERSO_INGRESO', 'AJUSTE_NEGATIVO']
 function esIngreso(f) { return TIPOS_INGRESO.includes(f.tipo_movimiento) }
 function esEgreso(f)  { return TIPOS_EGRESO.includes(f.tipo_movimiento) }
 
-const totIngresosCant = computed(() => filas.value.filter(esIngreso).reduce((s, f) => s + +f.cantidad_entrada, 0))
-const totIngresosVal  = computed(() => filas.value.filter(esIngreso).reduce((s, f) => s + +f.cantidad_entrada * +f.precio_movimiento, 0))
-const totEgresosCant  = computed(() => filas.value.filter(esEgreso).reduce((s, f) => s + +f.cantidad_salida, 0))
-const totEgresosVal   = computed(() => filas.value.filter(esEgreso).reduce((s, f) => s + +f.cantidad_salida * +f.precio_movimiento, 0))
+function totIngCant(filas) { return filas.filter(esIngreso).reduce((s, f) => s + +f.cantidad_entrada, 0) }
+function totIngVal(filas)  { return filas.filter(esIngreso).reduce((s, f) => s + +f.cantidad_entrada * +f.precio_movimiento, 0) }
+function totEgrCant(filas) { return filas.filter(esEgreso).reduce((s, f) => s + +f.cantidad_salida, 0) }
+function totEgrVal(filas)  { return filas.filter(esEgreso).reduce((s, f) => s + +f.cantidad_salida * +f.precio_movimiento, 0) }
+
+onMounted(async () => {
+  try {
+    const { data } = await api.get('/adquisiciones/catalogo-inventario/nivel1s')
+    nivel1s.value = data
+  } catch {}
+})
+
+async function onNivel1Change() {
+  filtro.value.nivel2 = ''
+  nivel2s.value = []
+  if (!filtro.value.nivel1) return
+  try {
+    const { data } = await api.get('/adquisiciones/catalogo-inventario', {
+      params: { nivel1: filtro.value.nivel1, por_pagina: 500 },
+    })
+    nivel2s.value = data.data ?? data
+  } catch {}
+}
 
 function buscarArticulos() {
   articuloSeleccionado.value = null
@@ -210,17 +262,29 @@ function seleccionarArticulo(a) {
   sugerencias.value          = []
 }
 
+function limpiarArticulo() {
+  articuloSeleccionado.value = null
+  busquedaArticulo.value     = ''
+}
+
+function buildParams() {
+  const params = { ...filtro.value }
+  if (articuloSeleccionado.value) params.articulo_id = articuloSeleccionado.value.id
+  if (!params.nivel1) delete params.nivel1
+  if (!params.nivel2) delete params.nivel2
+  return params
+}
+
 async function consultar() {
   error.value = ''
-  if (!articuloSeleccionado.value) { error.value = 'Seleccione un artículo.'; return }
+  if (!articuloSeleccionado.value && !filtro.value.nivel1 && !filtro.value.nivel2) {
+    error.value = 'Seleccione un artículo o un Nivel MEF.'; return
+  }
   if (!filtro.value.desde || !filtro.value.hasta) { error.value = 'Ingrese el rango de fechas.'; return }
   cargando.value = true
   try {
-    const { data } = await api.get('/adquisiciones/reportes/kardex', {
-      params: { articulo_id: articuloSeleccionado.value.id, ...filtro.value },
-    })
-    articulo.value   = data.articulo
-    filas.value      = data.filas
+    const { data } = await api.get('/adquisiciones/reportes/kardex', { params: buildParams() })
+    resultados.value = data
     consultado.value = true
   } catch (e) {
     error.value = e.response?.data?.message || 'Error al consultar'
@@ -231,13 +295,16 @@ async function exportarPdf() {
   descargandoPdf.value = true
   try {
     const response = await api.get('/adquisiciones/reportes/kardex', {
-      params: { articulo_id: articuloSeleccionado.value.id, ...filtro.value, formato: 'pdf' },
+      params: { ...buildParams(), formato: 'pdf' },
       responseType: 'blob',
     })
+    const filename = filtro.value.nivel2 ? `kardex-${filtro.value.nivel2}.pdf`
+                   : filtro.value.nivel1  ? `kardex-nivel-${filtro.value.nivel1}.pdf`
+                   : `kardex-${articuloSeleccionado.value?.codigo}.pdf`
     const url = URL.createObjectURL(new Blob([response.data]))
     const a   = document.createElement('a')
     a.href    = url
-    a.download = `kardex-${articuloSeleccionado.value.codigo}.pdf`
+    a.download = filename
     a.click()
     URL.revokeObjectURL(url)
   } finally { descargandoPdf.value = false }

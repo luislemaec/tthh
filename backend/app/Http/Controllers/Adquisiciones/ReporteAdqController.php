@@ -11,28 +11,44 @@ class ReporteAdqController extends Controller
     public function kardex(Request $request)
     {
         $request->validate([
-            'articulo_id' => 'required|exists:pgsql.adq.articulo,id',
+            'articulo_id' => 'nullable|exists:pgsql.adq.articulo,id',
+            'nivel1'      => 'nullable|string|max:2',
+            'nivel2'      => 'nullable|string|max:6',
             'desde'       => 'required|date',
             'hasta'       => 'required|date|after_or_equal:desde',
         ]);
 
-        $articulo = DB::table('adq.articulo')->where('id', $request->articulo_id)->first();
-
-        $filas = DB::table('adq.kardex')
-            ->where('articulo_id', $request->articulo_id)
-            ->whereBetween('fecha', [$request->desde . ' 00:00:00', $request->hasta . ' 23:59:59'])
-            ->orderBy('fecha')
-            ->orderBy('id')
-            ->get();
-
-        if ($request->formato === 'pdf') {
-            $meses = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-            $pdf = Pdf::loadView('reportes.kardex', compact('articulo', 'filas', 'meses', 'request'))
-                ->setPaper('a4', 'landscape');
-            return $pdf->download("kardex-{$articulo->codigo}.pdf");
+        if (!$request->articulo_id && !$request->nivel1 && !$request->nivel2) {
+            return response()->json(['message' => 'Seleccione un artículo o un nivel MEF.'], 422);
         }
 
-        return response()->json(['articulo' => $articulo, 'filas' => $filas]);
+        $queryArticulos = DB::table('adq.articulo')->where('estado', 'ACTIVO');
+        if ($request->articulo_id) $queryArticulos->where('id', $request->articulo_id);
+        if ($request->nivel1)      $queryArticulos->where('nivel1', $request->nivel1);
+        if ($request->nivel2)      $queryArticulos->where('nivel2', $request->nivel2);
+        $articulos = $queryArticulos->orderBy('nombre')->get();
+
+        $resultados = $articulos->map(function ($articulo) use ($request) {
+            $filas = DB::table('adq.kardex')
+                ->where('articulo_id', $articulo->id)
+                ->whereBetween('fecha', [$request->desde . ' 00:00:00', $request->hasta . ' 23:59:59'])
+                ->orderBy('fecha')
+                ->orderBy('id')
+                ->get();
+            return ['articulo' => $articulo, 'filas' => $filas];
+        })->filter(fn($r) => $r['filas']->isNotEmpty())->values();
+
+        if ($request->formato === 'pdf') {
+            $meses    = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+            $filename = $request->nivel2 ? "kardex-{$request->nivel2}.pdf"
+                      : ($request->nivel1  ? "kardex-nivel-{$request->nivel1}.pdf"
+                      : "kardex-{$articulos->first()->codigo}.pdf");
+            $pdf = Pdf::loadView('reportes.kardex', compact('resultados', 'meses', 'request'))
+                ->setPaper('a4', 'landscape');
+            return $pdf->download($filename);
+        }
+
+        return response()->json($resultados);
     }
 
     public function libroCompras(Request $request)

@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 Sistema de Gestión para el Consejo de Comunicación (Ecuador) con tres módulos:
-1. **Talento Humano** — empleados, asistencia, permisos, vacaciones, acciones de personal
+1. **Talento Humano** — empleados, asistencia, permisos, vacaciones, acciones de personal, nomina
 2. **Adquisiciones/Bienes** — inventario, ingresos, egresos, kardex, reportes
 3. **Transportes** — vehículos institucionales, mantenimiento, solicitudes de movilización
 
@@ -42,7 +42,7 @@ Después de cualquier cambio: Push → Pull en servidor → `npm run build` (sol
 
 ## Roles
 
-Roles: `ADMINISTRADOR`, `TALENTO HUMANO`, `SUPERVISOR`, `ADQUISICIONES`, `BIENES`, `TRANSPORTE`, `CONDUCTOR`. Empleados sin rol = acceso básico.
+Roles: `ADMINISTRADOR`, `TALENTO HUMANO`, `TH ACCIONES PERSONAL`, `TH NOMINA`,`SUPERVISOR`, `ADQUISICIONES`, `TRANSPORTE`, `CONDUCTOR`. Empleados sin rol = acceso básico.
 - Backend: `DB::table('dbo.admin_usuario_rol')` — sin Laravel policies/gates
 - Frontend: `auth.tieneRol('NOMBRE')` desde Pinia store
 - Menú filtrado por rol desde `dbo.admin_opcion`

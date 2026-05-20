@@ -228,11 +228,6 @@
               <p class="text-sm font-medium text-gray-700 mb-2">{{ det.articulo?.nombre }}</p>
               <div class="flex items-center gap-4 text-sm flex-wrap">
                 <span class="text-gray-500">Solicitado: <b>{{ det.cantidad_solicitada }}</b></span>
-                <span class="text-gray-500">Stock disponible:
-                  <b :class="det.articulo?.stock_actual > 0 ? 'text-green-700' : 'text-red-600'">
-                    {{ det.articulo?.stock_actual }} {{ det.articulo?.unidad_medida }}
-                  </b>
-                </span>
               </div>
               <div class="mt-2">
                 <label class="block text-xs text-gray-500 mb-1">Cantidad a aprobar (puede modificar)</label>

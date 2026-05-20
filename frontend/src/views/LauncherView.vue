@@ -60,7 +60,7 @@
           </svg>
         </div>
         <div class="text-center">
-          <p class="font-bold text-gray-800 text-sm">Bienes y Suministros</p>
+          <p class="font-bold text-gray-800 text-sm">Inventario y Suministros</p>
           <p class="text-gray-500 text-xs mt-0.5">Inventario, ingresos, egresos</p>
           <span v-if="alertasStock > 0"
             class="mt-1 inline-block bg-red-100 text-red-700 text-xs font-semibold px-2 py-0.5 rounded-full">
@@ -98,8 +98,8 @@
           </svg>
         </div>
         <div class="text-center">
-          <p class="font-bold text-gray-800 text-sm">Bienes y Suministros</p>
-          <p class="text-gray-500 text-xs mt-0.5">Bienes y Suministros</p>
+          <p class="font-bold text-gray-800 text-sm">Inventario y Suministros</p>
+          <p class="text-gray-500 text-xs mt-0.5">Inventario y Suministros</p>
         </div>
       </button>
 
