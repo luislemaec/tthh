@@ -330,16 +330,17 @@ class OrdenCompraController extends Controller
             $ivaTotal      = 0;
 
             foreach ($orden->detalles as $det) {
-                $articulo       = Articulo::findOrFail($det->articulo_id);
-                $precioAnterior = (float) $articulo->precio_unitario;
-                $ivaPct         = 0;
+                $articulo     = Articulo::findOrFail($det->articulo_id);
+                $precioActual = (float) $articulo->precio_unitario; // precio vigente del artículo (sin cambio CAJA CHICA)
+                $precioEgreso = (float) $det->precio_unitario;      // precio real del ingreso CAJA CHICA
+                $ivaPct       = 0;
 
                 if ($articulo->iva_id) {
                     $iva    = Iva::find($articulo->iva_id);
                     $ivaPct = $iva ? (float) $iva->porcentaje : 0;
                 }
 
-                $subCents   = (int) round((float) $det->cantidad * $precioAnterior * 100);
+                $subCents   = (int) round((float) $det->cantidad * $precioEgreso * 100);
                 $ivaCents   = (int) round($subCents * $ivaPct / 100);
                 $subtotal   = $subCents / 100;
                 $ivaValor   = $ivaCents / 100;
@@ -352,8 +353,8 @@ class OrdenCompraController extends Controller
                     'egreso_id'       => $egresoId,
                     'articulo_id'     => $det->articulo_id,
                     'cantidad'        => $det->cantidad,
-                    'precio_unitario' => $precioAnterior,
-                    'precio_anterior' => $precioAnterior,
+                    'precio_unitario' => $precioEgreso,
+                    'precio_anterior' => $precioActual,
                     'iva_id'          => $articulo->iva_id,
                     'iva_porcentaje'  => $ivaPct,
                     'subtotal'        => $subtotal,
@@ -365,7 +366,7 @@ class OrdenCompraController extends Controller
 
                 $stockAntes  = (float) $articulo->stock_actual;
                 $nuevoStock  = max(0, $stockAntes - (float) $det->cantidad);
-                $nuevoPrecio = $nuevoStock == 0 ? 0 : $precioAnterior;
+                $nuevoPrecio = $nuevoStock == 0 ? 0 : $precioActual;
 
                 DB::table('adq.articulo')->where('id', $det->articulo_id)->update([
                     'stock_actual'    => $nuevoStock,
@@ -385,9 +386,9 @@ class OrdenCompraController extends Controller
                     'cantidad_salida'   => $det->cantidad,
                     'stock_antes'       => $stockAntes,
                     'stock_despues'     => $nuevoStock,
-                    'precio_antes'      => $precioAnterior,
+                    'precio_antes'      => $precioActual,
                     'precio_despues'    => $nuevoPrecio,
-                    'precio_movimiento' => $precioAnterior,
+                    'precio_movimiento' => $precioEgreso,
                     'subtotal'          => $subtotal,
                     'iva_valor'         => $ivaValor,
                     'total_linea'       => $totalLinea,
