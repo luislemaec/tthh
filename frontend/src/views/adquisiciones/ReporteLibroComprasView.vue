@@ -6,7 +6,7 @@
 
     <!-- Filtros -->
     <div class="bg-white rounded-xl shadow p-5 mb-5">
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
         <div>
           <label class="block text-xs text-gray-600 mb-1">Desde *</label>
           <input v-model="filtro.desde" type="date"
@@ -24,6 +24,11 @@
             <option v-for="p in procesos" :key="p" :value="p">{{ p }}</option>
           </select>
         </div>
+        <div>
+          <label class="block text-xs text-gray-600 mb-1">RUC o Proveedor</label>
+          <input v-model="filtro.proveedor" type="text" placeholder="Buscar por RUC o nombre..."
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none" />
+        </div>
         <div class="flex flex-col gap-2">
           <button @click="consultar" :disabled="cargando"
             class="bg-green-700 text-white px-5 py-2 rounded-lg text-sm hover:bg-green-800 disabled:opacity-50">
@@ -38,16 +43,43 @@
       <p v-if="error" class="text-red-600 text-sm mt-2">{{ error }}</p>
     </div>
 
-    <!-- Resumen -->
-    <div v-if="filas.length" class="bg-white rounded-xl shadow p-4 mb-4 flex flex-wrap gap-6 text-sm">
-      <div><span class="text-gray-500 text-xs uppercase font-semibold">Facturas</span><br>
-        <span class="font-medium">{{ filas.length }}</span></div>
-      <div><span class="text-gray-500 text-xs uppercase font-semibold">Subtotal</span><br>
-        <span class="font-medium">$ {{ fmt2(totales.subtotal) }}</span></div>
-      <div><span class="text-gray-500 text-xs uppercase font-semibold">IVA</span><br>
-        <span class="font-medium">$ {{ fmt2(totales.iva) }}</span></div>
-      <div><span class="text-gray-500 text-xs uppercase font-semibold">Total General</span><br>
-        <span class="font-bold text-green-800 text-base">$ {{ fmt2(totales.total) }}</span></div>
+    <!-- Resumen + Top 5 -->
+    <div v-if="filas.length" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+
+      <!-- Totales -->
+      <div class="bg-white rounded-xl shadow p-4 flex flex-wrap gap-6 text-sm items-start">
+        <div><span class="text-gray-500 text-xs uppercase font-semibold">Facturas</span><br>
+          <span class="font-medium">{{ filas.length }}</span></div>
+        <div><span class="text-gray-500 text-xs uppercase font-semibold">Subtotal</span><br>
+          <span class="font-medium">$ {{ fmt2(totales.subtotal) }}</span></div>
+        <div><span class="text-gray-500 text-xs uppercase font-semibold">IVA</span><br>
+          <span class="font-medium">$ {{ fmt2(totales.iva) }}</span></div>
+        <div><span class="text-gray-500 text-xs uppercase font-semibold">Total General</span><br>
+          <span class="font-bold text-green-800 text-base">$ {{ fmt2(totales.total) }}</span></div>
+      </div>
+
+      <!-- Top 5 Proveedores -->
+      <div class="md:col-span-2 bg-white rounded-xl shadow p-4">
+        <div class="text-xs font-semibold text-gray-500 uppercase mb-3">Top 5 Proveedores por Compra</div>
+        <div class="space-y-2">
+          <div v-for="(p, i) in top5" :key="p.ruc" class="flex items-center gap-2">
+            <span class="w-5 h-5 rounded-full text-white text-xs flex items-center justify-center font-bold flex-shrink-0"
+              :style="{ backgroundColor: colores[i] }">{{ i + 1 }}</span>
+            <div class="flex-1 min-w-0">
+              <div class="flex justify-between items-baseline">
+                <span class="text-xs font-medium text-gray-800 truncate max-w-[55%]">{{ p.nombre }}</span>
+                <span class="text-xs font-mono font-semibold text-gray-700 ml-1 flex-shrink-0">$ {{ fmt2(p.total) }}</span>
+              </div>
+              <div class="w-full bg-gray-100 rounded-full h-1.5 mt-0.5">
+                <div class="h-1.5 rounded-full"
+                  :style="{ width: (p.total / top5[0].total * 100).toFixed(1) + '%', backgroundColor: colores[i] }">
+                </div>
+              </div>
+              <span class="text-xs text-gray-400">{{ p.ruc }} · {{ p.facturas }} factura{{ p.facturas !== 1 ? 's' : '' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Tabla -->
@@ -97,7 +129,7 @@
 import { ref, computed, onMounted } from 'vue'
 import api from '@/services/api'
 
-const filtro   = ref({ desde: '', hasta: '', proceso: '' })
+const filtro   = ref({ desde: '', hasta: '', proceso: '', proveedor: '' })
 const procesos = ref([])
 const filas    = ref([])
 const cargando       = ref(false)
@@ -105,11 +137,23 @@ const descargandoPdf = ref(false)
 const consultado     = ref(false)
 const error          = ref('')
 
+const colores = ['#166534', '#2563eb', '#9333ea', '#d97706', '#dc2626']
+
 const totales = computed(() => ({
   subtotal: filas.value.reduce((s, f) => s + +f.subtotal, 0),
   iva:      filas.value.reduce((s, f) => s + +f.iva_valor, 0),
   total:    filas.value.reduce((s, f) => s + +f.total, 0),
 }))
+
+const top5 = computed(() => {
+  const mapa = {}
+  for (const f of filas.value) {
+    if (!mapa[f.ruc]) mapa[f.ruc] = { ruc: f.ruc, nombre: f.proveedor_nombre, total: 0, facturas: 0 }
+    mapa[f.ruc].total += +f.total
+    mapa[f.ruc].facturas++
+  }
+  return Object.values(mapa).sort((a, b) => b.total - a.total).slice(0, 5)
+})
 
 onMounted(async () => {
   const { data } = await api.get('/adquisiciones/procesos-contratacion/activos')
@@ -121,7 +165,9 @@ async function consultar() {
   if (!filtro.value.desde || !filtro.value.hasta) { error.value = 'Ingrese el rango de fechas.'; return }
   cargando.value = true
   try {
-    const { data } = await api.get('/adquisiciones/reportes/libro-compras', { params: filtro.value })
+    const params = { ...filtro.value }
+    if (!params.proveedor) delete params.proveedor
+    const { data } = await api.get('/adquisiciones/reportes/libro-compras', { params })
     filas.value    = data
     consultado.value = true
   } catch (e) {
@@ -132,8 +178,10 @@ async function consultar() {
 async function exportarPdf() {
   descargandoPdf.value = true
   try {
+    const params = { ...filtro.value, formato: 'pdf' }
+    if (!params.proveedor) delete params.proveedor
     const response = await api.get('/adquisiciones/reportes/libro-compras', {
-      params: { ...filtro.value, formato: 'pdf' },
+      params,
       responseType: 'blob',
     })
     const url = URL.createObjectURL(new Blob([response.data]))

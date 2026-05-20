@@ -81,6 +81,13 @@ class ReporteAdqController extends Controller
         if ($request->proceso) {
             $query->where('oc.proceso_contratacion', $request->proceso);
         }
+        if ($request->filled('proveedor')) {
+            $q = $request->proveedor;
+            $query->where(function ($q2) use ($q) {
+                $q2->where('p.ruc', 'ilike', "%{$q}%")
+                   ->orWhere('p.nombre', 'ilike', "%{$q}%");
+            });
+        }
 
         $filas = $query->get();
 
