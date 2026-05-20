@@ -167,13 +167,14 @@ class OrdenCompraController extends Controller
                     ->update(['precio_anterior' => $precioAnterior]);
 
                 if ($esCajaChica) {
-                    // CAJA CHICA: no se aplica promedio ponderado, precio del artículo no cambia
-                    $precioDespues = $precioAnterior;
+                    // CAJA CHICA: sin promedio ponderado, se actualiza al último precio de ingreso
+                    $precioDespues = $nuevoPrecio;
                     DB::table('adq.articulo')
                         ->where('id', $det->articulo_id)
                         ->update([
                             'stock_actual'           => DB::raw("stock_actual + {$det->cantidad}"),
                             'stock_maximo_historico' => DB::raw("GREATEST(stock_maximo_historico, stock_actual + {$det->cantidad})"),
+                            'precio_unitario'        => $precioDespues,
                             'updated_at'             => now(),
                         ]);
                 } else {
@@ -266,11 +267,14 @@ class OrdenCompraController extends Controller
                     ->where('id', $det->id)
                     ->update(['precio_anterior' => $precioAnterior]);
 
+                $nuevoPrecioCajaChica = (float) $det->precio_unitario;
+
                 DB::table('adq.articulo')
                     ->where('id', $det->articulo_id)
                     ->update([
                         'stock_actual'           => DB::raw("stock_actual + {$det->cantidad}"),
                         'stock_maximo_historico' => DB::raw("GREATEST(stock_maximo_historico, stock_actual + {$det->cantidad})"),
+                        'precio_unitario'        => $nuevoPrecioCajaChica,
                         'updated_at'             => now(),
                     ]);
 
@@ -287,12 +291,12 @@ class OrdenCompraController extends Controller
                     'stock_antes'       => $stockAntes,
                     'stock_despues'     => $stockDespues,
                     'precio_antes'      => $precioAnterior,
-                    'precio_despues'    => $precioAnterior,
-                    'precio_movimiento' => $det->precio_unitario,
+                    'precio_despues'    => $nuevoPrecioCajaChica,
+                    'precio_movimiento' => $nuevoPrecioCajaChica,
                     'subtotal'          => $det->subtotal ?? 0,
                     'iva_valor'         => $det->iva_valor ?? 0,
                     'total_linea'       => $det->total_linea ?? 0,
-                    'valor_saldo'       => round($stockDespues * $precioAnterior, 2),
+                    'valor_saldo'       => round($stockDespues * $nuevoPrecioCajaChica, 2),
                     'usuario'           => $request->user()->id_emp,
                     'observacion'       => 'CAJA CHICA - ' . ($orden->observacion ?? ''),
                     'created_at'        => now(),
