@@ -443,7 +443,7 @@ Vista admin SBU: `views/admin/SbuView.vue` (ruta `admin/sbu`) — el SBU se gest
 | Controlador | Función |
 |---|---|
 | `ArticuloController` | CRUD artículos + imagen + alertas de stock |
-| `OrdenCompraController` | Ingresos: store/update/confirmar/reversar/pdf |
+| `OrdenCompraController` | Ingresos: store/update/confirmar/confirmarConEgreso/reversar/pdf |
 | `EgresoController` | Egresos: store/update/confirmar/reversar/pdf |
 | `ProveedorController` | CRUD proveedores |
 | `IvaController` | CRUD tasas IVA |
@@ -455,6 +455,7 @@ Vista admin SBU: `views/admin/SbuView.vue` (ruta `admin/sbu`) — el SBU se gest
 
 - `precio_unitario` se guarda con 5 decimales; subtotales y totales con 2 decimales
 - Al **confirmar ingreso** (promedio ponderado): `precio_unitario = (stock_antes × precio_anterior + cantidad × precio_nuevo) / stock_despues`; si stock_antes = 0 → `precio_unitario = precio_nuevo`
+- **Excepción CAJA CHICA**: no aplica promedio ponderado. El `precio_unitario` del artículo se actualiza siempre al **último precio de ingreso** (sin promediar). Así el egreso posterior sale al precio real de compra.
 - Al **confirmar egreso**: si stock llega a 0 → `precio_unitario = 0`; al reversar, restaura precio solo si precio actual es 0 y `precio_anterior > 0`
 
 ### Cálculo de Totales con Descuento
@@ -490,7 +491,7 @@ Captura: `stock_antes`, `stock_despues`, `precio_antes`, `precio_despues`, `prec
 Flujo: empleado crea → supervisor revisa y aprueba (puede modificar cantidades) / niega → bienes despacha con `cantidad_autorizada` por línea.
 
 - Empleado NO ve el stock disponible al crear la solicitud
-- Supervisor SÍ ve el stock en el modal de aprobación y puede modificar las cantidades solicitadas antes de aprobar
+- Supervisor **NO ve el stock** en el modal de aprobación (se ocultó para evitar condicionamiento); solo ve nombre, cantidad solicitada y campo editable de cantidad a aprobar
 - Si el solicitante es supervisor, la solicitud se crea directamente en APROBADO
 - Estado final en despacho: DESPACHADO (todo), DESPACHADO PARCIAL (parcial), NEGADO (todo en 0)
 - `despachar()` usa `DB::table()->update(['stock_actual' => DB::raw('GREATEST(0, stock_actual - N)')])` — nunca Eloquent
@@ -505,8 +506,8 @@ Toma física: el usuario ingresa la cantidad contada físicamente; el sistema ca
 
 ### Reportes Adquisiciones
 
-- **Kardex NIC 2**: por artículo + rango fechas → tabla doble encabezado (INGRESO/EGRESO/SALDO, cada uno con Cant./P.Unit./Total) + PDF legal landscape. `valor_saldo` en columna SALDO Total. Clasifica AJUSTE_POSITIVO y REVERSO_EGRESO como INGRESO; AJUSTE_NEGATIVO y REVERSO_INGRESO como EGRESO.
-- **Libro de Compras**: facturas de proveedores por período + filtro proceso → muestra columna Descuento cuando aplica → PDF SRI
+- **Kardex NIC 2**: filtros combinables — artículo individual, Nivel 1 MEF (`nivel1`, 2 chars) y/o Nivel 2 MEF (`nivel2`, 6 chars). Al menos uno requerido. Devuelve siempre un array `[{ articulo, filas }, ...]`; PDF y frontend iteran una sección por artículo. Tabla doble encabezado (INGRESO/EGRESO/SALDO, cada uno con Cant./P.Unit./Total). Clasifica AJUSTE_POSITIVO y REVERSO_EGRESO como INGRESO; AJUSTE_NEGATIVO y REVERSO_INGRESO como EGRESO.
+- **Libro de Compras**: facturas de proveedores por período + filtro proceso + filtro RUC/nombre proveedor (parámetro `proveedor`, busca con `ILIKE` en ambos campos) → Top 5 proveedores por monto (calculado en frontend desde los datos cargados) + PDF SRI
 - **Egresos Valorizados**: salidas despachadas por período + filtro dirección/área → PDF
 
 ### Imágenes de Artículos
@@ -523,16 +524,20 @@ Todas las rutas de Adquisiciones bajo `/api/adquisiciones/*` en `routes/api.php`
 views/adquisiciones/
   ArticulosView.vue           # Inventario con precio, IVA, stock, imagen
   IngresosBienesView.vue      # Ingresos (BORRADOR/RECIBIDO) + descuento + PDF
+                              # CAJA CHICA: modal al confirmar — "¿Confirmar sin egreso?" o "¿Confirmar con egreso?"
+                              #   Con egreso: selecciona Dirección + Empleado → PATCH /ordenes/{id}/confirmar-con-egreso
+                              #   Sin egreso: PATCH /ordenes/{id}/confirmar (precio se actualiza al último precio CAJA CHICA)
   EgresosBienesView.vue       # Egresos (BORRADOR/DESPACHADO) + PDF
   ProveedoresView.vue         # CRUD proveedores
   IvaView.vue                 # Tasas IVA
   ProcesoContratacionView.vue # Procesos de contratación configurables
   UnidadesMedidaView.vue      # Unidades de medida configurables
   CatalogoInventarioView.vue  # Catálogo MEF nivel1/nivel2
-  SolicitudesView.vue         # Solicitudes internas: crear, aprobar (supervisor), despachar (bienes)
+  SolicitudesView.vue         # Solicitudes internas: crear, aprobar (supervisor — sin stock visible), despachar (bienes)
   AjusteInventarioView.vue    # Toma física: buscar artículo, ingresar cant. física, registra ajuste
-  ReporteKardexView.vue       # Kardex NIC 2 por artículo + PDF (doble encabezado INGRESO/EGRESO/SALDO)
-  ReporteLibroComprasView.vue # Libro de compras + PDF (incluye columna descuento)
+  ReporteKardexView.vue       # Kardex NIC 2 — filtros: artículo individual, Nivel 1 MEF, Nivel 2 MEF (combinables)
+                              # Resultado: una sección por artículo; PDF itera todos los artículos encontrados
+  ReporteLibroComprasView.vue # Libro de compras + filtro RUC/proveedor + Top 5 proveedores por monto + PDF
   ReporteEgresosView.vue      # Egresos valorizados + PDF
 layouts/AdqLayout.vue         # Layout verde, roles ADQUISICIONES/BIENES
                               # Menú colapsado por defecto, auto-abre el grupo de la ruta activa

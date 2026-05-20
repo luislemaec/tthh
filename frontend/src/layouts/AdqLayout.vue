@@ -1,11 +1,11 @@
 <template>
-  <div class="flex h-screen bg-gray-100 overflow-hidden">
 
-    <!-- Sidebar Adquisiciones -->
+  <!-- ═══════════════════ MODO VERTICAL (sidebar) ═══════════════════ -->
+  <div v-if="menuMode === 'vertical'" class="flex h-screen bg-gray-100 overflow-hidden">
+
     <aside :class="['text-white transition-all duration-300 flex flex-col', sidebarOpen ? 'w-64' : 'w-16']"
            style="background-color: #4a5e3a;">
 
-      <!-- Logo -->
       <div class="flex items-center gap-3 p-3 h-16 flex-shrink-0" style="border-bottom: 1px solid #3b4a2e;">
         <img src="@/assets/LOGOS-CONSEJOBLANCOH.png" alt="Logo"
              class="flex-shrink-0 object-contain"
@@ -15,10 +15,8 @@
         </span>
       </div>
 
-      <!-- Menú -->
       <nav class="flex-1 overflow-y-auto py-2">
 
-        <!-- Dashboard (solo para ADQUISICIONES / BIENES) -->
         <router-link v-if="esAdqOBienes" to="/adquisiciones/dashboard"
           class="flex items-center gap-3 px-4 py-2.5 text-sm transition-all duration-200"
           :style="$route.path === '/adquisiciones/dashboard' ? 'background-color:#3b4a2e' : ''"
@@ -31,14 +29,11 @@
           <span v-show="sidebarOpen">Dashboard</span>
         </router-link>
 
-        <!-- Grupos -->
         <template v-for="grupo in menuGrupos" :key="grupo.label">
-
-          <!-- Encabezado de grupo -->
           <div class="mt-3 mb-0.5">
             <button v-if="sidebarOpen"
               @click="toggleGrupo(grupo.label)"
-              class="w-full flex items-center justify-between px-4 py-1 select-none focus:outline-none group">
+              class="w-full flex items-center justify-between px-4 py-1 select-none focus:outline-none">
               <span class="text-xs font-bold tracking-widest uppercase transition-colors duration-300"
                 :style="gruposAbiertos[grupo.label] ? 'color:rgba(255,255,255,0.8)' : 'color:rgba(255,255,255,0.4)'">
                 {{ grupo.label }}
@@ -53,17 +48,12 @@
             <div v-else class="mx-3 border-t" style="border-color:rgba(255,255,255,0.2)"></div>
           </div>
 
-          <!-- Items con animación acordeón -->
           <Transition @enter="slideDown" @after-enter="afterSlideDown" @leave="slideUp">
             <div v-show="!sidebarOpen || gruposAbiertos[grupo.label]">
               <router-link v-for="item in grupo.items" :key="item.to" :to="item.to"
                 class="flex items-center gap-3 px-4 py-2.5 text-sm transition-all duration-200 border-l-2"
-                :style="$route.path.startsWith(item.to)
-                  ? 'background-color:#3b4a2e; border-color:#8aad6a'
-                  : 'border-color:transparent'"
-                :class="$route.path.startsWith(item.to)
-                  ? 'font-semibold text-white'
-                  : 'text-green-100 hover:bg-[#3b4a2e] hover:border-green-500'"
+                :style="$route.path.startsWith(item.to) ? 'background-color:#3b4a2e; border-color:#8aad6a' : 'border-color:transparent'"
+                :class="$route.path.startsWith(item.to) ? 'font-semibold text-white' : 'text-green-100 hover:bg-[#3b4a2e] hover:border-green-500'"
                 active-class="">
                 <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="item.icon" />
@@ -74,20 +64,14 @@
                   {{ item.badge }}
                 </span>
               </router-link>
-
-              <p v-if="!grupo.items.length && sidebarOpen"
-                class="px-4 py-2 text-xs italic"
-                style="color:rgba(255,255,255,0.3)">
-                Próximamente...
-              </p>
+              <p v-if="!grupo.items.length && sidebarOpen" class="px-4 py-2 text-xs italic"
+                style="color:rgba(255,255,255,0.3)">Próximamente...</p>
             </div>
           </Transition>
-
         </template>
 
       </nav>
 
-      <!-- Footer -->
       <div class="p-4 flex-shrink-0 space-y-2" style="border-top: 1px solid #3b4a2e;">
         <router-link to="/launcher"
           class="flex items-center gap-3 text-sm w-full hover:text-white transition text-green-200">
@@ -108,16 +92,24 @@
       </div>
     </aside>
 
-    <!-- Contenido -->
     <div class="flex-1 flex flex-col overflow-hidden">
       <header class="bg-white h-16 flex items-center justify-between px-6"
               style="border-bottom: 2px solid #5c7348;">
-        <button @click="sidebarOpen = !sidebarOpen" class="text-gray-500 hover:text-gray-700">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-          </svg>
-        </button>
-        <div class="flex items-center gap-4">
+        <div class="flex items-center gap-3">
+          <button @click="sidebarOpen = !sidebarOpen" class="text-gray-500 hover:text-gray-700">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+            </svg>
+          </button>
+        </div>
+        <div class="flex items-center gap-3">
+          <button @click="toggleMenuMode" title="Cambiar a menú horizontal"
+            class="text-gray-400 hover:text-gray-600 transition" >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+            </svg>
+          </button>
           <span class="text-sm text-gray-600">{{ auth.empleado?.apellido }} {{ auth.empleado?.nombre }}</span>
           <div class="w-9 h-9 rounded-full text-white flex items-center justify-center text-sm font-bold" style="background-color:#4a5e3a;">
             {{ iniciales }}
@@ -129,6 +121,118 @@
       </main>
     </div>
   </div>
+
+  <!-- ═══════════════════ MODO HORIZONTAL (topnav) ═══════════════════ -->
+  <div v-else class="flex flex-col h-screen bg-gray-100 overflow-hidden">
+
+    <!-- Header -->
+    <header class="bg-white h-14 flex items-center justify-between px-5 flex-shrink-0"
+            style="border-bottom: 1px solid #e5e7eb;">
+      <div class="flex items-center gap-3">
+        <img src="@/assets/LOGOS-CONSEJOBLANCOH.png" alt="Logo" class="h-8 w-auto object-contain" />
+        <span class="font-bold text-xs uppercase tracking-wide text-gray-700 hidden sm:block">ADQUISICIONES</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <button @click="toggleMenuMode" title="Cambiar a menú vertical"
+          class="text-gray-400 hover:text-gray-600 transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+          </svg>
+        </button>
+        <span class="text-sm text-gray-600">{{ auth.empleado?.apellido }} {{ auth.empleado?.nombre }}</span>
+        <div class="w-8 h-8 rounded-full text-white flex items-center justify-center text-sm font-bold" style="background-color:#4a5e3a;">
+          {{ iniciales }}
+        </div>
+      </div>
+    </header>
+
+    <!-- Topnav -->
+    <nav class="flex-shrink-0 flex items-stretch px-2 relative z-50" style="background-color:#4a5e3a; min-height:42px;">
+
+      <!-- Dashboard -->
+      <router-link v-if="esAdqOBienes" to="/adquisiciones/dashboard"
+        class="flex items-center px-3 text-xs font-semibold text-green-100 hover:bg-[#3b4a2e] transition whitespace-nowrap"
+        :class="$route.path === '/adquisiciones/dashboard' ? 'bg-[#3b4a2e] text-white' : ''"
+        active-class="">
+        Dashboard
+      </router-link>
+
+      <!-- Grupos como dropdowns -->
+      <div v-for="grupo in menuGrupos" :key="grupo.label" class="relative">
+        <button
+          @click="toggleDropdown(grupo.label)"
+          class="flex items-center gap-1 px-3 h-full text-xs font-semibold transition whitespace-nowrap"
+          :class="dropdownAbierto === grupo.label ? 'bg-[#3b4a2e] text-white' : 'text-green-100 hover:bg-[#3b4a2e]'">
+          {{ grupo.label }}
+          <svg class="w-3 h-3 transition-transform duration-200"
+            :class="dropdownAbierto === grupo.label ? 'rotate-180' : ''"
+            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </button>
+
+        <!-- Dropdown panel -->
+        <Transition
+          enter-active-class="transition duration-150 ease-out"
+          enter-from-class="opacity-0 translate-y-[-6px]"
+          enter-to-class="opacity-100 translate-y-0"
+          leave-active-class="transition duration-100 ease-in"
+          leave-from-class="opacity-100 translate-y-0"
+          leave-to-class="opacity-0 translate-y-[-6px]">
+          <div v-if="dropdownAbierto === grupo.label"
+            class="absolute left-0 top-full min-w-[200px] rounded-b-lg shadow-xl overflow-hidden"
+            style="background-color:#3d5030; border: 1px solid #2e3d23; border-top:none;">
+            <router-link v-for="item in grupo.items" :key="item.to" :to="item.to"
+              @click="dropdownAbierto = null"
+              class="flex items-center gap-2.5 px-4 py-2.5 text-sm transition"
+              :class="$route.path.startsWith(item.to)
+                ? 'bg-[#2e3d23] text-white font-semibold'
+                : 'text-green-100 hover:bg-[#4a5e3a]'"
+              active-class="">
+              <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="item.icon" />
+              </svg>
+              {{ item.label }}
+              <span v-if="item.badge && item.badge > 0"
+                class="ml-auto bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 leading-none">
+                {{ item.badge }}
+              </span>
+            </router-link>
+          </div>
+        </Transition>
+      </div>
+
+      <!-- Spacer + Inicio + Salir -->
+      <div class="ml-auto flex items-stretch">
+        <router-link to="/launcher"
+          class="flex items-center px-3 text-xs text-green-200 hover:bg-[#3b4a2e] transition whitespace-nowrap gap-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+          </svg>
+          Inicio
+        </router-link>
+        <button @click="handleLogout"
+          class="flex items-center px-3 text-xs text-green-200 hover:bg-[#3b4a2e] transition whitespace-nowrap gap-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+          </svg>
+          Salir
+        </button>
+      </div>
+    </nav>
+
+    <!-- Backdrop para cerrar dropdown -->
+    <div v-if="dropdownAbierto" class="fixed inset-0 z-40" @click="dropdownAbierto = null" />
+
+    <!-- Contenido -->
+    <main class="flex-1 overflow-auto p-6">
+      <router-view />
+    </main>
+  </div>
+
 </template>
 
 <script setup>
@@ -140,15 +244,26 @@ import api from '@/services/api'
 const router = useRouter()
 const route  = useRoute()
 const auth   = useAuthStore()
-const sidebarOpen  = ref(true)
-const alertasStock = ref(0)
 
+const sidebarOpen    = ref(true)
+const alertasStock   = ref(0)
 const gruposAbiertos = ref({})
+const dropdownAbierto = ref(null)
+const menuMode = ref(localStorage.getItem('adq_menu_mode') || 'vertical')
+
+function toggleMenuMode() {
+  menuMode.value = menuMode.value === 'vertical' ? 'horizontal' : 'vertical'
+  localStorage.setItem('adq_menu_mode', menuMode.value)
+  dropdownAbierto.value = null
+}
+
+function toggleDropdown(label) {
+  dropdownAbierto.value = dropdownAbierto.value === label ? null : label
+}
 
 function toggleGrupo(label) {
   gruposAbiertos.value[label] = !gruposAbiertos.value[label]
 }
-
 
 function slideDown(el) {
   el.style.overflow = 'hidden'
@@ -209,20 +324,19 @@ const menuGrupos = computed(() => {
         icon: iconPorUrl[item.url] || ICON_DEFAULT,
         badge: item.url === 'adquisiciones/articulos' ? alertasStock.value : 0,
       }))
-    if (adqItems.length > 0) {
-      grupos.push({ label: categoria, items: adqItems })
-    }
+    if (adqItems.length > 0) grupos.push({ label: categoria, items: adqItems })
   }
   return grupos
 })
 
 watch(menuGrupos, (grupos) => {
   for (const g of grupos) {
-    if (!(g.label in gruposAbiertos.value)) {
-      gruposAbiertos.value[g.label] = false
-    }
+    if (!(g.label in gruposAbiertos.value)) gruposAbiertos.value[g.label] = false
   }
 }, { immediate: true })
+
+// Cerrar dropdown al navegar
+watch(() => route.path, () => { dropdownAbierto.value = null })
 
 const iniciales = computed(() => {
   const a = auth.empleado?.apellido?.[0] || ''

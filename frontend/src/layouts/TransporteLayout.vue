@@ -11,7 +11,7 @@
              class="flex-shrink-0 object-contain"
              :class="sidebarOpen ? 'h-10 w-auto' : 'h-8 w-8'" />
         <span v-show="sidebarOpen" class="font-bold text-xs uppercase tracking-wide text-white truncate leading-tight">
-          TRANSPORTES
+          TRANSPORTE
         </span>
       </div>
 
