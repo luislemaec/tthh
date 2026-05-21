@@ -32,6 +32,15 @@ use Illuminate\Support\Facades\Route;
 // Rutas PÚBLICAS
 Route::post("/login", [AuthController::class, "login"])->name("login");
 
+// Servir archivos del storage público a través del API (resuelve SPA catch-all)
+Route::get("/storage-file/{path}", function (string $path) {
+    $path = ltrim(str_replace('..', '', $path), '/');
+    if (!\Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
+        abort(404);
+    }
+    return \Illuminate\Support\Facades\Storage::disk('public')->response($path);
+})->where('path', '.*');
+
 // Rutas PROTEGIDAS
 Route::middleware("auth:sanctum")->group(function () {
 

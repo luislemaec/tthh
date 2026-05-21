@@ -63,6 +63,7 @@ class AuthController extends Controller
                 'nivel'                   => $empleado->nivel,
                 'puede_solicitar_vehiculo'=> (bool) $empleado->puede_solicitar_vehiculo,
                 'modalidad_marcacion'     => $empleado->modalidad_marcacion,
+                'foto'                    => $empleado->foto,
             ],
             'roles' => $roles,
             'menu'  => $menu,

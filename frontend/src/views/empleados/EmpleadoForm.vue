@@ -334,8 +334,7 @@ const error         = ref("")
 const fotoUrl       = ref(null)
 const subiendoFoto  = ref(false)
 
-const baseUrl = import.meta.env.VITE_API_URL.replace(/\/api\/?$/, '')
-const storageUrl = (path) => path ? `${baseUrl}/storage/${path}` : null
+const storageUrl = (path) => path ? `${import.meta.env.VITE_API_URL}/storage-file/${path}` : null
 const departamentos       = ref([])
 const jornadas            = ref([])
 const partidasVacantes    = ref([])

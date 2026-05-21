@@ -118,8 +118,9 @@
             </svg>
           </button>
           <span class="text-sm text-gray-600">{{ auth.empleado?.apellido }} {{ auth.empleado?.nombre }}</span>
-          <div class="w-9 h-9 rounded-full text-white flex items-center justify-center text-sm font-bold" style="background-color:#0b5447;">
-            {{ iniciales }}
+          <div class="w-9 h-9 rounded-full overflow-hidden flex-shrink-0" style="background-color:#0b5447;">
+            <img v-if="fotoEmpleado" :src="fotoEmpleado" class="w-full h-full object-cover" />
+            <span v-else class="w-full h-full flex items-center justify-center text-white text-sm font-bold">{{ iniciales }}</span>
           </div>
         </div>
       </header>
@@ -146,8 +147,9 @@
           </svg>
         </button>
         <span class="text-sm text-gray-600">{{ auth.empleado?.apellido }} {{ auth.empleado?.nombre }}</span>
-        <div class="w-8 h-8 rounded-full text-white flex items-center justify-center text-sm font-bold" style="background-color:#0b5447;">
-          {{ iniciales }}
+        <div class="w-8 h-8 rounded-full overflow-hidden flex-shrink-0" style="background-color:#0b5447;">
+          <img v-if="fotoEmpleado" :src="fotoEmpleado" class="w-full h-full object-cover" />
+          <span v-else class="w-full h-full flex items-center justify-center text-white text-sm font-bold">{{ iniciales }}</span>
         </div>
       </div>
     </header>
@@ -297,6 +299,11 @@ const iniciales = computed(() => {
   const n = auth.empleado?.nombre?.[0] || ''
   const a = auth.empleado?.apellido?.[0] || ''
   return (n + a).toUpperCase()
+})
+
+const fotoEmpleado = computed(() => {
+  const foto = auth.empleado?.foto
+  return foto ? `${import.meta.env.VITE_API_URL}/storage-file/${foto}` : null
 })
 
 async function handleLogout() {
