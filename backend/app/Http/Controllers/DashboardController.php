@@ -187,33 +187,42 @@ class DashboardController extends Controller
         $nMes        = now()->month;
         $mesesLabels = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
-        // 1. Todos los departamentos top-level (≠ 999)
-        $padres = DB::table('dbo.ad_departamento')
+        // 1. Presidencia = único dept raíz (padre_id IS NULL o 999, ≠ 999)
+        $presidencia = DB::table('dbo.ad_departamento')
             ->where('id_depto', '!=', 999)
             ->where('estado', 'ACTIVO')
             ->where(function ($q) {
                 $q->whereNull('padre_id')->orWhere('padre_id', 999);
             })
             ->orderBy('id_depto')
-            ->get(['id_depto', 'nombre_depto']);
+            ->first(['id_depto', 'nombre_depto']);
 
-        if ($padres->isEmpty()) {
+        if (!$presidencia) {
             return response()->json(['meses' => [], 'unidades' => [], 'hijos' => []]);
         }
 
-        $idsPadres = $padres->pluck('id_depto');
+        // 2. Coordinaciones = hijos directos de Presidencia
+        $coordinaciones = DB::table('dbo.ad_departamento')
+            ->where('padre_id', $presidencia->id_depto)
+            ->where('estado', 'ACTIVO')
+            ->orderBy('id_depto')
+            ->get(['id_depto', 'nombre_depto']);
 
-        // 2. Hijos directos de los padres
-        $hijos = DB::table('dbo.ad_departamento')
-            ->whereIn('padre_id', $idsPadres)
+        // 3. Sub-áreas = hijos de las coordinaciones (para drill-down)
+        $idsCoords = $coordinaciones->pluck('id_depto');
+        $subAreas  = DB::table('dbo.ad_departamento')
+            ->whereIn('padre_id', $idsCoords)
             ->where('estado', 'ACTIVO')
             ->orderBy('id_depto')
             ->get(['id_depto', 'nombre_depto', 'padre_id']);
 
-        // 3. Todos los id_depto involucrados
-        $todosIds = $idsPadres->merge($hijos->pluck('id_depto'))->unique()->values();
+        // 4. Todos los id_depto involucrados
+        $todosIds = collect([$presidencia->id_depto])
+            ->merge($idsCoords)
+            ->merge($subAreas->pluck('id_depto'))
+            ->unique()->values();
 
-        // 4. Query de atrasos del año
+        // 5. Query de atrasos del año
         $rawAtrasos = DB::table('dbo.d2_cuadre_marcacion as c')
             ->join('dbo.ad_empleado as e', 'e.id_emp', '=', 'c.id_emp')
             ->whereYear('c.fecha', $anio)
@@ -235,29 +244,38 @@ class DashboardController extends Controller
             return $datos;
         };
 
-        $hijosPorPadre = $hijos->groupBy('padre_id');
+        $subAreasPorCoord = $subAreas->groupBy('padre_id');
 
-        // 5. Unidades del gráfico (un item por padre, agrupando hijos)
-        $unidades = $padres->map(function ($p) use ($hijosPorPadre, $sumarDatos) {
-            $idsGrupo = [$p->id_depto];
-            if ($hijosPorPadre->has($p->id_depto)) {
-                $idsGrupo = array_merge($idsGrupo, $hijosPorPadre[$p->id_depto]->pluck('id_depto')->toArray());
+        // 6. Vista principal: Presidencia (solo directos) + cada coordinación (suma con sub-áreas)
+        $unidades = collect();
+
+        $unidades->push([
+            'id_depto'    => $presidencia->id_depto,
+            'nombre'      => $presidencia->nombre_depto,
+            'tiene_hijos' => false,
+            'datos'       => $sumarDatos([$presidencia->id_depto]),
+        ]);
+
+        foreach ($coordinaciones as $coord) {
+            $idsGrupo = [$coord->id_depto];
+            if ($subAreasPorCoord->has($coord->id_depto)) {
+                $idsGrupo = array_merge($idsGrupo, $subAreasPorCoord[$coord->id_depto]->pluck('id_depto')->toArray());
             }
-            return [
-                'id_depto'    => $p->id_depto,
-                'nombre'      => $p->nombre_depto,
-                'tiene_hijos' => $hijosPorPadre->has($p->id_depto),
+            $unidades->push([
+                'id_depto'    => $coord->id_depto,
+                'nombre'      => $coord->nombre_depto,
+                'tiene_hijos' => $subAreasPorCoord->has($coord->id_depto),
                 'datos'       => $sumarDatos($idsGrupo),
-            ];
-        });
+            ]);
+        }
 
-        // 6. Detalle por hijo (para drill-down)
+        // 7. Detalle de sub-áreas por coordinación (drill-down)
         $resultHijos = [];
-        foreach ($hijosPorPadre as $padreId => $grupo) {
-            $resultHijos[$padreId] = $grupo->map(fn($h) => [
-                'id_depto' => $h->id_depto,
-                'nombre'   => $h->nombre_depto,
-                'datos'    => $sumarDatos([$h->id_depto]),
+        foreach ($subAreasPorCoord as $coordId => $grupo) {
+            $resultHijos[$coordId] = $grupo->map(fn($s) => [
+                'id_depto' => $s->id_depto,
+                'nombre'   => $s->nombre_depto,
+                'datos'    => $sumarDatos([$s->id_depto]),
             ])->values();
         }
 
