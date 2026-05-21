@@ -333,6 +333,9 @@ const guardando     = ref(false)
 const error         = ref("")
 const fotoUrl       = ref(null)
 const subiendoFoto  = ref(false)
+
+const baseUrl = import.meta.env.VITE_API_URL.replace(/\/api\/?$/, '')
+const storageUrl = (path) => path ? `${baseUrl}/storage/${path}` : null
 const departamentos       = ref([])
 const jornadas            = ref([])
 const partidasVacantes    = ref([])
@@ -433,7 +436,7 @@ async function subirFoto(e) {
     const fd = new FormData()
     fd.append('foto', file)
     const { data } = await api.post(`/empleados/${route.params.id}/foto`, fd)
-    fotoUrl.value = data.foto_url
+    fotoUrl.value = storageUrl(data.foto)
   } catch (err) {
     const msg = err?.response?.data?.message || err?.response?.data?.errors?.foto?.[0] || 'Error al subir la foto.'
     alert(msg)
@@ -496,7 +499,7 @@ onMounted(async () => {
     form.value.acumula_decimos          = data.acumula_decimo_tercero   ?? false
     form.value.modalidad_marcacion      = data.modalidad_marcacion      ?? 'PRESENCIAL'
     form.value.puede_solicitar_vehiculo = data.puede_solicitar_vehiculo ?? false
-    fotoUrl.value = data.foto_url || null
+    fotoUrl.value = storageUrl(data.foto)
   }
 })
 </script>

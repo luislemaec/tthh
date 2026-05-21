@@ -416,7 +416,7 @@ class EmpleadoController extends Controller
         $path = $request->file('foto')->store('empleados', 'public');
         $emp->update(['foto' => $path]);
 
-        return response()->json(['foto_url' => Storage::disk('public')->url($path)]);
+        return response()->json(['foto' => $path]);
     }
 
     // DELETE /api/empleados/{id}/foto
