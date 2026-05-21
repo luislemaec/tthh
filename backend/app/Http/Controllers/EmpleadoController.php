@@ -53,8 +53,10 @@ class EmpleadoController extends Controller
     // GET /api/empleados/{id}
     public function show($id)
     {
-        $emp = Empleado::with(["departamento", "emails"])->findOrFail($id);
-        return response()->json($emp);
+        $emp  = Empleado::with(["departamento", "emails"])->findOrFail($id);
+        $data = $emp->toArray();
+        $data['foto_url'] = $emp->foto_url;
+        return response()->json($data);
     }
 
     // Generar id_emp correlativo
@@ -242,7 +244,10 @@ class EmpleadoController extends Controller
             ['sueldo' => $emp->sueldo, 'estado' => $emp->estado, 'id_depto' => $emp->id_depto, 'cargo_empleado' => $emp->cargo_empleado],
             $request, 'Actualización de empleado: ' . trim($emp->apellido_emp . ' ' . $emp->nombre_emp));
 
-        return response()->json($emp->load(["departamento", "emails"]));
+        $emp->load(["departamento", "emails"]);
+        $data = $emp->toArray();
+        $data['foto_url'] = $emp->foto_url;
+        return response()->json($data);
     }
 
     // DELETE /api/empleados/{id}

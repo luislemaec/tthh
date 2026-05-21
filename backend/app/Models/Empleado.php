@@ -30,8 +30,7 @@ class Empleado extends Authenticatable
         "created_at", "created_by", "updated_at", "updated_by",
     ];
 
-    protected $hidden  = ["password", "clave"];
-    protected $appends = ["foto_url"];
+    protected $hidden = ["password", "clave"];
 
     public function departamento()
     {
@@ -54,9 +53,18 @@ class Empleado extends Authenticatable
         return $this->belongsTo(Jornada::class, "id_jornada", "id_jornada");
     }
 
+    public function getFotoAttribute($value): ?string
+    {
+        if (is_resource($value)) {
+            return stream_get_contents($value) ?: null;
+        }
+        return $value ?: null;
+    }
+
     public function getFotoUrlAttribute(): ?string
     {
-        return $this->foto ? \Illuminate\Support\Facades\Storage::disk('public')->url($this->foto) : null;
+        $ruta = $this->foto;
+        return $ruta ? \Illuminate\Support\Facades\Storage::disk('public')->url($ruta) : null;
     }
 
     public function getAuthPassword()
