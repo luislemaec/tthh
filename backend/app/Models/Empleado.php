@@ -30,7 +30,8 @@ class Empleado extends Authenticatable
         "created_at", "created_by", "updated_at", "updated_by",
     ];
 
-    protected $hidden = ["password", "clave"];
+    protected $hidden  = ["password", "clave"];
+    protected $appends = ["foto_url"];
 
     public function departamento()
     {

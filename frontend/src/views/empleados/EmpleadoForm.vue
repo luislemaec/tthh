@@ -432,12 +432,11 @@ async function subirFoto(e) {
   try {
     const fd = new FormData()
     fd.append('foto', file)
-    const { data } = await api.post(`/empleados/${route.params.id}/foto`, fd, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    })
+    const { data } = await api.post(`/empleados/${route.params.id}/foto`, fd)
     fotoUrl.value = data.foto_url
-  } catch {
-    alert('Error al subir la foto.')
+  } catch (err) {
+    const msg = err?.response?.data?.message || err?.response?.data?.errors?.foto?.[0] || 'Error al subir la foto.'
+    alert(msg)
   } finally {
     subiendoFoto.value = false
     e.target.value = ''
