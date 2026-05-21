@@ -118,6 +118,8 @@ Route::middleware("auth:sanctum")->group(function () {
 
     Route::post("/empleados/importar-distributivo", [EmpleadoController::class, "importarDistributivo"]);
     Route::post("/empleados/{id}/reset-password",  [EmpleadoController::class, "resetPassword"]);
+    Route::post("/empleados/{id}/foto",            [EmpleadoController::class, "subirFoto"]);
+    Route::delete("/empleados/{id}/foto",          [EmpleadoController::class, "eliminarFoto"]);
     Route::post("/cambiar-password",               [EmpleadoController::class, "cambiarPassword"]);
 
     // Asignación de roles a empleados

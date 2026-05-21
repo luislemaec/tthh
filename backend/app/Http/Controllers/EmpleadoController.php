@@ -9,6 +9,7 @@ use App\Services\AuditoriaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 class EmpleadoController extends Controller
 {
@@ -394,5 +395,35 @@ class EmpleadoController extends Controller
             ->orderBy('partida_individual')
             ->get(['id_emp', 'nombre_emp', 'apellido_emp', 'partida_individual', 'partida_presupuestaria']);
         return response()->json($partidas);
+    }
+
+    // POST /api/empleados/{id}/foto
+    public function subirFoto(Request $request, $id)
+    {
+        $request->validate(['foto' => 'required|image|max:2048']);
+
+        $emp = Empleado::findOrFail($id);
+
+        if ($emp->foto) {
+            Storage::disk('public')->delete($emp->foto);
+        }
+
+        $path = $request->file('foto')->store('empleados', 'public');
+        $emp->update(['foto' => $path]);
+
+        return response()->json(['foto_url' => Storage::disk('public')->url($path)]);
+    }
+
+    // DELETE /api/empleados/{id}/foto
+    public function eliminarFoto($id)
+    {
+        $emp = Empleado::findOrFail($id);
+
+        if ($emp->foto) {
+            Storage::disk('public')->delete($emp->foto);
+            $emp->update(['foto' => null]);
+        }
+
+        return response()->json(['message' => 'Foto eliminada.']);
     }
 }

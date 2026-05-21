@@ -11,6 +11,33 @@
 
     <form @submit.prevent="guardar" class="space-y-6">
 
+      <!-- Foto del empleado (solo en edición) -->
+      <div v-if="esEdicion" class="bg-white rounded-xl shadow p-6">
+        <h2 class="text-lg font-semibold text-gray-700 border-b pb-2 mb-4">Fotografía</h2>
+        <div class="flex items-center gap-6">
+          <div class="w-28 h-28 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0 border-2 border-gray-200">
+            <img v-if="fotoUrl" :src="fotoUrl" class="w-full h-full object-cover" alt="Foto empleado" />
+            <svg v-else class="w-14 h-14 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+            </svg>
+          </div>
+          <div class="space-y-2">
+            <label class="block">
+              <span class="sr-only">Seleccionar foto</span>
+              <input type="file" accept="image/*" @change="subirFoto" :disabled="subiendoFoto"
+                class="block w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-[#0b5447] file:text-white hover:file:bg-[#00372e] disabled:opacity-50 cursor-pointer" />
+            </label>
+            <p class="text-xs text-gray-400">JPG, PNG o GIF — máximo 2 MB</p>
+            <button v-if="fotoUrl" type="button" @click="eliminarFoto" :disabled="subiendoFoto"
+              class="text-xs text-red-500 hover:text-red-700 transition">
+              Eliminar foto
+            </button>
+            <p v-if="subiendoFoto" class="text-xs text-blue-500">Subiendo...</p>
+          </div>
+        </div>
+      </div>
+
       <!-- Datos Personales -->
       <div class="bg-white rounded-xl shadow p-6 space-y-4">
         <h2 class="text-lg font-semibold text-gray-700 border-b pb-2">Datos Personales</h2>
@@ -304,6 +331,8 @@ const router = useRouter()
 const esEdicion     = computed(() => !!route.params.id)
 const guardando     = ref(false)
 const error         = ref("")
+const fotoUrl       = ref(null)
+const subiendoFoto  = ref(false)
 const departamentos       = ref([])
 const jornadas            = ref([])
 const partidasVacantes    = ref([])
@@ -396,6 +425,38 @@ const guardar = async () => {
   }
 }
 
+async function subirFoto(e) {
+  const file = e.target.files?.[0]
+  if (!file) return
+  subiendoFoto.value = true
+  try {
+    const fd = new FormData()
+    fd.append('foto', file)
+    const { data } = await api.post(`/empleados/${route.params.id}/foto`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    fotoUrl.value = data.foto_url
+  } catch {
+    alert('Error al subir la foto.')
+  } finally {
+    subiendoFoto.value = false
+    e.target.value = ''
+  }
+}
+
+async function eliminarFoto() {
+  if (!confirm('¿Eliminar la foto del empleado?')) return
+  subiendoFoto.value = true
+  try {
+    await api.delete(`/empleados/${route.params.id}/foto`)
+    fotoUrl.value = null
+  } catch {
+    alert('Error al eliminar la foto.')
+  } finally {
+    subiendoFoto.value = false
+  }
+}
+
 onMounted(async () => {
   const [{ data: deps }, { data: jors }, { data: partidas }, { data: mods }] = await Promise.all([
     api.get("/departamentos"),
@@ -436,6 +497,7 @@ onMounted(async () => {
     form.value.acumula_decimos          = data.acumula_decimo_tercero   ?? false
     form.value.modalidad_marcacion      = data.modalidad_marcacion      ?? 'PRESENCIAL'
     form.value.puede_solicitar_vehiculo = data.puede_solicitar_vehiculo ?? false
+    fotoUrl.value = data.foto_url || null
   }
 })
 </script>

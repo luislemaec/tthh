@@ -26,6 +26,7 @@ class Empleado extends Authenticatable
         "grupo_ocupacional", "proceso_institucional",
         "acumula_fondos_reserva", "acumula_decimo_tercero", "acumula_decimo_cuarto",
         "puede_solicitar_vehiculo",
+        "foto",
         "created_at", "created_by", "updated_at", "updated_by",
     ];
 
@@ -50,6 +51,11 @@ class Empleado extends Authenticatable
     public function jornada()
     {
         return $this->belongsTo(Jornada::class, "id_jornada", "id_jornada");
+    }
+
+    public function getFotoUrlAttribute(): ?string
+    {
+        return $this->foto ? \Illuminate\Support\Facades\Storage::disk('public')->url($this->foto) : null;
     }
 
     public function getAuthPassword()
