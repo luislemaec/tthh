@@ -11,6 +11,9 @@ api.interceptors.request.use(cfg => {
   const token = localStorage.getItem('token')
   if (token) cfg.headers.Authorization = `Bearer ${token}`
   delete cfg.headers['X-XSRF-TOKEN']
+  if (cfg.data instanceof FormData) {
+    delete cfg.headers['Content-Type']
+  }
   return cfg
 })
 

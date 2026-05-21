@@ -540,9 +540,7 @@ async function guardar() {
     if (imagenFile.value) {
       const fd = new FormData()
       fd.append('imagen', imagenFile.value)
-      await api.post(`/adquisiciones/articulos/${articuloId}/imagen`, fd, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
+      await api.post(`/adquisiciones/articulos/${articuloId}/imagen`, fd)
     }
 
     modal.value.show = false
