@@ -200,51 +200,107 @@
       </div>
     </template>
 
-    <!-- Tabla por departamento (solo Admin y TH) -->
-    <div v-if="esAdmin" class="bg-white rounded-xl shadow overflow-hidden">
-      <div class="px-6 py-4 border-b">
-        <h2 class="text-lg font-semibold text-gray-700">Empleados por Departamento</h2>
+    <!-- Gráfico atrasos por unidad (solo roles TH) -->
+    <div v-if="esThRol && atrasosData" class="bg-white rounded-xl shadow p-6">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-base font-semibold text-gray-700">
+            Atrasos por unidad organizacional — {{ anioActual }}
+          </h2>
+          <p v-if="vistaHijos" class="text-sm text-gray-500 mt-0.5">
+            {{ vistaHijos.padre.nombre }} — detalle por área
+          </p>
+          <p v-else class="text-sm text-gray-400 mt-0.5">
+            Haz clic en una unidad con sub-áreas para ver el detalle
+          </p>
+        </div>
+        <button v-if="vistaHijos" @click="volverAPadres"
+          class="text-sm px-3 py-1.5 rounded-lg border border-gray-300 hover:bg-gray-50 transition">
+          ← Volver
+        </button>
       </div>
-      <table class="w-full text-sm">
-        <thead class="bg-gray-50 border-b">
-          <tr>
-            <th class="text-left px-6 py-3 text-gray-600 font-medium">Departamento</th>
-            <th class="text-left px-6 py-3 text-gray-600 font-medium">Total</th>
-            <th class="text-left px-6 py-3 text-gray-600 font-medium">Proporción</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="dep in stats.por_departamento" :key="dep.nombre_depto"
-            class="border-b hover:bg-gray-50">
-            <td class="px-6 py-3 font-medium">{{ dep.nombre_depto }}</td>
-            <td class="px-6 py-3">{{ dep.total }}</td>
-            <td class="px-6 py-3 w-48">
-              <div class="flex items-center gap-2">
-                <div class="flex-1 bg-gray-200 rounded-full h-2">
-                  <div class="bg-[#0b5447] h-2 rounded-full"
-                    :style="{ width: (dep.total / stats.total_activos * 100) + '%' }">
-                  </div>
-                </div>
-                <span class="text-xs text-gray-500">
-                  {{ Math.round(dep.total / stats.total_activos * 100) }}%
-                </span>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <div class="relative h-72">
+        <canvas ref="chartCanvas"></canvas>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
+import { Chart, BarController, BarElement, CategoryScale, LinearScale, Tooltip, Legend } from 'chart.js'
 import api from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 
-const auth          = useAuthStore()
-const esAdmin       = computed(() => auth.tieneRol('ADMINISTRADOR') || auth.tieneRol('TALENTO HUMANO'))
+Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip, Legend)
+
+const auth           = useAuthStore()
+const esAdmin        = computed(() => auth.tieneRol('ADMINISTRADOR') || auth.tieneRol('TALENTO HUMANO'))
+const esThRol        = computed(() => auth.tieneRol('TALENTO HUMANO') || auth.tieneRol('TH NOMINA') || auth.tieneRol('TH ACCIONES PERSONAL'))
 const esEmpleadoSolo = computed(() => !stats.value.es_supervisor && !stats.value.es_admin_th)
+
+// ── Chart.js ─────────────────────────────────────────────────────────────────
+const chartCanvas   = ref(null)
+const chartInstance = ref(null)
+const atrasosData   = ref(null)
+const vistaHijos    = ref(null)
+
+const COLORES = ['#0b5447','#2563eb','#9333ea','#d97706','#dc2626','#059669','#db2777','#0891b2','#65a30d','#7c3aed']
+
+function destruirChart() {
+  if (chartInstance.value) { chartInstance.value.destroy(); chartInstance.value = null }
+}
+
+function renderChart(labels, datasets) {
+  destruirChart()
+  chartInstance.value = new Chart(chartCanvas.value, {
+    type: 'bar',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom' },
+        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y} días` } },
+      },
+      scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
+      onClick: (_, elements) => {
+        if (!elements.length || vistaHijos.value) return
+        const padre = atrasosData.value.unidades[elements[0].datasetIndex]
+        if (!padre.tiene_hijos) return
+        const hijos = atrasosData.value.hijos[padre.id_depto]
+        if (!hijos?.length) return
+        vistaHijos.value = { padre, hijos }
+        mostrarHijos()
+      },
+    },
+  })
+}
+
+function mostrarPadres() {
+  const { meses, unidades } = atrasosData.value
+  renderChart(meses, unidades.map((p, i) => ({
+    label: p.nombre,
+    data: p.datos,
+    backgroundColor: COLORES[i % COLORES.length],
+    borderRadius: 4,
+  })))
+}
+
+function mostrarHijos() {
+  const { meses } = atrasosData.value
+  renderChart(meses, vistaHijos.value.hijos.map((h, i) => ({
+    label: h.nombre,
+    data: h.datos,
+    backgroundColor: COLORES[i % COLORES.length],
+    borderRadius: 4,
+  })))
+}
+
+function volverAPadres() {
+  vistaHijos.value = null
+  mostrarPadres()
+}
 
 const anioActual = new Date().getFullYear()
 const MESES_CORTOS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
@@ -301,5 +357,14 @@ function pct(val) {
 onMounted(async () => {
   const { data } = await api.get('/dashboard')
   stats.value = data
+
+  if (esThRol.value) {
+    try {
+      const { data: dataAtrasos } = await api.get('/dashboard/atrasos-coordinacion')
+      atrasosData.value = dataAtrasos
+      await nextTick()
+      if (dataAtrasos.unidades?.length) mostrarPadres()
+    } catch {}
+  }
 })
 </script>

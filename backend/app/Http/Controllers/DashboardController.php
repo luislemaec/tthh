@@ -180,4 +180,91 @@ class DashboardController extends Controller
             "datos_empleado"        => $datosEmpleado,
         ]);
     }
+
+    public function atrasosCoordinacion(Request $request)
+    {
+        $anio        = now()->year;
+        $nMes        = now()->month;
+        $mesesLabels = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+        // 1. Todos los departamentos top-level (≠ 999)
+        $padres = DB::table('dbo.ad_departamento')
+            ->where('id_depto', '!=', 999)
+            ->where('estado', 'ACTIVO')
+            ->where(function ($q) {
+                $q->whereNull('padre_id')->orWhere('padre_id', 999);
+            })
+            ->orderBy('id_depto')
+            ->get(['id_depto', 'nombre_depto']);
+
+        if ($padres->isEmpty()) {
+            return response()->json(['meses' => [], 'unidades' => [], 'hijos' => []]);
+        }
+
+        $idsPadres = $padres->pluck('id_depto');
+
+        // 2. Hijos directos de los padres
+        $hijos = DB::table('dbo.ad_departamento')
+            ->whereIn('padre_id', $idsPadres)
+            ->where('estado', 'ACTIVO')
+            ->orderBy('id_depto')
+            ->get(['id_depto', 'nombre_depto', 'padre_id']);
+
+        // 3. Todos los id_depto involucrados
+        $todosIds = $idsPadres->merge($hijos->pluck('id_depto'))->unique()->values();
+
+        // 4. Query de atrasos del año
+        $rawAtrasos = DB::table('dbo.d2_cuadre_marcacion as c')
+            ->join('dbo.ad_empleado as e', 'e.id_emp', '=', 'c.id_emp')
+            ->whereYear('c.fecha', $anio)
+            ->where(function ($q) {
+                $q->where('c.atraso_entrada', '>', 0)
+                  ->orWhere('c.atraso_lunch', '>', 0)
+                  ->orWhere('c.atraso_salida', '>', 0);
+            })
+            ->whereIn('e.id_depto', $todosIds)
+            ->selectRaw('EXTRACT(MONTH FROM c.fecha)::int as mes, e.id_depto, COUNT(*) as dias')
+            ->groupByRaw('EXTRACT(MONTH FROM c.fecha)::int, e.id_depto')
+            ->get();
+
+        $sumarDatos = function (array $ids) use ($rawAtrasos, $nMes) {
+            $datos = [];
+            for ($m = 1; $m <= $nMes; $m++) {
+                $datos[] = (int) $rawAtrasos->whereIn('id_depto', $ids)->where('mes', $m)->sum('dias');
+            }
+            return $datos;
+        };
+
+        $hijosPorPadre = $hijos->groupBy('padre_id');
+
+        // 5. Unidades del gráfico (un item por padre, agrupando hijos)
+        $unidades = $padres->map(function ($p) use ($hijosPorPadre, $sumarDatos) {
+            $idsGrupo = [$p->id_depto];
+            if ($hijosPorPadre->has($p->id_depto)) {
+                $idsGrupo = array_merge($idsGrupo, $hijosPorPadre[$p->id_depto]->pluck('id_depto')->toArray());
+            }
+            return [
+                'id_depto'    => $p->id_depto,
+                'nombre'      => $p->nombre_depto,
+                'tiene_hijos' => $hijosPorPadre->has($p->id_depto),
+                'datos'       => $sumarDatos($idsGrupo),
+            ];
+        });
+
+        // 6. Detalle por hijo (para drill-down)
+        $resultHijos = [];
+        foreach ($hijosPorPadre as $padreId => $grupo) {
+            $resultHijos[$padreId] = $grupo->map(fn($h) => [
+                'id_depto' => $h->id_depto,
+                'nombre'   => $h->nombre_depto,
+                'datos'    => $sumarDatos([$h->id_depto]),
+            ])->values();
+        }
+
+        return response()->json([
+            'meses'    => array_slice($mesesLabels, 0, $nMes),
+            'unidades' => $unidades->values(),
+            'hijos'    => $resultHijos,
+        ]);
+    }
 }

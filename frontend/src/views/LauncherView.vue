@@ -28,7 +28,7 @@
             <span v-else class="text-white text-3xl font-bold">{{ inicialesEmpleado }}</span>
           </div>
           <h1 class="text-2xl font-bold text-white tracking-wide">CONSEJO DE COMUNICACIÓN</h1>
-          <p class="text-green-200 text-sm mt-1">Sistema Integral Tecnológico - SIT</p>
+          <p class="text-green-200 text-sm mt-1">Seleccione la ficha que desea procesar:</p>
         </div>
 
         <!-- Tarjetas de aplicativos -->

@@ -113,6 +113,7 @@ Route::middleware("auth:sanctum")->group(function () {
 
     // Dashboard
     Route::get("/dashboard", [DashboardController::class, "index"]);
+    Route::get("/dashboard/atrasos-coordinacion", [DashboardController::class, "atrasosCoordinacion"]);
 
     // Departamentos
     Route::get("/departamentos", [EmpleadoController::class, "departamentos"]);
