@@ -53,14 +53,6 @@ class Empleado extends Authenticatable
         return $this->belongsTo(Jornada::class, "id_jornada", "id_jornada");
     }
 
-    public function getFotoAttribute($value): ?string
-    {
-        if (is_resource($value)) {
-            return stream_get_contents($value) ?: null;
-        }
-        return $value ?: null;
-    }
-
     public function getFotoUrlAttribute(): ?string
     {
         $ruta = $this->foto;
