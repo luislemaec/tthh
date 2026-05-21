@@ -8,9 +8,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::connection('pgsql')->table('dbo.ad_empleado', function (Blueprint $table) {
-            $table->string('foto', 500)->nullable()->after('updated_by');
-        });
+        if (!Schema::connection('pgsql')->hasColumn('dbo.ad_empleado', 'foto')) {
+            Schema::connection('pgsql')->table('dbo.ad_empleado', function (Blueprint $table) {
+                $table->string('foto', 500)->nullable()->after('updated_by');
+            });
+        }
     }
 
     public function down(): void
