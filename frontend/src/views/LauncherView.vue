@@ -20,9 +20,13 @@
 
       <!-- Contenido central -->
       <div class="flex-1 flex flex-col items-center justify-center p-8">
-        <!-- Logo + nombre institución -->
+        <!-- Avatar empleado + nombre institución -->
         <div class="text-center mb-10">
-          <img src="@/assets/LOGOS-CONSEJOBLANCOH.png" alt="Logo" class="h-16 mx-auto mb-4 object-contain" />
+          <div class="w-24 h-24 rounded-full overflow-hidden mx-auto mb-4 border-4 border-white/30 flex items-center justify-center"
+               style="background-color:#ffffff22;">
+            <img v-if="fotoEmpleado" :src="fotoEmpleado" class="w-full h-full object-cover" />
+            <span v-else class="text-white text-3xl font-bold">{{ inicialesEmpleado }}</span>
+          </div>
           <h1 class="text-2xl font-bold text-white tracking-wide">CONSEJO DE COMUNICACIÓN</h1>
           <p class="text-green-200 text-sm mt-1">Sistema Integral Tecnológico - SIT</p>
         </div>
@@ -159,6 +163,17 @@ const ANIMATIONS = [
 function onAnimEnd() {
   cardAnimClass.value = ''
 }
+
+const fotoEmpleado = computed(() => {
+  const foto = store.empleado?.foto
+  return foto ? `${import.meta.env.VITE_API_URL}/storage-file/${foto}` : null
+})
+
+const inicialesEmpleado = computed(() => {
+  const a = store.empleado?.apellido?.[0] || ''
+  const n = store.empleado?.nombre?.[0] || ''
+  return (a + n).toUpperCase()
+})
 
 const tieneAccesoAdquisiciones = store.tieneAdquisiciones
 
