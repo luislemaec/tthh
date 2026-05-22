@@ -286,7 +286,6 @@ function toggleUnidad(idDepto) {
   const enHijos = !!vistaHijos.value
   const set = enHijos ? seleccionadosHijos.value : seleccionados.value
   if (set.has(idDepto)) {
-    if (set.size <= 1) return
     set.delete(idDepto)
   } else {
     set.add(idDepto)
@@ -420,9 +419,9 @@ onMounted(async () => {
     try {
       const { data: dataAtrasos } = await api.get('/dashboard/atrasos-coordinacion')
       atrasosData.value = dataAtrasos
-      seleccionados.value = new Set(dataAtrasos.unidades.map(u => u.id_depto))
+      seleccionados.value = new Set()
       await nextTick()
-      if (dataAtrasos.unidades?.length) mostrarPadres()
+      mostrarPadres()
     } catch {}
   }
 })

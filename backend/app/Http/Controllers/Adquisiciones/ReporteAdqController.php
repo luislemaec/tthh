@@ -189,7 +189,7 @@ class ReporteAdqController extends Controller
             ->join('dbo.ad_departamento as d', 'd.id_depto', '=', 's.id_depto')
             ->join('adq.solicitud_material_det as sd', 'sd.solicitud_id', '=', 's.id')
             ->whereIn('s.estado', ['APROBADO', 'DESPACHADO', 'DESPACHADO PARCIAL'])
-            ->whereBetween('s.fecha_solicitud', [$desde, $hasta])
+            ->whereBetween('s.fecha', [$desde, $hasta])
             ->where('d.id_depto', '!=', 999)
             ->select('d.nombre_depto',
                 DB::raw('COUNT(DISTINCT s.id) as total_solicitudes'),
@@ -204,7 +204,7 @@ class ReporteAdqController extends Controller
             ->join('adq.solicitud_material as s', 's.id', '=', 'sd.solicitud_id')
             ->join('adq.articulo as a', 'a.id', '=', 'sd.articulo_id')
             ->whereIn('s.estado', ['APROBADO', 'DESPACHADO', 'DESPACHADO PARCIAL'])
-            ->whereBetween('s.fecha_solicitud', [$desde, $hasta])
+            ->whereBetween('s.fecha', [$desde, $hasta])
             ->select('a.nombre', 'a.codigo',
                 DB::raw('SUM(sd.cantidad_solicitada) as total_solicitado'),
                 DB::raw('COUNT(DISTINCT s.id) as total_solicitudes'))
