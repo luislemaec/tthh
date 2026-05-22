@@ -27,6 +27,11 @@
             <img v-if="fotoEmpleado" :src="fotoEmpleado" class="w-full h-full object-cover" />
             <span v-else class="text-white text-3xl font-bold">{{ inicialesEmpleado }}</span>
           </div>
+          <!-- Info usuario -->
+        <div class="mt-10 text-center text-green-200 text-sm">
+          <p>{{ store.empleado?.apellido }} {{ store.empleado?.nombre }}</p>
+        </div>
+
          <!----- <h1 class="text-2xl font-bold text-white tracking-wide">SELECCIONE UNA DE LAS TARJETAS</h1> --->
         <!-------  <p class="text-green-200 text-sm mt-1">_______________________</p>----->*
         </div>
