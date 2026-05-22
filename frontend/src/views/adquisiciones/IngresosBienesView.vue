@@ -213,6 +213,7 @@
                   <div>
                     <span class="font-mono text-xs text-gray-400 mr-2">{{ a.codigo }}</span>
                     <span class="font-medium">{{ a.nombre }}</span>
+                    <span v-if="a.unidad_medida" class="ml-2 text-xs text-blue-600 font-medium">({{ a.unidad_medida }})</span>
                   </div>
                   <div class="text-xs text-gray-500 text-right">
                     <div>Stock: {{ a.stock_actual }}</div>
