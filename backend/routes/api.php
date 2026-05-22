@@ -374,6 +374,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get('reportes/libro-compras',                [ReporteAdqController::class, 'libroCompras']);
         Route::get('reportes/egresos-valorizados',          [ReporteAdqController::class, 'egresosValorizados']);
         Route::get('reportes/articulos',                    [ReporteAdqController::class, 'articulosBuscar']);
+        Route::get('reportes/analitica',                    [ReporteAdqController::class, 'analitica']);
 
         // Solicitudes de materiales
         Route::get('solicitudes',                           [SolicitudMaterialController::class, 'index']);

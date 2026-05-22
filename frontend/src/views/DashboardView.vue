@@ -211,7 +211,7 @@
             {{ vistaHijos.padre.nombre }} — detalle por área
           </p>
           <p v-else class="text-sm text-gray-400 mt-0.5">
-            Haz clic en una unidad con sub-áreas para ver el detalle
+            Haz clic en una coordinación para ver el detalle de sus áreas
           </p>
         </div>
         <button v-if="vistaHijos" @click="volverAPadres"
@@ -219,8 +219,27 @@
           ← Volver
         </button>
       </div>
-      <div class="relative h-72">
-        <canvas ref="chartCanvas"></canvas>
+      <div class="flex gap-6">
+        <!-- Canvas -->
+        <div class="flex-1 relative h-72">
+          <canvas ref="chartCanvas"></canvas>
+        </div>
+        <!-- Panel de checkboxes -->
+        <div class="w-52 flex-shrink-0 border-l pl-4 flex flex-col gap-1.5 overflow-y-auto max-h-72">
+          <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">
+            {{ vistaHijos ? 'Áreas' : 'Unidades' }}
+          </p>
+          <label v-for="u in listaCheckboxes" :key="u.id_depto"
+            class="flex items-center gap-2 cursor-pointer group">
+            <input type="checkbox"
+              :checked="seleccionActual.has(u.id_depto)"
+              @change="toggleUnidad(u.id_depto)"
+              class="rounded cursor-pointer accent-[#0b5447]" />
+            <span class="w-3 h-3 rounded-sm flex-shrink-0"
+              :style="{ backgroundColor: colorOriginal(u.id_depto) }"></span>
+            <span class="text-xs text-gray-700 leading-tight group-hover:text-gray-900">{{ u.nombre }}</span>
+          </label>
+        </div>
       </div>
     </div>
   </div>
@@ -240,12 +259,46 @@ const esThRol        = computed(() => auth.tieneRol('TALENTO HUMANO') || auth.ti
 const esEmpleadoSolo = computed(() => !stats.value.es_supervisor && !stats.value.es_admin_th)
 
 // ── Chart.js ─────────────────────────────────────────────────────────────────
-const chartCanvas   = ref(null)
-const chartInstance = ref(null)
-const atrasosData   = ref(null)
-const vistaHijos    = ref(null)
+const chartCanvas          = ref(null)
+const chartInstance        = ref(null)
+const atrasosData          = ref(null)
+const vistaHijos           = ref(null)
+const seleccionados        = ref(new Set())
+const seleccionadosHijos   = ref(new Set())
+const unidadesRenderizadas = ref([])
 
 const COLORES = ['#0b5447','#2563eb','#9333ea','#d97706','#dc2626','#059669','#db2777','#0891b2','#65a30d','#7c3aed']
+
+const listaCheckboxes = computed(() =>
+  vistaHijos.value ? vistaHijos.value.hijos : (atrasosData.value?.unidades ?? [])
+)
+const seleccionActual = computed(() =>
+  vistaHijos.value ? seleccionadosHijos.value : seleccionados.value
+)
+
+function colorOriginal(idDepto) {
+  const lista = vistaHijos.value ? vistaHijos.value.hijos : (atrasosData.value?.unidades ?? [])
+  const idx = lista.findIndex(u => u.id_depto === idDepto)
+  return COLORES[idx % COLORES.length]
+}
+
+function toggleUnidad(idDepto) {
+  const enHijos = !!vistaHijos.value
+  const set = enHijos ? seleccionadosHijos.value : seleccionados.value
+  if (set.has(idDepto)) {
+    if (set.size <= 1) return
+    set.delete(idDepto)
+  } else {
+    set.add(idDepto)
+  }
+  if (enHijos) {
+    seleccionadosHijos.value = new Set(set)
+    mostrarHijos()
+  } else {
+    seleccionados.value = new Set(set)
+    mostrarPadres()
+  }
+}
 
 function destruirChart() {
   if (chartInstance.value) { chartInstance.value.destroy(); chartInstance.value = null }
@@ -260,16 +313,17 @@ function renderChart(labels, datasets) {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { position: 'bottom' },
+        legend: { display: false },
         tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y} días` } },
       },
       scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
       onClick: (_, elements) => {
         if (!elements.length || vistaHijos.value) return
-        const padre = atrasosData.value.unidades[elements[0].datasetIndex]
-        if (!padre.tiene_hijos) return
+        const padre = unidadesRenderizadas.value[elements[0].datasetIndex]
+        if (!padre?.tiene_hijos) return
         const hijos = atrasosData.value.hijos[padre.id_depto]
         if (!hijos?.length) return
+        seleccionadosHijos.value = new Set(hijos.map(h => h.id_depto))
         vistaHijos.value = { padre, hijos }
         mostrarHijos()
       },
@@ -279,26 +333,30 @@ function renderChart(labels, datasets) {
 
 function mostrarPadres() {
   const { meses, unidades } = atrasosData.value
-  renderChart(meses, unidades.map((p, i) => ({
+  const filtradas = unidades.filter(u => seleccionados.value.has(u.id_depto))
+  unidadesRenderizadas.value = filtradas
+  renderChart(meses, filtradas.map(p => ({
     label: p.nombre,
     data: p.datos,
-    backgroundColor: COLORES[i % COLORES.length],
+    backgroundColor: colorOriginal(p.id_depto),
     borderRadius: 4,
   })))
 }
 
 function mostrarHijos() {
   const { meses } = atrasosData.value
-  renderChart(meses, vistaHijos.value.hijos.map((h, i) => ({
+  const filtrados = vistaHijos.value.hijos.filter(h => seleccionadosHijos.value.has(h.id_depto))
+  renderChart(meses, filtrados.map(h => ({
     label: h.nombre,
     data: h.datos,
-    backgroundColor: COLORES[i % COLORES.length],
+    backgroundColor: colorOriginal(h.id_depto),
     borderRadius: 4,
   })))
 }
 
 function volverAPadres() {
   vistaHijos.value = null
+  seleccionadosHijos.value = new Set()
   mostrarPadres()
 }
 
@@ -362,6 +420,7 @@ onMounted(async () => {
     try {
       const { data: dataAtrasos } = await api.get('/dashboard/atrasos-coordinacion')
       atrasosData.value = dataAtrasos
+      seleccionados.value = new Set(dataAtrasos.unidades.map(u => u.id_depto))
       await nextTick()
       if (dataAtrasos.unidades?.length) mostrarPadres()
     } catch {}

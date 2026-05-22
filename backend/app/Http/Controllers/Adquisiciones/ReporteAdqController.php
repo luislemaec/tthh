@@ -160,4 +160,63 @@ class ReporteAdqController extends Controller
 
         return response()->json($articulos);
     }
+
+    public function analitica(Request $request)
+    {
+        $request->validate([
+            'desde' => 'required|date',
+            'hasta' => 'required|date|after_or_equal:desde',
+        ]);
+
+        $desde = $request->desde;
+        $hasta = $request->hasta;
+
+        // Top proveedores por monto (órdenes confirmadas)
+        $topProveedores = DB::table('adq.orden_compra as o')
+            ->join('adq.proveedor as p', 'p.id', '=', 'o.proveedor_id')
+            ->where('o.estado', 'RECIBIDO')
+            ->whereBetween('o.fecha_documento', [$desde, $hasta])
+            ->select('p.ruc', 'p.nombre',
+                DB::raw('COUNT(o.id) as facturas'),
+                DB::raw('SUM(o.total) as total'))
+            ->groupBy('p.id', 'p.ruc', 'p.nombre')
+            ->orderByDesc('total')
+            ->limit(10)
+            ->get();
+
+        // Top áreas que más solicitan materiales
+        $topAreas = DB::table('adq.solicitud_material as s')
+            ->join('dbo.ad_departamento as d', 'd.id_depto', '=', 's.id_depto')
+            ->join('adq.solicitud_material_det as sd', 'sd.solicitud_id', '=', 's.id')
+            ->whereIn('s.estado', ['APROBADO', 'DESPACHADO', 'DESPACHADO PARCIAL'])
+            ->whereBetween('s.fecha_solicitud', [$desde, $hasta])
+            ->where('d.id_depto', '!=', 999)
+            ->select('d.nombre_depto',
+                DB::raw('COUNT(DISTINCT s.id) as total_solicitudes'),
+                DB::raw('SUM(sd.cantidad_solicitada) as total_articulos'))
+            ->groupBy('d.id_depto', 'd.nombre_depto')
+            ->orderByDesc('total_solicitudes')
+            ->limit(10)
+            ->get();
+
+        // Top artículos más solicitados
+        $topArticulos = DB::table('adq.solicitud_material_det as sd')
+            ->join('adq.solicitud_material as s', 's.id', '=', 'sd.solicitud_id')
+            ->join('adq.articulo as a', 'a.id', '=', 'sd.articulo_id')
+            ->whereIn('s.estado', ['APROBADO', 'DESPACHADO', 'DESPACHADO PARCIAL'])
+            ->whereBetween('s.fecha_solicitud', [$desde, $hasta])
+            ->select('a.nombre', 'a.codigo',
+                DB::raw('SUM(sd.cantidad_solicitada) as total_solicitado'),
+                DB::raw('COUNT(DISTINCT s.id) as total_solicitudes'))
+            ->groupBy('a.id', 'a.nombre', 'a.codigo')
+            ->orderByDesc('total_solicitado')
+            ->limit(10)
+            ->get();
+
+        return response()->json([
+            'top_proveedores' => $topProveedores,
+            'top_areas'       => $topAreas,
+            'top_articulos'   => $topArticulos,
+        ]);
+    }
 }
