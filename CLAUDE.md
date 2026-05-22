@@ -134,7 +134,7 @@ Variable `$generadoPor` = `trim($request->user()->apellido_emp) . ' ' . trim($re
 | `AsistenciaController` | Marcaciones y reportes de asistencia |
 | `CuadreController` | Conciliación de asistencia (atrasos) |
 | `HorasExtrasController` | Planificación y registro de horas extras |
-| `DashboardController` | Estadísticas del dashboard — Admin/TH: métricas globales; Supervisor: pendientes + equipo hoy |
+| `DashboardController` | Estadísticas del dashboard — Admin/TH: métricas globales; Supervisor: pendientes + equipo hoy; TH: gráfico atrasos por coordinación |
 | `Admin/*` | Departamentos, causas, turnos, horarios, calendario, configuración, aportes IESS |
 
 ### Empleados (`dbo.ad_empleado`)
@@ -303,11 +303,17 @@ views/planificacion/    # Planificación anual de vacaciones, liquidación, repo
                         #   Controlador: ReporteVacacionesController.php
                         #   Kardex: dias legados (sin registro en d2_vacacion) aparecen como fila "registros anteriores"
 views/permisos/         # Permisos y licencias — fecha_desde/fecha_hasta default = hoy al abrir modal
-DashboardView.vue       # Admin/TH: métricas globales + tabla por depto
+DashboardView.vue       # Admin/TH: métricas globales (Empleados, Departamentos, Permisos)
                         # Supervisor (no admin): 4 tarjetas pendientes (permisos/vacaciones/HE/materiales)
                         #   + widget "Mi equipo hoy" (presentes/permiso/vacaciones/sin marcar + barra)
                         #   + atrasos del mes del equipo
                         # Las tarjetas originales se ocultan para supervisores (v-if="!es_supervisor||es_admin_th")
+                        # TH (TALENTO HUMANO / TH NOMINA / TH ACCIONES PERSONAL): gráfico Chart.js de atrasos
+                        #   GET /api/dashboard/atrasos-coordinacion → { meses, unidades[], hijos{} }
+                        #   Barras agrupadas por mes; checkboxes para filtrar unidades; drill-down al hacer clic
+                        #   Unidades = PRESIDENCIA + coordinaciones (50,60,70,80,90); hijos = sub-áreas
+                        #   Drill-down muestra hijos de la unidad clicada; botón "← Volver"
+                        #   La tabla "Empleados por Departamento" fue eliminada (reemplazada por el gráfico)
 views/asistencia/       # Reporte de asistencia personal y admin
 views/horasextras/
   HorasExtrasView.vue   # 4 tabs:

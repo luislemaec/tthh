@@ -87,6 +87,8 @@ class EmpleadoController extends Controller
             "partida_individual"     => "required|integer|min:1",
             "proceso_institucional"  => "required|string|max:30",
             "modalidad_laboral"      => "required|string|max:50",
+            "programa"               => "nullable|string|max:4",
+            "actividad"              => "nullable|string|max:6",
         ]);
 
         $usuario = auth()->user()->id_emp ?? null;
@@ -107,8 +109,10 @@ class EmpleadoController extends Controller
             "cargo_empleado"   => $request->cargo_empleado,
             "telefono"         => $request->telefono,
             "calle_y_numero"   => $request->calle_y_numero,
-            "modalidad_laboral"=> $request->modalidad_laboral,
-            "id_jornada"       => $request->id_jornada,
+            "modalidad_laboral" => $request->modalidad_laboral,
+            "id_jornada"        => $request->id_jornada,
+            "programa"          => $request->filled('programa')  ? strtoupper($request->programa)  : null,
+            "actividad"         => $request->filled('actividad') ? strtoupper($request->actividad) : null,
             "created_at"       => now(),
             "created_by"       => $usuario,
             "updated_at"       => now(),
@@ -183,6 +187,8 @@ class EmpleadoController extends Controller
             "partida_individual"     => "required|integer|min:1",
             "proceso_institucional"  => "required|string|max:30",
             "modalidad_laboral"      => "required|string|max:50",
+            "programa"               => "nullable|string|max:4",
+            "actividad"              => "nullable|string|max:6",
         ]);
 
         $emp->update([
@@ -213,6 +219,8 @@ class EmpleadoController extends Controller
             "acumula_fondos_reserva"    => $request->acumula_fondos_reserva    ?? $emp->acumula_fondos_reserva,
             "acumula_decimo_tercero"    => $request->acumula_decimo_tercero    ?? $emp->acumula_decimo_tercero,
             "acumula_decimo_cuarto"     => $request->acumula_decimo_cuarto     ?? $emp->acumula_decimo_cuarto,
+            "programa"                  => $request->filled('programa')  ? strtoupper($request->programa)  : ($emp->programa  ?? null),
+            "actividad"                 => $request->filled('actividad') ? strtoupper($request->actividad) : ($emp->actividad ?? null),
             "puede_solicitar_vehiculo"  => $request->boolean('puede_solicitar_vehiculo', $emp->puede_solicitar_vehiculo ?? false),
             "updated_at"                => now(),
             "updated_by"                => auth()->user()->id_emp ?? null,

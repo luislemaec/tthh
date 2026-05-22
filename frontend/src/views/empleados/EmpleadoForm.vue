@@ -187,7 +187,7 @@
               <option value="DISPONIBLE">DISPONIBLE</option>
             </select>
           </div>
-          <div>
+          <div class="sm:col-span-2">
             <label class="block text-sm font-medium text-gray-600 mb-1">Partida Individual *</label>
             <div class="flex gap-2">
               <input v-model="form.partida_individual" type="text" required
@@ -201,13 +201,14 @@
             </div>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-600 mb-1">Fondos de Reserva</label>
-            <select v-model="form.acumula_fondos_reserva"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
-              <option :value="0">No tiene derecho</option>
-              <option :value="1">Cobra mensualmente</option>
-              <option :value="2">Acumula</option>
-            </select>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Programa</label>
+            <input v-model="form.programa" type="text" maxlength="4" placeholder="Ej: 55"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Actividad</label>
+            <input v-model="form.actividad" type="text" maxlength="6" placeholder="Ej: 001"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Acumula Décimos (13° y 14°)</label>
@@ -215,6 +216,15 @@
               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
               <option :value="true">Acumula</option>
               <option :value="false">Cobra mensualmente</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Fondos de Reserva</label>
+            <select v-model="form.acumula_fondos_reserva"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
+              <option :value="0">No tiene derecho</option>
+              <option :value="1">Cobra mensualmente</option>
+              <option :value="2">Acumula</option>
             </select>
           </div>
           <div class="sm:col-span-2">
@@ -372,6 +382,8 @@ const form = ref({
   partida_presupuestaria:  "",
   acumula_fondos_reserva:    0,
   acumula_decimos:           false,
+  programa:                  '',
+  actividad:                 '',
   modalidad_marcacion:       'PRESENCIAL',
   puede_solicitar_vehiculo:  false,
 })
@@ -405,6 +417,8 @@ const guardar = async () => {
       acumula_fondos_reserva:   form.value.acumula_fondos_reserva,
       acumula_decimo_tercero:   form.value.acumula_decimos,
       acumula_decimo_cuarto:    form.value.acumula_decimos,
+      programa:                 form.value.programa  || null,
+      actividad:                form.value.actividad || null,
       modalidad_marcacion:      form.value.modalidad_marcacion,
       puede_solicitar_vehiculo: form.value.puede_solicitar_vehiculo,
     }
@@ -496,6 +510,8 @@ onMounted(async () => {
     form.value.partida_presupuestaria = data.partida_presupuestaria || ""
     form.value.acumula_fondos_reserva   = data.acumula_fondos_reserva   ?? 0
     form.value.acumula_decimos          = data.acumula_decimo_tercero   ?? false
+    form.value.programa                 = data.programa                 ?? ''
+    form.value.actividad                = data.actividad                ?? ''
     form.value.modalidad_marcacion      = data.modalidad_marcacion      ?? 'PRESENCIAL'
     form.value.puede_solicitar_vehiculo = data.puede_solicitar_vehiculo ?? false
     fotoUrl.value = storageUrl(data.foto)
