@@ -262,6 +262,8 @@ class VacacionesController extends Controller
             "estado_permiso" => "APROBADO",
             "aprobado_en"    => now(),
             "aprobado_por"   => $supervisor->id_emp,
+            "backup_id"      => $request->backup_id     ?? null,
+            "backup_nombre"  => $request->backup_nombre ?? null,
             "updated_at"     => now(),
             "updated_by"     => $supervisor->id_emp,
         ]);
@@ -283,6 +285,22 @@ class VacacionesController extends Controller
             $request, "Aprobación de vacación: {$vacacion->nombre_emp}");
 
         return response()->json(["message" => "Vacación aprobada correctamente", "vacacion" => $vacacion->load("empleado")]);
+    }
+
+    // Empleados del mismo departamento (para seleccionar backup al aprobar)
+    public function empleadosDepto(Request $request, $id)
+    {
+        $vacacion = Vacacion::findOrFail($id);
+        $idDepto  = DB::table('dbo.ad_empleado')->where('id_emp', $vacacion->id_emp)->value('id_depto');
+
+        $empleados = DB::table('dbo.ad_empleado')
+            ->where('estado', 'ACTIVO')
+            ->where('id_depto', $idDepto)
+            ->where('id_emp', '!=', $vacacion->id_emp)
+            ->orderBy('apellido_emp')
+            ->get(['id_emp', 'nombre_emp', 'apellido_emp']);
+
+        return response()->json($empleados);
     }
 
     // Negar vacación

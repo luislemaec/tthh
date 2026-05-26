@@ -143,6 +143,7 @@ Campos relevantes:
 - `estado`: `ACTIVO` / `INACTIVO` — nunca se elimina
 - `estado_puesto`: `OCUPADO` / `VACANTE` / `DISPONIBLE` — DISPONIBLE = empleado inactivo, partida presupuestaria libre para reasignar
 - `partida_individual` / `partida_presupuestaria`: identificadores de la partida MEF
+- `programa` (VARCHAR 4) / `actividad` (VARCHAR 6): clasificación presupuestaria MEF (ej: 55 / 001); opcionales
 - `modalidad_marcacion`: `PRESENCIAL` / `REMOTO` / `TELETRABAJO` (ver Control de Asistencia)
 - `modalidad_laboral`: determina motivos válidos en liquidación de vacaciones
 - `tipo_contrato`: `LOSEP` / `CODIGO DEL TRABAJO` — define tasa de vacaciones
@@ -289,6 +290,7 @@ Porcentajes se obtienen de `dbo.d2_jornada` (campos `porc_extraordinaria`, `porc
 views/empleados/        # CRUD empleados, detalle, importación, distributivo
                         # EmpleadoForm: bloque "Control de Asistencia" (modalidad_marcacion)
                         #   Partida Individual: input libre + botón "Seleccionar libre" (modal partidas disponibles)
+                        #   Sección "Datos del Puesto": Partida Individual (span-2) | Programa | Actividad | Acumula Décimos | Fondos de Reserva
 views/acciones/         # Acciones de personal (lista + formulario + PDF)
 views/planificacion/    # Planificación anual de vacaciones, liquidación, reporte
                         # ReporteSaldoVacView.vue — reporte de saldo de vacaciones (TH/ADMIN)

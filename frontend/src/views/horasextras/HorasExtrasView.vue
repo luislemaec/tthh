@@ -63,7 +63,7 @@
           'bg-yellow-50 border-yellow-300 text-yellow-800':  miPlan.estado === 'PENDIENTE',
           'bg-green-50 border-green-300 text-green-800':    miPlan.estado === 'APROBADO',
           'bg-red-50 border-red-300 text-red-800':           miPlan.estado === 'NEGADO',
-          'bg-purple-50 border-purple-300 text-purple-800': miPlan.estado === 'AUTORIZADO',
+          'bg-purple-50 border-purple-300 text-purple-800': miPlan.estado === 'PROCESADO',
         }" class="border rounded-xl p-4 mb-4 flex justify-between items-start">
           <div>
             <span class="font-semibold">Estado: {{ miPlan.estado }}</span>
@@ -80,11 +80,11 @@
               class="text-xs bg-white border border-red-300 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-50">
               Eliminar
             </button>
-            <button v-if="['APROBADO','AUTORIZADO'].includes(miPlan.estado)" @click="descargarPdf"
+            <button v-if="['APROBADO','PROCESADO'].includes(miPlan.estado)" @click="descargarPdf"
               class="text-xs bg-white border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-50">
               Generar PDF
             </button>
-            <button v-if="['APROBADO','AUTORIZADO'].includes(miPlan.estado)" @click="abrirSubirFirmado"
+            <button v-if="['APROBADO','PROCESADO'].includes(miPlan.estado)" @click="abrirSubirFirmado"
               class="text-xs bg-white border border-blue-300 text-blue-700 px-3 py-1.5 rounded-lg hover:bg-blue-50">
               Subir PDF Firmado
             </button>
@@ -165,16 +165,16 @@
           </div>
           <div class="flex flex-col gap-2 items-end">
             <button
-              v-if="misHorasData.planificacion.estado === 'AUTORIZADO' && esMesActual(misHorasData.planificacion) && !misHorasData.registros.some(r => r.estado === 'NEGADO')"
+              v-if="misHorasData.planificacion.estado === 'PROCESADO' && esMesActual(misHorasData.planificacion) && !misHorasData.registros.some(r => r.estado === 'NEGADO')"
               @click="abrirModalRegistrar"
               class="bg-[#00372e] text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-800">
               + Registrar horas
             </button>
-            <p v-else-if="misHorasData.planificacion.estado === 'AUTORIZADO' && misHorasData.registros.some(r => r.estado === 'NEGADO')"
+            <p v-else-if="misHorasData.planificacion.estado === 'PROCESADO' && misHorasData.registros.some(r => r.estado === 'NEGADO')"
               class="text-xs text-red-600 italic">
               Registro negado. Debe volver a planificar.
             </p>
-            <p v-else-if="misHorasData.planificacion.estado === 'AUTORIZADO' && !esMesActual(misHorasData.planificacion)"
+            <p v-else-if="misHorasData.planificacion.estado === 'PROCESADO' && !esMesActual(misHorasData.planificacion)"
               class="text-xs text-gray-500 italic">
               Registro habilitado en {{ mesNombre(misHorasData.planificacion.mes) }} {{ misHorasData.planificacion.anio }}
             </p>
@@ -298,7 +298,7 @@
                   'bg-yellow-100 text-yellow-800':  plan.estado === 'PENDIENTE',
                   'bg-green-100 text-green-800':    plan.estado === 'APROBADO',
                   'bg-red-100 text-red-800':         plan.estado === 'NEGADO',
-                  'bg-purple-100 text-purple-800':  plan.estado === 'AUTORIZADO',
+                  'bg-purple-100 text-purple-800':  plan.estado === 'PROCESADO',
                 }" class="px-2 py-0.5 rounded-full text-xs font-medium">
                   {{ plan.estado }}
                 </span>
@@ -317,7 +317,7 @@
                 <button v-if="plan.estado === 'APROBADO' && esTHNomina"
                   @click="abrirModalAutorizar(plan)"
                   class="text-xs text-purple-700 hover:text-purple-900 font-medium">
-                  Autorizar
+                  Procesar
                 </button>
               </td>
             </tr>
@@ -707,12 +707,12 @@
       </div>
     </div>
 
-    <!-- Modal: Autorizar planificación -->
+    <!-- Modal: Procesar planificación -->
     <div v-if="modalAutorizar.show"
       class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
-        <h2 class="text-lg font-bold mb-2">Autorizar Planificación</h2>
-        <p class="text-sm text-gray-500 mb-4">Ingrese la referencia del memorando de autorización</p>
+        <h2 class="text-lg font-bold mb-2">Procesar Planificación</h2>
+        <p class="text-sm text-gray-500 mb-4">Ingrese la referencia del memorando de procesamiento</p>
         <textarea v-model="modalAutorizar.memorando" rows="3" maxlength="300"
           placeholder="Ej: Según Memorando nro. CDPIC-DATH-2026-0098-M se autorizó el pago de horas extras."
           class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-400 outline-none resize-none mb-4">
@@ -725,7 +725,7 @@
             class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancelar</button>
           <button @click="autorizarPlan" :disabled="guardando"
             class="bg-purple-700 text-white px-5 py-2 rounded-lg text-sm hover:bg-purple-800 disabled:opacity-50">
-            {{ guardando ? 'Autorizando...' : 'Autorizar' }}
+            {{ guardando ? 'Procesando...' : 'Procesar' }}
           </button>
         </div>
       </div>

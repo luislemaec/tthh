@@ -391,6 +391,7 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::get("/vacaciones/mi-saldo",          [VacacionesController::class, "miSaldo"]);
     Route::get("/vacaciones",                   [VacacionesController::class, "index"]);
     Route::post("/vacaciones",                  [VacacionesController::class, "store"]);
+    Route::get("/vacaciones/{id}/empleados-depto", [VacacionesController::class, "empleadosDepto"]);
     Route::patch("/vacaciones/{id}/aprobar",    [VacacionesController::class, "aprobar"]);
     Route::patch("/vacaciones/{id}/negar",      [VacacionesController::class, "negar"]);
     Route::delete("/vacaciones/{id}",           [VacacionesController::class, "destroy"]);

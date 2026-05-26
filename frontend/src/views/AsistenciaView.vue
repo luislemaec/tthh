@@ -26,7 +26,7 @@
               : 'bg-gray-100 text-gray-400 cursor-not-allowed',
             'w-full py-6 rounded-xl text-sm font-semibold transition flex flex-col items-center gap-2'
           ]">
-          <span class="text-2xl">{{ btn.icono }}</span>
+          <span v-html="btn.icono" class="flex items-center justify-center"></span>
           <span>{{ btn.label }}</span>
           <span v-if="getMarcacion(btn.concepto)" class="text-xs font-normal opacity-80">
             {{ formatHora(getMarcacion(btn.concepto)?.fecha_hora) }}
@@ -233,28 +233,28 @@ const botones = computed(() => [
   {
     concepto: "ENTRADA",
     label: "Marcar Entrada",
-    icono: "🟢",
+    icono: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 9V5.25A2.25 2.25 0 0 1 10.5 3h6a2.25 2.25 0 0 1 2.25 2.25v13.5A2.25 2.25 0 0 1 16.5 21h-6a2.25 2.25 0 0 1-2.25-2.25V15M12 9l3 3m0 0-3 3m3-3H2.25" /></svg>`,
     color: "bg-green-500 text-white",
     disponible: estado.value.siguiente === "ENTRADA",
   },
   {
     concepto: "SALIDA AL LUNCH",
     label: "Salida a Lunch",
-    icono: "🍽️",
+    icono: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8.25v-1.5m0 1.5c-1.355 0-2.697.056-4.024.166C6.845 8.51 6 9.473 6 10.608v2.513m6-4.871c1.355 0 2.697.056 4.024.166C17.155 8.51 18 9.473 18 10.608v2.513M15 8.25v-1.5M6 10.608v3.792m0 0a48.627 48.627 0 0 0 6 0m-6 0v3.75m6-3.75v3.75m0 0a48.627 48.627 0 0 0 6 0M6 18.375v.375a.75.75 0 0 0 .75.75h10.5a.75.75 0 0 0 .75-.75v-.375" /></svg>`,
     color: "bg-yellow-500 text-white",
     disponible: estado.value.siguiente === "SALIDA AL LUNCH",
   },
   {
     concepto: "ENTRADA DEL LUNCH",
     label: "Regreso de Lunch",
-    icono: "🔄",
+    icono: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" /></svg>`,
     color: "bg-[#579186] text-white",
     disponible: estado.value.siguiente === "ENTRADA DEL LUNCH",
   },
   {
     concepto: "SALIDA",
     label: "Marcar Salida",
-    icono: "🔴",
+    icono: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" /></svg>`,
     color: "bg-red-500 text-white",
     disponible: estado.value.siguiente === "SALIDA",
   },
@@ -312,6 +312,13 @@ const cargarListado = async () => {
 }
 
 const marcar = async (concepto) => {
+  if (concepto === 'SALIDA') {
+    const ahora = new Date()
+    const minutos = ahora.getHours() * 60 + ahora.getMinutes()
+    if (minutos < 16 * 60 + 30) {
+      if (!window.confirm('¿Está seguro de realizar esta marcación? La hora de salida es antes de las 16:30.')) return
+    }
+  }
   marcando.value     = true
   mensajeExito.value = ""
   mensajeError.value = ""

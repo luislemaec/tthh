@@ -144,7 +144,7 @@
                 <button @click="verVacacion(v)"
                   class="text-[#0b5447] hover:underline text-xs font-medium">Ver</button>
                 <template v-if="esSupervisorOAdmin && tabActivo === 'equipo' && v.estado_permiso === 'PENDIENTE'">
-                  <button @click="aprobar(v.secuencial_clave)"
+                  <button @click="abrirModalBackup(v.secuencial_clave)"
                     class="text-green-600 hover:underline text-xs font-medium">Aprobar</button>
                   <button @click="abrirModalNegar(v)"
                     class="text-red-500 hover:underline text-xs font-medium">Negar</button>
@@ -322,6 +322,39 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal Backup al Aprobar -->
+    <div v-if="modalBackup.show" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md space-y-4">
+        <h2 class="text-lg font-semibold text-gray-700">Aprobar Vacación</h2>
+        <p class="text-sm text-gray-500">Puede seleccionar un empleado de respaldo (backup) para cubrir al solicitante durante su ausencia.</p>
+
+        <div v-if="modalBackup.cargando" class="text-center py-4 text-sm text-gray-400">Cargando empleados...</div>
+        <div v-else>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Empleado de respaldo (opcional)</label>
+          <select v-model="modalBackup.seleccionado"
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
+            <option :value="null">— Sin backup —</option>
+            <option v-for="emp in modalBackup.empleados" :key="emp.id_emp" :value="emp.id_emp">
+              {{ emp.apellido_emp }} {{ emp.nombre_emp }}
+            </option>
+          </select>
+        </div>
+
+        <div class="flex justify-end gap-3">
+          <button @click="modalBackup.show = false"
+            class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
+          <button @click="confirmarAprobar(false)"
+            class="px-4 py-2 rounded-lg border border-green-600 text-green-700 text-sm hover:bg-green-50">
+            Aprobar sin backup
+          </button>
+          <button @click="confirmarAprobar(true)" :disabled="!modalBackup.seleccionado"
+            class="px-4 py-2 rounded-lg bg-[#579186] text-white text-sm hover:bg-[#46786f] disabled:opacity-40 disabled:cursor-not-allowed">
+            Aprobar con backup
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -346,6 +379,7 @@ const modalNuevo     = ref(false)
 const modalVer       = ref(false)
 const modalNegar          = ref(false)
 const modalEliminar       = ref(false)
+const modalBackup         = ref({ show: false, vacId: null, empleados: [], seleccionado: null, cargando: false })
 const seleccionado        = ref(null)
 const motivoNegacion      = ref("")
 const motivoEliminacion   = ref("")
@@ -445,10 +479,28 @@ const verVacacion = (v) => {
   modalVer.value = true
 }
 
-const aprobar = async (id) => {
-  if (!confirm("¿Aprobar esta solicitud de vacaciones?")) return
+const abrirModalBackup = async (id) => {
+  modalBackup.value = { show: true, vacId: id, empleados: [], seleccionado: null, cargando: true }
   try {
-    await api.patch("/vacaciones/" + id + "/aprobar")
+    const { data } = await api.get("/vacaciones/" + id + "/empleados-depto")
+    modalBackup.value.empleados = data
+  } catch {
+    modalBackup.value.empleados = []
+  } finally {
+    modalBackup.value.cargando = false
+  }
+}
+
+const confirmarAprobar = async (conBackup) => {
+  const payload = {}
+  if (conBackup && modalBackup.value.seleccionado) {
+    const emp = modalBackup.value.empleados.find(e => e.id_emp === modalBackup.value.seleccionado)
+    payload.backup_id     = emp.id_emp
+    payload.backup_nombre = (emp.apellido_emp + " " + emp.nombre_emp).trim()
+  }
+  try {
+    await api.patch("/vacaciones/" + modalBackup.value.vacId + "/aprobar", payload)
+    modalBackup.value.show = false
     cargar()
   } catch (e) {
     alert(e.response?.data?.message || "Error al aprobar")

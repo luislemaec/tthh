@@ -431,19 +431,19 @@ class HorasExtrasController extends Controller
         $cab = HePlanificacionCab::findOrFail($id);
 
         if ($cab->estado !== 'APROBADO') {
-            return response()->json(['message' => 'Solo se pueden autorizar planificaciones en estado APROBADO.'], 422);
+            return response()->json(['message' => 'Solo se pueden procesar planificaciones en estado APROBADO.'], 422);
         }
 
         $cab->update([
-            'estado'               => 'AUTORIZADO',
+            'estado'               => 'PROCESADO',
             'memorando'            => $request->memorando,
             'usuario_autorizacion' => $user->id_emp,
             'fecha_autorizacion'   => now(),
         ]);
 
-        AuditoriaService::log('dbo.nom_he_planificacion_cab', $cab->id, 'AUTORIZAR',
-            ['estado' => 'APROBADO'], ['estado' => 'AUTORIZADO', 'memorando' => $request->memorando],
-            $request, "Autorización planificación HE: empleado {$cab->id_emp} {$cab->anio}/{$cab->mes}");
+        AuditoriaService::log('dbo.nom_he_planificacion_cab', $cab->id, 'PROCESAR',
+            ['estado' => 'APROBADO'], ['estado' => 'PROCESADO', 'memorando' => $request->memorando],
+            $request, "Procesamiento planificación HE: empleado {$cab->id_emp} {$cab->anio}/{$cab->mes}");
 
         return response()->json(['message' => 'Planificación autorizada.']);
     }
@@ -641,8 +641,8 @@ class HorasExtrasController extends Controller
         if ($cab->id_emp !== $emp->id_emp) {
             return response()->json(['message' => 'Acceso no autorizado.'], 403);
         }
-        if ($cab->estado !== 'AUTORIZADO') {
-            return response()->json(['message' => 'La planificación debe estar autorizada para registrar horas.'], 422);
+        if ($cab->estado !== 'PROCESADO') {
+            return response()->json(['message' => 'La planificación debe estar procesada para registrar horas.'], 422);
         }
 
         // Validar que el mes/año actual coincida con el mes/año planificado
