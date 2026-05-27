@@ -407,6 +407,45 @@ class RolPagoController extends Controller
         return response()->json($filas);
     }
 
+    // GET /api/nomina/rol-pago/{cabId}/resumenes/pdf
+    public function pdfResumenes($cabId, Request $request)
+    {
+        $cab = DB::table('dbo.nom_rol_pago_cab')->where('id', $cabId)->first();
+        if (!$cab) {
+            return response()->json(['message' => 'Período no encontrado.'], 404);
+        }
+
+        $filas = DB::table('dbo.nom_rol_pago_det')
+            ->where('cab_id', $cabId)
+            ->selectRaw("
+                COALESCE(programa, 'SIN PROGRAMA') as programa,
+                COALESCE(actividad, 'SIN ACTIVIDAD') as actividad,
+                COUNT(*) as empleados,
+                COALESCE(SUM(valor_rmu), 0) as total_rmu,
+                COALESCE(SUM(aporte_patronal + iece + secap), 0) as total_patronal,
+                COALESCE(SUM(aporte_personal), 0) as total_personal,
+                COALESCE(SUM(total_descuentos), 0) as total_descuentos,
+                COALESCE(SUM(liquido), 0) as total_liquido
+            ")
+            ->groupBy('programa', 'actividad')
+            ->orderBy('programa')
+            ->orderBy('actividad')
+            ->get();
+
+        $emp = $request->user();
+
+        $pdf = Pdf::loadView('reportes.nom_rol_pago_resumenes', [
+            'cab'         => $cab,
+            'filas'       => $filas,
+            'nombreMes'   => $this->nombreMes((int)$cab->mes),
+            'anio'        => $cab->anio,
+            'logo'        => $this->logoBase64(),
+            'generadoPor' => $emp->nombre_emp . ' ' . $emp->apellido_emp,
+        ])->setPaper('a4', 'portrait');
+
+        return $pdf->stream("rol-pago-resumenes-{$cab->anio}-{$cab->mes}.pdf");
+    }
+
     // GET /api/nomina/rol-pago/pdf
     public function pdf(Request $request)
     {

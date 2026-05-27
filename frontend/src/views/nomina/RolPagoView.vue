@@ -87,13 +87,13 @@
 
       <!-- TAB 1: Detalle -->
       <div v-show="tabActivo === 'detalle'">
-        <div class="overflow-x-auto">
+        <div class="overflow-auto max-h-[calc(100vh-22rem)]">
           <table class="text-xs whitespace-nowrap border-collapse w-full">
-            <thead>
+            <thead class="sticky top-0 z-20">
               <tr>
-                <th class="px-2 py-2 text-center text-gray-600 font-medium border bg-gray-50">N°</th>
-                <th class="px-2 py-2 text-left text-gray-600 font-medium border bg-gray-50">Cédula</th>
-                <th class="px-2 py-2 text-left text-gray-600 font-medium border bg-gray-50 min-w-[150px]">Apellidos y Nombres</th>
+                <th class="px-2 py-2 text-center text-gray-600 font-medium border bg-gray-50 sticky left-0 z-30 w-8">N°</th>
+                <th class="px-2 py-2 text-left text-gray-600 font-medium border bg-gray-50 sticky left-8 z-30 w-24">Cédula</th>
+                <th class="px-2 py-2 text-left text-gray-600 font-medium border bg-gray-50 min-w-[160px] sticky left-32 z-30">Apellidos y Nombres</th>
                 <th class="px-2 py-2 text-left text-gray-600 font-medium border bg-gray-50 min-w-[110px]">Departamento</th>
                 <th class="px-2 py-2 text-center text-gray-600 font-medium border bg-gray-50">Prog.</th>
                 <th class="px-2 py-2 text-center text-gray-600 font-medium border bg-gray-50">Act.</th>
@@ -131,10 +131,10 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(r, i) in detallesPaginados" :key="r.id" class="border-b hover:bg-gray-50">
-                <td class="px-2 py-2 text-center border">{{ (pagina - 1) * POR_PAGINA + i + 1 }}</td>
-                <td class="px-2 py-2 font-mono border">{{ r.identificacion }}</td>
-                <td class="px-2 py-2 border">{{ r.apellido_emp }} {{ r.nombre_emp }}</td>
+              <tr v-for="(r, i) in detallesPaginados" :key="r.id" class="border-b hover:bg-gray-50 group">
+                <td class="px-2 py-2 text-center border sticky left-0 z-10 bg-white group-hover:bg-gray-50">{{ (pagina - 1) * POR_PAGINA + i + 1 }}</td>
+                <td class="px-2 py-2 font-mono border sticky left-8 z-10 bg-white group-hover:bg-gray-50">{{ r.identificacion }}</td>
+                <td class="px-2 py-2 border sticky left-32 z-10 bg-white group-hover:bg-gray-50">{{ r.apellido_emp }} {{ r.nombre_emp }}</td>
                 <td class="px-2 py-2 border text-gray-600">{{ r.nombre_depto }}</td>
                 <td class="px-2 py-2 text-center border text-gray-500">{{ r.programa || '—' }}</td>
                 <td class="px-2 py-2 text-center border text-gray-500">{{ r.actividad || '—' }}</td>
@@ -169,7 +169,7 @@
             <!-- Totales -->
             <tfoot>
               <tr class="bg-gray-100 font-semibold text-xs">
-                <td colspan="7" class="px-2 py-2 text-right border">TOTAL ({{ detalles.length }})</td>
+                <td colspan="7" class="px-2 py-2 text-right border bg-gray-100 sticky left-0 z-10">TOTAL ({{ detalles.length }})</td>
                 <td class="px-2 py-2 text-right font-mono border">{{ fmt(sumCol('valor_rmu')) }}</td>
                 <td class="px-2 py-2 text-right font-mono border bg-blue-50">{{ fmt(sumCol('iece')) }}</td>
                 <td class="px-2 py-2 text-right font-mono border bg-blue-50">{{ fmt(sumCol('secap')) }}</td>
@@ -203,6 +203,12 @@
 
       <!-- TAB 2: Resúmenes -->
       <div v-show="tabActivo === 'resumenes'" class="p-4">
+        <div class="flex justify-end mb-3">
+          <button v-if="resumenes.length" @click="generarPdfResumen"
+            class="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-800 text-sm font-medium">
+            Generar PDF Resumen
+          </button>
+        </div>
         <div v-if="cargandoResumenes" class="text-center py-8 text-gray-400 text-sm">Cargando resúmenes...</div>
         <div v-else-if="resumenes.length" class="overflow-x-auto">
           <table class="text-sm border-collapse w-full">
@@ -466,6 +472,20 @@ const generarPdf = async () => {
     setTimeout(() => URL.revokeObjectURL(url), 60000)
   } catch {
     alert('Error al generar el PDF.')
+  }
+}
+
+const generarPdfResumen = async () => {
+  try {
+    const resp = await api.get(`/nomina/rol-pago/${cab.value.id}/resumenes/pdf`, { responseType: 'blob' })
+    const url = URL.createObjectURL(new Blob([resp.data], { type: 'application/pdf' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `rol-pago-resumen-${form.value.anio}-${String(form.value.mes).padStart(2, '0')}.pdf`
+    a.click()
+    setTimeout(() => URL.revokeObjectURL(url), 60000)
+  } catch {
+    alert('Error al generar el PDF de resúmenes.')
   }
 }
 

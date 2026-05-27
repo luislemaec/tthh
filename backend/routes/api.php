@@ -294,7 +294,8 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post('rol-pago/cerrar',            [RolPagoController::class, 'cerrar']);
         Route::post('rol-pago/importar',          [RolPagoController::class, 'importar']);
         Route::get('rol-pago/pdf',                [RolPagoController::class, 'pdf']);
-        Route::get('rol-pago/{cabId}/resumenes',  [RolPagoController::class, 'resumenes']);
+        Route::get('rol-pago/{cabId}/resumenes',     [RolPagoController::class, 'resumenes']);
+        Route::get('rol-pago/{cabId}/resumenes/pdf', [RolPagoController::class, 'pdfResumenes']);
     });
 
     // ── Transportes ───────────────────────────────────────────────────────────
