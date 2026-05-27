@@ -10,9 +10,56 @@ use App\Services\AuditoriaService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 
 class PermisosController extends Controller
 {
+    private string $alfrescoBase = 'http://192.168.26.38:8080/alfresco/api/-default-/public/alfresco/versions/1';
+    private string $alfrescoUser = 'admin';
+    private string $alfrescoPass = 'admin';
+    private string $alfrescoSite = 'talentohumano';
+
+    private function getDocLibNodeId(): string
+    {
+        $resp = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+            ->get("{$this->alfrescoBase}/sites/{$this->alfrescoSite}/containers/documentLibrary");
+        if (!$resp->successful()) abort(502, 'No se pudo conectar con Alfresco');
+        return $resp->json('entry.id');
+    }
+
+    private function getOrCreateFolderNodeId(string $parentNodeId, string $folderName): string
+    {
+        $buscarPorNombre = function (string $parent, string $nombre): ?string {
+            $resp    = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+                ->get("{$this->alfrescoBase}/nodes/{$parent}/children", [
+                    'where'    => '(isFolder=true)',
+                    'maxItems' => 500,
+                ]);
+            $entries = $resp->json('list.entries') ?? [];
+            foreach ($entries as $e) {
+                if ($e['entry']['name'] === $nombre) return $e['entry']['id'];
+            }
+            return null;
+        };
+
+        $found = $buscarPorNombre($parentNodeId, $folderName);
+        if ($found) return $found;
+
+        $create = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+            ->post("{$this->alfrescoBase}/nodes/{$parentNodeId}/children", [
+                'name'     => $folderName,
+                'nodeType' => 'cm:folder',
+            ]);
+
+        if ($create->status() === 409) {
+            $found = $buscarPorNombre($parentNodeId, $folderName);
+            if ($found) return $found;
+        }
+
+        if (!$create->successful()) abort(502, 'No se pudo crear la carpeta en Alfresco');
+        return $create->json('entry.id');
+    }
+
     // Verificar si el empleado es supervisor
     private function esSupervisor($id_emp)
     {
@@ -374,6 +421,111 @@ class PermisosController extends Controller
             $request, "Eliminación de permiso: {$permiso->nombre_emp}");
 
         return response()->json(["message" => "Permiso eliminado correctamente"]);
+    }
+
+    // GET /api/permisos/{id}/documentos
+    public function listarDocumentos($id)
+    {
+        $docs = DB::table('dbo.d2_permiso_documento')
+            ->where('permiso_id', $id)
+            ->orderBy('created_at')
+            ->get();
+        return response()->json($docs);
+    }
+
+    // POST /api/permisos/{id}/documentos
+    public function subirDocumento(Request $request, $id)
+    {
+        $request->validate([
+            'archivo'  => 'required|file|mimes:pdf,jpg,jpeg,png|max:20480',
+            'tipo_doc' => 'required|string|max:60',
+        ]);
+
+        $permiso  = Permiso::with('empleado')->findOrFail($id);
+        $empleado = $permiso->empleado;
+        $anio     = Carbon::parse($permiso->fecha_desde)->year;
+        $cedula   = $empleado->id_emp;
+        $apellido = strtoupper(trim($empleado->apellido_emp));
+        $carpetaEmp = "{$cedula}_{$apellido}";
+
+        $docLibId  = $this->getDocLibNodeId();
+        $rootId    = $this->getOrCreateFolderNodeId($docLibId, 'permisos');
+        $anioId    = $this->getOrCreateFolderNodeId($rootId, (string)$anio);
+        $empId     = $this->getOrCreateFolderNodeId($anioId, $carpetaEmp);
+
+        $archivo      = $request->file('archivo');
+        $ext          = $archivo->getClientOriginalExtension();
+        $nombreBase   = "permiso_{$id}_{$request->tipo_doc}.{$ext}";
+
+        $upload = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+            ->attach('filedata', file_get_contents($archivo->getRealPath()), $nombreBase)
+            ->post("{$this->alfrescoBase}/nodes/{$empId}/children", [
+                'name'       => $nombreBase,
+                'nodeType'   => 'cm:content',
+                'autoRename' => true,
+            ]);
+
+        if (!$upload->successful()) {
+            return response()->json(['message' => 'Error al subir el archivo a Alfresco'], 502);
+        }
+
+        $alfrescoId   = $upload->json('entry.id');
+        $nombreFinal  = $upload->json('entry.name');
+
+        DB::table('dbo.d2_permiso_documento')->insert([
+            'permiso_id'     => $id,
+            'tipo_doc'       => $request->tipo_doc,
+            'nombre_archivo' => $nombreFinal,
+            'alfresco_id'    => $alfrescoId,
+            'created_by'     => $request->user()->id_emp,
+            'created_at'     => now(),
+        ]);
+
+        return response()->json(['message' => 'Documento subido correctamente.', 'nombre' => $nombreFinal], 201);
+    }
+
+    // DELETE /api/permisos/{id}/documentos/{docId}
+    public function eliminarDocumento(Request $request, $id, $docId)
+    {
+        $doc = DB::table('dbo.d2_permiso_documento')
+            ->where('id', $docId)
+            ->where('permiso_id', $id)
+            ->first();
+
+        if (!$doc) return response()->json(['message' => 'Documento no encontrado'], 404);
+
+        Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+            ->delete("{$this->alfrescoBase}/nodes/{$doc->alfresco_id}");
+
+        DB::table('dbo.d2_permiso_documento')->where('id', $docId)->delete();
+
+        return response()->json(['message' => 'Documento eliminado']);
+    }
+
+    // GET /api/permisos/{id}/documentos/{docId}/descargar
+    public function descargarDocumento($id, $docId)
+    {
+        $doc = DB::table('dbo.d2_permiso_documento')
+            ->where('id', $docId)
+            ->where('permiso_id', $id)
+            ->first();
+
+        if (!$doc) return response()->json(['message' => 'Documento no encontrado'], 404);
+
+        $resp = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+            ->get("{$this->alfrescoBase}/nodes/{$doc->alfresco_id}/content");
+
+        if (!$resp->successful()) {
+            return response()->json(['message' => 'No se pudo obtener el archivo desde Alfresco'], 502);
+        }
+
+        $ext  = pathinfo($doc->nombre_archivo, PATHINFO_EXTENSION);
+        $mime = in_array($ext, ['jpg','jpeg','png']) ? "image/{$ext}" : 'application/pdf';
+
+        return response($resp->body(), 200, [
+            'Content-Type'        => $mime,
+            'Content-Disposition' => "inline; filename=\"{$doc->nombre_archivo}\"",
+        ]);
     }
 
     // Listar razones

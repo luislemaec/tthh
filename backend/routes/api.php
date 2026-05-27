@@ -176,10 +176,14 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::get("/permisos/mi-rol",           [PermisosController::class, "miRol"]);
     Route::get("/permisos",              [PermisosController::class, "index"]);
     Route::post("/permisos",             [PermisosController::class, "store"]);
-    Route::get("/permisos/{id}",         [PermisosController::class, "show"]);
-    Route::patch("/permisos/{id}/aprobar", [PermisosController::class, "aprobar"]);
-    Route::patch("/permisos/{id}/negar",   [PermisosController::class, "negar"]);
-    Route::delete("/permisos/{id}",          [PermisosController::class, "destroy"]);
+    Route::get("/permisos/{id}",                                   [PermisosController::class, "show"]);
+    Route::patch("/permisos/{id}/aprobar",                         [PermisosController::class, "aprobar"]);
+    Route::patch("/permisos/{id}/negar",                           [PermisosController::class, "negar"]);
+    Route::delete("/permisos/{id}",                                [PermisosController::class, "destroy"]);
+    Route::get("/permisos/{id}/documentos",                        [PermisosController::class, "listarDocumentos"]);
+    Route::post("/permisos/{id}/documentos",                       [PermisosController::class, "subirDocumento"]);
+    Route::get("/permisos/{id}/documentos/{docId}/descargar",      [PermisosController::class, "descargarDocumento"]);
+    Route::delete("/permisos/{id}/documentos/{docId}",             [PermisosController::class, "eliminarDocumento"]);
 
     // Cuadre de marcaciones
     Route::post("/cuadre/procesar",  [CuadreController::class, "procesar"]);

@@ -225,8 +225,8 @@
     </div>
 
     <!-- Modal Ver Permiso -->
-    <div v-if="modalVer" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-lg space-y-4">
+    <div v-if="modalVer" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-2xl space-y-4 my-4">
         <h2 class="text-lg font-semibold text-gray-700">Detalle del Permiso</h2>
         <dl class="grid grid-cols-2 gap-3 text-sm">
           <div>
@@ -296,6 +296,57 @@
             <dd class="font-medium text-red-600">{{ permisoSeleccionado?.observacion_negacion }}</dd>
           </div>
         </dl>
+        <!-- Documentos de respaldo (solo permisos no descontables) -->
+        <div v-if="permisoSeleccionado?.descontable === 'NO'" class="border-t pt-4">
+          <h3 class="text-sm font-semibold text-gray-700 mb-3">Documentos de Respaldo</h3>
+
+          <!-- Lista de documentos -->
+          <div v-if="documentos.length" class="space-y-2 mb-3">
+            <div v-for="doc in documentos" :key="doc.id"
+              class="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-sm">
+              <div class="flex items-center gap-2 min-w-0">
+                <svg class="w-4 h-4 text-red-500 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM6 20V4h5v7h7v9H6z"/>
+                </svg>
+                <span class="truncate text-gray-700">{{ doc.nombre_archivo }}</span>
+                <span class="shrink-0 text-xs text-gray-400 bg-gray-200 px-1.5 py-0.5 rounded">
+                  {{ tiposDocumento.find(t => t.value === doc.tipo_doc)?.label || doc.tipo_doc }}
+                </span>
+              </div>
+              <div class="flex gap-1 shrink-0 ml-2">
+                <button @click="descargarDocumento(doc)"
+                  class="inline-flex items-center px-2 py-1 rounded border border-blue-200 text-xs text-blue-700 hover:bg-blue-50 transition-colors">
+                  Ver
+                </button>
+                <button @click="eliminarDocumento(doc)"
+                  class="inline-flex items-center px-2 py-1 rounded border border-red-200 text-xs text-red-600 hover:bg-red-50 transition-colors">
+                  Eliminar
+                </button>
+              </div>
+            </div>
+          </div>
+          <p v-else class="text-xs text-gray-400 mb-3">Sin documentos adjuntos.</p>
+
+          <!-- Subir nuevo -->
+          <div class="bg-blue-50 rounded-lg p-3 space-y-2">
+            <p class="text-xs font-medium text-blue-800">Adjuntar nuevo documento</p>
+            <div class="flex flex-col sm:flex-row gap-2">
+              <select v-model="formDoc.tipo_doc"
+                class="border rounded-lg px-2 py-1.5 text-sm flex-1 bg-white">
+                <option value="">— Tipo de documento —</option>
+                <option v-for="t in tiposDocumento" :key="t.value" :value="t.value">{{ t.label }}</option>
+              </select>
+              <input id="inputArchivoDoc" type="file" accept=".pdf,.jpg,.jpeg,.png"
+                @change="onArchivoDoc"
+                class="border rounded-lg px-2 py-1.5 text-sm flex-1 bg-white file:mr-2 file:py-0.5 file:px-2 file:rounded file:border-0 file:text-xs file:bg-blue-100 file:text-blue-700" />
+            </div>
+            <button @click="subirDocumento" :disabled="subiendoDoc || !formDoc.tipo_doc || !formDoc.archivo"
+              class="w-full py-1.5 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors">
+              {{ subiendoDoc ? "Subiendo..." : "Subir documento" }}
+            </button>
+          </div>
+        </div>
+
         <div class="flex justify-end pt-2">
           <button @click="modalVer = false"
             class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cerrar</button>
@@ -432,6 +483,18 @@ const modalEliminar       = ref(false)
 const permisoSeleccionado = ref(null)
 const motivoNegacion      = ref("")
 const motivoEliminacion   = ref("")
+
+// Documentos de respaldo
+const documentos       = ref([])
+const subiendoDoc      = ref(false)
+const tiposDocumento   = [
+  { value: "certificado_medico",   label: "Certificado Médico" },
+  { value: "partida_nacimiento",   label: "Partida de Nacimiento" },
+  { value: "certificado_defuncion",label: "Certificado de Defunción" },
+  { value: "solicitud",            label: "Solicitud" },
+  { value: "otro",                 label: "Otro" },
+]
+const formDoc = ref({ tipo_doc: "", archivo: null })
 const errorEliminar       = ref("")
 const errorNuevo          = ref("")
 const total               = ref(0)
@@ -524,9 +587,66 @@ const guardarPermiso = async () => {
   }
 }
 
-const verPermiso = (p) => {
+const verPermiso = async (p) => {
   permisoSeleccionado.value = p
-  modalVer.value = true
+  documentos.value          = []
+  formDoc.value             = { tipo_doc: "", archivo: null }
+  modalVer.value            = true
+  if (p.descontable === "NO") {
+    try {
+      const { data } = await api.get(`/permisos/${p.secuencial_clave}/documentos`)
+      documentos.value = data
+    } catch { /* silencioso */ }
+  }
+}
+
+const onArchivoDoc = (e) => { formDoc.value.archivo = e.target.files[0] || null }
+
+const subirDocumento = async () => {
+  if (!formDoc.value.tipo_doc || !formDoc.value.archivo) return
+  subiendoDoc.value = true
+  try {
+    const fd = new FormData()
+    fd.append("tipo_doc", formDoc.value.tipo_doc)
+    fd.append("archivo",  formDoc.value.archivo)
+    await api.post(`/permisos/${permisoSeleccionado.value.secuencial_clave}/documentos`, fd)
+    const { data } = await api.get(`/permisos/${permisoSeleccionado.value.secuencial_clave}/documentos`)
+    documentos.value  = data
+    formDoc.value     = { tipo_doc: "", archivo: null }
+    const inp = document.getElementById("inputArchivoDoc")
+    if (inp) inp.value = ""
+  } catch (e) {
+    alert(e.response?.data?.message || "Error al subir el documento")
+  } finally {
+    subiendoDoc.value = false
+  }
+}
+
+const eliminarDocumento = async (doc) => {
+  if (!confirm(`¿Eliminar "${doc.nombre_archivo}"?`)) return
+  try {
+    await api.delete(`/permisos/${permisoSeleccionado.value.secuencial_clave}/documentos/${doc.id}`)
+    documentos.value = documentos.value.filter(d => d.id !== doc.id)
+  } catch (e) {
+    alert(e.response?.data?.message || "Error al eliminar")
+  }
+}
+
+const descargarDocumento = async (doc) => {
+  try {
+    const resp = await api.get(
+      `/permisos/${permisoSeleccionado.value.secuencial_clave}/documentos/${doc.id}/descargar`,
+      { responseType: "blob" }
+    )
+    const url = URL.createObjectURL(resp.data)
+    const a   = document.createElement("a")
+    a.href    = url
+    a.target  = "_blank"
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch {
+    alert("No se pudo descargar el archivo")
+  }
 }
 
 const aprobar = async (id) => {

@@ -213,7 +213,8 @@ class ReportePlanificacionController extends Controller
         ]);
 
         $docLibId  = $this->getDocLibNodeId();
-        $folderId  = $this->getOrCreateFolderNodeId($docLibId, (string)$anio);
+        $rootId    = $this->getOrCreateFolderNodeId($docLibId, 'planificacion-vacaciones');
+        $folderId  = $this->getOrCreateFolderNodeId($rootId, (string)$anio);
         $archivo   = $request->file('archivo');
         $nombre    = "planificacion_vacaciones_{$anio}_firmado.pdf";
 
