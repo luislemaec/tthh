@@ -37,23 +37,32 @@ class ReportePlanificacionController extends Controller
     // Obtiene o crea una carpeta por año dentro del DocumentLibrary
     private function getOrCreateFolderNodeId(string $parentNodeId, string $folderName): string
     {
-        // Buscar si ya existe
-        $search = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
-            ->get("{$this->alfrescoBase}/nodes/{$parentNodeId}/children", [
-                'where' => "(isFolder=true AND name='{$folderName}')",
-            ]);
+        $buscarPorNombre = function (string $parent, string $nombre): ?string {
+            $resp    = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+                ->get("{$this->alfrescoBase}/nodes/{$parent}/children", [
+                    'where'    => '(isFolder=true)',
+                    'maxItems' => 500,
+                ]);
+            $entries = $resp->json('list.entries') ?? [];
+            foreach ($entries as $e) {
+                if ($e['entry']['name'] === $nombre) return $e['entry']['id'];
+            }
+            return null;
+        };
 
-        $entries = $search->json('list.entries') ?? [];
-        if (!empty($entries)) {
-            return $entries[0]['entry']['id'];
-        }
+        $found = $buscarPorNombre($parentNodeId, $folderName);
+        if ($found) return $found;
 
-        // Crear carpeta
         $create = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
             ->post("{$this->alfrescoBase}/nodes/{$parentNodeId}/children", [
                 'name'      => $folderName,
                 'nodeType'  => 'cm:folder',
             ]);
+
+        if ($create->status() === 409) {
+            $found = $buscarPorNombre($parentNodeId, $folderName);
+            if ($found) return $found;
+        }
 
         if (!$create->successful()) {
             abort(502, 'No se pudo crear la carpeta en Alfresco');

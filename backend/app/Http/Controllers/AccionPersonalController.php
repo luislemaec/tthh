@@ -31,12 +31,21 @@ class AccionPersonalController extends Controller
 
     private function getOrCreateFolderNodeId(string $parentNodeId, string $folderName): string
     {
-        $search  = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
-            ->get("{$this->alfrescoBase}/nodes/{$parentNodeId}/children", [
-                'where' => "(isFolder=true AND name='{$folderName}')",
-            ]);
-        $entries = $search->json('list.entries') ?? [];
-        if (!empty($entries)) return $entries[0]['entry']['id'];
+        $buscarPorNombre = function (string $parent, string $nombre): ?string {
+            $resp    = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+                ->get("{$this->alfrescoBase}/nodes/{$parent}/children", [
+                    'where'    => '(isFolder=true)',
+                    'maxItems' => 500,
+                ]);
+            $entries = $resp->json('list.entries') ?? [];
+            foreach ($entries as $e) {
+                if ($e['entry']['name'] === $nombre) return $e['entry']['id'];
+            }
+            return null;
+        };
+
+        $found = $buscarPorNombre($parentNodeId, $folderName);
+        if ($found) return $found;
 
         $create = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
             ->post("{$this->alfrescoBase}/nodes/{$parentNodeId}/children", [
@@ -44,14 +53,9 @@ class AccionPersonalController extends Controller
                 'nodeType' => 'cm:folder',
             ]);
 
-        // Alfresco devuelve 409 si la carpeta ya existe (race condition o búsqueda fallida)
         if ($create->status() === 409) {
-            $retry   = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
-                ->get("{$this->alfrescoBase}/nodes/{$parentNodeId}/children", [
-                    'where' => "(isFolder=true AND name='{$folderName}')",
-                ]);
-            $entries = $retry->json('list.entries') ?? [];
-            if (!empty($entries)) return $entries[0]['entry']['id'];
+            $found = $buscarPorNombre($parentNodeId, $folderName);
+            if ($found) return $found;
         }
 
         if (!$create->successful()) abort(502, 'No se pudo crear la carpeta en Alfresco');
