@@ -112,8 +112,67 @@ Variable `$generadoPor` = `trim($request->user()->apellido_emp) . ' ' . trim($re
 
 - URL: `http://192.168.26.38:8080/alfresco/api/-default-/public/alfresco/versions/1`
 - Credenciales: `admin/admin`, sitio: `talentohumano`
-- Subir a `talentohumano/{módulo}/{año}/`, guardar `entry.id` en DB
+- Guardar `entry.id` en DB tras subir; descargar con `GET /nodes/{id}/content`
 - Helpers `getDocLibNodeId()` y `getOrCreateFolderNodeId()` repetidos en cada controlador que usa Alfresco
+
+### Estructura de carpetas estandarizada
+
+```
+talentohumano/
+  acciones-personal/{año}/
+  horas-extras/{año}/
+  planificacion-vacaciones/{año}/
+  permisos/{año}/{cedula_APELLIDO}/
+```
+
+### Patrón de subida preferido — `relativePath`
+
+Usar el campo `relativePath` en el POST de upload. Alfresco crea las carpetas intermedias automáticamente, reduciendo de 5-8 llamadas HTTP a solo 2:
+
+```php
+$upload = Http::withBasicAuth($user, $pass)
+    ->attach('filedata', file_get_contents($archivo->getRealPath()), $nombre)
+    ->post("{$this->alfrescoBase}/nodes/{$docLibId}/children", [
+        'name'         => $nombre,
+        'nodeType'     => 'cm:content',
+        'relativePath' => 'modulo/{año}',   // crea carpetas automáticamente
+        'autoRename'   => true,
+    ]);
+```
+
+### `getOrCreateFolderNodeId()` — filtro por nombre en PHP
+
+El filtro `where=(isFolder=true AND name='X')` de Alfresco es poco fiable (puede devolver vacío aunque la carpeta exista). La implementación correcta: traer **todas** las carpetas con `(isFolder=true)` y filtrar por nombre en PHP. Además manejar 409 (carpeta ya existe por concurrencia):
+
+```php
+$buscarPorNombre = function (string $parent, string $nombre): ?string {
+    $resp    = Http::withBasicAuth(...)->get(".../nodes/{$parent}/children", ['where' => '(isFolder=true)', 'maxItems' => 500]);
+    $entries = $resp->json('list.entries') ?? [];
+    foreach ($entries as $e) {
+        if ($e['entry']['name'] === $nombre) return $e['entry']['id'];
+    }
+    return null;
+};
+$found = $buscarPorNombre($parentNodeId, $folderName);
+if ($found) return $found;
+$create = Http::withBasicAuth(...)->post(".../nodes/{$parentNodeId}/children", ['name' => $folderName, 'nodeType' => 'cm:folder']);
+if ($create->status() === 409) {  // ya existía (race condition)
+    $found = $buscarPorNombre($parentNodeId, $folderName);
+    if ($found) return $found;
+}
+if (!$create->successful()) abort(502, 'No se pudo crear la carpeta en Alfresco');
+return $create->json('entry.id');
+```
+
+### Descarga de documentos en el frontend (blob URL)
+
+```js
+const resp = await api.get(`/endpoint/descargar`, { responseType: 'blob' })
+const blob = new Blob([resp.data], { type: resp.headers['content-type'] || 'application/pdf' })
+const url  = URL.createObjectURL(blob)
+window.open(url, '_blank')
+setTimeout(() => URL.revokeObjectURL(url), 60000)   // revocar después de 60s, no inmediatamente
+```
 
 ---
 
@@ -126,7 +185,7 @@ Variable `$generadoPor` = `trim($request->user()->apellido_emp) . ' ' . trim($re
 | `AuthController` | Login / logout / me |
 | `EmpleadoController` | CRUD empleados + asignación de roles + partidas disponibles |
 | `AccionPersonalController` | Acciones (encargo, subrogación, ingreso, vacaciones, destitución, cesación) |
-| `VacacionesController` | Solicitudes de vacaciones (aprobar/negar/saldo) |
+| `VacacionesController` | Solicitudes de vacaciones (aprobar/negar/saldo) — al aprobar, modal pide empleado backup del mismo departamento |
 | `PlanificacionVacController` | Planificación anual de vacaciones — estados `ELIMINADO` y `NEGADO` permiten re-planificar; fechas de períodos se validan contra el año planificado |
 | `LiquidacionVacController` | Liquidación por comisión/desvinculación |
 | `ReportePlanificacionController` | PDF planificación + subida Alfresco |
@@ -165,7 +224,9 @@ Tabla de marcaciones individuales. Flujo diario en orden estricto: `ENTRADA → 
 - `VLANS_PERMITIDAS`: prefijos de red permitidos para marcación PRESENCIAL (ej: `10.10.12.,10.10.26.`)
 - `CONTROL_IP_MARCACION`: valor `1` = una IP solo puede ser usada por un empleado por día (evita timbrar por otro)
 
-Campos clave de `sg_control_persona`: `nro_documento` (= id_emp), `clasificacion` (ENTRADA/SALIDA), `concepto` (ENTRADA/SALIDA AL LUNCH/ENTRADA DEL LUNCH/SALIDA), `fecha_hora`, `tipo_marcacion` (WEB/TELETRABAJO), `ip`, `ubicacion`, `procesado` (SI/NO), `origen`.
+Campos clave de `sg_control_persona`: `nro_documento` (= id_emp), `clasificacion` (ENTRADA/SALIDA), `concepto` (ENTRADA/SALIDA AL LUNCH/ENTRADA DEL LUNCH/SALIDA), `fecha_hora`, `tipo_marcacion` (WEB/TELETRABAJO/**BIOMETRICO**), `ip`, `ubicacion`, `procesado` (SI/NO), `origen`.
+
+**Marcación biométrica:** el reloj ZKTeco escribe en esta misma tabla con `tipo_marcacion = 'BIOMETRICO'`. El sistema asigna el concepto por secuencia del día sin importar el origen — se pueden combinar libremente marcaciones WEB, TELETRABAJO y BIOMETRICO.
 
 **Cuadre** (`dbo.d2_cuadre_marcacion`): tabla con atrasos en minutos por día por empleado (`atraso_entrada`, `atraso_lunch`, `atraso_salida`). Se usa en el reporte personal de asistencia para mostrar atrasos y si están justificados por permisos aprobados.
 
@@ -190,7 +251,21 @@ Calculado en `calcularSaldoDisponible()` / `calcularSaldo()`:
 
 Auto-cierre corre en cada `index()` para SUBROGACION y VACACIONES con `fecha_fin < hoy`.
 
-PDF: `accion_personal.blade.php` — usa `{!! !!}` (no `{{ }}`) para entidades HTML como `&nbsp;` en checkboxes.
+**Estados del flujo:** `BORRADOR → PROCESADO` (estado final). TH ACCIONES PERSONAL crea en BORRADOR; `procesar()` pasa a PROCESADO y asigna `numero_accion`. `numero_accion` es nullable — se asigna al procesar, no al crear.
+
+**Métodos del controlador:**
+- `procesar($id)` — `PATCH /api/acciones-personal/{id}/procesar` — cambia estado a PROCESADO, asigna número de acción, sube PDF firmado a Alfresco
+- `editarBorrador($id)` — permite modificar una acción en BORRADOR
+
+**PDFs y reportes:**
+- `accion_personal.blade.php` — PDF individual; usa `{!! !!}` (no `{{ }}`) para entidades HTML como `&nbsp;` en checkboxes
+- `acc_lista.blade.php` — PDF de listado de acciones con filtros
+- Excel export disponible (requiere `phpoffice/phpspreadsheet` instalado en servidor: `composer require phpoffice/phpspreadsheet`)
+- PDF firmado se sube a Alfresco en `acciones-personal/{año}/`
+
+### Vacaciones — backup al aprobar
+
+Al aprobar una solicitud de vacaciones, el supervisor debe seleccionar un empleado de backup del mismo departamento. Campos en `dbo.d2_vacacion`: `backup_id` (VARCHAR 20, nullable), `backup_nombre` (VARCHAR 300, nullable). Migración `000055`. El endpoint `PATCH /api/vacaciones/{id}/aprobar` acepta `backup_id` y `backup_nombre` opcionales. Endpoint auxiliar: `GET /api/vacaciones/{id}/empleados-depto` — lista empleados activos del mismo departamento del solicitante.
 
 ### Liquidación de Vacaciones
 
@@ -216,7 +291,7 @@ Empleado crea planificación → PENDIENTE
   ↓ (si es supervisor/admin → directamente APROBADO)
 Supervisor aprueba → APROBADO  |  niega → NEGADO (con observación)
   ↓
-TH NOMINA autoriza con N° memorando → AUTORIZADO
+TH NOMINA procesa con N° memorando → PROCESADO
   ↓
 Empleado registra horas reales (solo en mes planificado y mes actual) → EN REVISION
   ↓
@@ -248,7 +323,7 @@ Porcentajes se obtienen de `dbo.d2_jornada` (campos `porc_extraordinaria`, `porc
 - `GET /api/horas-extras/planificacion/{id}/pdf` → `he_planificacion.blade.php` — actividades planificadas, datos del empleado, firmas (empleado + supervisor del departamento)
 - `GET /api/horas-extras/planificacion/{id}/pdf-registros` → `he_registros.blade.php` — solo registros en estado APROBADO, mismas firmas. Visible cuando hay al menos 1 registro APROBADO.
 - PDF firmado: se sube a Alfresco en `horas-extras/{año}/`, se guarda el `entry.id` en `pdf_aprobado` de la cabecera.
-- Botones PDF (planificación): visibles en estados APROBADO y AUTORIZADO.
+- Botones PDF (planificación): visibles en estados APROBADO y PROCESADO.
 
 #### Roles en Horas Extras
 
@@ -271,7 +346,7 @@ Porcentajes se obtienen de `dbo.d2_jornada` (campos `porc_extraordinaria`, `porc
 | GET | `/planificacion` | Lista planificaciones del equipo |
 | PATCH | `/planificacion/{id}/aprobar` | Supervisor aprueba |
 | PATCH | `/planificacion/{id}/negar` | Supervisor niega |
-| PATCH | `/planificacion/{id}/autorizar` | TH NOMINA autoriza |
+| PATCH | `/planificacion/{id}/autorizar` | TH NOMINA procesa (estado → PROCESADO) |
 | GET | `/planificacion/{id}/pdf` | PDF planificación |
 | GET | `/planificacion/{id}/pdf-registros` | PDF horas trabajadas |
 | POST | `/planificacion/{id}/subir-firmado` | Sube PDF firmado a Alfresco |
@@ -305,6 +380,12 @@ views/planificacion/    # Planificación anual de vacaciones, liquidación, repo
                         #   Controlador: ReporteVacacionesController.php
                         #   Kardex: dias legados (sin registro en d2_vacacion) aparecen como fila "registros anteriores"
 views/permisos/         # Permisos y licencias — fecha_desde/fecha_hasta default = hoy al abrir modal
+                        # Permisos NO descontables (descontable='NO'): sección "Documentos de respaldo"
+                        #   - Subir/ver/eliminar archivos solo cuando estado_permiso = 'PENDIENTE'
+                        #   - Tabla dbo.d2_permiso_documento: permiso_id, tipo_doc, nombre_archivo, alfresco_id, created_by
+                        #   - Carpeta Alfresco: permisos/{año}/{cedula_APELLIDO}/
+                        #   - Rutas: GET|POST /permisos/{id}/documentos, GET|DELETE /permisos/{id}/documentos/{docId}/descargar
+                        #   - Descarga usa blob URL con window.open + revoke después de 60s
 DashboardView.vue       # Admin/TH: métricas globales (Empleados, Departamentos, Permisos)
                         # Supervisor (no admin): 4 tarjetas pendientes (permisos/vacaciones/HE/materiales)
                         #   + widget "Mi equipo hoy" (presentes/permiso/vacaciones/sin marcar + barra)
@@ -317,6 +398,8 @@ DashboardView.vue       # Admin/TH: métricas globales (Empleados, Departamentos
                         #   Drill-down muestra hijos de la unidad clicada; botón "← Volver"
                         #   La tabla "Empleados por Departamento" fue eliminada (reemplazada por el gráfico)
 views/asistencia/       # Reporte de asistencia personal y admin
+                        # AsistenciaView: tarjetas de marcación con íconos SVG inline (v-html), no emojis
+                        #   Confirmación al marcar SALIDA antes de las 16:30 con window.confirm()
 views/horasextras/
   HorasExtrasView.vue   # 4 tabs:
                         #   MI PLANIFICACIÓN: crear/editar, PDF planificación, subir PDF firmado
@@ -324,7 +407,16 @@ views/horasextras/
                         #   PLANIFICACIONES DEL EQUIPO: aprobar/negar (supervisor/admin)
                         #   REGISTROS DEL EQUIPO: revisar/confirmar/negar + desglose monetario (TH NOMINA)
 views/admin/            # Roles, departamentos, turnos, configuración, IESS, avisos ticker
+                        # ZktecoView.vue: tabla de dispositivos, toggle activo/inactivo, editar nombre, eliminar
 layouts/MainLayout.vue  # Layout del módulo RRHH (menú colapsado, se abre el grupo activo)
+```
+
+### Componentes reutilizables
+
+```
+components/TimePicker24.vue  # Selector de hora 24h con dos <select> (horas 0-23, minutos en intervalo configurable)
+                             # Props: modelValue (HH:mm string), minuteInterval (default 5)
+                             # Sin AM/PM; intervalo de minutos configurable (se usa intervalo de 1 min en asistencia)
 ```
 
 ---
@@ -503,7 +595,7 @@ Flujo: empleado crea → supervisor revisa y aprueba (puede modificar cantidades
 - Si el solicitante es supervisor, la solicitud se crea directamente en APROBADO
 - Estado final en despacho: DESPACHADO (todo), DESPACHADO PARCIAL (parcial), NEGADO (todo en 0)
 - `despachar()` usa `DB::table()->update(['stock_actual' => DB::raw('GREATEST(0, stock_actual - N)')])` — nunca Eloquent
-- **PENDIENTE**: `despachar()` aún no inserta en `adq.kardex` — al implementar, usar tipo `EGRESO` igual que `EgresoController::confirmar()`
+- `despachar()` inserta en `adq.kardex` con tipo `EGRESO` (igual que `EgresoController::confirmar()`)
 
 Campos de cabecera: `id_emp`, `id_depto`, `estado`, `justificacion`, `fecha_solicitud`, `fecha_aprobacion`, `fecha_despacho`, `usuario_aprobacion`, `usuario_despacho`
 Campos de detalle: `articulo_id`, `cantidad_solicitada`, `cantidad_autorizada`, `unidad_medida`
@@ -664,6 +756,7 @@ layouts/TransporteLayout.vue  # Menú dinámico desde auth.menuAgrupado filtrado
 
 | URL | Roles |
 |---|---|
+| `admin/zkteco` | ADMINISTRADOR |
 | `transporte/vehiculos` | TRANSPORTE |
 | `transporte/talleres` | TRANSPORTE |
 | `transporte/tipos-mantenimiento` | TRANSPORTE |
@@ -700,6 +793,69 @@ Mensajes de publicidad/información que se muestran en `LauncherView.vue` con an
 - **Vertical:** panel lateral izquierdo `w-56` con `.ticker-vertical` (CSS `scroll-up`, `translateY -50%`) — texto duplicado para loop continuo
 - Ambas animaciones pausan al hacer hover
 - **campo Orden:** número para ordenar los avisos (menor = primero); la query ordena `ORDER BY orden ASC`
+
+---
+
+## Integración ZKTeco (reloj biométrico)
+
+Reloj **ZKTeco SenseFace 7A** (reconocimiento facial). Protocolo **ADMS push** — el reloj inicia las llamadas HTTP al servidor.
+
+### Tabla `dbo.d2_zkteco_dispositivo`
+
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `id` | int PK | — |
+| `serial` | varchar(50) unique | Número de serie del dispositivo |
+| `nombre` | varchar(100) nullable | Nombre descriptivo (ej: "Reloj Entrada Principal") |
+| `ip` | varchar(45) nullable | IP detectada en el último push |
+| `ultimo_push` | timestamp nullable | Fecha/hora del último push recibido |
+| `activo` | boolean | `true` = puede enviar marcaciones; `false` = rechazado con 403 |
+
+Migración: `2026_05_27_000059_create_zkteco_dispositivo_table.php`
+
+### Endpoints ADMS — públicos (sin Sanctum)
+
+Rutas en `routes/api.php` **fuera** del grupo `auth:sanctum`, bajo el prefijo `/api/iclock/`. El reloj debe configurarse con **Server Path: `/api/`** porque Apache solo proxea `/api/*` a Laravel.
+
+| Método | Ruta | Función |
+|---|---|---|
+| POST | `/api/iclock/cdata` | Recibe marcaciones tab-separated |
+| GET | `/api/iclock/getrequest` | Polling del reloj (responde vacío) |
+| GET\|POST | `/api/iclock/registry` | Registro automático al arrancar |
+| POST | `/api/iclock/devicecmd` | Confirmación de comandos (ignorar) |
+
+**Seguridad:** `cdata`, `getrequest` y `devicecmd` validan `SN` (serial) contra `d2_zkteco_dispositivo` con `activo=true` — responden `403 ERROR` si no autorizado. `registry` es abierto para que el reloj se registre automáticamente; el admin luego activa desde la UI.
+
+**Formato de datos recibidos en `cdata`** (body, una línea por marcación, campos separados por tab):
+```
+PIN\tDateTime\tStatus\tVerify\tWorkcode\tReserved1\tReserved2
+0102030405\t2026-05-22 08:30:00\t0\t15\t\t0\t0
+```
+- `PIN` = cédula del empleado (configurada al enrolarlo en el dispositivo)
+- `DateTime` = `YYYY-MM-DD HH:MM:SS`
+- El campo `Status` (0=IN/1=OUT) no se usa — el sistema determina el concepto por secuencia del día
+
+**Lógica de asignación de concepto:** igual que el aplicativo web — cuenta las marcaciones del empleado en el día y asigna la siguiente en la secuencia `ENTRADA → SALIDA AL LUNCH → ENTRADA DEL LUNCH → SALIDA`. Si ya tiene 4, descarta.
+
+### Endpoints admin — protegidos con Sanctum
+
+| Método | Ruta | Función |
+|---|---|---|
+| GET | `/api/admin/zkteco` | Lista todos los dispositivos |
+| PUT | `/api/admin/zkteco/{id}` | Editar nombre y estado activo |
+| DELETE | `/api/admin/zkteco/{id}` | Eliminar dispositivo |
+
+Vista: `views/admin/ZktecoView.vue` (ruta `admin/zkteco`) — solo rol ADMINISTRADOR.
+
+### Configuración del dispositivo físico
+
+Al llegar el reloj:
+1. Conectar a VLAN `192.168.10.x` (conectividad a `192.168.26.x` ya confirmada)
+2. En menú Red / ADMS del dispositivo: **Server Address:** `192.168.26.19` | **Server Port:** `8081` | **Server Path:** `/api/`
+3. El reloj llama a `/api/iclock/registry?SN=SERIAL` al arrancar y queda registrado en BD
+4. **Activarlo desde la UI** (`admin/zkteco`) — por defecto se registra en BD con `activo=true`, pero verificar
+5. Enrolar empleados: PIN = cédula exacta (10 dígitos), igual que `id_emp` en `dbo.ad_empleado`
+6. Empleados inactivos: solo cambiar `estado='INACTIVO'` en la ficha; no es necesario borrarlos del reloj
 
 ---
 

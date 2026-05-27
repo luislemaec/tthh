@@ -80,8 +80,9 @@ class RolPagoController extends Controller
     {
         $t = DB::table('dbo.nom_rol_pago_det')
             ->where('cab_id', $cabId)
-            ->selectRaw('COUNT(*) as cnt, COALESCE(SUM(valor_rmu),0) as bruto,
-                         COALESCE(SUM(aporte_patronal),0) as patronal,
+            ->selectRaw('COUNT(*) as cnt,
+                         COALESCE(SUM(valor_rmu),0) as bruto,
+                         COALESCE(SUM(aporte_patronal + iece + secap),0) as patronal,
                          COALESCE(SUM(total_descuentos),0) as desc_total,
                          COALESCE(SUM(liquido),0) as liq')
             ->first();
@@ -153,7 +154,8 @@ class RolPagoController extends Controller
             ->select(
                 'e.id_emp', 'e.nombre_emp', 'e.apellido_emp', 'e.identificacion',
                 'e.sueldo', 'e.tipo_contrato', 'e.fecha_ingreso',
-                'e.grupo_ocupacional as cargo', 'dep.nombre_depto'
+                'e.grupo_ocupacional as cargo', 'dep.nombre_depto',
+                'e.programa', 'e.actividad'
             )
             ->get();
 
@@ -172,18 +174,29 @@ class RolPagoController extends Controller
             'updated_at'       => now(),
         ]);
 
+        $tasaIece  = $tasas->get('IECE');
+        $tasaSecap = $tasas->get('SECAP');
+        $iecePct   = $tasaIece  ? (float)$tasaIece->aporte_patronal  : 0;
+        $secapPctCT = $tasaSecap ? (float)$tasaSecap->aporte_patronal : 0;
+
         foreach ($empleados as $e) {
             $dias = $this->calcularDiasEnMes($e->fecha_ingreso, $anio, $mes);
             if ($dias === 0) continue;
 
             $valorRmu = round($e->sueldo * $dias / 30, 2);
 
-            $tasa         = $tasas->get(trim($e->tipo_contrato));
-            $patronalPct  = $tasa ? (float)$tasa->aporte_patronal  : 0;
-            $personalPct  = $tasa ? (float)$tasa->aporte_individual : 0;
+            $modalidad   = trim($e->tipo_contrato ?? '');
+            $tasa        = $tasas->get($modalidad);
+            $patronalPct = $tasa ? (float)$tasa->aporte_patronal  : 0;
+            $personalPct = $tasa ? (float)$tasa->aporte_individual : 0;
 
-            $aporte_patronal  = round($valorRmu * $patronalPct  / 100, 2);
-            $aporte_personal  = round($valorRmu * $personalPct  / 100, 2);
+            $secapPct = ($modalidad === 'CODIGO DEL TRABAJO') ? $secapPctCT : 0;
+
+            $aporte_patronal = round($valorRmu * $patronalPct / 100, 2);
+            $aporte_personal = round($valorRmu * $personalPct / 100, 2);
+            $iece            = round($valorRmu * $iecePct   / 100, 2);
+            $secap           = round($valorRmu * $secapPct  / 100, 2);
+
             $total_descuentos = $aporte_personal;
             $liquido          = round($valorRmu - $total_descuentos, 2);
 
@@ -198,12 +211,19 @@ class RolPagoController extends Controller
                 'aporte_patronal'     => $aporte_patronal,
                 'aporte_personal_pct' => $personalPct,
                 'aporte_personal'     => $aporte_personal,
+                'iece_pct'            => $iecePct,
+                'iece'                => $iece,
+                'secap_pct'           => $secapPct,
+                'secap'               => $secap,
                 'quirografario'       => 0,
                 'hipotecario'         => 0,
                 'impuesto_renta'      => 0,
                 'supa'                => 0,
+                'poliza_blanket'      => 0,
                 'total_descuentos'    => $total_descuentos,
                 'liquido'             => $liquido,
+                'programa'            => $e->programa,
+                'actividad'           => $e->actividad,
                 'created_at'          => now(),
                 'updated_at'          => now(),
             ]);
@@ -225,6 +245,7 @@ class RolPagoController extends Controller
             'hipotecario'    => 'nullable|numeric|min:0',
             'impuesto_renta' => 'nullable|numeric|min:0',
             'supa'           => 'nullable|numeric|min:0',
+            'poliza_blanket' => 'nullable|numeric|min:0',
         ]);
 
         $det = DB::table('dbo.nom_rol_pago_det')->where('id', $id)->first();
@@ -239,15 +260,20 @@ class RolPagoController extends Controller
         $hipotecario    = (float)($request->input('hipotecario',    $det->hipotecario)    ?? 0);
         $impuesto_renta = (float)($request->input('impuesto_renta', $det->impuesto_renta) ?? 0);
         $supa           = (float)($request->input('supa',           $det->supa)           ?? 0);
+        $poliza_blanket = (float)($request->input('poliza_blanket', $det->poliza_blanket) ?? 0);
 
-        $total_descuentos = round($det->aporte_personal + $quirografario + $hipotecario + $impuesto_renta + $supa, 2);
-        $liquido          = round($det->valor_rmu - $total_descuentos, 2);
+        $total_descuentos = round(
+            $det->aporte_personal + $quirografario + $hipotecario + $impuesto_renta + $supa + $poliza_blanket,
+            2
+        );
+        $liquido = round($det->valor_rmu - $total_descuentos, 2);
 
         DB::table('dbo.nom_rol_pago_det')->where('id', $id)->update([
             'quirografario'   => $quirografario,
             'hipotecario'     => $hipotecario,
             'impuesto_renta'  => $impuesto_renta,
             'supa'            => $supa,
+            'poliza_blanket'  => $poliza_blanket,
             'total_descuentos'=> $total_descuentos,
             'liquido'         => $liquido,
             'updated_at'      => now(),
@@ -299,6 +325,7 @@ class RolPagoController extends Controller
             'filas.*.quirografario'   => 'nullable|numeric|min:0',
             'filas.*.hipotecario'     => 'nullable|numeric|min:0',
             'filas.*.impuesto_renta'  => 'nullable|numeric|min:0',
+            'filas.*.poliza_blanket'  => 'nullable|numeric|min:0',
         ]);
 
         $cab = DB::table('dbo.nom_rol_pago_cab')
@@ -311,7 +338,7 @@ class RolPagoController extends Controller
             return response()->json(['message' => 'No existe un período en BORRADOR para este mes/año.'], 422);
         }
 
-        $actualizados = [];
+        $actualizados  = [];
         $noEncontrados = [];
 
         foreach ($request->filas as $fila) {
@@ -321,32 +348,31 @@ class RolPagoController extends Controller
                 ->where('identificacion', $cedula)
                 ->value('id_emp');
 
-            if (!$emp) {
-                $noEncontrados[] = $cedula;
-                continue;
-            }
+            if (!$emp) { $noEncontrados[] = $cedula; continue; }
 
             $det = DB::table('dbo.nom_rol_pago_det')
                 ->where('cab_id', $cab->id)
                 ->where('id_emp', $emp)
                 ->first();
 
-            if (!$det) {
-                $noEncontrados[] = $cedula;
-                continue;
-            }
+            if (!$det) { $noEncontrados[] = $cedula; continue; }
 
-            $quirografario  = (float)($fila['quirografario']  ?? $det->quirografario);
-            $hipotecario    = (float)($fila['hipotecario']    ?? $det->hipotecario);
-            $impuesto_renta = (float)($fila['impuesto_renta'] ?? $det->impuesto_renta);
+            $quirografario  = isset($fila['quirografario'])  && $fila['quirografario']  !== null ? (float)$fila['quirografario']  : (float)$det->quirografario;
+            $hipotecario    = isset($fila['hipotecario'])    && $fila['hipotecario']    !== null ? (float)$fila['hipotecario']    : (float)$det->hipotecario;
+            $impuesto_renta = isset($fila['impuesto_renta']) && $fila['impuesto_renta'] !== null ? (float)$fila['impuesto_renta'] : (float)$det->impuesto_renta;
+            $poliza_blanket = isset($fila['poliza_blanket']) && $fila['poliza_blanket'] !== null ? (float)$fila['poliza_blanket'] : (float)$det->poliza_blanket;
 
-            $total_descuentos = round($det->aporte_personal + $quirografario + $hipotecario + $impuesto_renta + $det->supa, 2);
-            $liquido          = round($det->valor_rmu - $total_descuentos, 2);
+            $total_descuentos = round(
+                $det->aporte_personal + $quirografario + $hipotecario + $impuesto_renta + $det->supa + $poliza_blanket,
+                2
+            );
+            $liquido = round($det->valor_rmu - $total_descuentos, 2);
 
             DB::table('dbo.nom_rol_pago_det')->where('id', $det->id)->update([
                 'quirografario'   => $quirografario,
                 'hipotecario'     => $hipotecario,
                 'impuesto_renta'  => $impuesto_renta,
+                'poliza_blanket'  => $poliza_blanket,
                 'total_descuentos'=> $total_descuentos,
                 'liquido'         => $liquido,
                 'updated_at'      => now(),
@@ -361,6 +387,29 @@ class RolPagoController extends Controller
             'actualizados'   => count($actualizados),
             'no_encontrados' => $noEncontrados,
         ]);
+    }
+
+    // GET /api/nomina/rol-pago/{cabId}/resumenes
+    public function resumenes($cabId)
+    {
+        $filas = DB::table('dbo.nom_rol_pago_det')
+            ->where('cab_id', $cabId)
+            ->selectRaw("
+                COALESCE(programa, 'SIN PROGRAMA') as programa,
+                COALESCE(actividad, 'SIN ACTIVIDAD') as actividad,
+                COUNT(*) as empleados,
+                COALESCE(SUM(valor_rmu), 0) as total_rmu,
+                COALESCE(SUM(aporte_patronal + iece + secap), 0) as total_patronal,
+                COALESCE(SUM(aporte_personal), 0) as total_personal,
+                COALESCE(SUM(total_descuentos), 0) as total_descuentos,
+                COALESCE(SUM(liquido), 0) as total_liquido
+            ")
+            ->groupBy('programa', 'actividad')
+            ->orderBy('programa')
+            ->orderBy('actividad')
+            ->get();
+
+        return response()->json($filas);
     }
 
     // GET /api/nomina/rol-pago/pdf
