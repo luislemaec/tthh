@@ -138,10 +138,14 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::delete("/empleados/{id_emp}/roles/{id_rol}", [RolController::class, "quitarRolEmpleado"]);
 
     // Acciones de Personal
-    Route::get("/acciones-personal",                    [\App\Http\Controllers\AccionPersonalController::class, "index"]);
-    Route::post("/acciones-personal",                   [\App\Http\Controllers\AccionPersonalController::class, "store"]);
-    Route::get("/acciones-personal/{id}",               [\App\Http\Controllers\AccionPersonalController::class, "show"]);
-    Route::patch("/acciones-personal/{id}/estado",      [\App\Http\Controllers\AccionPersonalController::class, "cambiarEstado"]);
+    Route::get("/acciones-personal/reporte/pdf",           [\App\Http\Controllers\AccionPersonalController::class, "reportePdf"]);
+    Route::get("/acciones-personal/reporte/excel",         [\App\Http\Controllers\AccionPersonalController::class, "reporteExcel"]);
+    Route::get("/acciones-personal",                       [\App\Http\Controllers\AccionPersonalController::class, "index"]);
+    Route::post("/acciones-personal",                      [\App\Http\Controllers\AccionPersonalController::class, "store"]);
+    Route::get("/acciones-personal/{id}",                  [\App\Http\Controllers\AccionPersonalController::class, "show"]);
+    Route::patch("/acciones-personal/{id}/procesar",       [\App\Http\Controllers\AccionPersonalController::class, "procesar"]);
+    Route::patch("/acciones-personal/{id}/editar-borrador",[\App\Http\Controllers\AccionPersonalController::class, "editarBorrador"]);
+    Route::patch("/acciones-personal/{id}/estado",         [\App\Http\Controllers\AccionPersonalController::class, "cambiarEstado"]);
     Route::get("/acciones-personal/{id}/pdf",              [\App\Http\Controllers\AccionPersonalController::class, "pdf"]);
     Route::post("/acciones-personal/{id}/subir-firmado",   [\App\Http\Controllers\AccionPersonalController::class, "subirFirmado"]);
     Route::get("/acciones-personal/{id}/descargar-firmado",[\App\Http\Controllers\AccionPersonalController::class, "descargarFirmado"]);

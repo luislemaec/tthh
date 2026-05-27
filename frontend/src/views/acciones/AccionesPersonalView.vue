@@ -3,90 +3,151 @@
     <div class="flex items-center justify-between">
       <h1 class="text-2xl font-bold text-gray-800">Acciones de Personal</h1>
       <router-link to="/acciones-personal/nueva"
-        class="bg-[#0b5447] text-white px-4 py-2 rounded-lg hover:bg-[#00372e] text-sm font-medium">
-        + Nueva Acción
+        class="bg-[#0b5447] text-white px-4 py-2 rounded-lg hover:bg-[#00372e] text-sm font-medium inline-flex items-center gap-1.5">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+        Nueva Acción
       </router-link>
     </div>
 
-    <!-- Filtros -->
-    <div class="bg-white rounded-xl shadow p-4 flex flex-wrap gap-3">
-      <input v-model="filtro.buscar" type="text" placeholder="Buscar por empleado o Nro. acción..."
-        class="border rounded-lg px-3 py-2 text-sm flex-1 min-w-[200px] focus:outline-none focus:ring-2 focus:ring-[#579186]"
-        @input="cargar" />
-      <select v-model="filtro.tipo_accion" @change="cargar"
-        class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
-        <option value="">Todos los tipos</option>
-        <option value="INGRESO">Ingreso</option>
-        <option value="ENCARGO">Encargo</option>
-        <option value="SUBROGACION">Subrogación</option>
-        <option value="VACACIONES">Vacaciones</option>
-        <option value="DESTITUCION">Destitución</option>
-        <option value="CESACION DE FUNCIONES">Cesación de Funciones</option>
-      </select>
-      <select v-model="filtro.estado" @change="cargar"
-        class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
-        <option value="">Todos los estados</option>
-        <option value="ACTIVO">Activo</option>
-        <option value="FINALIZADO">Finalizado</option>
-        <option value="ANULADO">Anulado</option>
-      </select>
+    <!-- Filtros + exportar -->
+    <div class="bg-white rounded-xl shadow p-4">
+      <div class="flex flex-wrap gap-3 items-end">
+        <div class="flex-1 min-w-[200px]">
+          <label class="block text-xs font-medium text-gray-500 mb-1">Buscar</label>
+          <input v-model="filtro.buscar" type="text" placeholder="Empleado o Nro. acción..."
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]"
+            @input="cargar" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">Tipo</label>
+          <select v-model="filtro.tipo_accion" @change="cargar"
+            class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
+            <option value="">Todos los tipos</option>
+            <option value="INGRESO">Ingreso</option>
+            <option value="ENCARGO">Encargo</option>
+            <option value="SUBROGACION">Subrogación</option>
+            <option value="VACACIONES">Vacaciones</option>
+            <option value="DESTITUCION">Destitución</option>
+            <option value="CESACION DE FUNCIONES">Cesación de Funciones</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">Estado</label>
+          <select v-model="filtro.estado" @change="cargar"
+            class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
+            <option value="">Todos los estados</option>
+            <option value="BORRADOR">Borrador</option>
+            <option value="ACTIVO">Activo</option>
+            <option value="FINALIZADO">Finalizado</option>
+            <option value="ANULADO">Anulado</option>
+          </select>
+        </div>
+        <div class="flex gap-2 ml-auto">
+          <button @click="exportar('pdf')" :disabled="exportando"
+            class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-red-200 text-red-700 text-sm hover:bg-red-50 font-medium transition-colors disabled:opacity-50">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m.75 12 3 3m0 0 3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
+            PDF
+          </button>
+          <button @click="exportar('excel')" :disabled="exportando"
+            class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-green-200 text-green-700 text-sm hover:bg-green-50 font-medium transition-colors disabled:opacity-50">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 0 1-1.125-1.125M3.375 19.5h1.5C5.496 19.5 6 18.996 6 18.375m-3.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-1.5A1.125 1.125 0 0 1 18 18.375M20.625 4.5H3.375m17.25 0c.621 0 1.125.504 1.125 1.125M20.625 4.5h-1.5C18.504 4.5 18 5.004 18 5.625m3.75 0v1.5c0 .621-.504 1.125-1.125 1.125M3.375 4.5c-.621 0-1.125.504-1.125 1.125M3.375 4.5h1.5C5.496 4.5 6 5.004 6 5.625m-3.75 0v1.5c0 .621.504 1.125 1.125 1.125m0 0h1.5m-1.5 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m1.5-3.75C5.496 8.25 6 8.754 6 9.375v1.5m0-5.25v5.25m0-5.25C6 5.004 6.504 4.5 7.125 4.5h9.75c.621 0 1.125.504 1.125 1.125m1.125 2.625h1.5m-1.5 0A1.125 1.125 0 0 1 18 7.875v1.5m1.125-1.125c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125M18 5.625v5.25M7.125 12h9.75m-9.75 0A1.125 1.125 0 0 1 6 10.875M7.125 12C6.504 12 6 12.504 6 13.125m0-2.25C6 11.496 5.496 12 4.875 12M18 10.875c0 .621-.504 1.125-1.125 1.125M18 10.875c0 .621.504 1.125 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-9.75 0h9.75"/></svg>
+            Excel
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Tabla -->
     <div class="bg-white rounded-xl shadow overflow-hidden">
       <table class="w-full text-sm">
-        <thead class="bg-gray-50 border-b">
-          <tr>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium">Nro. Acción</th>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium">Tipo</th>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium">Empleado</th>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium">Vigencia</th>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium">Estado</th>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium">Acciones</th>
+        <thead>
+          <tr style="background-color:#0b5447;">
+            <th class="text-left px-4 py-3 text-white/80 font-semibold text-[11px] uppercase tracking-wide">Nro. Acción</th>
+            <th class="text-left px-4 py-3 text-white/80 font-semibold text-[11px] uppercase tracking-wide">Tipo</th>
+            <th class="text-left px-4 py-3 text-white/80 font-semibold text-[11px] uppercase tracking-wide">Empleado</th>
+            <th class="text-left px-4 py-3 text-white/80 font-semibold text-[11px] uppercase tracking-wide">Vigencia</th>
+            <th class="text-left px-4 py-3 text-white/80 font-semibold text-[11px] uppercase tracking-wide">Estado</th>
+            <th class="text-left px-4 py-3 text-white/80 font-semibold text-[11px] uppercase tracking-wide">Acciones</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="cargando">
-            <td colspan="6" class="text-center py-8 text-gray-400">Cargando...</td>
+            <td colspan="6" class="text-center py-10 text-gray-400">Cargando...</td>
           </tr>
           <tr v-else-if="acciones.length === 0">
-            <td colspan="6" class="text-center py-8 text-gray-400">No hay acciones registradas.</td>
+            <td colspan="6" class="py-16 text-center">
+              <div class="flex flex-col items-center gap-2 text-gray-300">
+                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
+                <p class="text-sm text-gray-400">No hay acciones registradas.</p>
+              </div>
+            </td>
           </tr>
-          <tr v-for="a in acciones" :key="a.id_accion" class="border-b hover:bg-gray-50">
-            <td class="px-4 py-3 font-mono font-medium text-[#0b5447]">{{ a.numero_accion }}</td>
+          <tr v-for="a in acciones" :key="a.id_accion"
+            :class="a.estado === 'BORRADOR' ? 'border-b border-amber-100 bg-amber-50/40' : 'border-b hover:bg-gray-50'">
             <td class="px-4 py-3">
-              <span :class="a.tipo_accion === 'ENCARGO' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'"
-                class="px-2 py-0.5 rounded-full text-xs font-medium">
+              <span v-if="a.numero_accion" class="font-mono font-semibold text-[#0b5447]">{{ a.numero_accion }}</span>
+              <span v-else class="text-xs text-amber-600 italic font-medium">Sin número — Borrador</span>
+            </td>
+            <td class="px-4 py-3">
+              <span :class="tipoBadge(a.tipo_accion)"
+                class="px-2 py-0.5 rounded-md text-xs font-semibold border">
                 {{ a.tipo_accion }}
               </span>
             </td>
             <td class="px-4 py-3">
-              <div class="font-medium">{{ a.empleado?.apellido_emp }}, {{ a.empleado?.nombre_emp }}</div>
+              <div class="font-medium text-gray-800">{{ a.empleado?.apellido_emp }}, {{ a.empleado?.nombre_emp }}</div>
               <div class="text-xs text-gray-400">{{ a.empleado?.cargo_empleado }}</div>
             </td>
-            <td class="px-4 py-3 text-xs">
+            <td class="px-4 py-3 text-xs text-gray-600">
               <div>Desde: {{ fmtFecha(a.fecha_inicio) }}</div>
               <div>Hasta: {{ a.fecha_fin ? fmtFecha(a.fecha_fin) : 'Indefinido' }}</div>
             </td>
             <td class="px-4 py-3">
-              <span :class="estadoClase(a)" class="px-2 py-0.5 rounded-full text-xs font-medium">
+              <span :class="estadoClase(a)" class="px-2 py-0.5 rounded-md text-xs font-semibold border">
                 {{ estadoLabel(a) }}
               </span>
             </td>
             <td class="px-4 py-3">
-              <div class="flex gap-2 flex-wrap">
-                <button @click="descargarPdf(a.id_accion)"
-                  class="text-[#0b5447] hover:underline text-xs font-medium">PDF</button>
-                <button v-if="a.pdf_firmado" @click="descargarFirmado(a.id_accion)"
-                  class="text-indigo-600 hover:underline text-xs font-medium">Firmado</button>
-                <label v-else class="text-gray-400 hover:text-indigo-600 cursor-pointer text-xs font-medium">
-                  Subir firmado
-                  <input type="file" accept=".pdf" class="hidden" @change="subirFirmado(a.id_accion, $event)" />
-                </label>
-                <button v-if="a.estado === 'ACTIVO'" @click="abrirModalFinalizar(a.id_accion)"
-                  class="text-green-600 hover:underline text-xs font-medium">Finalizar</button>
-                <button v-if="a.estado === 'ACTIVO'" @click="cambiarEstado(a.id_accion, 'ANULADO')"
-                  class="text-red-500 hover:underline text-xs font-medium">Anular</button>
+              <div class="flex gap-1.5 flex-wrap">
+                <!-- Acciones BORRADOR -->
+                <template v-if="a.estado === 'BORRADOR'">
+                  <button @click="abrirEditarBorrador(a)"
+                    class="inline-flex items-center px-2.5 py-1 rounded-md border border-amber-200 text-xs text-amber-700 hover:bg-amber-50 font-medium transition-colors">
+                    Editar
+                  </button>
+                  <button @click="procesar(a.id_accion)"
+                    class="inline-flex items-center px-2.5 py-1 rounded-md border border-[#0b5447] text-xs text-[#0b5447] hover:bg-green-50 font-medium transition-colors">
+                    Procesar
+                  </button>
+                  <button @click="cambiarEstado(a.id_accion, 'ANULADO')"
+                    class="inline-flex items-center px-2.5 py-1 rounded-md border border-red-200 text-xs text-red-600 hover:bg-red-50 font-medium transition-colors">
+                    Anular
+                  </button>
+                </template>
+
+                <!-- Acciones PROCESADO (ACTIVO/FINALIZADO/ANULADO) -->
+                <template v-else>
+                  <button @click="descargarPdf(a.id_accion)"
+                    class="inline-flex items-center px-2.5 py-1 rounded-md border border-[#0b5447] text-xs text-[#0b5447] hover:bg-green-50 font-medium transition-colors">
+                    PDF
+                  </button>
+                  <button v-if="a.pdf_firmado" @click="descargarFirmado(a.id_accion)"
+                    class="inline-flex items-center px-2.5 py-1 rounded-md border border-indigo-200 text-xs text-indigo-700 hover:bg-indigo-50 font-medium transition-colors">
+                    Firmado
+                  </button>
+                  <label v-else class="inline-flex items-center px-2.5 py-1 rounded-md border border-gray-200 text-xs text-gray-500 hover:bg-gray-50 font-medium transition-colors cursor-pointer">
+                    Subir firmado
+                    <input type="file" accept=".pdf" class="hidden" @change="subirFirmado(a.id_accion, $event)" />
+                  </label>
+                  <button v-if="a.estado === 'ACTIVO'" @click="abrirModalFinalizar(a.id_accion)"
+                    class="inline-flex items-center px-2.5 py-1 rounded-md border border-green-200 text-xs text-green-700 hover:bg-green-50 font-medium transition-colors">
+                    Finalizar
+                  </button>
+                  <button v-if="a.estado === 'ACTIVO'" @click="cambiarEstado(a.id_accion, 'ANULADO')"
+                    class="inline-flex items-center px-2.5 py-1 rounded-md border border-red-200 text-xs text-red-600 hover:bg-red-50 font-medium transition-colors">
+                    Anular
+                  </button>
+                </template>
               </div>
             </td>
           </tr>
@@ -114,13 +175,33 @@
       </div>
       <div class="flex justify-end gap-3 pt-2">
         <button @click="modalFinalizar.show = false"
-          class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">
-          Cancelar
-        </button>
+          class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
         <button @click="confirmarFinalizar"
-          class="px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700">
-          Confirmar
-        </button>
+          class="px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Editar Borrador -->
+  <div v-if="modalEditar.show" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-md space-y-4">
+      <h3 class="text-lg font-semibold text-gray-800">Editar Borrador</h3>
+      <p class="text-sm text-gray-400">Solo se puede modificar la motivación y la fecha de elaboración.</p>
+      <div>
+        <label class="block text-sm font-medium text-gray-600 mb-1">Fecha de elaboración *</label>
+        <input v-model="modalEditar.fecha_elaboracion" type="date"
+          class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-600 mb-1">Motivación / Observaciones</label>
+        <textarea v-model="modalEditar.motivacion" rows="4"
+          class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186] resize-none"></textarea>
+      </div>
+      <div class="flex justify-end gap-3 pt-2">
+        <button @click="modalEditar.show = false"
+          class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
+        <button @click="guardarBorrador"
+          class="px-4 py-2 rounded-lg bg-[#0b5447] text-white text-sm font-medium hover:bg-[#00372e]">Guardar</button>
       </div>
     </div>
   </div>
@@ -130,12 +211,14 @@
 import { ref, onMounted } from "vue"
 import api from "@/services/api"
 
-const acciones      = ref([])
-const cargando      = ref(false)
-const pagina        = ref(1)
-const paginacion    = ref({ current_page: 1, last_page: 1 })
-const filtro        = ref({ buscar: "", tipo_accion: "", estado: "" })
+const acciones       = ref([])
+const cargando       = ref(false)
+const exportando     = ref(false)
+const pagina         = ref(1)
+const paginacion     = ref({ current_page: 1, last_page: 1 })
+const filtro         = ref({ buscar: "", tipo_accion: "", estado: "" })
 const modalFinalizar = ref({ show: false, id: null, fecha: "" })
+const modalEditar    = ref({ show: false, id: null, fecha_elaboracion: "", motivacion: "" })
 
 const fmtFecha = (f) => {
   if (!f) return "—"
@@ -146,18 +229,29 @@ const fmtFecha = (f) => {
 const hoy = new Date().toISOString().substring(0, 10)
 
 const estadoLabel = (a) => {
-  if (a.estado === 'ANULADO') return 'Anulado'
+  if (a.estado === 'BORRADOR')   return 'Borrador'
+  if (a.estado === 'ANULADO')    return 'Anulado'
   if (a.estado === 'FINALIZADO') return 'Finalizado'
   if (a.fecha_fin && a.fecha_fin.substring(0, 10) < hoy) return 'Vencido'
   return 'Vigente'
 }
 
 const estadoClase = (a) => {
-  if (a.estado === 'ANULADO') return 'bg-red-100 text-red-700'
-  if (a.estado === 'FINALIZADO') return 'bg-gray-100 text-gray-600'
-  if (a.fecha_fin && a.fecha_fin.substring(0, 10) < hoy) return 'bg-orange-100 text-orange-700'
-  return 'bg-green-100 text-green-700'
+  if (a.estado === 'BORRADOR')   return 'bg-amber-50 text-amber-700 border-amber-200'
+  if (a.estado === 'ANULADO')    return 'bg-red-100 text-red-700 border-red-200'
+  if (a.estado === 'FINALIZADO') return 'bg-gray-100 text-gray-600 border-gray-200'
+  if (a.fecha_fin && a.fecha_fin.substring(0, 10) < hoy) return 'bg-orange-100 text-orange-700 border-orange-200'
+  return 'bg-green-100 text-green-700 border-green-200'
 }
+
+const tipoBadge = (tipo) => ({
+  'ENCARGO':               'bg-blue-100 text-blue-700 border-blue-200',
+  'SUBROGACION':           'bg-purple-100 text-purple-700 border-purple-200',
+  'INGRESO':               'bg-emerald-100 text-emerald-700 border-emerald-200',
+  'VACACIONES':            'bg-sky-100 text-sky-700 border-sky-200',
+  'DESTITUCION':           'bg-red-100 text-red-700 border-red-200',
+  'CESACION DE FUNCIONES': 'bg-amber-100 text-amber-700 border-amber-200',
+}[tipo] ?? 'bg-gray-100 text-gray-600 border-gray-200')
 
 const cargar = async () => {
   cargando.value = true
@@ -173,11 +267,7 @@ const cargar = async () => {
 }
 
 const abrirModalFinalizar = (id) => {
-  modalFinalizar.value = {
-    show: true,
-    id,
-    fecha: new Date().toISOString().substring(0, 10),
-  }
+  modalFinalizar.value = { show: true, id, fecha: new Date().toISOString().substring(0, 10) }
 }
 
 const confirmarFinalizar = async () => {
@@ -195,12 +285,72 @@ const confirmarFinalizar = async () => {
 }
 
 const cambiarEstado = async (id, estado) => {
-  if (!confirm('¿Anular esta acción de personal?')) return
+  if (!confirm(`¿${estado === 'ANULADO' ? 'Anular' : 'Cambiar estado de'} esta acción de personal?`)) return
   try {
     await api.patch(`/acciones-personal/${id}/estado`, { estado })
     cargar()
   } catch (e) {
     alert(e.response?.data?.message || "Error al cambiar estado")
+  }
+}
+
+const procesar = async (id) => {
+  if (!confirm("¿Procesar esta acción? Se asignará el número correlativo y ya no se podrá editar.")) return
+  try {
+    const { data } = await api.patch(`/acciones-personal/${id}/procesar`)
+    alert(data.message)
+    cargar()
+  } catch (e) {
+    alert(e.response?.data?.message || "Error al procesar")
+  }
+}
+
+const abrirEditarBorrador = (a) => {
+  modalEditar.value = {
+    show:              true,
+    id:                a.id_accion,
+    fecha_elaboracion: a.fecha_elaboracion?.substring(0, 10) ?? "",
+    motivacion:        a.motivacion ?? "",
+  }
+}
+
+const guardarBorrador = async () => {
+  if (!modalEditar.value.fecha_elaboracion) { alert("La fecha de elaboración es obligatoria."); return }
+  try {
+    await api.patch(`/acciones-personal/${modalEditar.value.id}/editar-borrador`, {
+      fecha_elaboracion: modalEditar.value.fecha_elaboracion,
+      motivacion:        modalEditar.value.motivacion,
+    })
+    modalEditar.value.show = false
+    cargar()
+  } catch (e) {
+    alert(e.response?.data?.message || "Error al guardar")
+  }
+}
+
+const exportar = async (formato) => {
+  exportando.value = true
+  try {
+    const ruta = `/acciones-personal/reporte/${formato}`
+    const response = await api.get(ruta, {
+      params: { ...filtro.value },
+      responseType: "blob",
+    })
+    const mime = formato === "pdf"
+      ? "application/pdf"
+      : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    const ext  = formato === "pdf" ? "pdf" : "xlsx"
+    const url  = window.URL.createObjectURL(new Blob([response.data], { type: mime }))
+    const link = document.createElement("a")
+    link.href  = url
+    link.setAttribute("download", `acciones_personal.${ext}`)
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+  } catch (e) {
+    alert("Error al generar el reporte")
+  } finally {
+    exportando.value = false
   }
 }
 
