@@ -212,11 +212,10 @@ class ReportePlanificacionController extends Controller
             'archivo' => 'required|file|mimes:pdf|max:10240',
         ]);
 
-        $docLibId  = $this->getDocLibNodeId();
-        $rootId    = $this->getOrCreateFolderNodeId($docLibId, 'planificacion-vacaciones');
-        $folderId  = $this->getOrCreateFolderNodeId($rootId, (string)$anio);
-        $archivo   = $request->file('archivo');
-        $nombre    = "planificacion_vacaciones_{$anio}_firmado.pdf";
+        $docLibId     = $this->getDocLibNodeId();
+        $archivo      = $request->file('archivo');
+        $nombre       = "planificacion_vacaciones_{$anio}_firmado.pdf";
+        $relativePath = "planificacion-vacaciones/{$anio}";
 
         // Eliminar nodo anterior si existe
         $existente = ReportePlanificacion::where('anio', $anio)->first();
@@ -228,10 +227,11 @@ class ReportePlanificacionController extends Controller
         // Subir a Alfresco
         $upload = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
             ->attach('filedata', file_get_contents($archivo->getRealPath()), $nombre)
-            ->post("{$this->alfrescoBase}/nodes/{$folderId}/children", [
-                'name'              => $nombre,
-                'nodeType'          => 'cm:content',
-                'autoRename'        => true,
+            ->post("{$this->alfrescoBase}/nodes/{$docLibId}/children", [
+                'name'         => $nombre,
+                'nodeType'     => 'cm:content',
+                'relativePath' => $relativePath,
+                'autoRename'   => true,
             ]);
 
         if (!$upload->successful()) {

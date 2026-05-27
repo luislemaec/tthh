@@ -380,19 +380,19 @@ class AccionPersonalController extends Controller
                 ->delete("{$this->alfrescoBase}/nodes/{$accion->pdf_firmado}");
         }
 
-        $anio     = Carbon::parse($accion->fecha_elaboracion)->year;
-        $docLibId = $this->getDocLibNodeId();
-        $rootId   = $this->getOrCreateFolderNodeId($docLibId, "acciones-personal");
-        $folderId = $this->getOrCreateFolderNodeId($rootId, (string)$anio);
-        $archivo  = $request->file("archivo");
-        $nombre   = "accion_{$accion->numero_accion}_firmado.pdf";
+        $anio         = Carbon::parse($accion->fecha_elaboracion)->year;
+        $docLibId     = $this->getDocLibNodeId();
+        $archivo      = $request->file("archivo");
+        $nombre       = "accion_{$accion->numero_accion}_firmado.pdf";
+        $relativePath = "acciones-personal/{$anio}";
 
         $upload = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
             ->attach("filedata", file_get_contents($archivo->getRealPath()), $nombre)
-            ->post("{$this->alfrescoBase}/nodes/{$folderId}/children", [
-                "name"       => $nombre,
-                "nodeType"   => "cm:content",
-                "autoRename" => true,
+            ->post("{$this->alfrescoBase}/nodes/{$docLibId}/children", [
+                "name"         => $nombre,
+                "nodeType"     => "cm:content",
+                "relativePath" => $relativePath,
+                "autoRename"   => true,
             ]);
 
         if (!$upload->successful()) {

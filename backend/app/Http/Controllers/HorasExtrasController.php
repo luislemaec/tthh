@@ -567,20 +567,18 @@ class HorasExtrasController extends Controller
                 ->delete("{$this->alfrescoBase}/nodes/{$cab->pdf_aprobado}");
         }
 
-        $anio     = $cab->anio;
-        $docLibId = $this->getDocLibNodeId();
-        $rootId   = $this->getOrCreateFolderNodeId($docLibId, 'horas-extras');
-        $folderId = $this->getOrCreateFolderNodeId($rootId, (string)$anio);
-
-        $emp    = $cab->empleado ?? Empleado::find($cab->id_emp);
-        $nombre = "he_{$cab->id_emp}_{$cab->anio}_{$cab->mes}_firmado.pdf";
+        $anio         = $cab->anio;
+        $docLibId     = $this->getDocLibNodeId();
+        $nombre       = "he_{$cab->id_emp}_{$cab->anio}_{$cab->mes}_firmado.pdf";
+        $relativePath = "horas-extras/{$anio}";
 
         $upload = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
             ->attach('filedata', file_get_contents($request->file('archivo')->getRealPath()), $nombre)
-            ->post("{$this->alfrescoBase}/nodes/{$folderId}/children", [
-                'name'       => $nombre,
-                'nodeType'   => 'cm:content',
-                'autoRename' => true,
+            ->post("{$this->alfrescoBase}/nodes/{$docLibId}/children", [
+                'name'         => $nombre,
+                'nodeType'     => 'cm:content',
+                'relativePath' => $relativePath,
+                'autoRename'   => true,
             ]);
 
         if (!$upload->successful()) {

@@ -441,28 +441,29 @@ class PermisosController extends Controller
             'tipo_doc' => 'required|string|max:60',
         ]);
 
-        $permiso  = Permiso::with('empleado')->findOrFail($id);
-        $empleado = $permiso->empleado;
-        $anio     = Carbon::parse($permiso->fecha_desde)->year;
-        $cedula   = $empleado->id_emp;
-        $apellido = strtoupper(trim($empleado->apellido_emp));
-        $carpetaEmp = "{$cedula}_{$apellido}";
+        $permiso = Permiso::with('empleado')->findOrFail($id);
+        if ($permiso->estado_permiso !== 'PENDIENTE') {
+            return response()->json(['message' => 'Solo se pueden adjuntar documentos en permisos PENDIENTES.'], 422);
+        }
+        $empleado     = $permiso->empleado;
+        $anio         = Carbon::parse($permiso->fecha_desde)->year;
+        $cedula       = $empleado->id_emp;
+        $apellido     = strtoupper(trim($empleado->apellido_emp));
+        $carpetaEmp   = "{$cedula}_{$apellido}";
+        $relativePath = "permisos/{$anio}/{$carpetaEmp}";
 
-        $docLibId  = $this->getDocLibNodeId();
-        $rootId    = $this->getOrCreateFolderNodeId($docLibId, 'permisos');
-        $anioId    = $this->getOrCreateFolderNodeId($rootId, (string)$anio);
-        $empId     = $this->getOrCreateFolderNodeId($anioId, $carpetaEmp);
-
-        $archivo      = $request->file('archivo');
-        $ext          = $archivo->getClientOriginalExtension();
-        $nombreBase   = "permiso_{$id}_{$request->tipo_doc}.{$ext}";
+        $docLibId   = $this->getDocLibNodeId();
+        $archivo    = $request->file('archivo');
+        $ext        = $archivo->getClientOriginalExtension();
+        $nombreBase = "permiso_{$id}_{$request->tipo_doc}.{$ext}";
 
         $upload = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
             ->attach('filedata', file_get_contents($archivo->getRealPath()), $nombreBase)
-            ->post("{$this->alfrescoBase}/nodes/{$empId}/children", [
-                'name'       => $nombreBase,
-                'nodeType'   => 'cm:content',
-                'autoRename' => true,
+            ->post("{$this->alfrescoBase}/nodes/{$docLibId}/children", [
+                'name'         => $nombreBase,
+                'nodeType'     => 'cm:content',
+                'relativePath' => $relativePath,
+                'autoRename'   => true,
             ]);
 
         if (!$upload->successful()) {
@@ -487,6 +488,11 @@ class PermisosController extends Controller
     // DELETE /api/permisos/{id}/documentos/{docId}
     public function eliminarDocumento(Request $request, $id, $docId)
     {
+        $permiso = Permiso::findOrFail($id);
+        if ($permiso->estado_permiso !== 'PENDIENTE') {
+            return response()->json(['message' => 'No se pueden eliminar documentos de un permiso ya procesado.'], 422);
+        }
+
         $doc = DB::table('dbo.d2_permiso_documento')
             ->where('id', $docId)
             ->where('permiso_id', $id)

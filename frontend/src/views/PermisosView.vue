@@ -326,7 +326,8 @@
                   class="inline-flex items-center px-2 py-1 rounded border border-blue-200 text-xs text-blue-700 hover:bg-blue-50 transition-colors">
                   Ver
                 </button>
-                <button @click="eliminarDocumento(doc)"
+                <button v-if="permisoSeleccionado?.estado_permiso === 'PENDIENTE'"
+                  @click="eliminarDocumento(doc)"
                   class="inline-flex items-center px-2 py-1 rounded border border-red-200 text-xs text-red-600 hover:bg-red-50 transition-colors">
                   Eliminar
                 </button>
@@ -335,8 +336,8 @@
           </div>
           <p v-else class="text-xs text-gray-400 mb-3">Sin documentos adjuntos.</p>
 
-          <!-- Subir nuevo -->
-          <div class="bg-blue-50 rounded-lg p-3 space-y-2">
+          <!-- Subir nuevo (solo en PENDIENTE) -->
+          <div v-if="permisoSeleccionado?.estado_permiso === 'PENDIENTE'" class="bg-blue-50 rounded-lg p-3 space-y-2">
             <p class="text-xs font-medium text-blue-800">Adjuntar nuevo documento</p>
             <div class="flex flex-col sm:flex-row gap-2">
               <select v-model="formDoc.tipo_doc"
@@ -353,6 +354,7 @@
               {{ subiendoDoc ? "Subiendo..." : "Subir documento" }}
             </button>
           </div>
+          <p v-else class="text-xs text-gray-400 italic">Solo se pueden adjuntar documentos mientras el permiso está en estado PENDIENTE.</p>
         </div>
 
         <div class="flex justify-end pt-2">
