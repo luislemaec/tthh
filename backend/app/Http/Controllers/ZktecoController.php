@@ -7,16 +7,27 @@ use Illuminate\Support\Facades\DB;
 
 class ZktecoController extends Controller
 {
+    private function dispositivoAutorizado(Request $request): bool
+    {
+        $sn = $request->query('SN', '');
+        if (!$sn) return false;
+        return DB::table('dbo.d2_zkteco_dispositivo')
+            ->where('serial', $sn)
+            ->where('activo', true)
+            ->exists();
+    }
+
     // POST /iclock/cdata — recibe marcaciones del reloj
     public function cdata(Request $request)
     {
-        $sn = $request->query('SN', '');
-
-        if ($sn) {
-            DB::table('dbo.d2_zkteco_dispositivo')
-                ->where('serial', $sn)
-                ->update(['ultimo_push' => now(), 'ip' => $request->ip()]);
+        if (!$this->dispositivoAutorizado($request)) {
+            return response('ERROR', 403)->header('Content-Type', 'text/plain');
         }
+
+        $sn = $request->query('SN', '');
+        DB::table('dbo.d2_zkteco_dispositivo')
+            ->where('serial', $sn)
+            ->update(['ultimo_push' => now(), 'ip' => $request->ip()]);
 
         $secuencia = ['ENTRADA', 'SALIDA AL LUNCH', 'ENTRADA DEL LUNCH', 'SALIDA'];
         $lineas    = array_filter(explode("\n", trim($request->getContent())));
@@ -89,6 +100,9 @@ class ZktecoController extends Controller
     // GET /iclock/getrequest — polling del reloj (sin comandos pendientes)
     public function getrequest(Request $request)
     {
+        if (!$this->dispositivoAutorizado($request)) {
+            return response('ERROR', 403)->header('Content-Type', 'text/plain');
+        }
         return response('', 200)->header('Content-Type', 'text/plain');
     }
 
@@ -109,6 +123,9 @@ class ZktecoController extends Controller
     // POST /iclock/devicecmd — confirmación de ejecución de comandos (ignorar)
     public function devicecmd(Request $request)
     {
+        if (!$this->dispositivoAutorizado($request)) {
+            return response('ERROR', 403)->header('Content-Type', 'text/plain');
+        }
         return response('OK', 200)->header('Content-Type', 'text/plain');
     }
 }
