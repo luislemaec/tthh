@@ -195,11 +195,11 @@
           <div v-if="formNuevo.todo_dia !== 'SI'" class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Hora Desde *</label>
-              <TimePicker24 v-model="formNuevo.hora_desde" :step="5" />
+              <TimePicker24 v-model="formNuevo.hora_desde" />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Hora Hasta *</label>
-              <TimePicker24 v-model="formNuevo.hora_hasta" :step="5" />
+              <TimePicker24 v-model="formNuevo.hora_hasta" />
             </div>
           </div>
           <div>

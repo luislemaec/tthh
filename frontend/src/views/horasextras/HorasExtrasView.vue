@@ -533,11 +533,11 @@
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Hora inicio *</label>
-              <TimePicker24 v-model="modalRegistro.form.hora_inicio" :step="5" @change="calcularPreview" />
+              <TimePicker24 v-model="modalRegistro.form.hora_inicio" @change="calcularPreview" />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Hora fin *</label>
-              <TimePicker24 v-model="modalRegistro.form.hora_fin" :step="5" @change="calcularPreview" />
+              <TimePicker24 v-model="modalRegistro.form.hora_fin" @change="calcularPreview" />
             </div>
           </div>
           <div>
@@ -648,11 +648,11 @@
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Hora inicio *</label>
-              <TimePicker24 v-model="modalEditarReg.form.hora_inicio" :step="5" @change="calcularPreviewEditar" />
+              <TimePicker24 v-model="modalEditarReg.form.hora_inicio" @change="calcularPreviewEditar" />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Hora fin *</label>
-              <TimePicker24 v-model="modalEditarReg.form.hora_fin" :step="5" @change="calcularPreviewEditar" />
+              <TimePicker24 v-model="modalEditarReg.form.hora_fin" @change="calcularPreviewEditar" />
             </div>
           </div>
           <div>
