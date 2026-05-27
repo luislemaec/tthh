@@ -652,12 +652,11 @@ const descargarDocumento = async (doc) => {
       `/permisos/${permisoSeleccionado.value.secuencial_clave}/documentos/${doc.id}/descargar`,
       { responseType: "blob" }
     )
-    const url = URL.createObjectURL(resp.data)
-    const a   = document.createElement("a")
-    a.href    = url
-    a.target  = "_blank"
-    a.click()
-    URL.revokeObjectURL(url)
+    const tipo = resp.headers["content-type"] || "application/pdf"
+    const blob = new Blob([resp.data], { type: tipo })
+    const url  = URL.createObjectURL(blob)
+    window.open(url, "_blank")
+    setTimeout(() => URL.revokeObjectURL(url), 60000)
   } catch {
     alert("No se pudo descargar el archivo")
   }
