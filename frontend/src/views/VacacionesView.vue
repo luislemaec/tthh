@@ -195,13 +195,11 @@
           <div v-if="formNuevo.todo_dia !== 'SI'" class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Hora Desde *</label>
-              <input v-model="formNuevo.hora_desde" type="time"
-                class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+              <TimePicker24 v-model="formNuevo.hora_desde" :step="5" />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Hora Hasta *</label>
-              <input v-model="formNuevo.hora_hasta" type="time"
-                class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+              <TimePicker24 v-model="formNuevo.hora_hasta" :step="5" />
             </div>
           </div>
           <div>
@@ -361,6 +359,7 @@
 <script setup>
 import { ref, computed, onMounted } from "vue"
 import api from "@/services/api"
+import TimePicker24 from "@/components/TimePicker24.vue"
 
 const vacaciones   = ref([])
 const cargando     = ref(false)

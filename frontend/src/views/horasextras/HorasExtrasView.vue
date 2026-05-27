@@ -533,15 +533,11 @@
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Hora inicio *</label>
-              <input v-model="modalRegistro.form.hora_inicio" type="time"
-                @change="calcularPreview"
-                class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#579186] outline-none" />
+              <TimePicker24 v-model="modalRegistro.form.hora_inicio" :step="5" @change="calcularPreview" />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Hora fin *</label>
-              <input v-model="modalRegistro.form.hora_fin" type="time"
-                @change="calcularPreview"
-                class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#579186] outline-none" />
+              <TimePicker24 v-model="modalRegistro.form.hora_fin" :step="5" @change="calcularPreview" />
             </div>
           </div>
           <div>
@@ -652,13 +648,11 @@
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Hora inicio *</label>
-              <input v-model="modalEditarReg.form.hora_inicio" type="time" @change="calcularPreviewEditar"
-                class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#579186] outline-none" />
+              <TimePicker24 v-model="modalEditarReg.form.hora_inicio" :step="5" @change="calcularPreviewEditar" />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Hora fin *</label>
-              <input v-model="modalEditarReg.form.hora_fin" type="time" @change="calcularPreviewEditar"
-                class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#579186] outline-none" />
+              <TimePicker24 v-model="modalEditarReg.form.hora_fin" :step="5" @change="calcularPreviewEditar" />
             </div>
           </div>
           <div>
@@ -758,6 +752,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from "vue"
 import api from "@/services/api"
+import TimePicker24 from "@/components/TimePicker24.vue"
 
 const esSupervisorOAdmin = ref(false)
 const esTHNomina         = ref(false)
