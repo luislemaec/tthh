@@ -27,10 +27,19 @@ use App\Http\Controllers\Adquisiciones\OrdenCompraController;
 use App\Http\Controllers\Adquisiciones\SolicitudMaterialController;
 use App\Http\Controllers\Adquisiciones\ReporteAdqController;
 use App\Http\Controllers\Adquisiciones\AjusteController;
+use App\Http\Controllers\ZktecoController;
 use Illuminate\Support\Facades\Route;
 
 // Rutas PÚBLICAS
 Route::post("/login", [AuthController::class, "login"])->name("login");
+
+// Endpoints ADMS — reloj biométrico ZKTeco (sin autenticación)
+Route::prefix("iclock")->group(function () {
+    Route::post("cdata",                        [ZktecoController::class, "cdata"]);
+    Route::get("getrequest",                    [ZktecoController::class, "getrequest"]);
+    Route::match(["get", "post"], "registry",   [ZktecoController::class, "registry"]);
+    Route::post("devicecmd",                    [ZktecoController::class, "devicecmd"]);
+});
 
 // Servir archivos del storage público a través del API (resuelve SPA catch-all)
 Route::get("/storage-file/{path}", function (string $path) {
