@@ -75,10 +75,10 @@
         </thead>
         <tbody>
           <tr v-if="cargando">
-            <td colspan="7" class="text-center py-8 text-gray-400">Cargando...</td>
+            <td colspan="8" class="text-center py-8 text-gray-400">Cargando...</td>
           </tr>
           <tr v-else-if="permisos.length === 0">
-            <td colspan="7" class="text-center py-8 text-gray-400">No hay permisos registrados</td>
+            <td colspan="8" class="text-center py-8 text-gray-400">No hay permisos registrados</td>
           </tr>
           <tr v-for="p in permisos" :key="p.secuencial_clave" class="border-b hover:bg-gray-50">
             <td class="px-4 py-3 font-medium">
@@ -105,16 +105,24 @@
               </span>
             </td>
             <td class="px-4 py-3">
-              <div class="flex gap-2">
+              <div class="flex gap-1 flex-wrap">
                 <button @click="verPermiso(p)"
-                  class="text-[#0b5447] hover:underline text-xs font-medium">Ver</button>
+                  class="inline-flex items-center px-2.5 py-1 rounded-md border border-[#0b5447] text-xs text-[#0b5447] hover:bg-[#f0faf8] font-medium transition-colors">
+                  Ver
+                </button>
                 <template v-if="esSupervisorOAdmin && tabActivo === 'equipo' && p.estado_permiso === 'PENDIENTE'">
                   <button @click="aprobar(p.secuencial_clave)"
-                    class="text-green-600 hover:underline text-xs font-medium">Aprobar</button>
+                    class="inline-flex items-center px-2.5 py-1 rounded-md border border-green-300 text-xs text-green-700 hover:bg-green-50 font-medium transition-colors">
+                    Aprobar
+                  </button>
                   <button @click="abrirModalNegar(p)"
-                    class="text-red-500 hover:underline text-xs font-medium">Negar</button>
+                    class="inline-flex items-center px-2.5 py-1 rounded-md border border-red-200 text-xs text-red-600 hover:bg-red-50 font-medium transition-colors">
+                    Negar
+                  </button>
                   <button @click="abrirModalEliminar(p)"
-                    class="text-gray-500 hover:underline text-xs font-medium">Eliminar</button>
+                    class="inline-flex items-center px-2.5 py-1 rounded-md border border-gray-200 text-xs text-gray-500 hover:bg-gray-50 font-medium transition-colors">
+                    Eliminar
+                  </button>
                 </template>
               </div>
             </td>
@@ -577,9 +585,13 @@ const guardarPermiso = async () => {
   guardando.value  = true
   errorNuevo.value = ""
   try {
-    await api.post("/permisos", formNuevo.value)
+    const { data: creado } = await api.post("/permisos", formNuevo.value)
     modalNuevo.value = false
-    cargar()
+    await cargar()
+    // Si el permiso es no descontable, abrir detalle para subir documentos de respaldo
+    if (creado.descontable === "NO") {
+      verPermiso(creado)
+    }
   } catch (e) {
     errorNuevo.value = e.response?.data?.message || "Error al solicitar permiso"
   } finally {
