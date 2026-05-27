@@ -174,11 +174,6 @@ class RolPagoController extends Controller
             'updated_at'       => now(),
         ]);
 
-        $tasaIece  = $tasas->get('IECE');
-        $tasaSecap = $tasas->get('SECAP');
-        $iecePct   = $tasaIece  ? (float)$tasaIece->aporte_patronal  : 0;
-        $secapPctCT = $tasaSecap ? (float)$tasaSecap->aporte_patronal : 0;
-
         foreach ($empleados as $e) {
             $dias = $this->calcularDiasEnMes($e->fecha_ingreso, $anio, $mes);
             if ($dias === 0) continue;
@@ -189,13 +184,13 @@ class RolPagoController extends Controller
             $tasa        = $tasas->get($modalidad);
             $patronalPct = $tasa ? (float)$tasa->aporte_patronal  : 0;
             $personalPct = $tasa ? (float)$tasa->aporte_individual : 0;
-
-            $secapPct = ($modalidad === 'CODIGO DEL TRABAJO') ? $secapPctCT : 0;
+            $iecePct     = $tasa ? (float)$tasa->iece_patronal     : 0;
+            $secapPct    = $tasa ? (float)$tasa->secap_patronal    : 0;
 
             $aporte_patronal = round($valorRmu * $patronalPct / 100, 2);
             $aporte_personal = round($valorRmu * $personalPct / 100, 2);
-            $iece            = round($valorRmu * $iecePct   / 100, 2);
-            $secap           = round($valorRmu * $secapPct  / 100, 2);
+            $iece            = round($valorRmu * $iecePct     / 100, 2);
+            $secap           = round($valorRmu * $secapPct    / 100, 2);
 
             $total_descuentos = $aporte_personal;
             $liquido          = round($valorRmu - $total_descuentos, 2);
