@@ -128,4 +128,41 @@ class ZktecoController extends Controller
         }
         return response('OK', 200)->header('Content-Type', 'text/plain');
     }
+
+    // ── Admin ────────────────────────────────────────────────────────────────
+
+    // GET /api/admin/zkteco
+    public function index()
+    {
+        $dispositivos = DB::table('dbo.d2_zkteco_dispositivo')
+            ->orderBy('created_at')
+            ->get();
+        return response()->json($dispositivos);
+    }
+
+    // PUT /api/admin/zkteco/{id}
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'nombre' => 'nullable|string|max:100',
+            'activo' => 'required|boolean',
+        ]);
+
+        DB::table('dbo.d2_zkteco_dispositivo')
+            ->where('id', $id)
+            ->update([
+                'nombre'     => $request->nombre,
+                'activo'     => $request->activo,
+                'updated_at' => now(),
+            ]);
+
+        return response()->json(['message' => 'Dispositivo actualizado']);
+    }
+
+    // DELETE /api/admin/zkteco/{id}
+    public function destroy($id)
+    {
+        DB::table('dbo.d2_zkteco_dispositivo')->where('id', $id)->delete();
+        return response()->json(['message' => 'Dispositivo eliminado']);
+    }
 }

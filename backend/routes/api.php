@@ -114,6 +114,11 @@ Route::middleware("auth:sanctum")->group(function () {
 
         // Auditoría centralizada (solo ADMINISTRADOR)
         Route::get("auditoria", [\App\Http\Controllers\Admin\AuditoriaController::class, "index"]);
+
+        // Dispositivos ZKTeco
+        Route::get("zkteco",          [ZktecoController::class, "index"]);
+        Route::put("zkteco/{id}",     [ZktecoController::class, "update"]);
+        Route::delete("zkteco/{id}",  [ZktecoController::class, "destroy"]);
     });
 
     // Opciones de menú
