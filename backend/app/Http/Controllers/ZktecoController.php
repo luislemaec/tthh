@@ -1,0 +1,114 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+
+class ZktecoController extends Controller
+{
+    // POST /iclock/cdata — recibe marcaciones del reloj
+    public function cdata(Request $request)
+    {
+        $sn = $request->query('SN', '');
+
+        if ($sn) {
+            DB::table('dbo.d2_zkteco_dispositivo')
+                ->where('serial', $sn)
+                ->update(['ultimo_push' => now(), 'ip' => $request->ip()]);
+        }
+
+        $secuencia = ['ENTRADA', 'SALIDA AL LUNCH', 'ENTRADA DEL LUNCH', 'SALIDA'];
+        $lineas    = array_filter(explode("\n", trim($request->getContent())));
+
+        foreach ($lineas as $linea) {
+            $campos = explode("\t", trim($linea));
+            if (count($campos) < 2) continue;
+
+            $pin      = trim($campos[0]);
+            $fechaHora = trim($campos[1]);
+
+            if (!$pin || !$fechaHora) continue;
+
+            // Validar formato de fecha
+            if (!preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $fechaHora)) continue;
+
+            // Buscar empleado activo con ese PIN (cédula)
+            $empleado = DB::table('dbo.ad_empleado')
+                ->where('id_emp', $pin)
+                ->where('estado', 'ACTIVO')
+                ->first(['id_emp', 'nombre_emp', 'apellido_emp']);
+
+            if (!$empleado) continue;
+
+            // Ignorar duplicados exactos
+            $yaExiste = DB::table('dbo.sg_control_persona')
+                ->where('nro_documento', $pin)
+                ->where('fecha_hora', $fechaHora)
+                ->exists();
+
+            if ($yaExiste) continue;
+
+            // Determinar siguiente concepto en la secuencia del día
+            $fecha = substr($fechaHora, 0, 10);
+            $marcacionesHoy = DB::table('dbo.sg_control_persona')
+                ->where('nro_documento', $pin)
+                ->whereRaw("DATE(fecha_hora) = ?", [$fecha])
+                ->orderBy('fecha_hora')
+                ->pluck('concepto')
+                ->toArray();
+
+            $siguiente = null;
+            foreach ($secuencia as $concepto) {
+                if (!in_array($concepto, $marcacionesHoy)) {
+                    $siguiente = $concepto;
+                    break;
+                }
+            }
+
+            // Ya tiene las 4 marcaciones del día
+            if (!$siguiente) continue;
+
+            $clasificacion = in_array($siguiente, ['ENTRADA', 'ENTRADA DEL LUNCH']) ? 'ENTRADA' : 'SALIDA';
+
+            DB::table('dbo.sg_control_persona')->insert([
+                'nro_documento'  => $pin,
+                'nombre'         => strtoupper(trim($empleado->apellido_emp)) . ' ' . trim($empleado->nombre_emp),
+                'clasificacion'  => $clasificacion,
+                'concepto'       => $siguiente,
+                'fecha_hora'     => $fechaHora,
+                'tipo_marcacion' => 'BIOMETRICO',
+                'ip'             => $request->ip(),
+                'procesado'      => 'NO',
+            ]);
+        }
+
+        return response('OK', 200)->header('Content-Type', 'text/plain');
+    }
+
+    // GET /iclock/getrequest — polling del reloj (sin comandos pendientes)
+    public function getrequest(Request $request)
+    {
+        return response('', 200)->header('Content-Type', 'text/plain');
+    }
+
+    // GET|POST /iclock/registry — registro inicial del dispositivo al arrancar
+    public function registry(Request $request)
+    {
+        $sn = $request->query('SN', $request->input('SN', 'DESCONOCIDO'));
+
+        DB::table('dbo.d2_zkteco_dispositivo')
+            ->updateOrInsert(
+                ['serial' => $sn],
+                ['ip' => $request->ip(), 'ultimo_push' => now(), 'activo' => true]
+            );
+
+        return response('OK', 200)->header('Content-Type', 'text/plain');
+    }
+
+    // POST /iclock/devicecmd — confirmación de ejecución de comandos (ignorar)
+    public function devicecmd(Request $request)
+    {
+        return response('OK', 200)->header('Content-Type', 'text/plain');
+    }
+}
