@@ -2,6 +2,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Empleado;
+use App\Services\AuditoriaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -20,6 +21,22 @@ class AuthController extends Controller
             ->first();
 
         if (!$empleado || !Hash::check($request->password, $empleado->password)) {
+            // Registrar intento fallido si el empleado existe
+            if ($empleado) {
+                try {
+                    DB::table('dbo.nom_auditoria_log')->insert([
+                        'tabla'          => 'auth',
+                        'registro_id'    => 0,
+                        'accion'         => 'LOGIN_FALLIDO',
+                        'datos_nuevos'   => json_encode(['identificacion' => $request->identificacion]),
+                        'usuario_id'     => $empleado->id_emp,
+                        'nombre_usuario' => trim($empleado->apellido_emp . ' ' . $empleado->nombre_emp),
+                        'ip_origen'      => $request->ip(),
+                        'descripcion'    => 'Intento de inicio de sesión con contraseña incorrecta',
+                        'created_at'     => now(),
+                    ]);
+                } catch (\Exception) {}
+            }
             return response()->json(['message' => 'Credenciales incorrectas'], 401);
         }
 
@@ -51,6 +68,20 @@ class AuthController extends Controller
             'ip'         => $request->ip(),
         ]);
 
+        try {
+            DB::table('dbo.nom_auditoria_log')->insert([
+                'tabla'          => 'auth',
+                'registro_id'    => 0,
+                'accion'         => 'LOGIN',
+                'datos_nuevos'   => json_encode(['ip' => $request->ip()]),
+                'usuario_id'     => $empleado->id_emp,
+                'nombre_usuario' => trim($empleado->apellido_emp . ' ' . $empleado->nombre_emp),
+                'ip_origen'      => $request->ip(),
+                'descripcion'    => 'Inicio de sesión en el sistema',
+                'created_at'     => now(),
+            ]);
+        } catch (\Exception) {}
+
         return response()->json([
             'token'    => $token,
             'empleado' => [
@@ -69,8 +100,14 @@ class AuthController extends Controller
             'menu'  => $menu,
         ]);
     }
-	  public function logout(Request $request)
+    public function logout(Request $request)
     {
+        AuditoriaService::log(
+            'auth', 0, 'LOGOUT', null,
+            ['ip' => $request->ip()],
+            $request,
+            'Cierre de sesión'
+        );
         $request->user()->currentAccessToken()->delete();
         return response()->json(['message' => 'Sesión cerrada correctamente']);
     }

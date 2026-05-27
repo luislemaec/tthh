@@ -58,6 +58,7 @@ class AportesIessController extends Controller
                 'fecha_desde'       => $request->fecha_desde,
                 'fecha_hasta'       => null,
                 'created_at'        => now(),
+                'created_by'        => $request->user()->id_emp,
             ]);
 
             DB::commit();
@@ -93,6 +94,8 @@ class AportesIessController extends Controller
             'secap_personal'    => $request->input('secap_personal', $aporte->secap_personal),
             'fecha_desde'       => $request->fecha_desde,
             'fecha_hasta'       => $request->fecha_hasta ?? $aporte->fecha_hasta,
+            'updated_at'        => now(),
+            'updated_by'        => $request->user()->id_emp,
         ]);
 
         return response()->json($aporte);

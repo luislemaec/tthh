@@ -13,7 +13,8 @@ class AportesIess extends Model
     protected $fillable = [
         "modalidad", "aporte_individual", "aporte_patronal",
         "iece_patronal", "iece_personal", "secap_patronal", "secap_personal",
-        "fecha_desde", "fecha_hasta", "created_at",
+        "fecha_desde", "fecha_hasta",
+        "created_at", "created_by", "updated_at", "updated_by",
     ];
 
     protected $casts = [
