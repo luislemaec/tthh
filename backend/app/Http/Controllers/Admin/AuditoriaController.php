@@ -50,8 +50,11 @@ class AuditoriaController extends Controller
                 $query->where('tabla', 'ilike', '%trans_%');
             } elseif ($modulo === 'talento') {
                 $query->where(function ($q) {
-                    $q->where('tabla', 'ilike', 'dbo.%')
-                      ->where('tabla', 'not ilike', '%trans_%');
+                    $q->where('tabla', 'auth')
+                      ->orWhere(function ($q2) {
+                          $q2->where('tabla', 'ilike', 'dbo.%')
+                             ->where('tabla', 'not ilike', '%trans_%');
+                      });
                 });
             }
         }

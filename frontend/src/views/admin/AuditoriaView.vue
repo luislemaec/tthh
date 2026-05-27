@@ -125,6 +125,7 @@ const expandido     = ref(null)
 const errorMsg      = ref('')
 
 const acciones = [
+  'LOGIN', 'LOGOUT', 'LOGIN_FALLIDO',
   'CREAR', 'ACTUALIZAR', 'ASIGNAR_ROL', 'REVOCAR_ROL',
   'APROBAR', 'NEGAR', 'ELIMINAR', 'AUTORIZAR', 'CONFIRMAR', 'LIQUIDAR',
   'CONFIRMAR_INGRESO', 'REVERSAR_INGRESO', 'CONFIRMAR_EGRESO', 'REVERSAR_EGRESO',
@@ -199,6 +200,9 @@ function badgeAccion(accion) {
     REVERSAR_EGRESO: 'bg-orange-100 text-orange-800',
     ASIGNAR_ROL: 'bg-purple-100 text-purple-800',
     REVOCAR_ROL: 'bg-purple-100 text-purple-800',
+    LOGIN: 'bg-sky-100 text-sky-800',
+    LOGOUT: 'bg-slate-100 text-slate-700',
+    LOGIN_FALLIDO: 'bg-red-100 text-red-800',
   }
   return mapa[accion] ?? 'bg-gray-100 text-gray-700'
 }
