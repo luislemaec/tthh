@@ -1,38 +1,43 @@
 <template>
   <div>
-    <div class="flex justify-between items-center mb-6">
-      <h1 class="text-2xl font-bold text-gray-800">Egresos de Bienes</h1>
-      <button @click="abrirCrear" class="text-white px-4 py-2 rounded-lg text-sm hover:opacity-90" style="background-color:#4a5e3a;">
-        + Nuevo egreso
+    <div class="flex justify-between items-center pb-4 mb-5 border-b border-gray-100">
+      <h1 class="text-xl font-bold text-gray-800 tracking-tight">Egresos de Bienes</h1>
+      <button @click="abrirCrear" class="inline-flex items-center gap-1.5 text-white px-3.5 py-2 rounded-lg text-sm hover:bg-[#3a4e2a] transition-colors font-medium" style="background-color:#4a5e3a;">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+        Nuevo egreso
       </button>
     </div>
 
     <!-- Filtros -->
-    <div class="flex gap-3 mb-3 flex-wrap items-end">
-      <select v-model="filtroEstado" class="border rounded-lg px-3 py-2 text-sm">
-        <option value="">Todos los estados</option>
-        <option value="BORRADOR">Borrador</option>
-        <option value="DESPACHADO">Despachado</option>
-      </select>
-      <button @click="buscar" class="text-white px-5 py-2 rounded-lg text-sm hover:opacity-90" style="background-color:#4a5e3a;">
-        Buscar
-      </button>
-    </div>
-
-    <!-- Contador -->
-    <div class="mb-3">
-      <span v-if="!hasBuscado"
-        class="inline-block bg-blue-50 text-blue-700 text-xs font-semibold px-3 py-1 rounded-full border border-blue-200">
-        Seleccione los filtros y presione Buscar
-      </span>
-      <span v-else-if="egresos.length > 0"
-        class="inline-block bg-green-100 text-green-800 text-xs font-semibold px-3 py-1 rounded-full border border-green-300">
-        Se encontraron {{ egresos.length }} egreso{{ egresos.length !== 1 ? 's' : '' }}
-      </span>
-      <span v-else
-        class="inline-block bg-red-100 text-red-700 text-xs font-semibold px-3 py-1 rounded-full border border-red-300">
-        No se encontraron egresos registrados
-      </span>
+    <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-4">
+      <div class="flex gap-3 flex-wrap items-end">
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">Estado</label>
+          <select v-model="filtroEstado" class="border border-gray-200 bg-white rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#4a5e3a]/30 focus:border-[#4a5e3a] outline-none">
+            <option value="">Todos los estados</option>
+            <option value="BORRADOR">Borrador</option>
+            <option value="DESPACHADO">Despachado</option>
+          </select>
+        </div>
+        <button @click="buscar" class="inline-flex items-center gap-1.5 text-white px-5 py-2 rounded-lg text-sm hover:bg-[#3a4e2a] transition-colors font-medium" style="background-color:#4a5e3a;">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
+          Buscar
+        </button>
+        <div class="ml-auto self-center">
+          <span v-if="!hasBuscado" class="inline-flex items-center gap-1 text-xs text-blue-600 bg-blue-50 border border-blue-100 px-3 py-1.5 rounded-lg">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+            Seleccione filtros y presione Buscar
+          </span>
+          <span v-else-if="egresos.length > 0" class="inline-flex items-center gap-1 text-xs text-[#4a5e3a] bg-green-50 border border-green-200 px-3 py-1.5 rounded-lg font-medium">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+            {{ egresos.length }} egreso{{ egresos.length !== 1 ? 's' : '' }}
+          </span>
+          <span v-else class="inline-flex items-center gap-1 text-xs text-red-600 bg-red-50 border border-red-100 px-3 py-1.5 rounded-lg">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/></svg>
+            Sin egresos registrados
+          </span>
+        </div>
+      </div>
     </div>
 
     <!-- Lista -->
@@ -40,49 +45,56 @@
       <table class="w-full text-sm">
         <thead>
           <tr style="background-color: #4a5e3a;">
-            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">#</th>
-            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Secuencial</th>
-            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Dirección</th>
-            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Servidor</th>
-            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Fecha</th>
-            <th class="text-right px-4 py-3 text-white font-semibold whitespace-nowrap">Subtotal</th>
-            <th class="text-right px-4 py-3 text-white font-semibold whitespace-nowrap">IVA</th>
-            <th class="text-right px-4 py-3 text-white font-semibold whitespace-nowrap">Total</th>
-            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Estado</th>
-            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Acciones</th>
+            <th class="text-left px-4 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">#</th>
+            <th class="text-left px-4 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">Secuencial</th>
+            <th class="text-left px-4 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">Dirección</th>
+            <th class="text-left px-4 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">Servidor</th>
+            <th class="text-left px-4 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">Fecha</th>
+            <th class="text-right px-4 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">Subtotal</th>
+            <th class="text-right px-4 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">IVA</th>
+            <th class="text-right px-4 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">Total</th>
+            <th class="text-left px-4 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">Estado</th>
+            <th class="text-left px-4 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">Acciones</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="!egresos.length">
-            <td colspan="10" class="text-center py-8 text-gray-400">Sin egresos registrados</td>
+            <td colspan="10" class="py-16 text-center">
+              <div class="flex flex-col items-center gap-2 text-gray-300">
+                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"/></svg>
+                <p class="text-sm text-gray-400">Sin egresos registrados</p>
+              </div>
+            </td>
           </tr>
-          <tr v-for="e in egresos" :key="e.id" class="border-b hover:bg-green-50">
+          <tr v-for="e in egresos" :key="e.id" class="border-b border-gray-100 hover:bg-green-50/60 transition-colors">
             <td class="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">{{ e.id }}</td>
-            <td class="px-4 py-3 font-mono font-semibold whitespace-nowrap">{{ e.numero_secuencial ?? '-' }}</td>
-            <td class="px-4 py-3 text-gray-700 max-w-[180px] truncate" :title="e.direccion">{{ e.direccion || '-' }}</td>
-            <td class="px-4 py-3 text-gray-700 whitespace-nowrap">{{ e.empleado_nombre || '-' }}</td>
+            <td class="px-4 py-3 font-mono text-sm font-semibold whitespace-nowrap text-gray-700">{{ e.numero_secuencial ?? '—' }}</td>
+            <td class="px-4 py-3 text-gray-700 text-sm max-w-[180px] truncate" :title="e.direccion">{{ e.direccion || '—' }}</td>
+            <td class="px-4 py-3 text-gray-700 text-sm whitespace-nowrap">{{ e.empleado_nombre || '—' }}</td>
             <td class="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
               {{ e.fecha_despacho ? e.fecha_despacho.slice(0, 10) : e.created_at?.slice(0, 10) }}
             </td>
-            <td class="px-4 py-3 text-right font-mono text-xs whitespace-nowrap">${{ fmt(e.subtotal) }}</td>
-            <td class="px-4 py-3 text-right font-mono text-xs whitespace-nowrap">${{ fmt(e.iva_valor) }}</td>
-            <td class="px-4 py-3 text-right font-mono font-semibold whitespace-nowrap">${{ fmt(e.total) }}</td>
+            <td class="px-4 py-3 text-right font-mono text-xs whitespace-nowrap text-gray-600">${{ fmt(e.subtotal) }}</td>
+            <td class="px-4 py-3 text-right font-mono text-xs whitespace-nowrap text-gray-600">${{ fmt(e.iva_valor) }}</td>
+            <td class="px-4 py-3 text-right font-mono text-sm font-semibold whitespace-nowrap text-gray-800">${{ fmt(e.total) }}</td>
             <td class="px-4 py-3 whitespace-nowrap">
-              <span :class="e.estado === 'BORRADOR' ? 'bg-gray-100 text-gray-600' : 'bg-green-100 text-green-700'"
-                class="px-2 py-0.5 rounded-full text-xs font-medium">{{ e.estado }}</span>
+              <span :class="e.estado === 'BORRADOR' ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-green-100 text-green-700 border border-green-200'"
+                class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold">{{ e.estado }}</span>
             </td>
-            <td class="px-4 py-3 whitespace-nowrap flex gap-2">
-              <button @click="verDetalle(e)" class="text-xs text-blue-600 hover:text-blue-800 font-medium">Ver</button>
-              <button v-if="e.estado === 'DESPACHADO'" @click="descargarPdf(e.id)"
-                class="text-xs text-purple-600 hover:text-purple-800 font-medium">PDF</button>
-              <button v-if="e.estado === 'DESPACHADO'" @click="abrirReverso(e.id)"
-                class="text-xs text-red-600 hover:text-red-800 font-medium">Reversar</button>
-              <button v-if="e.estado === 'BORRADOR'" @click="abrirEditar(e)"
-                class="text-xs text-amber-600 hover:text-amber-800 font-medium">Editar</button>
-              <button v-if="e.estado === 'BORRADOR'" @click="confirmar(e.id)"
-                class="text-xs text-green-600 hover:text-green-800 font-medium">Confirmar</button>
-              <button v-if="e.estado === 'BORRADOR'" @click="eliminar(e.id)"
-                class="text-xs text-red-500 hover:text-red-700">Eliminar</button>
+            <td class="px-4 py-3 whitespace-nowrap">
+              <div class="flex gap-1.5 flex-wrap">
+                <button @click="verDetalle(e)" class="inline-flex items-center px-2.5 py-1 rounded-md border border-blue-200 text-xs text-blue-700 hover:bg-blue-50 font-medium transition-colors">Ver</button>
+                <button v-if="e.estado === 'DESPACHADO'" @click="descargarPdf(e.id)"
+                  class="inline-flex items-center px-2.5 py-1 rounded-md border border-purple-200 text-xs text-purple-700 hover:bg-purple-50 font-medium transition-colors">PDF</button>
+                <button v-if="e.estado === 'DESPACHADO'" @click="abrirReverso(e.id)"
+                  class="inline-flex items-center px-2.5 py-1 rounded-md border border-red-200 text-xs text-red-600 hover:bg-red-50 font-medium transition-colors">Reversar</button>
+                <button v-if="e.estado === 'BORRADOR'" @click="abrirEditar(e)"
+                  class="inline-flex items-center px-2.5 py-1 rounded-md border border-amber-200 text-xs text-amber-700 hover:bg-amber-50 font-medium transition-colors">Editar</button>
+                <button v-if="e.estado === 'BORRADOR'" @click="confirmar(e.id)"
+                  class="inline-flex items-center px-2.5 py-1 rounded-md border border-green-200 text-xs text-green-700 hover:bg-green-50 font-medium transition-colors">Confirmar</button>
+                <button v-if="e.estado === 'BORRADOR'" @click="eliminar(e.id)"
+                  class="inline-flex items-center px-2.5 py-1 rounded-md border border-red-100 text-xs text-red-500 hover:bg-red-50 font-medium transition-colors">Eliminar</button>
+              </div>
             </td>
           </tr>
         </tbody>
