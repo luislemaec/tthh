@@ -20,19 +20,18 @@
           v-for="btn in botones" :key="btn.concepto"
           @click="marcar(btn.concepto)"
           :disabled="!btn.disponible || marcando"
+          :style="btnStyle(btn.estadoBtn)"
           :class="[
-            btn.disponible
-              ? btn.color + ' cursor-pointer hover:opacity-90'
-              : 'bg-gray-100 text-gray-400 cursor-not-allowed',
+            btn.disponible ? 'cursor-pointer hover:opacity-90' : 'cursor-not-allowed opacity-80',
             'w-full py-6 rounded-xl text-sm font-semibold transition flex flex-col items-center gap-2'
           ]">
-          <span v-html="btn.icono" class="flex items-center justify-center"></span>
+          <img :src="btn.icono" class="w-28 h-28 object-contain" />
           <span>{{ btn.label }}</span>
-          <span v-if="getMarcacion(btn.concepto)" class="text-xs font-normal opacity-80">
+          <span v-if="getMarcacion(btn.concepto)" class="text-xs font-normal opacity-70">
             {{ formatHora(getMarcacion(btn.concepto)?.fecha_hora) }}
           </span>
           <span v-else-if="btn.disponible" class="text-xs font-normal opacity-80">
-            {{ marcando && estado.siguiente === btn.concepto ? "Registrando..." : "Pendiente" }}
+            {{ marcando && estado.value.siguiente === btn.concepto ? "Registrando..." : "Pendiente" }}
           </span>
         </button>
       </div>
@@ -229,36 +228,42 @@ const cargarHistorial = async () => {
 
 let intervalo = null
 
-const botones = computed(() => [
-  {
-    concepto: "ENTRADA",
-    label: "Marcar Entrada",
-    icono: `<img src="/marcacion/marcacion_entrada.png" class="w-28 h-28 object-contain" />`,
-    color: "bg-green-500 text-white",
-    disponible: estado.value.siguiente === "ENTRADA",
-  },
-  {
-    concepto: "SALIDA AL LUNCH",
-    label: "Salida a Lunch",
-    icono: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8.25v-1.5m0 1.5c-1.355 0-2.697.056-4.024.166C6.845 8.51 6 9.473 6 10.608v2.513m6-4.871c1.355 0 2.697.056 4.024.166C17.155 8.51 18 9.473 18 10.608v2.513M15 8.25v-1.5M6 10.608v3.792m0 0a48.627 48.627 0 0 0 6 0m-6 0v3.75m6-3.75v3.75m0 0a48.627 48.627 0 0 0 6 0M6 18.375v.375a.75.75 0 0 0 .75.75h10.5a.75.75 0 0 0 .75-.75v-.375" /></svg>`,
-    color: "bg-yellow-500 text-white",
-    disponible: estado.value.siguiente === "SALIDA AL LUNCH",
-  },
-  {
-    concepto: "ENTRADA DEL LUNCH",
-    label: "Regreso de Lunch",
-    icono: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" /></svg>`,
-    color: "bg-[#579186] text-white",
-    disponible: estado.value.siguiente === "ENTRADA DEL LUNCH",
-  },
-  {
-    concepto: "SALIDA",
-    label: "Marcar Salida",
-    icono: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" /></svg>`,
-    color: "bg-red-500 text-white",
-    disponible: estado.value.siguiente === "SALIDA",
-  },
-])
+const ICONOS = {
+  'ENTRADA':           '/marcacion/marcacion_entrada.png',
+  'SALIDA AL LUNCH':   '/marcacion/marcacion_salida_almuerzo.png',
+  'ENTRADA DEL LUNCH': '/marcacion/marcacion_entrada_almuerzo.png',
+  'SALIDA':            '/marcacion/marcacion_salida.png',
+}
+
+const LABELS = {
+  'ENTRADA':           'Marcar Entrada',
+  'SALIDA AL LUNCH':   'Salida a Lunch',
+  'ENTRADA DEL LUNCH': 'Regreso de Lunch',
+  'SALIDA':            'Marcar Salida',
+}
+
+const btnStyle = (estadoBtn) => {
+  if (estadoBtn === 'apagado')       return 'background-color:#c3dbd7; color:#3a6b63;'
+  if (estadoBtn === 'activo')        return 'background-color:#0b5547; color:#ffffff;'
+  if (estadoBtn === 'por_activarse') return 'background-color:#068174; color:#ffffff;'
+  return ''
+}
+
+const botones = computed(() => {
+  const secuencia = ['ENTRADA', 'SALIDA AL LUNCH', 'ENTRADA DEL LUNCH', 'SALIDA']
+  return secuencia.map(concepto => {
+    const yaMarcado = !!getMarcacion(concepto)
+    const esActivo  = estado.value.siguiente === concepto
+    const estadoBtn = yaMarcado ? 'apagado' : esActivo ? 'activo' : 'por_activarse'
+    return {
+      concepto,
+      label:      LABELS[concepto],
+      icono:      ICONOS[concepto],
+      disponible: esActivo,
+      estadoBtn,
+    }
+  })
+})
 
 const getMarcacion = (concepto) => {
   return estado.value.marcaciones?.find(m => m.concepto === concepto)
