@@ -187,9 +187,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import api from '@/services/api'
 
 const router = useRouter()
 const route  = useRoute()
@@ -287,10 +288,71 @@ function abrirGrupoActivo(path) {
 }
 
 watch(() => route.path, abrirGrupoActivo)
-onMounted(() => abrirGrupoActivo(route.path))
 
 async function handleLogout() {
   await auth.logout()
   router.push('/login')
 }
+
+// ─── Notificaciones de movilización pendiente ────────────────────────────────
+let pollingInterval = null
+let ultimaAt = null
+
+async function solicitarPermisoNotificaciones() {
+  if (!('Notification' in window)) return
+  if (Notification.permission === 'default') {
+    await Notification.requestPermission()
+  }
+}
+
+async function verificarPendientes() {
+  try {
+    const { data } = await api.get('/transporte/notificaciones-pendientes')
+    if (data.pendientes === 0) { ultimaAt = data.ultima_at; return }
+
+    // Primera vez: solo guardar referencia, no notificar
+    if (ultimaAt === null) { ultimaAt = data.ultima_at; return }
+
+    // Si llegó una solicitud más nueva que la última registrada → notificar
+    if (data.ultima_at && data.ultima_at !== ultimaAt) {
+      ultimaAt = data.ultima_at
+      mostrarNotificacion(data.pendientes, data.items?.[0])
+    }
+  } catch {
+    // Sin conexión o sin sesión — se ignora silenciosamente
+  }
+}
+
+function mostrarNotificacion(total, ultima) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return
+
+  const destino = ultima?.lugar_destino ? `Destino: ${ultima.lugar_destino}` : ''
+  const cuerpo  = total === 1
+    ? `Nueva solicitud de movilización pendiente. ${destino}`
+    : `${total} solicitudes de movilización pendientes.`
+
+  const notif = new Notification('🚗 Pedido de Vehículo', {
+    body: cuerpo,
+    icon: '/favicon.ico',
+    tag:  'movilizacion-pendiente',
+    requireInteraction: false,
+  })
+
+  notif.onclick = () => {
+    window.focus()
+    router.push('/transporte/movilizacion')
+    notif.close()
+  }
+}
+
+onMounted(async () => {
+  abrirGrupoActivo(route.path)
+  await solicitarPermisoNotificaciones()
+  await verificarPendientes()
+  pollingInterval = setInterval(verificarPendientes, 30000)
+})
+
+onUnmounted(() => {
+  if (pollingInterval) clearInterval(pollingInterval)
+})
 </script>

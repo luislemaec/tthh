@@ -378,6 +378,33 @@ class TransporteController extends Controller
         return response()->json($s->load(['solicitante', 'vehiculo', 'conductor']));
     }
 
+    public function notificacionesPendientes(Request $request)
+    {
+        if (!$this->esTransporte($request)) {
+            return response()->json(['pendientes' => 0]);
+        }
+
+        $pendientes = DB::table('dbo.trans_solicitud_mov')
+            ->where('estado', 'PENDIENTE')
+            ->select('id', 'id_emp_solicitante', 'fecha_movilizacion', 'lugar_destino', 'created_at')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $ultima = DB::table('dbo.trans_solicitud_mov')
+            ->where('estado', 'PENDIENTE')
+            ->max('created_at');
+
+        return response()->json([
+            'pendientes' => $pendientes->count(),
+            'ultima_at'  => $ultima,
+            'items'      => $pendientes->take(5)->map(fn($s) => [
+                'id'                  => $s->id,
+                'fecha_movilizacion'  => $s->fecha_movilizacion,
+                'lugar_destino'       => $s->lugar_destino,
+            ]),
+        ]);
+    }
+
     public function pdfMov($id)
     {
         $s = SolicitudMov::with(['solicitante', 'vehiculo', 'conductor'])->findOrFail($id);

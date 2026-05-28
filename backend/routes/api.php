@@ -310,10 +310,11 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::put('mantenimiento/{id}',     [TransporteController::class, 'updateMtto']);
         Route::get('mantenimiento/{id}/pdf', [TransporteController::class, 'pdfMtto']);
 
-        Route::get('movilizacion',           [TransporteController::class, 'indexMov']);
-        Route::post('movilizacion',          [TransporteController::class, 'storeMov']);
-        Route::put('movilizacion/{id}',      [TransporteController::class, 'updateMov']);
-        Route::get('movilizacion/{id}/pdf',  [TransporteController::class, 'pdfMov']);
+        Route::get('movilizacion',                    [TransporteController::class, 'indexMov']);
+        Route::post('movilizacion',                   [TransporteController::class, 'storeMov']);
+        Route::put('movilizacion/{id}',               [TransporteController::class, 'updateMov']);
+        Route::get('movilizacion/{id}/pdf',           [TransporteController::class, 'pdfMov']);
+        Route::get('notificaciones-pendientes',       [TransporteController::class, 'notificacionesPendientes']);
     });
 
     // ── Adquisiciones ─────────────────────────────────────────────────────────
