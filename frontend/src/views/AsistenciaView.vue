@@ -25,13 +25,13 @@
             btn.disponible ? 'cursor-pointer hover:opacity-90' : 'cursor-not-allowed opacity-80',
             'w-full py-6 rounded-xl text-sm font-semibold transition flex flex-col items-center gap-2'
           ]">
-          <img :src="btn.icono" class="w-28 h-28 object-contain" />
+          <img :src="btn.icono" class="w-28 h-28 object-contain" decoding="async" />
           <span>{{ btn.label }}</span>
           <span v-if="getMarcacion(btn.concepto)" class="text-xs font-normal opacity-70">
             {{ formatHora(getMarcacion(btn.concepto)?.fecha_hora) }}
           </span>
           <span v-else-if="btn.disponible" class="text-xs font-normal opacity-80">
-            {{ marcando && estado.value.siguiente === btn.concepto ? "Registrando..." : "Pendiente" }}
+            {{ marcando ? "Registrando..." : "Pendiente" }}
           </span>
         </button>
       </div>
@@ -342,6 +342,9 @@ const marcar = async (concepto) => {
 }
 
 onMounted(async () => {
+  // Precarga las imágenes para evitar el blank al primer clic
+  Object.values(ICONOS).forEach(src => { const i = new Image(); i.src = src })
+
   actualizarHora()
   intervalo = setInterval(actualizarHora, 1000)
   await cargarEstado()
