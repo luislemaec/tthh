@@ -27,6 +27,7 @@ class Empleado extends Authenticatable
         "acumula_fondos_reserva", "acumula_decimo_tercero", "acumula_decimo_cuarto",
         "programa", "actividad",
         "puede_solicitar_vehiculo",
+        "sexo", "tipo_sangre",
         "foto",
         "created_at", "created_by", "updated_at", "updated_by",
     ];

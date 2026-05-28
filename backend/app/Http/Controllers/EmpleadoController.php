@@ -89,6 +89,8 @@ class EmpleadoController extends Controller
             "modalidad_laboral"      => "required|string|max:50",
             "programa"               => "nullable|string|max:4",
             "actividad"              => "nullable|string|max:6",
+            "sexo"                   => "nullable|string|max:10",
+            "tipo_sangre"            => "nullable|string|max:5",
         ]);
 
         $usuario = auth()->user()->id_emp ?? null;
@@ -111,8 +113,10 @@ class EmpleadoController extends Controller
             "calle_y_numero"   => $request->calle_y_numero,
             "modalidad_laboral" => $request->modalidad_laboral,
             "id_jornada"        => $request->id_jornada,
-            "programa"          => $request->filled('programa')  ? strtoupper($request->programa)  : null,
-            "actividad"         => $request->filled('actividad') ? strtoupper($request->actividad) : null,
+            "programa"          => $request->filled('programa')    ? strtoupper($request->programa)    : null,
+            "actividad"         => $request->filled('actividad')   ? strtoupper($request->actividad)   : null,
+            "sexo"              => $request->filled('sexo')        ? strtoupper($request->sexo)        : null,
+            "tipo_sangre"       => $request->filled('tipo_sangre') ? strtoupper($request->tipo_sangre) : null,
             "created_at"       => now(),
             "created_by"       => $usuario,
             "updated_at"       => now(),
@@ -168,7 +172,18 @@ class EmpleadoController extends Controller
     public function update(Request $request, $id)
     {
         $emp = Empleado::findOrFail($id);
-        $anterior = ['sueldo' => $emp->sueldo, 'estado' => $emp->estado, 'id_depto' => $emp->id_depto, 'cargo_empleado' => $emp->cargo_empleado];
+        $anterior = [
+            'sueldo'              => $emp->sueldo,
+            'estado'              => $emp->estado,
+            'id_depto'            => $emp->id_depto,
+            'cargo_empleado'      => $emp->cargo_empleado,
+            'tipo_contrato'       => $emp->tipo_contrato,
+            'modalidad_laboral'   => $emp->modalidad_laboral,
+            'partida_individual'  => $emp->partida_individual,
+            'programa'            => $emp->programa,
+            'actividad'           => $emp->actividad,
+            'modalidad_marcacion' => $emp->modalidad_marcacion,
+        ];
 
         $request->validate([
             "identificacion"         => "nullable|string|max:15",
@@ -221,7 +236,10 @@ class EmpleadoController extends Controller
             "acumula_decimo_cuarto"     => $request->acumula_decimo_cuarto     ?? $emp->acumula_decimo_cuarto,
             "programa"                  => $request->filled('programa')  ? strtoupper($request->programa)  : ($emp->programa  ?? null),
             "actividad"                 => $request->filled('actividad') ? strtoupper($request->actividad) : ($emp->actividad ?? null),
+            "modalidad_marcacion"       => $request->modalidad_marcacion       ?? $emp->modalidad_marcacion,
             "puede_solicitar_vehiculo"  => $request->boolean('puede_solicitar_vehiculo', $emp->puede_solicitar_vehiculo ?? false),
+            "sexo"                      => $request->filled('sexo')        ? strtoupper($request->sexo)        : $emp->sexo,
+            "tipo_sangre"               => $request->filled('tipo_sangre') ? strtoupper($request->tipo_sangre) : $emp->tipo_sangre,
             "updated_at"                => now(),
             "updated_by"                => auth()->user()->id_emp ?? null,
         ]);
@@ -249,7 +267,18 @@ class EmpleadoController extends Controller
 
         AuditoriaService::log('dbo.ad_empleado', $emp->id_emp, 'ACTUALIZAR',
             $anterior,
-            ['sueldo' => $emp->sueldo, 'estado' => $emp->estado, 'id_depto' => $emp->id_depto, 'cargo_empleado' => $emp->cargo_empleado],
+            [
+                'sueldo'              => $emp->sueldo,
+                'estado'              => $emp->estado,
+                'id_depto'            => $emp->id_depto,
+                'cargo_empleado'      => $emp->cargo_empleado,
+                'tipo_contrato'       => $emp->tipo_contrato,
+                'modalidad_laboral'   => $emp->modalidad_laboral,
+                'partida_individual'  => $emp->partida_individual,
+                'programa'            => $emp->programa,
+                'actividad'           => $emp->actividad,
+                'modalidad_marcacion' => $emp->modalidad_marcacion,
+            ],
             $request, 'Actualización de empleado: ' . trim($emp->apellido_emp . ' ' . $emp->nombre_emp));
 
         $emp->load(["departamento", "emails"]);
