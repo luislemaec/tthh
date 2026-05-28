@@ -621,6 +621,8 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+@reference "tailwindcss";
+
 .label-field {
   @apply block text-sm font-medium text-gray-600 mb-1;
 }
