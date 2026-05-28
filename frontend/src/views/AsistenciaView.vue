@@ -23,9 +23,9 @@
           :style="btnStyle(btn.estadoBtn)"
           :class="[
             btn.disponible ? 'cursor-pointer hover:opacity-90' : 'cursor-not-allowed opacity-80',
-            'w-full py-6 rounded-xl text-sm font-semibold transition flex flex-col items-center gap-2'
+            'w-full py-6 md:py-8 rounded-xl text-sm md:text-base font-semibold transition flex flex-col items-center gap-2 md:gap-3'
           ]">
-          <img :src="btn.icono" class="w-28 h-28 md:w-40 md:h-40 object-contain" decoding="async" />
+          <img :src="btn.icono" class="w-28 h-28 md:w-52 md:h-52 object-contain" decoding="async" />
           <span>{{ btn.label }}</span>
           <span v-if="getMarcacion(btn.concepto)" class="text-xs font-normal opacity-70">
             {{ formatHora(getMarcacion(btn.concepto)?.fecha_hora) }}
