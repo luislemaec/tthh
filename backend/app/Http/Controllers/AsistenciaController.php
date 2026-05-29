@@ -33,6 +33,10 @@ class AsistenciaController extends Controller
             $siguiente = "SALIDA";
         }
 
+        $articuloAtrasos = DB::table('dbo.d2_configuracion')
+            ->whereRaw("LOWER(concepto) = 'articulo_atrasos'")
+            ->value('valor');
+
         return response()->json([
             "empleado"    => [
                 "id_emp"     => $emp->id_emp,
@@ -40,10 +44,11 @@ class AsistenciaController extends Controller
                 "apellido"   => $emp->apellido_emp,
                 "departamento" => $emp->departamento?->nombre_depto,
             ],
-            "fecha"       => now()->toDateString(),
-            "hora"        => now()->format("H:i:s"),
-            "marcaciones" => $marcaciones,
-            "siguiente"   => $siguiente,
+            "fecha"           => now()->toDateString(),
+            "hora"            => now()->format("H:i:s"),
+            "marcaciones"     => $marcaciones,
+            "siguiente"       => $siguiente,
+            "articulo_atrasos"=> $articuloAtrasos,
         ]);
     }
 
@@ -278,5 +283,53 @@ class AsistenciaController extends Controller
         }
 
         return response()->json(array_values($resultado));
+    }
+
+    public function reporteSinAtrasos(Request $request)
+    {
+        $tieneAcceso = DB::table('dbo.admin_usuario_rol as ur')
+            ->join('dbo.admin_rol as r', 'ur.id_rol', '=', 'r.id')
+            ->where('ur.id_emp', $request->user()->id_emp)
+            ->whereIn('r.descripcion', ['ADMINISTRADOR', 'TALENTO HUMANO'])
+            ->exists();
+
+        if (!$tieneAcceso) {
+            return response()->json(['message' => 'Acceso restringido.'], 403);
+        }
+
+        $desde = $request->fecha_desde;
+        $hasta = $request->fecha_hasta;
+
+        if (!$desde || !$hasta) {
+            return response()->json(['message' => 'Se requieren fecha_desde y fecha_hasta.'], 422);
+        }
+
+        $empleados = DB::table('dbo.ad_empleado as e')
+            ->join('dbo.ad_departamento as d', 'e.id_depto', '=', 'd.id_depto')
+            ->where('e.estado', 'ACTIVO')
+            ->where('e.id_depto', '!=', 999)
+            ->whereExists(function ($q) use ($desde, $hasta) {
+                $q->select(DB::raw(1))
+                  ->from('dbo.d2_cuadre_marcacion as c')
+                  ->whereColumn('c.id_emp', 'e.id_emp')
+                  ->whereBetween(DB::raw("DATE(c.fecha)"), [$desde, $hasta]);
+            })
+            ->whereNotExists(function ($q) use ($desde, $hasta) {
+                $q->select(DB::raw(1))
+                  ->from('dbo.d2_cuadre_marcacion as c')
+                  ->whereColumn('c.id_emp', 'e.id_emp')
+                  ->whereBetween(DB::raw("DATE(c.fecha)"), [$desde, $hasta])
+                  ->where(function ($q2) {
+                      $q2->where('c.atraso_entrada', '>', 0)
+                         ->orWhere('c.atraso_lunch',  '>', 0)
+                         ->orWhere('c.atraso_salida', '>', 0);
+                  });
+            })
+            ->select('e.id_emp', 'e.apellido_emp', 'e.nombre_emp', 'e.cargo_empleado', 'd.nombre_depto')
+            ->orderBy('d.nombre_depto')
+            ->orderBy('e.apellido_emp')
+            ->get();
+
+        return response()->json($empleados);
     }
 }

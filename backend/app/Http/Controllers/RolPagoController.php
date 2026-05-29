@@ -215,6 +215,9 @@ class RolPagoController extends Controller
                 'impuesto_renta'      => 0,
                 'supa'                => 0,
                 'poliza_blanket'      => 0,
+                'sanciones'           => 0,
+                'otros_descuentos'    => 0,
+                'observaciones'       => null,
                 'total_descuentos'    => $total_descuentos,
                 'liquido'             => $liquido,
                 'programa'            => $e->programa,
@@ -236,11 +239,14 @@ class RolPagoController extends Controller
     public function updateDetalle(Request $request, $id)
     {
         $request->validate([
-            'quirografario'  => 'nullable|numeric|min:0',
-            'hipotecario'    => 'nullable|numeric|min:0',
-            'impuesto_renta' => 'nullable|numeric|min:0',
-            'supa'           => 'nullable|numeric|min:0',
-            'poliza_blanket' => 'nullable|numeric|min:0',
+            'quirografario'   => 'nullable|numeric|min:0',
+            'hipotecario'     => 'nullable|numeric|min:0',
+            'impuesto_renta'  => 'nullable|numeric|min:0',
+            'supa'            => 'nullable|numeric|min:0',
+            'poliza_blanket'  => 'nullable|numeric|min:0',
+            'sanciones'       => 'nullable|numeric|min:0',
+            'otros_descuentos'=> 'nullable|numeric|min:0',
+            'observaciones'   => 'nullable|string|max:300',
         ]);
 
         $det = DB::table('dbo.nom_rol_pago_det')->where('id', $id)->first();
@@ -256,9 +262,12 @@ class RolPagoController extends Controller
         $impuesto_renta = (float)($request->input('impuesto_renta', $det->impuesto_renta) ?? 0);
         $supa           = (float)($request->input('supa',           $det->supa)           ?? 0);
         $poliza_blanket = (float)($request->input('poliza_blanket', $det->poliza_blanket) ?? 0);
+        $sanciones      = (float)($request->input('sanciones',      $det->sanciones)      ?? 0);
+        $otros_desc     = (float)($request->input('otros_descuentos', $det->otros_descuentos) ?? 0);
+        $observaciones  = $request->input('observaciones', $det->observaciones);
 
         $total_descuentos = round(
-            $det->aporte_personal + $quirografario + $hipotecario + $impuesto_renta + $supa + $poliza_blanket,
+            $det->aporte_personal + $quirografario + $hipotecario + $impuesto_renta + $supa + $poliza_blanket + $sanciones + $otros_desc,
             2
         );
         $liquido = round($det->valor_rmu - $total_descuentos, 2);
@@ -269,6 +278,9 @@ class RolPagoController extends Controller
             'impuesto_renta'  => $impuesto_renta,
             'supa'            => $supa,
             'poliza_blanket'  => $poliza_blanket,
+            'sanciones'       => $sanciones,
+            'otros_descuentos'=> $otros_desc,
+            'observaciones'   => $observaciones,
             'total_descuentos'=> $total_descuentos,
             'liquido'         => $liquido,
             'updated_at'      => now(),
@@ -321,6 +333,8 @@ class RolPagoController extends Controller
             'filas.*.hipotecario'     => 'nullable|numeric|min:0',
             'filas.*.impuesto_renta'  => 'nullable|numeric|min:0',
             'filas.*.poliza_blanket'  => 'nullable|numeric|min:0',
+            'filas.*.sanciones'       => 'nullable|numeric|min:0',
+            'filas.*.otros_descuentos'=> 'nullable|numeric|min:0',
         ]);
 
         $cab = DB::table('dbo.nom_rol_pago_cab')
@@ -356,9 +370,11 @@ class RolPagoController extends Controller
             $hipotecario    = isset($fila['hipotecario'])    && $fila['hipotecario']    !== null ? (float)$fila['hipotecario']    : (float)$det->hipotecario;
             $impuesto_renta = isset($fila['impuesto_renta']) && $fila['impuesto_renta'] !== null ? (float)$fila['impuesto_renta'] : (float)$det->impuesto_renta;
             $poliza_blanket = isset($fila['poliza_blanket']) && $fila['poliza_blanket'] !== null ? (float)$fila['poliza_blanket'] : (float)$det->poliza_blanket;
+            $sanciones      = isset($fila['sanciones'])      && $fila['sanciones']      !== null ? (float)$fila['sanciones']      : (float)$det->sanciones;
+            $otros_desc     = isset($fila['otros_descuentos'])&& $fila['otros_descuentos']!== null ? (float)$fila['otros_descuentos']: (float)$det->otros_descuentos;
 
             $total_descuentos = round(
-                $det->aporte_personal + $quirografario + $hipotecario + $impuesto_renta + $det->supa + $poliza_blanket,
+                $det->aporte_personal + $quirografario + $hipotecario + $impuesto_renta + $det->supa + $poliza_blanket + $sanciones + $otros_desc,
                 2
             );
             $liquido = round($det->valor_rmu - $total_descuentos, 2);
@@ -368,6 +384,8 @@ class RolPagoController extends Controller
                 'hipotecario'     => $hipotecario,
                 'impuesto_renta'  => $impuesto_renta,
                 'poliza_blanket'  => $poliza_blanket,
+                'sanciones'       => $sanciones,
+                'otros_descuentos'=> $otros_desc,
                 'total_descuentos'=> $total_descuentos,
                 'liquido'         => $liquido,
                 'updated_at'      => now(),

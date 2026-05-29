@@ -12,6 +12,8 @@ Sistema de Gestión para el Consejo de Comunicación (Ecuador) con tres módulos
 - **Backend:** Laravel 12 (PHP 8.4), PostgreSQL, Laravel Sanctum, DomPDF
 - **Frontend:** Vue 3 (Composition API), Pinia, Vue Router 5, Tailwind CSS 4, Axios, Vite 7
 
+> **Tailwind CSS 4 — `@apply` en `<style scoped>`:** requiere `@reference "tailwindcss";` al inicio del bloque `<style scoped>` cuando se usa `@apply`. Sin esa línea el build falla con "Cannot apply unknown utility class".
+
 ## Development Commands
 
 ```bash
@@ -54,7 +56,7 @@ Roles: `ADMINISTRADOR`, `TALENTO HUMANO`, `TH ACCIONES PERSONAL`, `TH NOMINA`,`S
 - Depto 999 excluido de todas las consultas (placeholder de sistema)
 - `dbo.d2_configuracion` → parámetros globales (clave/valor/descripcion). Campos de auditoría: `created_at`, `created_by`, `updated_at`, `updated_by`. La query siempre usa `LOWER(concepto)` porque los conceptos se guardan en MAYÚSCULAS. Migración `000030` agregó `descripcion`, migración `000031` agregó auditoría.
 - `dbo.ad_departamento` → numeración manual recomendada: padres en múltiplos de 10 (10,50,60,70,80,90), hijos en +1 a +9 del padre. Al crear desde la app, el campo ID es opcional; si se omite genera el siguiente correlativo (excluyendo 999). Campos de auditoría implementados (migración `000032`): `created_at`, `created_by`, `updated_at`, `updated_by`.
-- `dbo.ad_empleado` → campos de auditoría implementados (migración `000032`): `created_at`, `created_by`, `updated_at`, `updated_by`. Campo adicional: `puede_solicitar_vehiculo BOOLEAN DEFAULT false`.
+- `dbo.ad_empleado` → campos de auditoría implementados (migración `000032`): `created_at`, `created_by`, `updated_at`, `updated_by`. Campos adicionales: `puede_solicitar_vehiculo BOOLEAN DEFAULT false`, `sexo VARCHAR(10) NULL` (MASCULINO/FEMENINO), `tipo_sangre VARCHAR(5) NULL` (A+, A-, B+, B-, AB+, AB-, O+, O-) — migración `000063`.
 - Stock: siempre usar `DB::table()->update(['stock_actual' => DB::raw('stock_actual + N')])` — nunca Eloquent para tablas con schema prefix en PostgreSQL
 
 ## PDF (DomPDF)
@@ -206,6 +208,8 @@ Campos relevantes:
 - `modalidad_marcacion`: `PRESENCIAL` / `REMOTO` / `TELETRABAJO` (ver Control de Asistencia)
 - `modalidad_laboral`: determina motivos válidos en liquidación de vacaciones
 - `tipo_contrato`: `LOSEP` / `CODIGO DEL TRABAJO` — define tasa de vacaciones
+- `sexo`: `MASCULINO` / `FEMENINO` / NULL — para estadísticas de género (migración `000063`)
+- `tipo_sangre`: `A+`, `A-`, `B+`, `B-`, `AB+`, `AB-`, `O+`, `O-` / NULL (migración `000063`)
 
 **Partidas disponibles** (`GET /api/empleados/partidas-vacantes`): devuelve empleados con `estado=INACTIVO` + `estado_puesto=DISPONIBLE`. En `EmpleadoForm.vue`, el campo Partida Individual tiene input libre + botón "Seleccionar libre" que abre un modal con la lista — al seleccionar una fila se auto-llenan `partida_individual` y `partida_presupuestaria`.
 
@@ -363,9 +367,15 @@ Porcentajes se obtienen de `dbo.d2_jornada` (campos `porc_extraordinaria`, `porc
 
 ```
 views/empleados/        # CRUD empleados, detalle, importación, distributivo
-                        # EmpleadoForm: bloque "Control de Asistencia" (modalidad_marcacion)
-                        #   Partida Individual: input libre + botón "Seleccionar libre" (modal partidas disponibles)
-                        #   Sección "Datos del Puesto": Partida Individual (span-2) | Programa | Actividad | Acumula Décimos | Fondos de Reserva
+                        # EmpleadoForm: reorganizado en 4 pestañas con diseño visual atractivo:
+                        #   Tab 1 "Datos Personales": nombres, apellidos, cédula, teléfono, email, dirección, sexo, tipo_sangre
+                        #   Tab 2 "Cargo y Contrato": departamento, cargo, tipo_contrato, modalidad_laboral, jornada,
+                        #     estado, fecha_ingreso, fecha_salida (v-if INACTIVO), salario
+                        #   Tab 3 "Datos del Puesto": grupo_ocupacional, grado, proceso_institucional, estado_puesto,
+                        #     partida_individual (+ botón "Seleccionar libre"), programa, actividad, décimos, fondos_reserva, partida_presupuestaria
+                        #   Tab 4 "Asistencia": modalidad_marcacion (radio cards), puede_solicitar_vehiculo
+                        #   Barra de acción fija en el fondo con Guardar/Cancelar y navegación de tabs
+                        #   Foto compacta fuera de las pestañas (solo en edición)
 views/acciones/         # Acciones de personal (lista + formulario + PDF)
 views/planificacion/    # Planificación anual de vacaciones, liquidación, reporte
                         # ReporteSaldoVacView.vue — reporte de saldo de vacaciones (TH/ADMIN)
@@ -398,7 +408,14 @@ DashboardView.vue       # Admin/TH: métricas globales (Empleados, Departamentos
                         #   Drill-down muestra hijos de la unidad clicada; botón "← Volver"
                         #   La tabla "Empleados por Departamento" fue eliminada (reemplazada por el gráfico)
 views/asistencia/       # Reporte de asistencia personal y admin
-                        # AsistenciaView: tarjetas de marcación con íconos SVG inline (v-html), no emojis
+                        # AsistenciaView: botones de marcación con íconos PNG desde /public/marcacion/
+                        #   Archivos: marcacion_entrada.png, marcacion_salida_almuerzo.png,
+                        #             marcacion_entrada_almuerzo.png, marcacion_salida.png
+                        #   3 estados visuales con colores hex via inline style (btnStyle()):
+                        #     apagado (#c3dbd7) = ya timbrado | activo (#0b5547) = siguiente a timbrar
+                        #     por_activarse (#068174) = aún no le toca
+                        #   Tamaño responsivo: w-28 h-28 móvil / md:w-52 md:h-52 PC
+                        #   Imágenes precargadas en onMounted con new Image() para evitar flash
                         #   Confirmación al marcar SALIDA antes de las 16:30 con window.confirm()
 views/horasextras/
   HorasExtrasView.vue   # 4 tabs:
@@ -454,6 +471,16 @@ Implementada para trazabilidad ante la Contraloría General del Estado. Todas la
 - Clic en fila expande JSON datos_anteriores / datos_nuevos
 - Usa `@/services/api` (no axios directamente) para enviar el token de autenticación
 
+### Eventos de sesión auditados
+
+LOGIN, LOGOUT y LOGIN_FALLIDO se registran con `tabla = 'auth'` y `registro_id = 0`. Como no hay usuario autenticado en el momento del login, se inserta **directamente** con `DB::table('dbo.nom_auditoria_log')->insert([...])` — no se puede usar `AuditoriaService::log()` porque `$request->user()` es null. El LOGOUT sí usa `AuditoriaService::log()` porque el token todavía es válido en ese momento.
+
+El filtro de módulo "Talento" en `AuditoriaController` incluye `tabla = 'auth'` además de `dbo.%` (excluyendo `trans_%`).
+
+### Auditoría de ACTUALIZAR empleado
+
+`EmpleadoController::update()` captura en `$anterior` y `datos_nuevos`: `sueldo`, `estado`, `id_depto`, `cargo_empleado`, `tipo_contrato`, `modalidad_laboral`, `partida_individual`, `programa`, `actividad`, `modalidad_marcacion`.
+
 ### Si se agrega un nuevo módulo
 
 Instrumentar sus controladores con `AuditoriaService::log()` en las acciones irreversibles (aprobar, confirmar, eliminar, cambios de estado).
@@ -497,18 +524,29 @@ Rol: `TH NOMINA`. Flujo general: seleccionar mes/año → Calcular → BORRADOR 
 - FR: `(sueldo × 8.33 / 100 / 30) × dias`
 - Rol: `valor_rmu = ROUND(sueldo × dias / 30, 2)`; `aporte_patronal/personal = ROUND(valor_rmu × pct / 100, 2)`
 
-**Tasas de aporte** (`dbo.d2_aportes_iess`): `modalidad` debe coincidir con `TRIM(tipo_contrato)` del empleado. Los % almacenados ya incluyen IECE y SECAP:
-- LOSEP: `aporte_individual = 11.45%`, `aporte_patronal = 9.65%`
-- CODIGO DEL TRABAJO: `aporte_individual = 9.45%`, `aporte_patronal = 12.15%`
+**Tasas de aporte** (`dbo.d2_aportes_iess`): `modalidad` debe coincidir con `TRIM(tipo_contrato)` del empleado. Estructura actual (migración `000061`): cada fila tiene columnas `iece_patronal`, `iece_personal`, `secap_patronal`, `secap_personal` — la lógica de qué aplica a quién está en los datos, no en el código. LOSEP tiene secap = 0; CODIGO DEL TRABAJO tiene secap > 0. Ya no existen filas separadas para IECE y SECAP.
+- LOSEP: `aporte_individual = 11.45%`, `aporte_patronal = 9.15%`, `iece_patronal = 0.5%`, `secap_patronal = 0%`
+- CODIGO DEL TRABAJO: `aporte_individual = 9.45%`, `aporte_patronal = 11.15%`, `iece_patronal = 0.5%`, `secap_patronal = 0.5%`
+- Campos de auditoría en `d2_aportes_iess`: `created_by`, `updated_at`, `updated_by` (migración `000062`)
+- Vista admin: `views/admin/aportes/AportesIessView.vue` — muestra y edita las 4 columnas IECE/SECAP
 
-**Campos manuales en Rol de Pagos:** `quirografario`, `hipotecario`, `impuesto_renta`, `supa` — editables inline (click en celda) o importando CSV con columnas `cedula, quirografario, hipotecario, impuesto_renta`.
+**Campos en `nom_rol_pago_det`** (migración `000060`): además de los existentes, se agregan:
+- `iece_pct`, `iece` — porcentaje y valor del aporte IECE
+- `secap_pct`, `secap` — porcentaje y valor del aporte SECAP
+- `programa`, `actividad` — clasificación presupuestaria copiada del empleado al calcular
+- `poliza_blanket` — descuento manual editable inline (igual que quirografario)
+- `total_aporte_patronal` NO se guarda — se calcula al vuelo: `iece + secap + aporte_patronal`
+
+**Campos manuales en Rol de Pagos:** `quirografario`, `hipotecario`, `impuesto_renta`, `supa`, `poliza_blanket` — editables inline (click en celda) o importando CSV con columnas `cedula, quirografario, hipotecario, impuesto_renta, poliza_blanket`.
 
 ### Vistas Frontend (`views/nomina/`)
 
 ```
 DecimosView.vue       # Tabs: Décimo Tercero | Décimo Cuarto | Consolidado
 FondosReservaView.vue # Filtro tipo MENSUAL/IESS/Todos
-RolPagoView.vue       # Edición inline de 4 campos manuales + importar CSV + PDF landscape
+RolPagoView.vue       # Tab 1: tabla con columnas IECE, SECAP, Total Patronal, Programa, Actividad,
+                      #   Póliza Blanket + sticky headers + sticky columnas N°/Cédula/Nombre
+                      # Tab 2: Resúmenes agrupados por Programa/Actividad + botón PDF Resumen
 ```
 
 Vista admin SBU: `views/admin/SbuView.vue` (ruta `admin/sbu`) — el SBU se gestiona aquí, NO en DecimoCuarto.
@@ -516,7 +554,9 @@ Vista admin SBU: `views/admin/SbuView.vue` (ruta `admin/sbu`) — el SBU se gest
 ### PDFs (`resources/views/reportes/`)
 
 - `nom_decimo_tercero.blade.php`, `nom_decimo_cuarto.blade.php`, `nom_fondos_reserva.blade.php`, `nom_consolidado.blade.php` — portrait letter
-- `nom_rol_pago.blade.php` — **landscape** letter, 7pt; % de aportes en encabezado de columna (no en cada fila)
+- `nom_rol_pago.blade.php` — **landscape** A4, 7pt; columnas IECE, SECAP, Ap.Patronal, Total Patronal, Programa, Actividad, Póliza Blanket; % en encabezado de columna
+- `nom_rol_pago_resumenes.blade.php` — portrait A4; tabla agrupada por Programa/Actividad con totales
+- Ruta resúmenes PDF: `GET /api/nomina/rol-pago/{cabId}/resumenes/pdf`
 
 ---
 
@@ -724,6 +764,7 @@ Rutas bajo `/api/transporte/*`:
 - `GET/POST /plan-preventivo`, `PUT /plan-preventivo/{id}`, `POST /plan-preventivo/importar-csv`
 - `GET/POST /mantenimiento`, `PUT /mantenimiento/{id}`, `GET /mantenimiento/{id}/pdf`
 - `GET/POST /movilizacion`, `PUT /movilizacion/{id}`, `GET /movilizacion/{id}/pdf`
+- `GET /notificaciones-pendientes` — solo TRANSPORTE; devuelve `{ pendientes, ultima_at, items[] }`
 - `GET/POST /vales-combustible`, `GET /vales-combustible/{id}/pdf`
 - `GET /conductores` — lista empleados con rol CONDUCTOR
 
@@ -748,6 +789,10 @@ views/transporte/
   MovilizacionView.vue        # Empleado solicita; TRANSPORTE aprueba/niega; conductor llena hoja de ruta
   ValesCombustibleView.vue    # CONDUCTOR + TRANSPORTE; guarda y abre PDF automáticamente
 layouts/TransporteLayout.vue  # Menú dinámico desde auth.menuAgrupado filtrado a transporte/
+                              # Notificaciones Web (Opción A): polling cada 30s a /notificaciones-pendientes
+                              #   Pide permiso al montar; compara ultima_at para detectar nuevas solicitudes
+                              #   new Notification() con clic → navega a /transporte/movilizacion
+                              #   Funciona con navegador minimizado; se detiene al hacer logout (onUnmounted)
 ```
 
 `MainLayout.vue` excluye `transporte/` y `adquisiciones/` de su menú. `LauncherView.vue` muestra tarjeta Transportes si tiene rol TRANSPORTE, CONDUCTOR, o `puede_solicitar_vehiculo`. Tarjetas del launcher: `w-44 p-5` con íconos `w-12 h-12`.

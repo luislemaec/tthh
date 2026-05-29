@@ -126,6 +126,18 @@
                   :title="cab?.estado === 'BORRADOR' ? 'Click para editar' : ''">
                   Póliza Blanket{{ cab?.estado === 'BORRADOR' ? ' ✎' : '' }}
                 </th>
+                <th class="px-2 py-2 text-right text-orange-700 font-medium border bg-orange-50"
+                  :title="cab?.estado === 'BORRADOR' ? 'Click para editar' : ''">
+                  Sanciones{{ cab?.estado === 'BORRADOR' ? ' ✎' : '' }}
+                </th>
+                <th class="px-2 py-2 text-right text-orange-700 font-medium border bg-orange-50"
+                  :title="cab?.estado === 'BORRADOR' ? 'Click para editar' : ''">
+                  Otros Desc.{{ cab?.estado === 'BORRADOR' ? ' ✎' : '' }}
+                </th>
+                <th class="px-2 py-2 text-left text-orange-700 font-medium border bg-orange-50"
+                  :title="cab?.estado === 'BORRADOR' ? 'Click para editar' : ''">
+                  Observaciones{{ cab?.estado === 'BORRADOR' ? ' ✎' : '' }}
+                </th>
                 <th class="px-2 py-2 text-right text-gray-700 font-semibold border bg-gray-50">T.Desc $</th>
                 <th class="px-2 py-2 text-right text-gray-700 font-semibold border bg-gray-50">Líquido $</th>
               </tr>
@@ -162,6 +174,21 @@
                     ref="inputEdicion" />
                   <span v-else>{{ fmt(r[campo]) }}</span>
                 </td>
+                <!-- Observaciones — editable inline como texto -->
+                <td class="px-1 py-1 text-left border bg-orange-50/40 max-w-[120px]"
+                  :class="cab?.estado === 'BORRADOR' ? 'cursor-pointer hover:bg-blue-50' : ''"
+                  @click="iniciarEdicion(r, 'observaciones')">
+                  <input v-if="editando?.id === r.id && editando?.campo === 'observaciones'"
+                    v-model="editando.valor"
+                    type="text" maxlength="300"
+                    class="w-full border border-blue-400 rounded px-1 py-0.5 text-xs focus:outline-none"
+                    @blur="guardarEdicion(r)"
+                    @keyup.enter="guardarEdicion(r)"
+                    @keyup.escape="editando = null"
+                    @click.stop
+                    ref="inputEdicion" />
+                  <span v-else class="text-xs truncate block">{{ r.observaciones || '—' }}</span>
+                </td>
                 <td class="px-2 py-2 text-right font-mono border font-semibold">{{ fmt(r.total_descuentos) }}</td>
                 <td class="px-2 py-2 text-right font-mono border font-semibold text-green-700">{{ fmt(r.liquido) }}</td>
               </tr>
@@ -181,6 +208,9 @@
                 <td class="px-2 py-2 text-right font-mono border bg-orange-50">{{ fmt(sumCol('impuesto_renta')) }}</td>
                 <td class="px-2 py-2 text-right font-mono border bg-orange-50">{{ fmt(sumCol('supa')) }}</td>
                 <td class="px-2 py-2 text-right font-mono border bg-orange-50">{{ fmt(sumCol('poliza_blanket')) }}</td>
+                <td class="px-2 py-2 text-right font-mono border bg-orange-50">{{ fmt(sumCol('sanciones')) }}</td>
+                <td class="px-2 py-2 text-right font-mono border bg-orange-50">{{ fmt(sumCol('otros_descuentos')) }}</td>
+                <td class="px-2 py-2 border bg-orange-50"></td>
                 <td class="px-2 py-2 text-right font-mono border">{{ fmt(sumCol('total_descuentos')) }}</td>
                 <td class="px-2 py-2 text-right font-mono border text-green-700">{{ fmt(sumCol('liquido')) }}</td>
               </tr>
@@ -269,7 +299,7 @@
 
         <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700 space-y-1">
           <p>El archivo CSV debe tener las siguientes columnas (con encabezado):</p>
-          <p class="font-mono">cedula, quirografario, hipotecario, impuesto_renta, poliza_blanket</p>
+          <p class="font-mono">cedula, quirografario, hipotecario, impuesto_renta, poliza_blanket, sanciones, otros_descuentos</p>
           <p>Las columnas que no incluyas no se modifican.</p>
         </div>
 
@@ -334,7 +364,7 @@ const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
 const anioActual = new Date().getFullYear()
 const anios = Array.from({ length: anioActual - 2023 }, (_, i) => anioActual - i)
 
-const camposEditables = ['quirografario', 'hipotecario', 'impuesto_renta', 'supa', 'poliza_blanket']
+const camposEditables = ['quirografario', 'hipotecario', 'impuesto_renta', 'supa', 'poliza_blanket', 'sanciones', 'otros_descuentos']
 
 const form       = ref({ mes: new Date().getMonth() + 1, anio: anioActual })
 const cab        = ref(null)
@@ -518,10 +548,12 @@ const iniciarEdicion = (row, campo) => {
 const guardarEdicion = async (row) => {
   if (!editando.value || editando.value.id !== row.id) return
   const campo = editando.value.campo
-  const valor = parseFloat(editando.value.valor) || 0
+  const esTexto = campo === 'observaciones'
+  const valor = esTexto ? (editando.value.valor ?? '') : (parseFloat(editando.value.valor) || 0)
   editando.value = null
 
-  if (Math.abs(valor - (parseFloat(row[campo]) || 0)) < 0.001) return
+  if (!esTexto && Math.abs(valor - (parseFloat(row[campo]) || 0)) < 0.001) return
+  if (esTexto && valor === (row[campo] || '')) return
 
   try {
     const { data } = await api.put(`/nomina/rol-pago/detalle/${row.id}`, { [campo]: valor })
@@ -534,6 +566,9 @@ const guardarEdicion = async (row) => {
         impuesto_renta:   data.impuesto_renta,
         supa:             data.supa,
         poliza_blanket:   data.poliza_blanket,
+        sanciones:        data.sanciones,
+        otros_descuentos: data.otros_descuentos,
+        observaciones:    data.observaciones,
         total_descuentos: data.total_descuentos,
         liquido:          data.liquido,
       })
@@ -583,11 +618,13 @@ const leerCsv = (e) => {
       if (!row.cedula) continue
       const parseOpt = (key) => row[key] !== undefined && row[key] !== '' ? parseFloat(row[key]) : undefined
       filas.push({
-        cedula:          row.cedula,
-        quirografario:   parseOpt('quirografario'),
-        hipotecario:     parseOpt('hipotecario'),
-        impuesto_renta:  parseOpt('impuesto_renta'),
-        poliza_blanket:  parseOpt('poliza_blanket'),
+        cedula:           row.cedula,
+        quirografario:    parseOpt('quirografario'),
+        hipotecario:      parseOpt('hipotecario'),
+        impuesto_renta:   parseOpt('impuesto_renta'),
+        poliza_blanket:   parseOpt('poliza_blanket'),
+        sanciones:        parseOpt('sanciones'),
+        otros_descuentos: parseOpt('otros_descuentos'),
       })
     }
     if (!filas.length) { csvError.value = 'No se encontraron filas válidas.'; return }

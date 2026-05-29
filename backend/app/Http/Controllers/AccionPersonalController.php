@@ -252,6 +252,10 @@ class AccionPersonalController extends Controller
             "APROBADOR_ACCION_PERSONAL",
             "nombre_institucion",
             "PREFIJO_ACCION_PERSONAL",
+            "FIRMANTE_TH_NOMBRE",
+            "FIRMANTE_TH_CARGO",
+            "FIRMANTE_AUTORIDAD_NOMBRE",
+            "FIRMANTE_AUTORIDAD_CARGO",
         ])->pluck("valor", "concepto");
 
         $logoPath   = public_path("logo.png");

@@ -782,8 +782,9 @@ class HorasExtrasController extends Controller
         }
 
         $registro->update([
-            'estado'      => 'EN REVISION',
-            'observacion' => $request->observacion,
+            'estado'        => 'EN REVISION',
+            'observacion'   => $request->observacion,
+            'devuelto_count'=> DB::raw('devuelto_count + 1'),
         ]);
         return response()->json(['message' => 'Registro devuelto al empleado para corrección.']);
     }

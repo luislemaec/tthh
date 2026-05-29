@@ -52,7 +52,10 @@
     <!-- Historial personal de marcaciones -->
     <div class="bg-white rounded-xl shadow p-6">
       <div class="flex items-center justify-between mb-4">
-        <h2 class="text-lg font-bold text-gray-800">Mis Marcaciones</h2>
+        <div>
+          <h2 class="text-lg font-bold text-gray-800">Mis Marcaciones</h2>
+          <p v-if="estado.articulo_atrasos" class="text-xs text-gray-500 mt-0.5 max-w-xl">{{ estado.articulo_atrasos }}</p>
+        </div>
         <div class="flex flex-wrap gap-2 items-center">
           <input v-model="histFechaDesde" type="date" @change="cargarHistorial"
             class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />

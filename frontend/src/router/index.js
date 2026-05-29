@@ -29,6 +29,7 @@ const routes = [
       { path: 'empleados/importar', name: 'EmpleadoImportar', component: () => import('@/views/empleados/ImportacionView.vue') },
       { path: 'empleados/distributivo', name: 'EmpleadoDistributivo', component: () => import('@/views/empleados/DistributivoView.vue') },
       { path: 'asistencia', name: 'Asistencia', component: () => import('@/views/AsistenciaView.vue') },
+      { path: 'asistencia/sin-atrasos', name: 'ReporteSinAtrasos', component: () => import('@/views/asistencia/ReporteSinAtrasosView.vue') },
       { path: 'permisos', name: 'Permisos', component: () => import('@/views/PermisosView.vue') },
       { path: 'vacaciones', name: 'Vacaciones', component: () => import('@/views/VacacionesView.vue') },
       { path: 'admin/departamentos', name: 'AdminDepartamentos', component: () => import('@/views/admin/departamentos/DepartamentosView.vue') },

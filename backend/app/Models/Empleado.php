@@ -28,6 +28,7 @@ class Empleado extends Authenticatable
         "programa", "actividad",
         "puede_solicitar_vehiculo",
         "sexo", "tipo_sangre",
+        "num_sercop", "fecha_vence_sercop",
         "foto",
         "created_at", "created_by", "updated_at", "updated_by",
     ];

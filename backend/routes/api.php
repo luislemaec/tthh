@@ -175,9 +175,10 @@ Route::middleware("auth:sanctum")->group(function () {
     // Asistencia
     Route::get("/asistencia/mi-estado",   [AsistenciaController::class, "miEstado"]);
     Route::post("/asistencia/marcar",     [AsistenciaController::class, "marcar"]);
-    Route::get("/asistencia/listado",     [AsistenciaController::class, "listado"]);
-    Route::get("/asistencia/reporte",     [AsistenciaController::class, "reporte"]);
-    Route::get("/asistencia/mi-reporte",  [AsistenciaController::class, "miReporte"]);
+    Route::get("/asistencia/listado",          [AsistenciaController::class, "listado"]);
+    Route::get("/asistencia/reporte",          [AsistenciaController::class, "reporte"]);
+    Route::get("/asistencia/mi-reporte",       [AsistenciaController::class, "miReporte"]);
+    Route::get("/asistencia/reporte-sin-atrasos", [AsistenciaController::class, "reporteSinAtrasos"]);
 
     // Importacion
     Route::get("/importacion/plantilla",  [ImportacionController::class, "plantilla"]);

@@ -253,9 +253,17 @@
               </select>
             </div>
             <div class="sm:col-span-2">
-              <label class="label-field">Partida Presupuestaria *</label>
+              <label class="label-field">Estructura Programática *</label>
               <input v-model="form.partida_presupuestaria" type="text" placeholder="Ej: 202622000000000..." required
                 class="input-field font-mono text-xs" />
+            </div>
+            <div>
+              <label class="label-field">N° Certificado SERCOP</label>
+              <input v-model="form.num_sercop" type="text" maxlength="50" class="input-field" />
+            </div>
+            <div>
+              <label class="label-field">Vigencia SERCOP</label>
+              <input v-model="form.fecha_vence_sercop" type="date" class="input-field" />
             </div>
           </div>
         </div>
@@ -444,7 +452,7 @@ const tabs = [
 
 const opcionesModalidad = [
   { value: 'PRESENCIAL',  label: 'Presencial',  desc: 'Solo puede timbrar desde las VLANs internas configuradas.' },
-  { value: 'REMOTO',      label: 'Remoto',      desc: 'Puede timbrar desde cualquier IP (viaje, comisión).' },
+  { value: 'TEMPORAL',    label: 'Temporal',    desc: 'Puede timbrar desde cualquier IP (comisión, viaje temporal).' },
   { value: 'TELETRABAJO', label: 'Teletrabajo', desc: 'Marca como teletrabajo sin restricción de IP.' },
 ]
 
@@ -461,8 +469,10 @@ const form = ref({
   telefono:       "",
   email:          "",
   direccion:      "",
-  sexo:           "",
-  tipo_sangre:    "",
+  sexo:               "",
+  tipo_sangre:        "",
+  num_sercop:         "",
+  fecha_vence_sercop: "",
   departamento_id: null,
   cargo_empleado: "",
   tipo_contrato:     "",
@@ -521,6 +531,8 @@ const guardar = async () => {
       puede_solicitar_vehiculo: form.value.puede_solicitar_vehiculo,
       sexo:                     form.value.sexo       || null,
       tipo_sangre:              form.value.tipo_sangre || null,
+      num_sercop:               form.value.num_sercop         || null,
+      fecha_vence_sercop:       form.value.fecha_vence_sercop || null,
     }
 
     if (esEdicion.value) {
@@ -615,6 +627,8 @@ onMounted(async () => {
     form.value.puede_solicitar_vehiculo = data.puede_solicitar_vehiculo ?? false
     form.value.sexo                     = data.sexo                     ?? ""
     form.value.tipo_sangre              = data.tipo_sangre              ?? ""
+    form.value.num_sercop               = data.num_sercop               ?? ""
+    form.value.fecha_vence_sercop       = data.fecha_vence_sercop?.substring(0, 10) ?? ""
     fotoUrl.value = storageUrl(data.foto)
   }
 })

@@ -45,6 +45,8 @@
   $totalImpRenta   = $detalles->sum('impuesto_renta');
   $totalSupa       = $detalles->sum('supa');
   $totalPolBlanket = $detalles->sum('poliza_blanket');
+  $totalSanciones  = $detalles->sum('sanciones');
+  $totalOtrosDesc  = $detalles->sum('otros_descuentos');
   $totalDescuentos = $detalles->sum('total_descuentos');
   $totalLiquido    = $detalles->sum('liquido');
 
@@ -106,9 +108,12 @@
       <th class="th-descuento" style="width:4.5%;">Hipotec.</th>
       <th class="th-descuento" style="width:4.5%;">Imp.Renta</th>
       <th class="th-descuento" style="width:3.5%;">SUPA</th>
-      <th class="th-descuento" style="width:5%;">Póliza Blanket</th>
-      <th style="width:5%;">T.Desc. $</th>
-      <th style="width:5.5%;">Líquido $</th>
+      <th class="th-descuento" style="width:4%;">Póliza Blanket</th>
+      <th class="th-descuento" style="width:4%;">Sanciones</th>
+      <th class="th-descuento" style="width:4%;">Otros Desc.</th>
+      <th style="width:6%;">Observaciones</th>
+      <th style="width:4.5%;">T.Desc. $</th>
+      <th style="width:5%;">Líquido $</th>
     </tr>
   </thead>
   <tbody>
@@ -132,6 +137,9 @@
       <td class="r">{{ number_format($r->impuesto_renta, 2) }}</td>
       <td class="r">{{ number_format($r->supa, 2) }}</td>
       <td class="r">{{ number_format($r->poliza_blanket, 2) }}</td>
+      <td class="r">{{ number_format($r->sanciones, 2) }}</td>
+      <td class="r">{{ number_format($r->otros_descuentos, 2) }}</td>
+      <td style="font-size:6pt; word-break:break-word;">{{ $r->observaciones ?? '' }}</td>
       <td class="r">{{ number_format($r->total_descuentos, 2) }}</td>
       <td class="r">{{ number_format($r->liquido, 2) }}</td>
     </tr>
@@ -151,6 +159,9 @@
       <td class="r">{{ number_format($totalImpRenta, 2) }}</td>
       <td class="r">{{ number_format($totalSupa, 2) }}</td>
       <td class="r">{{ number_format($totalPolBlanket, 2) }}</td>
+      <td class="r">{{ number_format($totalSanciones, 2) }}</td>
+      <td class="r">{{ number_format($totalOtrosDesc, 2) }}</td>
+      <td></td>
       <td class="r">{{ number_format($totalDescuentos, 2) }}</td>
       <td class="r">{{ number_format($totalLiquido, 2) }}</td>
     </tr>

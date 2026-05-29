@@ -91,6 +91,8 @@ class EmpleadoController extends Controller
             "actividad"              => "nullable|string|max:6",
             "sexo"                   => "nullable|string|max:10",
             "tipo_sangre"            => "nullable|string|max:5",
+            "num_sercop"             => "nullable|string|max:50",
+            "fecha_vence_sercop"     => "nullable|date",
         ]);
 
         $usuario = auth()->user()->id_emp ?? null;
@@ -117,6 +119,8 @@ class EmpleadoController extends Controller
             "actividad"         => $request->filled('actividad')   ? strtoupper($request->actividad)   : null,
             "sexo"              => $request->filled('sexo')        ? strtoupper($request->sexo)        : null,
             "tipo_sangre"       => $request->filled('tipo_sangre') ? strtoupper($request->tipo_sangre) : null,
+            "num_sercop"        => $request->num_sercop         ?? null,
+            "fecha_vence_sercop"=> $request->fecha_vence_sercop ?? null,
             "created_at"       => now(),
             "created_by"       => $usuario,
             "updated_at"       => now(),
@@ -204,6 +208,10 @@ class EmpleadoController extends Controller
             "modalidad_laboral"      => "required|string|max:50",
             "programa"               => "nullable|string|max:4",
             "actividad"              => "nullable|string|max:6",
+            "sexo"                   => "nullable|string|max:10",
+            "tipo_sangre"            => "nullable|string|max:5",
+            "num_sercop"             => "nullable|string|max:50",
+            "fecha_vence_sercop"     => "nullable|date",
         ]);
 
         $emp->update([
@@ -240,6 +248,8 @@ class EmpleadoController extends Controller
             "puede_solicitar_vehiculo"  => $request->boolean('puede_solicitar_vehiculo', $emp->puede_solicitar_vehiculo ?? false),
             "sexo"                      => $request->filled('sexo')        ? strtoupper($request->sexo)        : $emp->sexo,
             "tipo_sangre"               => $request->filled('tipo_sangre') ? strtoupper($request->tipo_sangre) : $emp->tipo_sangre,
+            "num_sercop"                => $request->num_sercop          ?? $emp->num_sercop,
+            "fecha_vence_sercop"        => $request->fecha_vence_sercop  ?? $emp->fecha_vence_sercop,
             "updated_at"                => now(),
             "updated_by"                => auth()->user()->id_emp ?? null,
         ]);

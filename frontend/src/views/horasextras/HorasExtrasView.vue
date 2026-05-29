@@ -410,6 +410,10 @@
                   'bg-green-100 text-green-800':   reg.estado === 'APROBADO',
                   'bg-red-100 text-red-800':        reg.estado === 'NEGADO',
                 }" class="px-2 py-0.5 rounded-full text-xs font-medium">{{ reg.estado }}</span>
+                <span v-if="reg.devuelto_count > 0"
+                  class="ml-1 bg-orange-100 text-orange-700 text-xs px-1.5 py-0.5 rounded-full">
+                  Dev. {{ reg.devuelto_count }}v
+                </span>
                 <div v-if="reg.estado === 'APROBADO' && esTHNomina && reg.valor_total !== undefined"
                   class="mt-1 text-xs space-y-0.5">
                   <div class="text-gray-500">Extra: <b>${{ reg.valor_extraordinarias }}</b> | Supl: <b>${{ reg.valor_suplementarias }}</b></div>
