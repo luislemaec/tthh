@@ -4,84 +4,77 @@
 
     <!-- ── EMPLEADO SIN ROL ESPECIAL ─────────────────────────────────────── -->
     <template v-if="esEmpleadoSolo">
-      <!-- Tarjetas -->
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <!-- Tarjetas — 3 en una sola fila -->
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2" :class="proximoPeriodo ? 'lg:grid-cols-3' : 'lg:grid-cols-2'">
 
         <!-- Permisos pendientes -->
-        <div class="rounded-2xl p-6 flex items-center gap-5 text-white"
+        <div class="rounded-xl p-4 flex items-center gap-3 text-white"
           style="background: linear-gradient(135deg,#1e3a5f,#2d5f8a);">
-          <div class="bg-white/20 p-4 rounded-2xl flex-shrink-0">
-            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="bg-white/20 p-2.5 rounded-xl flex-shrink-0">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
             </svg>
           </div>
           <div>
-            <p class="text-sm text-white/70 font-medium uppercase tracking-wide">Permisos pendientes</p>
-            <p class="text-5xl font-extrabold leading-none mt-1">{{ stats.permisos_pendientes }}</p>
-            <p class="text-xs text-white/60 mt-1">{{ stats.permisos_pendientes === 1 ? 'solicitud en espera' : 'solicitudes en espera' }}</p>
+            <p class="text-xs text-white/70 font-medium uppercase tracking-wide">Permisos pendientes</p>
+            <p class="text-3xl font-extrabold leading-none mt-0.5">{{ stats.permisos_pendientes }}</p>
+            <p class="text-xs text-white/60 mt-0.5">{{ stats.permisos_pendientes === 1 ? 'solicitud en espera' : 'solicitudes en espera' }}</p>
           </div>
         </div>
 
         <!-- Saldo de vacaciones -->
-        <div class="rounded-2xl p-6 flex items-center gap-5 text-white"
+        <div class="rounded-xl p-4 flex items-center gap-3 text-white"
           style="background: linear-gradient(135deg,#0b5447,#1a8a6f);">
-          <div class="bg-white/20 p-4 rounded-2xl flex-shrink-0">
-            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="bg-white/20 p-2.5 rounded-xl flex-shrink-0">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M12 3v1m0 16v1m8.66-9h-1M4.34 12h-1m15.07-6.07l-.71.71M6.34 17.66l-.71.71M17.66 17.66l-.71-.71M6.34 6.34l-.71-.71M12 7a5 5 0 100 10A5 5 0 0012 7z"/>
             </svg>
           </div>
           <div>
-            <p class="text-sm text-white/70 font-medium uppercase tracking-wide">Saldo de vacaciones</p>
-            <p class="text-5xl font-extrabold leading-none mt-1">{{ stats.datos_empleado?.saldo_vacaciones ?? 0 }}</p>
-            <p class="text-xs text-white/60 mt-1">días disponibles</p>
+            <p class="text-xs text-white/70 font-medium uppercase tracking-wide">Saldo de vacaciones</p>
+            <p class="text-3xl font-extrabold leading-none mt-0.5">{{ stats.datos_empleado?.saldo_vacaciones ?? 0 }}</p>
+            <p class="text-xs text-white/60 mt-0.5">días disponibles</p>
           </div>
         </div>
-      </div>
 
-      <!-- Próximo período / Vacaciones en curso -->
-      <div v-if="proximoPeriodo" class="rounded-2xl p-5 text-white"
-        :style="enCurso
-          ? 'background: linear-gradient(135deg,#92400e,#d97706)'
-          : 'background: linear-gradient(135deg,#0b5447,#1a8a6f)'">
-        <div class="flex items-start justify-between gap-4">
-          <div class="flex items-center gap-4">
-            <div class="bg-white/20 p-3 rounded-xl flex-shrink-0">
-              <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <!-- Próximo período / Vacaciones en curso -->
+        <div v-if="proximoPeriodo" class="rounded-xl p-4 text-white"
+          :style="enCurso
+            ? 'background: linear-gradient(135deg,#92400e,#d97706)'
+            : 'background: linear-gradient(135deg,#1e3a5f,#2d5f8a)'">
+          <div class="flex items-center gap-2 mb-2">
+            <div class="bg-white/20 p-2 rounded-lg flex-shrink-0">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
               </svg>
             </div>
-            <div>
-              <p class="text-xs font-semibold uppercase tracking-widest text-white/70">
-                {{ enCurso ? 'Vacaciones en curso' : 'Próximo período de vacaciones' }}
+            <div class="flex-1 min-w-0">
+              <p class="text-xs text-white/70 uppercase tracking-wide truncate">
+                {{ enCurso ? 'Vacaciones en curso' : 'Próximo período' }}
               </p>
-              <p class="text-base font-bold mt-0.5">Período {{ proximoPeriodo.numero_periodo }}</p>
+              <p class="text-sm font-bold leading-tight">Per. {{ proximoPeriodo.numero_periodo }} · {{ proximoPeriodo.dias }} días</p>
+            </div>
+            <span v-if="enCurso" class="bg-white/30 text-white text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0">EN CURSO</span>
+            <div v-else class="text-right flex-shrink-0">
+              <p class="text-2xl font-extrabold leading-none">{{ diasParaVacaciones }}</p>
+              <p class="text-xs text-white/60 leading-tight">días</p>
             </div>
           </div>
-          <div v-if="!enCurso" class="text-right flex-shrink-0">
-            <p class="text-3xl font-extrabold leading-none">{{ diasParaVacaciones }}</p>
-            <p class="text-xs text-white/70 mt-0.5">días para<br>vacaciones</p>
-          </div>
-          <div v-else class="flex-shrink-0">
-            <span class="bg-white/30 text-white text-xs font-bold px-3 py-1.5 rounded-full tracking-wide">EN CURSO</span>
-          </div>
-        </div>
-        <div class="mt-4 flex gap-8 text-sm border-t border-white/20 pt-4">
-          <div>
-            <p class="text-white/60 text-xs uppercase tracking-wide">Desde</p>
-            <p class="font-semibold mt-0.5">{{ formatFecha(proximoPeriodo.fecha_inicial) }}</p>
-          </div>
-          <div>
-            <p class="text-white/60 text-xs uppercase tracking-wide">Hasta</p>
-            <p class="font-semibold mt-0.5">{{ formatFecha(proximoPeriodo.fecha_final) }}</p>
-          </div>
-          <div>
-            <p class="text-white/60 text-xs uppercase tracking-wide">Días</p>
-            <p class="font-semibold mt-0.5">{{ proximoPeriodo.dias }}</p>
+          <div class="flex gap-4 text-xs border-t border-white/20 pt-2">
+            <div>
+              <p class="text-white/60">Desde</p>
+              <p class="font-medium mt-0.5">{{ formatFecha(proximoPeriodo.fecha_inicial) }}</p>
+            </div>
+            <div>
+              <p class="text-white/60">Hasta</p>
+              <p class="font-medium mt-0.5">{{ formatFecha(proximoPeriodo.fecha_final) }}</p>
+            </div>
           </div>
         </div>
+
       </div>
 
       <!-- Gráfico de atrasos por mes -->
