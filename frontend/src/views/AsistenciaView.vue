@@ -54,7 +54,11 @@
       <div class="flex items-center justify-between mb-4">
         <div>
           <h2 class="text-lg font-bold text-gray-800">Mis Marcaciones</h2>
-          <p v-if="estado.articulo_atrasos" class="text-xs text-gray-500 mt-0.5 max-w-xl">{{ estado.articulo_atrasos }}</p>
+          <p v-if="estado.articulo_atrasos"
+            class="text-sm font-medium text-white mt-2 px-4 py-2 rounded-lg max-w-2xl"
+            style="background-color:#0b5447;">
+            {{ estado.articulo_atrasos }}
+          </p>
         </div>
         <div class="flex flex-wrap gap-2 items-center">
           <input v-model="histFechaDesde" type="date" @change="cargarHistorial"
