@@ -277,6 +277,19 @@ function buildParams() {
 
 async function consultar() {
   error.value = ''
+
+  // Si hay texto escrito sin selección, buscar coincidencia exacta por código
+  if (!articuloSeleccionado.value && busquedaArticulo.value.trim() && !filtro.value.nivel1 && !filtro.value.nivel2) {
+    try {
+      const { data } = await api.get('/adquisiciones/reportes/articulos', { params: { q: busquedaArticulo.value.trim() } })
+      const texto  = busquedaArticulo.value.trim().toLowerCase()
+      const exacto = data.find(a => a.codigo.toLowerCase() === texto)
+      const match  = exacto ?? (data.length === 1 ? data[0] : null)
+      if (match) seleccionarArticulo(match)
+      else { error.value = 'Artículo no encontrado. Selecciónelo del desplegable.'; return }
+    } catch { error.value = 'Seleccione un artículo o un Nivel MEF.'; return }
+  }
+
   if (!articuloSeleccionado.value && !filtro.value.nivel1 && !filtro.value.nivel2) {
     error.value = 'Seleccione un artículo o un Nivel MEF.'; return
   }
