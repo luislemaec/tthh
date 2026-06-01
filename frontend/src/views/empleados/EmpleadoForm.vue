@@ -1,5 +1,5 @@
 <template>
-  <div class="max-w-4xl mx-auto pb-24">
+  <div class="max-w-4xl mx-auto pb-8">
     <!-- Cabecera -->
     <div class="flex items-center gap-3 mb-6">
       <router-link to="/empleados" class="text-gray-400 hover:text-gray-600 transition-colors">
@@ -112,7 +112,139 @@
                 <option value="O-">O-</option>
               </select>
             </div>
+            <div>
+              <label class="label-field">Grupo Vulnerable</label>
+              <select v-model="form.grupo_vulnerable_id" class="input-field">
+                <option :value="null">— Ninguno —</option>
+                <option v-for="g in catalogos.grupos_vulnerables" :key="g.id" :value="g.id">{{ g.nombre }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="label-field">Grupo Prioritario</label>
+              <select v-model="form.grupo_prioritario_id" class="input-field">
+                <option :value="null">— Ninguno —</option>
+                <option v-for="g in catalogos.grupos_prioritarios" :key="g.id" :value="g.id">{{ g.nombre }}</option>
+              </select>
+            </div>
           </div>
+
+          <!-- Discapacidad -->
+          <div class="border rounded-xl p-4 space-y-3">
+            <div class="flex items-center gap-3">
+              <input type="checkbox" id="tiene_discapacidad" v-model="form.tiene_discapacidad" class="w-4 h-4 accent-[#0b5447]" />
+              <label for="tiene_discapacidad" class="text-sm font-semibold text-gray-700 cursor-pointer select-none">Persona con Discapacidad</label>
+            </div>
+            <div v-if="form.tiene_discapacidad" class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+              <div>
+                <label class="label-field">Tipo de Discapacidad</label>
+                <select v-model="form.tipo_discapacidad_id" class="input-field">
+                  <option :value="null">Seleccionar...</option>
+                  <option v-for="t in catalogos.tipos_discapacidad" :key="t.id" :value="t.id">{{ t.nombre }}</option>
+                </select>
+              </div>
+              <div>
+                <label class="label-field">Porcentaje de Discapacidad (%)</label>
+                <input v-model.number="form.porcentaje_discapacidad" type="number" min="0" max="100" class="input-field" placeholder="Ej: 45" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Enfermedad Catastrófica -->
+          <div class="border rounded-xl p-4 space-y-3">
+            <div class="flex items-center gap-3">
+              <input type="checkbox" id="tiene_enfermedad" v-model="form.tiene_enfermedad_catastrofica" class="w-4 h-4 accent-[#0b5447]" />
+              <label for="tiene_enfermedad" class="text-sm font-semibold text-gray-700 cursor-pointer select-none">Enfermedad Catastrófica</label>
+            </div>
+            <div v-if="form.tiene_enfermedad_catastrofica" class="pt-1">
+              <label class="label-field">Tipo de Enfermedad</label>
+              <select v-model="form.enfermedad_catastrofica_id" class="input-field">
+                <option :value="null">Seleccionar...</option>
+                <option v-for="e in catalogos.enfermedades_catastroficas" :key="e.id" :value="e.id">{{ e.nombre }}</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Persona Sustituta -->
+          <div class="border rounded-xl p-4 space-y-3">
+            <div class="flex items-center gap-3">
+              <input type="checkbox" id="tiene_sustituta" v-model="form.tiene_persona_sustituta" class="w-4 h-4 accent-[#0b5447]" />
+              <label for="tiene_sustituta" class="text-sm font-semibold text-gray-700 cursor-pointer select-none">Tiene Persona Sustituta (curador)</label>
+            </div>
+            <div v-if="form.tiene_persona_sustituta" class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+              <div>
+                <label class="label-field">Fecha de Caducidad del Documento</label>
+                <input v-model="form.sustituta_fecha_caducidad" type="date" class="input-field" />
+              </div>
+              <div v-if="esEdicion">
+                <label class="label-field">Documento (PDF)</label>
+                <div v-if="form.sustituta_nombre_archivo" class="flex items-center gap-2 flex-wrap">
+                  <span class="text-xs text-green-700 bg-green-50 border border-green-200 rounded px-2 py-1 truncate max-w-[180px]">
+                    {{ form.sustituta_nombre_archivo }}
+                  </span>
+                  <button type="button" @click="descargarDocSustituta"
+                    class="text-xs text-blue-600 hover:text-blue-800 font-medium">Ver</button>
+                  <button type="button" @click="eliminarDocSustituta"
+                    class="text-xs text-red-500 hover:text-red-700">Eliminar</button>
+                </div>
+                <label v-else class="cursor-pointer">
+                  <span class="text-xs bg-[#0b5447] text-white px-3 py-1.5 rounded-lg hover:bg-[#00372e] transition-colors">
+                    {{ subiendoDocSustituta ? 'Subiendo...' : 'Subir PDF' }}
+                  </span>
+                  <input type="file" accept=".pdf" @change="subirDocSustituta" :disabled="subiendoDocSustituta" class="hidden" />
+                </label>
+              </div>
+              <div v-else class="text-xs text-gray-400 self-end pb-2">Guarda primero el empleado para subir el documento.</div>
+            </div>
+          </div>
+
+          <!-- Hijos -->
+          <div class="border rounded-xl p-4 space-y-4">
+            <p class="text-sm font-semibold text-gray-700">Hijos</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="label-field">N° Hijos Mayores de Edad</label>
+                <input v-model.number="form.num_hijos_mayores" type="number" min="0" class="input-field" />
+              </div>
+            </div>
+            <!-- Hijos menores -->
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <label class="text-sm font-medium text-gray-600">Hijos Menores de Edad</label>
+                <button type="button" @click="agregarHijo"
+                  class="text-xs bg-[#0b5447] text-white px-3 py-1 rounded-lg hover:bg-[#00372e] transition-colors">
+                  + Agregar
+                </button>
+              </div>
+              <div v-if="!form.hijos.length" class="text-xs text-gray-400 text-center py-3 border rounded-lg border-dashed">
+                Sin hijos menores registrados
+              </div>
+              <div v-else class="space-y-2">
+                <div v-for="(hijo, idx) in form.hijos" :key="hijo._key || hijo.id"
+                  class="flex items-center gap-3 bg-gray-50 rounded-lg px-3 py-2">
+                  <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <input v-model="hijo.nombre" type="text" placeholder="Nombre (opcional)"
+                      class="border rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#579186]" />
+                    <input v-model="hijo.fecha_nacimiento" type="date"
+                      class="border rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#579186]"
+                      @change="recalcularEdad(hijo)" />
+                  </div>
+                  <div class="flex items-center gap-2 flex-shrink-0">
+                    <span v-if="hijo.guarderia" class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+                      Guardería
+                    </span>
+                    <span v-else-if="hijo.fecha_nacimiento" class="text-xs text-gray-400">
+                      {{ hijo.anos }}a
+                    </span>
+                    <button v-if="hijo.id" type="button" @click="eliminarHijoDB(hijo, idx)"
+                      class="text-red-400 hover:text-red-600 text-lg leading-none">&times;</button>
+                    <button v-else type="button" @click="form.hijos.splice(idx, 1)"
+                      class="text-red-400 hover:text-red-600 text-lg leading-none">&times;</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
 
         <!-- ─── Tab 2: Cargo y Contrato ─── -->
@@ -321,31 +453,16 @@
         {{ error }}
       </div>
 
-      <!-- Barra de acción fija -->
-      <div class="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg px-4 py-3">
-        <div class="max-w-4xl mx-auto flex justify-between items-center">
-          <div class="flex gap-1">
-            <button v-for="tab in tabs" :key="tab.id" type="button"
-              @click="tabActivo = tab.id"
-              :class="[
-                'px-3 py-1 rounded-lg text-xs font-medium transition-all',
-                tabActivo === tab.id ? 'text-white' : 'text-gray-500 bg-gray-100 hover:bg-gray-200'
-              ]"
-              :style="tabActivo === tab.id ? `background:${tab.color}` : ''">
-              {{ tab.label }}
-            </button>
-          </div>
-          <div class="flex gap-3">
-            <router-link to="/empleados"
-              class="px-5 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">
-              Cancelar
-            </router-link>
-            <button type="submit" :disabled="guardando"
-              class="px-5 py-2 rounded-lg bg-[#0b5447] text-white text-sm font-medium hover:bg-[#00372e] disabled:opacity-50 transition-colors">
-              {{ guardando ? "Guardando..." : (esEdicion ? "Actualizar" : "Crear Empleado") }}
-            </button>
-          </div>
-        </div>
+      <!-- Botones de acción -->
+      <div class="mt-5 flex justify-end gap-3">
+        <router-link to="/empleados"
+          class="px-5 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+          Cancelar
+        </router-link>
+        <button type="submit" :disabled="guardando"
+          class="px-5 py-2 rounded-lg bg-[#0b5447] text-white text-sm font-medium hover:bg-[#00372e] disabled:opacity-50 transition-colors">
+          {{ guardando ? "Guardando..." : (esEdicion ? "Actualizar" : "Crear Empleado") }}
+        </button>
       </div>
 
     </form>
@@ -399,6 +516,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from "vue"
+
 import { useRoute, useRouter } from "vue-router"
 import api from "@/services/api"
 
@@ -417,7 +535,12 @@ const departamentos        = ref([])
 const jornadas             = ref([])
 const partidasVacantes     = ref([])
 const modalidadesLaborales = ref([])
-const modalPartidas = ref({ show: false })
+const modalPartidas        = ref({ show: false })
+const subiendoDocSustituta = ref(false)
+const catalogos = ref({
+  grupos_vulnerables: [], grupos_prioritarios: [],
+  tipos_discapacidad: [], enfermedades_catastroficas: [],
+})
 
 const tabs = [
   {
@@ -473,6 +596,18 @@ const form = ref({
   tipo_sangre:        "",
   num_sercop:         "",
   fecha_vence_sercop: "",
+  grupo_vulnerable_id:           null,
+  grupo_prioritario_id:          null,
+  tiene_discapacidad:            false,
+  tipo_discapacidad_id:          null,
+  porcentaje_discapacidad:       null,
+  tiene_enfermedad_catastrofica: false,
+  enfermedad_catastrofica_id:    null,
+  tiene_persona_sustituta:       false,
+  sustituta_fecha_caducidad:     "",
+  sustituta_nombre_archivo:      "",
+  num_hijos_mayores:             0,
+  hijos:                         [],
   departamento_id: null,
   cargo_empleado: "",
   tipo_contrato:     "",
@@ -533,12 +668,32 @@ const guardar = async () => {
       tipo_sangre:              form.value.tipo_sangre || null,
       num_sercop:               form.value.num_sercop         || null,
       fecha_vence_sercop:       form.value.fecha_vence_sercop || null,
+      grupo_vulnerable_id:           form.value.grupo_vulnerable_id  || null,
+      grupo_prioritario_id:          form.value.grupo_prioritario_id || null,
+      tiene_discapacidad:            form.value.tiene_discapacidad,
+      tipo_discapacidad_id:          form.value.tiene_discapacidad ? (form.value.tipo_discapacidad_id || null) : null,
+      porcentaje_discapacidad:       form.value.tiene_discapacidad ? (form.value.porcentaje_discapacidad || null) : null,
+      tiene_enfermedad_catastrofica: form.value.tiene_enfermedad_catastrofica,
+      enfermedad_catastrofica_id:    form.value.tiene_enfermedad_catastrofica ? (form.value.enfermedad_catastrofica_id || null) : null,
+      tiene_persona_sustituta:       form.value.tiene_persona_sustituta,
+      sustituta_fecha_caducidad:     form.value.tiene_persona_sustituta ? (form.value.sustituta_fecha_caducidad || null) : null,
+      num_hijos_mayores:             form.value.num_hijos_mayores || 0,
     }
 
     if (esEdicion.value) {
       await api.put("/empleados/" + route.params.id, payload)
+      // Sincronizar hijos nuevos (los que no tienen id aún)
+      const hijosNuevos = form.value.hijos.filter(h => !h.id && h.fecha_nacimiento)
+      for (const h of hijosNuevos) {
+        await api.post(`/empleados/${route.params.id}/hijos`, { nombre: h.nombre, fecha_nacimiento: h.fecha_nacimiento })
+      }
     } else {
-      await api.post("/empleados", payload)
+      const { data: nuevo } = await api.post("/empleados", payload)
+      // Sincronizar hijos para nuevo empleado
+      const id = nuevo.id_emp
+      for (const h of form.value.hijos.filter(h => h.fecha_nacimiento)) {
+        await api.post(`/empleados/${id}/hijos`, { nombre: h.nombre, fecha_nacimiento: h.fecha_nacimiento })
+      }
     }
     router.push("/empleados")
   } catch (e) {
@@ -584,17 +739,70 @@ async function eliminarFoto() {
   }
 }
 
+function calcEdad(fechaNac) {
+  if (!fechaNac) return null
+  return Math.floor((Date.now() - new Date(fechaNac).getTime()) / (365.25 * 86400000))
+}
+
+function recalcularEdad(hijo) {
+  const anos = calcEdad(hijo.fecha_nacimiento)
+  hijo.anos      = anos
+  hijo.guarderia = anos !== null && anos < 5
+}
+
+function agregarHijo() {
+  form.value.hijos.push({ _key: Date.now(), id: null, nombre: '', fecha_nacimiento: '', anos: null, guarderia: false })
+}
+
+async function eliminarHijoDB(hijo, idx) {
+  if (!confirm('¿Eliminar este hijo?')) return
+  await api.delete(`/empleados/${route.params.id}/hijos/${hijo.id}`)
+  form.value.hijos.splice(idx, 1)
+}
+
+async function subirDocSustituta(e) {
+  const file = e.target.files?.[0]
+  if (!file) return
+  subiendoDocSustituta.value = true
+  try {
+    const fd = new FormData()
+    fd.append('documento', file)
+    if (form.value.sustituta_fecha_caducidad) fd.append('sustituta_fecha_caducidad', form.value.sustituta_fecha_caducidad)
+    const { data } = await api.post(`/empleados/${route.params.id}/sustituta-doc`, fd)
+    form.value.sustituta_nombre_archivo  = data.sustituta_nombre_archivo
+    form.value.sustituta_fecha_caducidad = data.sustituta_fecha_caducidad?.substring(0, 10) ?? form.value.sustituta_fecha_caducidad
+  } catch { alert('Error al subir el documento.') }
+  finally { subiendoDocSustituta.value = false; e.target.value = '' }
+}
+
+async function descargarDocSustituta() {
+  try {
+    const resp = await api.get(`/empleados/${route.params.id}/sustituta-doc`, { responseType: 'blob' })
+    const url  = URL.createObjectURL(new Blob([resp.data], { type: 'application/pdf' }))
+    window.open(url, '_blank')
+    setTimeout(() => URL.revokeObjectURL(url), 60000)
+  } catch { alert('Error al descargar el documento.') }
+}
+
+async function eliminarDocSustituta() {
+  if (!confirm('¿Eliminar el documento de persona sustituta?')) return
+  await api.delete(`/empleados/${route.params.id}/sustituta-doc`)
+  form.value.sustituta_nombre_archivo = ''
+}
+
 onMounted(async () => {
-  const [{ data: deps }, { data: jors }, { data: partidas }, { data: mods }] = await Promise.all([
+  const [{ data: deps }, { data: jors }, { data: partidas }, { data: mods }, { data: cats }] = await Promise.all([
     api.get("/departamentos"),
     api.get("/admin/jornadas"),
     api.get("/empleados/partidas-vacantes"),
     api.get("/admin/modalidades-laborales"),
+    api.get("/empleados/catalogos-sociales"),
   ])
   departamentos.value        = deps
   jornadas.value             = jors
   partidasVacantes.value     = partidas
   modalidadesLaborales.value = mods.filter(m => m.estado === 'ACTIVO')
+  catalogos.value            = cats
 
   if (esEdicion.value) {
     const { data } = await api.get("/empleados/" + route.params.id)
@@ -629,6 +837,19 @@ onMounted(async () => {
     form.value.tipo_sangre              = data.tipo_sangre              ?? ""
     form.value.num_sercop               = data.num_sercop               ?? ""
     form.value.fecha_vence_sercop       = data.fecha_vence_sercop?.substring(0, 10) ?? ""
+    // Campos sociales
+    form.value.grupo_vulnerable_id           = data.grupo_vulnerable_id           ?? null
+    form.value.grupo_prioritario_id          = data.grupo_prioritario_id          ?? null
+    form.value.tiene_discapacidad            = data.tiene_discapacidad            ?? false
+    form.value.tipo_discapacidad_id          = data.tipo_discapacidad_id          ?? null
+    form.value.porcentaje_discapacidad       = data.porcentaje_discapacidad       ?? null
+    form.value.tiene_enfermedad_catastrofica = data.tiene_enfermedad_catastrofica ?? false
+    form.value.enfermedad_catastrofica_id    = data.enfermedad_catastrofica_id    ?? null
+    form.value.tiene_persona_sustituta       = data.tiene_persona_sustituta       ?? false
+    form.value.sustituta_fecha_caducidad     = data.sustituta_fecha_caducidad?.substring(0, 10) ?? ""
+    form.value.sustituta_nombre_archivo      = data.sustituta_nombre_archivo      ?? ""
+    form.value.num_hijos_mayores             = data.num_hijos_mayores             ?? 0
+    form.value.hijos                         = (data.hijos || []).map(h => ({ ...h }))
     fotoUrl.value = storageUrl(data.foto)
   }
 })

@@ -131,7 +131,8 @@ Route::middleware("auth:sanctum")->group(function () {
 
     // Departamentos
     Route::get("/departamentos", [EmpleadoController::class, "departamentos"]);
-    Route::get("/empleados/partidas-vacantes", [EmpleadoController::class, "partidasVacantes"]);
+    Route::get("/empleados/partidas-vacantes",  [EmpleadoController::class, "partidasVacantes"]);
+    Route::get("/empleados/catalogos-sociales", [EmpleadoController::class, "catalogosSociales"]);
 
     // Empleados
     Route::get("/empleados",         [EmpleadoController::class, "index"]);
@@ -145,6 +146,13 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::post("/empleados/{id}/foto",            [EmpleadoController::class, "subirFoto"]);
     Route::delete("/empleados/{id}/foto",          [EmpleadoController::class, "eliminarFoto"]);
     Route::post("/cambiar-password",               [EmpleadoController::class, "cambiarPassword"]);
+
+    Route::get("/empleados/{id}/hijos",                    [EmpleadoController::class, "hijoIndex"]);
+    Route::post("/empleados/{id}/hijos",                   [EmpleadoController::class, "hijoStore"]);
+    Route::delete("/empleados/{id}/hijos/{hijoId}",        [EmpleadoController::class, "hijoDestroy"]);
+    Route::post("/empleados/{id}/sustituta-doc",           [EmpleadoController::class, "subirDocSustituta"]);
+    Route::get("/empleados/{id}/sustituta-doc",            [EmpleadoController::class, "descargarDocSustituta"]);
+    Route::delete("/empleados/{id}/sustituta-doc",         [EmpleadoController::class, "eliminarDocSustituta"]);
 
     // Asignación de roles a empleados
     Route::get("/empleados/{id_emp}/roles",             [RolController::class, "rolesEmpleado"]);

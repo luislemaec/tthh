@@ -29,6 +29,11 @@ class Empleado extends Authenticatable
         "puede_solicitar_vehiculo",
         "sexo", "tipo_sangre",
         "num_sercop", "fecha_vence_sercop",
+        "grupo_vulnerable_id", "grupo_prioritario_id",
+        "tiene_discapacidad", "tipo_discapacidad_id", "porcentaje_discapacidad",
+        "tiene_enfermedad_catastrofica", "enfermedad_catastrofica_id",
+        "tiene_persona_sustituta", "sustituta_alfresco_id", "sustituta_nombre_archivo", "sustituta_fecha_caducidad",
+        "num_hijos_mayores",
         "foto",
         "created_at", "created_by", "updated_at", "updated_by",
     ];
@@ -54,6 +59,11 @@ class Empleado extends Authenticatable
     public function jornada()
     {
         return $this->belongsTo(Jornada::class, "id_jornada", "id_jornada");
+    }
+
+    public function hijos()
+    {
+        return $this->hasMany(EmpleadoHijo::class, 'id_emp', 'id_emp')->orderBy('fecha_nacimiento');
     }
 
     public function getFotoUrlAttribute(): ?string

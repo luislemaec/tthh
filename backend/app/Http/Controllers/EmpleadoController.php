@@ -2,6 +2,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Empleado;
+use App\Models\EmpleadoHijo;
 use App\Models\Departamento;
 use App\Models\EmpleadoMail;
 use App\Models\CabeceraVacacion;
@@ -9,6 +10,7 @@ use App\Services\AuditoriaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
 class EmpleadoController extends Controller
@@ -53,9 +55,22 @@ class EmpleadoController extends Controller
     // GET /api/empleados/{id}
     public function show($id)
     {
-        $emp  = Empleado::with(["departamento", "emails"])->findOrFail($id);
+        $emp  = Empleado::with(["departamento", "emails", "hijos"])->findOrFail($id);
         $data = $emp->toArray();
         $data['foto_url'] = $emp->foto_url;
+        // Calcular años y guardería para cada hijo
+        $hoy  = now()->toDateString();
+        $data['hijos'] = collect($emp->hijos)->map(function ($h) use ($hoy) {
+            $fn   = $h->fecha_nacimiento;
+            $anos = $fn ? (int)floor((strtotime($hoy) - strtotime((string)$fn)) / (365.25 * 86400)) : null;
+            return [
+                'id'              => $h->id,
+                'nombre'          => $h->nombre,
+                'fecha_nacimiento'=> $h->fecha_nacimiento,
+                'anos'            => $anos,
+                'guarderia'       => $anos !== null && $anos < 5,
+            ];
+        })->values();
         return response()->json($data);
     }
 
@@ -89,10 +104,20 @@ class EmpleadoController extends Controller
             "modalidad_laboral"      => "required|string|max:50",
             "programa"               => "nullable|string|max:4",
             "actividad"              => "nullable|string|max:6",
-            "sexo"                   => "nullable|string|max:10",
-            "tipo_sangre"            => "nullable|string|max:5",
-            "num_sercop"             => "nullable|string|max:50",
-            "fecha_vence_sercop"     => "nullable|date",
+            "sexo"                          => "nullable|string|max:10",
+            "tipo_sangre"                   => "nullable|string|max:5",
+            "num_sercop"                    => "nullable|string|max:50",
+            "fecha_vence_sercop"            => "nullable|date",
+            "grupo_vulnerable_id"           => "nullable|integer",
+            "grupo_prioritario_id"          => "nullable|integer",
+            "tiene_discapacidad"            => "nullable|boolean",
+            "tipo_discapacidad_id"          => "nullable|integer",
+            "porcentaje_discapacidad"       => "nullable|integer|min:0|max:100",
+            "tiene_enfermedad_catastrofica" => "nullable|boolean",
+            "enfermedad_catastrofica_id"    => "nullable|integer",
+            "tiene_persona_sustituta"       => "nullable|boolean",
+            "sustituta_fecha_caducidad"     => "nullable|date",
+            "num_hijos_mayores"             => "nullable|integer|min:0",
         ]);
 
         $usuario = auth()->user()->id_emp ?? null;
@@ -119,8 +144,17 @@ class EmpleadoController extends Controller
             "actividad"         => $request->filled('actividad')   ? strtoupper($request->actividad)   : null,
             "sexo"              => $request->filled('sexo')        ? strtoupper($request->sexo)        : null,
             "tipo_sangre"       => $request->filled('tipo_sangre') ? strtoupper($request->tipo_sangre) : null,
-            "num_sercop"        => $request->num_sercop         ?? null,
-            "fecha_vence_sercop"=> $request->fecha_vence_sercop ?? null,
+            "num_sercop"                    => $request->num_sercop         ?? null,
+            "fecha_vence_sercop"            => $request->fecha_vence_sercop ?? null,
+            "grupo_vulnerable_id"           => $request->grupo_vulnerable_id           ?? null,
+            "grupo_prioritario_id"          => $request->grupo_prioritario_id          ?? null,
+            "tiene_discapacidad"            => $request->boolean('tiene_discapacidad', false),
+            "tipo_discapacidad_id"          => $request->tipo_discapacidad_id          ?? null,
+            "porcentaje_discapacidad"       => $request->porcentaje_discapacidad       ?? null,
+            "tiene_enfermedad_catastrofica" => $request->boolean('tiene_enfermedad_catastrofica', false),
+            "enfermedad_catastrofica_id"    => $request->enfermedad_catastrofica_id    ?? null,
+            "tiene_persona_sustituta"       => $request->boolean('tiene_persona_sustituta', false),
+            "num_hijos_mayores"             => $request->num_hijos_mayores             ?? 0,
             "created_at"       => now(),
             "created_by"       => $usuario,
             "updated_at"       => now(),
@@ -210,8 +244,18 @@ class EmpleadoController extends Controller
             "actividad"              => "nullable|string|max:6",
             "sexo"                   => "nullable|string|max:10",
             "tipo_sangre"            => "nullable|string|max:5",
-            "num_sercop"             => "nullable|string|max:50",
-            "fecha_vence_sercop"     => "nullable|date",
+            "num_sercop"                    => "nullable|string|max:50",
+            "fecha_vence_sercop"            => "nullable|date",
+            "grupo_vulnerable_id"           => "nullable|integer",
+            "grupo_prioritario_id"          => "nullable|integer",
+            "tiene_discapacidad"            => "nullable|boolean",
+            "tipo_discapacidad_id"          => "nullable|integer",
+            "porcentaje_discapacidad"       => "nullable|integer|min:0|max:100",
+            "tiene_enfermedad_catastrofica" => "nullable|boolean",
+            "enfermedad_catastrofica_id"    => "nullable|integer",
+            "tiene_persona_sustituta"       => "nullable|boolean",
+            "sustituta_fecha_caducidad"     => "nullable|date",
+            "num_hijos_mayores"             => "nullable|integer|min:0",
         ]);
 
         $emp->update([
@@ -248,8 +292,18 @@ class EmpleadoController extends Controller
             "puede_solicitar_vehiculo"  => $request->boolean('puede_solicitar_vehiculo', $emp->puede_solicitar_vehiculo ?? false),
             "sexo"                      => $request->filled('sexo')        ? strtoupper($request->sexo)        : $emp->sexo,
             "tipo_sangre"               => $request->filled('tipo_sangre') ? strtoupper($request->tipo_sangre) : $emp->tipo_sangre,
-            "num_sercop"                => $request->num_sercop          ?? $emp->num_sercop,
-            "fecha_vence_sercop"        => $request->fecha_vence_sercop  ?? $emp->fecha_vence_sercop,
+            "num_sercop"                    => $request->num_sercop         ?? $emp->num_sercop,
+            "fecha_vence_sercop"            => $request->fecha_vence_sercop  ?? $emp->fecha_vence_sercop,
+            "grupo_vulnerable_id"           => $request->filled('grupo_vulnerable_id')  ? $request->grupo_vulnerable_id  : $emp->grupo_vulnerable_id,
+            "grupo_prioritario_id"          => $request->filled('grupo_prioritario_id') ? $request->grupo_prioritario_id : $emp->grupo_prioritario_id,
+            "tiene_discapacidad"            => $request->has('tiene_discapacidad')            ? $request->boolean('tiene_discapacidad')            : $emp->tiene_discapacidad,
+            "tipo_discapacidad_id"          => $request->filled('tipo_discapacidad_id')       ? $request->tipo_discapacidad_id       : $emp->tipo_discapacidad_id,
+            "porcentaje_discapacidad"       => $request->filled('porcentaje_discapacidad')    ? $request->porcentaje_discapacidad    : $emp->porcentaje_discapacidad,
+            "tiene_enfermedad_catastrofica" => $request->has('tiene_enfermedad_catastrofica') ? $request->boolean('tiene_enfermedad_catastrofica') : $emp->tiene_enfermedad_catastrofica,
+            "enfermedad_catastrofica_id"    => $request->filled('enfermedad_catastrofica_id') ? $request->enfermedad_catastrofica_id : $emp->enfermedad_catastrofica_id,
+            "tiene_persona_sustituta"       => $request->has('tiene_persona_sustituta')       ? $request->boolean('tiene_persona_sustituta')       : $emp->tiene_persona_sustituta,
+            "sustituta_fecha_caducidad"     => $request->sustituta_fecha_caducidad ?? $emp->sustituta_fecha_caducidad,
+            "num_hijos_mayores"             => $request->filled('num_hijos_mayores') ? (int)$request->num_hijos_mayores : $emp->num_hijos_mayores,
             "updated_at"                => now(),
             "updated_by"                => auth()->user()->id_emp ?? null,
         ]);
@@ -477,5 +531,155 @@ class EmpleadoController extends Controller
         }
 
         return response()->json(['message' => 'Foto eliminada.']);
+    }
+
+    // GET /api/empleados/catalogos-sociales
+    public function catalogosSociales()
+    {
+        return response()->json([
+            'grupos_vulnerables'     => DB::table('dbo.ad_grupo_vulnerable')    ->where('activo', true)->orderBy('nombre')->get(['id','nombre']),
+            'grupos_prioritarios'    => DB::table('dbo.ad_grupo_prioritario')   ->where('activo', true)->orderBy('nombre')->get(['id','nombre']),
+            'tipos_discapacidad'     => DB::table('dbo.ad_tipo_discapacidad')   ->where('activo', true)->orderBy('nombre')->get(['id','nombre']),
+            'enfermedades_catastroficas' => DB::table('dbo.ad_enfermedad_catastrofica')->where('activo', true)->orderBy('nombre')->get(['id','nombre']),
+        ]);
+    }
+
+    // GET /api/empleados/{id}/hijos
+    public function hijoIndex($id)
+    {
+        $hijos = EmpleadoHijo::where('id_emp', $id)->orderBy('fecha_nacimiento')->get();
+        $hoy   = now()->toDateString();
+        return response()->json($hijos->map(function ($h) use ($hoy) {
+            $fn   = $h->fecha_nacimiento;
+            $anos = $fn ? (int)floor((strtotime($hoy) - strtotime($fn)) / (365.25 * 86400)) : null;
+            return [
+                'id'              => $h->id,
+                'nombre'          => $h->nombre,
+                'fecha_nacimiento'=> $h->fecha_nacimiento,
+                'anos'            => $anos,
+                'guarderia'       => $anos !== null && $anos < 5,
+            ];
+        }));
+    }
+
+    // POST /api/empleados/{id}/hijos
+    public function hijoStore(Request $request, $id)
+    {
+        $request->validate([
+            'fecha_nacimiento' => 'required|date|before_or_equal:today',
+            'nombre'           => 'nullable|string|max:200',
+        ]);
+        Empleado::findOrFail($id);
+        $hijo = EmpleadoHijo::create([
+            'id_emp'           => $id,
+            'nombre'           => $request->nombre,
+            'fecha_nacimiento' => $request->fecha_nacimiento,
+            'created_at'       => now(),
+        ]);
+        $anos = (int)floor((time() - strtotime($hijo->fecha_nacimiento)) / (365.25 * 86400));
+        return response()->json([
+            'id'              => $hijo->id,
+            'nombre'          => $hijo->nombre,
+            'fecha_nacimiento'=> $hijo->fecha_nacimiento,
+            'anos'            => $anos,
+            'guarderia'       => $anos < 5,
+        ], 201);
+    }
+
+    // DELETE /api/empleados/{id}/hijos/{hijoId}
+    public function hijoDestroy($id, $hijoId)
+    {
+        $hijo = EmpleadoHijo::where('id_emp', $id)->where('id', $hijoId)->firstOrFail();
+        $hijo->delete();
+        return response()->json(['message' => 'Hijo eliminado.']);
+    }
+
+    // ── Documento persona sustituta (Alfresco) ──────────────────────────────
+
+    private string $alfrescoBase = 'http://192.168.26.38:8080/alfresco/api/-default-/public/alfresco/versions/1';
+    private string $alfrescoUser = 'admin';
+    private string $alfrescoPass = 'admin';
+    private string $alfrescoSite = 'talentohumano';
+
+    private function getDocLibNodeId(): string
+    {
+        $resp = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+            ->get("{$this->alfrescoBase}/sites/{$this->alfrescoSite}/containers/documentLibrary");
+        return $resp->json('entry.id');
+    }
+
+    // POST /api/empleados/{id}/sustituta-doc
+    public function subirDocSustituta(Request $request, $id)
+    {
+        $request->validate([
+            'documento'            => 'required|file|mimes:pdf|max:5120',
+            'sustituta_fecha_caducidad' => 'nullable|date',
+        ]);
+
+        $emp      = Empleado::findOrFail($id);
+        $archivo  = $request->file('documento');
+        $cedula   = $emp->identificacion;
+        $apellido = strtoupper(explode(' ', trim($emp->apellido_emp))[0]);
+        $carpeta  = "empleados/{$cedula}_{$apellido}";
+        $nombre   = "sustituta_{$cedula}_" . now()->format('Ymd_His') . '.pdf';
+
+        $docLibId = $this->getDocLibNodeId();
+        $upload   = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+            ->attach('filedata', file_get_contents($archivo->getRealPath()), $nombre)
+            ->post("{$this->alfrescoBase}/nodes/{$docLibId}/children", [
+                'name'         => $nombre,
+                'nodeType'     => 'cm:content',
+                'relativePath' => $carpeta,
+                'autoRename'   => true,
+            ]);
+
+        if (!$upload->successful()) {
+            return response()->json(['message' => 'Error al subir el documento a Alfresco.'], 502);
+        }
+
+        $nodeId = $upload->json('entry.id');
+        $emp->update([
+            'sustituta_alfresco_id'    => $nodeId,
+            'sustituta_nombre_archivo' => $nombre,
+            'sustituta_fecha_caducidad'=> $request->sustituta_fecha_caducidad ?? null,
+            'tiene_persona_sustituta'  => true,
+        ]);
+
+        return response()->json([
+            'sustituta_alfresco_id'    => $nodeId,
+            'sustituta_nombre_archivo' => $nombre,
+            'sustituta_fecha_caducidad'=> $emp->sustituta_fecha_caducidad,
+        ]);
+    }
+
+    // GET /api/empleados/{id}/sustituta-doc
+    public function descargarDocSustituta($id)
+    {
+        $emp = Empleado::findOrFail($id);
+        if (!$emp->sustituta_alfresco_id) {
+            return response()->json(['message' => 'Sin documento de persona sustituta.'], 404);
+        }
+        $resp = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+            ->get("{$this->alfrescoBase}/nodes/{$emp->sustituta_alfresco_id}/content");
+
+        return response($resp->body(), 200, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $emp->sustituta_nombre_archivo . '"',
+        ]);
+    }
+
+    // DELETE /api/empleados/{id}/sustituta-doc
+    public function eliminarDocSustituta($id)
+    {
+        $emp = Empleado::findOrFail($id);
+        if ($emp->sustituta_alfresco_id) {
+            Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+                ->delete("{$this->alfrescoBase}/nodes/{$emp->sustituta_alfresco_id}");
+        }
+        $emp->update([
+            'sustituta_alfresco_id'    => null,
+            'sustituta_nombre_archivo' => null,
+        ]);
+        return response()->json(['message' => 'Documento eliminado.']);
     }
 }
