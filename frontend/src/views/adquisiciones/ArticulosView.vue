@@ -8,6 +8,11 @@
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 0 1 1.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.559.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.894.149c-.424.07-.764.383-.929.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 0 1-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.398.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 0 1-.12-1.45l.527-.737c.25-.35.273-.806.108-1.204-.165-.397-.506-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.108-1.204l-.526-.738a1.125 1.125 0 0 1 .12-1.45l.773-.773a1.125 1.125 0 0 1 1.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894Z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>
           Stock mínimo ({{ porcentajeMinimo }}%)
         </button>
+        <button @click="modalImport.show = true"
+          class="inline-flex items-center gap-1.5 border border-[#4a5e3a] text-[#4a5e3a] px-3.5 py-2 rounded-lg text-sm hover:bg-green-50 transition-colors font-medium">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/></svg>
+          Importar Stock CSV
+        </button>
         <button @click="abrirModalCrear"
           class="inline-flex items-center gap-1.5 bg-[#4a5e3a] text-white px-3.5 py-2 rounded-lg text-sm hover:bg-[#3a4e2a] transition-colors font-medium">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.5v15m7.5-7.5h-15"/></svg>
@@ -330,6 +335,56 @@
       </div>
     </div>
 
+    <!-- Modal importar stock CSV -->
+    <div v-if="modalImport.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden">
+        <div class="px-6 py-4" style="background-color:#4a5e3a;">
+          <h2 class="text-lg font-bold text-white">Importar Stock desde CSV</h2>
+        </div>
+        <div class="p-6 space-y-4">
+          <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800 space-y-1">
+            <p class="font-semibold">Formato del archivo CSV (con encabezado):</p>
+            <p class="font-mono bg-white border border-blue-100 rounded px-2 py-1 mt-1">codigo,stock,precio_unitario,unidad_medida</p>
+            <ul class="mt-2 space-y-0.5 list-disc list-inside text-blue-700">
+              <li><b>codigo</b> — código del artículo en el sistema</li>
+              <li><b>stock</b> — cantidad a establecer</li>
+              <li><b>precio_unitario</b> — precio sin IVA</li>
+              <li><b>unidad_medida</b> — ej: UNIDAD, RESMA, CAJA</li>
+            </ul>
+            <p class="mt-1 text-blue-600">Los artículos no encontrados por código se reportarán al final.</p>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Archivo CSV</label>
+            <input type="file" accept=".csv,.txt" @change="onCsvChange" ref="inputCsv"
+              class="w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-medium file:bg-green-50 file:text-green-700 hover:file:bg-green-100 cursor-pointer border rounded-lg p-1" />
+          </div>
+
+          <p v-if="modalImport.error" class="text-red-600 text-sm">{{ modalImport.error }}</p>
+
+          <!-- Resultado -->
+          <div v-if="modalImport.resultado" class="space-y-2">
+            <div class="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-4 py-2.5">
+              <svg class="w-5 h-5 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+              <span class="text-sm text-green-800 font-medium">{{ modalImport.resultado.procesados }} artículo(s) actualizados correctamente</span>
+            </div>
+            <div v-if="modalImport.resultado.no_encontrados.length" class="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+              <p class="text-xs font-semibold text-amber-800 mb-1">No encontrados ({{ modalImport.resultado.no_encontrados.length }}):</p>
+              <p class="text-xs font-mono text-amber-700">{{ modalImport.resultado.no_encontrados.join(', ') }}</p>
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-3 pt-1">
+            <button @click="cerrarImport" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cerrar</button>
+            <button @click="subirCsv" :disabled="!modalImport.archivo || modalImport.cargando"
+              class="bg-[#4a5e3a] text-white px-5 py-2 rounded-lg text-sm hover:bg-[#3a4e2a] disabled:opacity-50 font-medium">
+              {{ modalImport.cargando ? 'Procesando...' : 'Importar' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Modal configuración porcentaje -->
     <div v-if="modalConfig.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
@@ -382,6 +437,8 @@ const porPagina        = ref(25)
 
 const modal       = ref({ show: false, editando: false, id: null, form: {}, precioActual: 0 })
 const modalConfig = ref({ show: false, porcentaje: 20 })
+const modalImport = ref({ show: false, archivo: null, cargando: false, error: '', resultado: null })
+const inputCsv    = ref(null)
 const tabModal    = ref('catalogo')
 const tabsModal   = [
   { key: 'catalogo', label: 'Catálogo MEF' },
@@ -578,5 +635,36 @@ async function guardarConfiguracion() {
   porcentajeMinimo.value = modalConfig.value.porcentaje
   modalConfig.value.show = false
   await cargar()
+}
+
+function onCsvChange(e) {
+  modalImport.value.archivo  = e.target.files[0] || null
+  modalImport.value.error    = ''
+  modalImport.value.resultado = null
+}
+
+function cerrarImport() {
+  modalImport.value = { show: false, archivo: null, cargando: false, error: '', resultado: null }
+  if (inputCsv.value) inputCsv.value.value = ''
+}
+
+async function subirCsv() {
+  if (!modalImport.value.archivo) return
+  modalImport.value.cargando  = true
+  modalImport.value.error     = ''
+  modalImport.value.resultado = null
+  try {
+    const fd = new FormData()
+    fd.append('archivo', modalImport.value.archivo)
+    const { data } = await api.post('/adquisiciones/ajustes/importar-stock', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    modalImport.value.resultado = data
+    await cargar()
+  } catch (e) {
+    modalImport.value.error = e.response?.data?.message || 'Error al procesar el archivo.'
+  } finally {
+    modalImport.value.cargando = false
+  }
 }
 </script>

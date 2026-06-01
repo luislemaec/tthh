@@ -116,4 +116,87 @@ class AjusteController extends Controller
             'articulo'     => $articulo,
         ]);
     }
+
+    public function importarStock(Request $request)
+    {
+        $request->validate(['archivo' => 'required|file|mimes:csv,txt']);
+
+        $lineas = array_filter(
+            array_map('str_getcsv', file($request->file('archivo')->getRealPath())),
+            fn($r) => count(array_filter(array_map('trim', $r))) > 0
+        );
+
+        array_shift($lineas); // quitar encabezado
+
+        $procesados    = 0;
+        $noEncontrados = [];
+
+        DB::transaction(function () use ($lineas, $request, &$procesados, &$noEncontrados) {
+            foreach ($lineas as $fila) {
+                $fila   = array_map('trim', $fila);
+                $codigo = $fila[0] ?? null;
+                if (!$codigo) continue;
+
+                $stockNuevo = isset($fila[1]) && $fila[1] !== '' ? (float) $fila[1] : null;
+                $precio     = isset($fila[2]) && $fila[2] !== '' ? (float) $fila[2] : null;
+                $unidad     = isset($fila[3]) && $fila[3] !== '' ? $fila[3] : null;
+
+                $articulo = DB::table('adq.articulo')->where('codigo', $codigo)->first();
+                if (!$articulo) {
+                    $noEncontrados[] = $codigo;
+                    continue;
+                }
+
+                $precioFinal = $precio ?? (float) $articulo->precio_unitario;
+
+                $updates = ['updated_at' => now()];
+                if ($precio !== null)  $updates['precio_unitario'] = $precio;
+                if ($unidad !== null)  $updates['unidad_medida']   = $unidad;
+
+                if ($stockNuevo !== null) {
+                    $stockAntes  = (float) $articulo->stock_actual;
+                    $diferencia  = round($stockNuevo - $stockAntes, 5);
+                    $updates['stock_actual'] = $stockNuevo;
+
+                    if ($diferencia != 0) {
+                        $tipo        = $diferencia > 0 ? 'AJUSTE_POSITIVO' : 'AJUSTE_NEGATIVO';
+                        $cantEntrada = $diferencia > 0 ? abs($diferencia) : 0;
+                        $cantSalida  = $diferencia < 0 ? abs($diferencia) : 0;
+
+                        DB::table('adq.kardex')->insert([
+                            'articulo_id'       => $articulo->id,
+                            'fecha'             => now(),
+                            'tipo_movimiento'   => $tipo,
+                            'referencia_tipo'   => 'ajuste',
+                            'referencia_id'     => $articulo->id,
+                            'referencia_det_id' => 0,
+                            'numero_documento'  => 'CARGA INICIAL',
+                            'cantidad_entrada'  => $cantEntrada,
+                            'cantidad_salida'   => $cantSalida,
+                            'stock_antes'       => $stockAntes,
+                            'stock_despues'     => $stockNuevo,
+                            'precio_antes'      => (float) $articulo->precio_unitario,
+                            'precio_despues'    => $precioFinal,
+                            'precio_movimiento' => $precioFinal,
+                            'subtotal'          => 0,
+                            'iva_valor'         => 0,
+                            'total_linea'       => 0,
+                            'valor_saldo'       => round($stockNuevo * $precioFinal, 2),
+                            'usuario'           => $request->user()->id_emp,
+                            'observacion'       => 'Carga inicial de stock',
+                            'created_at'        => now(),
+                        ]);
+                    }
+                }
+
+                DB::table('adq.articulo')->where('id', $articulo->id)->update($updates);
+                $procesados++;
+            }
+        });
+
+        return response()->json([
+            'procesados'     => $procesados,
+            'no_encontrados' => $noEncontrados,
+        ]);
+    }
 }

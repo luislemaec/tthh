@@ -402,6 +402,7 @@ Route::middleware("auth:sanctum")->group(function () {
         // Ajuste de inventario
         Route::get('ajustes',                               [AjusteController::class, 'index']);
         Route::post('ajustes',                              [AjusteController::class, 'store']);
+        Route::post('ajustes/importar-stock',               [AjusteController::class, 'importarStock']);
 
         // Reportes
         Route::get('reportes/kardex',                       [ReporteAdqController::class, 'kardex']);
