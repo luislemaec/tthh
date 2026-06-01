@@ -56,7 +56,9 @@ Roles: `ADMINISTRADOR`, `TALENTO HUMANO`, `TH ACCIONES PERSONAL`, `TH NOMINA`,`S
 - Depto 999 excluido de todas las consultas (placeholder de sistema)
 - `dbo.d2_configuracion` → parámetros globales (clave/valor/descripcion). Campos de auditoría: `created_at`, `created_by`, `updated_at`, `updated_by`. La query siempre usa `LOWER(concepto)` porque los conceptos se guardan en MAYÚSCULAS. Migración `000030` agregó `descripcion`, migración `000031` agregó auditoría.
 - `dbo.ad_departamento` → numeración manual recomendada: padres en múltiplos de 10 (10,50,60,70,80,90), hijos en +1 a +9 del padre. Al crear desde la app, el campo ID es opcional; si se omite genera el siguiente correlativo (excluyendo 999). Campos de auditoría implementados (migración `000032`): `created_at`, `created_by`, `updated_at`, `updated_by`.
-- `dbo.ad_empleado` → campos de auditoría implementados (migración `000032`): `created_at`, `created_by`, `updated_at`, `updated_by`. Campos adicionales: `puede_solicitar_vehiculo BOOLEAN DEFAULT false`, `sexo VARCHAR(10) NULL` (MASCULINO/FEMENINO), `tipo_sangre VARCHAR(5) NULL` (A+, A-, B+, B-, AB+, AB-, O+, O-) — migración `000063`.
+- `dbo.ad_empleado` → campos de auditoría implementados (migración `000032`): `created_at`, `created_by`, `updated_at`, `updated_by`. Campos adicionales: `puede_solicitar_vehiculo BOOLEAN DEFAULT false`, `sexo VARCHAR(10) NULL` (MASCULINO/FEMENINO), `tipo_sangre VARCHAR(5) NULL` (A+, A-, B+, B-, AB+, AB-, O+, O-) — migración `000063`. Campos SERCOP: `num_sercop VARCHAR(50) NULL`, `fecha_vence_sercop DATE NULL` — migración `000065`. Campos sociales — migración `000070`: `grupo_vulnerable_id`, `grupo_prioritario_id`, `tiene_discapacidad`, `tipo_discapacidad_id`, `porcentaje_discapacidad`, `tiene_enfermedad_catastrofica`, `enfermedad_catastrofica_id`, `tiene_persona_sustituta`, `sustituta_alfresco_id`, `sustituta_nombre_archivo`, `sustituta_fecha_caducidad`, `num_hijos_mayores`.
+- `dbo.ad_empleado_hijo` — hijos menores de edad: `id_emp`, `nombre NULL`, `fecha_nacimiento` — migración `000071`. Sin límite de registros. El sistema calcula si el hijo es menor de 5 años (derecho a guardería).
+- Catálogos sociales precargados (migración `000069`): `dbo.ad_grupo_vulnerable` (8 registros), `dbo.ad_grupo_prioritario` (8), `dbo.ad_tipo_discapacidad` CONADIS (7), `dbo.ad_enfermedad_catastrofica` MSP (15).
 - Stock: siempre usar `DB::table()->update(['stock_actual' => DB::raw('stock_actual + N')])` — nunca Eloquent para tablas con schema prefix en PostgreSQL
 
 ## PDF (DomPDF)
@@ -205,11 +207,12 @@ Campos relevantes:
 - `estado_puesto`: `OCUPADO` / `VACANTE` / `DISPONIBLE` — DISPONIBLE = empleado inactivo, partida presupuestaria libre para reasignar
 - `partida_individual` / `partida_presupuestaria`: identificadores de la partida MEF
 - `programa` (VARCHAR 4) / `actividad` (VARCHAR 6): clasificación presupuestaria MEF (ej: 55 / 001); opcionales
-- `modalidad_marcacion`: `PRESENCIAL` / `REMOTO` / `TELETRABAJO` (ver Control de Asistencia)
+- `modalidad_marcacion`: `PRESENCIAL` / `TEMPORAL` / `TELETRABAJO` (ver Control de Asistencia) — **REMOTO renombrado a TEMPORAL** (migración `000064`)
 - `modalidad_laboral`: determina motivos válidos en liquidación de vacaciones
 - `tipo_contrato`: `LOSEP` / `CODIGO DEL TRABAJO` — define tasa de vacaciones
 - `sexo`: `MASCULINO` / `FEMENINO` / NULL — para estadísticas de género (migración `000063`)
 - `tipo_sangre`: `A+`, `A-`, `B+`, `B-`, `AB+`, `AB-`, `O+`, `O-` / NULL (migración `000063`)
+- `num_sercop` / `fecha_vence_sercop`: certificado SERCOP y fecha de vigencia (migración `000065`)
 
 **Partidas disponibles** (`GET /api/empleados/partidas-vacantes`): devuelve empleados con `estado=INACTIVO` + `estado_puesto=DISPONIBLE`. En `EmpleadoForm.vue`, el campo Partida Individual tiene input libre + botón "Seleccionar libre" que abre un modal con la lista — al seleccionar una fila se auto-llenan `partida_individual` y `partida_presupuestaria`.
 
@@ -219,7 +222,7 @@ Tabla de marcaciones individuales. Flujo diario en orden estricto: `ENTRADA → 
 
 **modalidad_marcacion** controla cómo puede timbrar el empleado:
 - `PRESENCIAL` (default): la IP del request debe comenzar con algún prefijo de `VLANS_PERMITIDAS` en `dbo.d2_configuracion`. Formato: `10.10.12.,10.10.26.` (prefijos con punto final, separados por coma). Si la lista está vacía se permite todo.
-- `REMOTO`: puede marcar desde cualquier IP sin validación. `tipo_marcacion = 'WEB'`. Uso: comisiones, viajes.
+- `TEMPORAL`: puede marcar desde cualquier IP sin validación. `tipo_marcacion = 'WEB'`. Uso: comisiones, viajes temporales. (**antes se llamaba REMOTO** — migración `000064` actualizó todos los registros existentes)
 - `TELETRABAJO`: puede marcar desde cualquier IP. `tipo_marcacion = 'TELETRABAJO'`. Uso: trabajo desde casa.
 
 **Validación de IP:** El backend corre detrás de Apache (proxy a puerto 9000). `bootstrap/app.php` tiene `trustProxies(at: '127.0.0.1')` para leer `X-Forwarded-For` y obtener la IP real del cliente. La query usa `LOWER(concepto) = 'vlans_permitidas'` porque en la BD el concepto está en mayúsculas (`VLANS_PERMITIDAS`).
@@ -227,6 +230,7 @@ Tabla de marcaciones individuales. Flujo diario en orden estricto: `ENTRADA → 
 **Variables de configuración relevantes para asistencia:**
 - `VLANS_PERMITIDAS`: prefijos de red permitidos para marcación PRESENCIAL (ej: `10.10.12.,10.10.26.`)
 - `CONTROL_IP_MARCACION`: valor `1` = una IP solo puede ser usada por un empleado por día (evita timbrar por otro)
+- `ARTICULO_ATRASOS`: texto del artículo de ley que se muestra bajo "Mis Marcaciones" en AsistenciaView (configurable desde Admin → Configuración)
 
 Campos clave de `sg_control_persona`: `nro_documento` (= id_emp), `clasificacion` (ENTRADA/SALIDA), `concepto` (ENTRADA/SALIDA AL LUNCH/ENTRADA DEL LUNCH/SALIDA), `fecha_hora`, `tipo_marcacion` (WEB/TELETRABAJO/**BIOMETRICO**), `ip`, `ubicacion`, `procesado` (SI/NO), `origen`.
 
@@ -266,6 +270,11 @@ Auto-cierre corre en cada `index()` para SUBROGACION y VACACIONES con `fecha_fin
 - `acc_lista.blade.php` — PDF de listado de acciones con filtros
 - Excel export disponible (requiere `phpoffice/phpspreadsheet` instalado en servidor: `composer require phpoffice/phpspreadsheet`)
 - PDF firmado se sube a Alfresco en `acciones-personal/{año}/`
+
+**Firmantes dinámicos en PDF:** Los nombres y cargos de los firmantes se leen de `dbo.d2_configuracion` — 4 parámetros editables desde Admin → Configuración:
+- `FIRMANTE_TH_NOMBRE` / `FIRMANTE_TH_CARGO` — Responsable de Talento Humano actual
+- `FIRMANTE_AUTORIDAD_NOMBRE` / `FIRMANTE_AUTORIDAD_CARGO` — Autoridad Nominadora actual
+- Si no están configurados, el PDF usa los valores anteriores (`DIRECTOR_TALENTO_HUMANO` / `APROBADOR_ACCION_PERSONAL`)
 
 ### Vacaciones — backup al aprobar
 
@@ -369,13 +378,23 @@ Porcentajes se obtienen de `dbo.d2_jornada` (campos `porc_extraordinaria`, `porc
 views/empleados/        # CRUD empleados, detalle, importación, distributivo
                         # EmpleadoForm: reorganizado en 4 pestañas con diseño visual atractivo:
                         #   Tab 1 "Datos Personales": nombres, apellidos, cédula, teléfono, email, dirección, sexo, tipo_sangre
+                        #     + grupo_vulnerable, grupo_prioritario (selects de catálogos sociales)
+                        #     + bloque Discapacidad (toggle → tipo CONADIS + porcentaje %)
+                        #     + bloque Enfermedad Catastrófica (toggle → tipo MSP)
+                        #     + bloque Persona Sustituta (toggle → fecha caducidad + subir/ver/eliminar PDF Alfresco)
+                        #     + bloque Hijos: num_hijos_mayores + lista dinámica menores con fecha nacimiento
+                        #       badge "Guardería" automático si hijo < 5 años
                         #   Tab 2 "Cargo y Contrato": departamento, cargo, tipo_contrato, modalidad_laboral, jornada,
                         #     estado, fecha_ingreso, fecha_salida (v-if INACTIVO), salario
                         #   Tab 3 "Datos del Puesto": grupo_ocupacional, grado, proceso_institucional, estado_puesto,
-                        #     partida_individual (+ botón "Seleccionar libre"), programa, actividad, décimos, fondos_reserva, partida_presupuestaria
-                        #   Tab 4 "Asistencia": modalidad_marcacion (radio cards), puede_solicitar_vehiculo
-                        #   Barra de acción fija en el fondo con Guardar/Cancelar y navegación de tabs
+                        #     partida_individual (+ botón "Seleccionar libre"), programa, actividad, décimos, fondos_reserva,
+                        #     "Estructura Programática" (antes "Partida Presupuestaria"), N° SERCOP, Vigencia SERCOP
+                        #   Tab 4 "Asistencia": modalidad_marcacion (radio cards: PRESENCIAL/TEMPORAL/TELETRABAJO), puede_solicitar_vehiculo
+                        #   Botones Guardar/Cancelar al final del formulario (no fijos — no tapan el sidebar)
                         #   Foto compacta fuera de las pestañas (solo en edición)
+                        # Endpoints hijos: GET|POST /empleados/{id}/hijos, DELETE /empleados/{id}/hijos/{hijoId}
+                        # Endpoints sustituta: POST|GET|DELETE /empleados/{id}/sustituta-doc (Alfresco, carpeta empleados/{cedula_APELLIDO}/)
+                        # GET /empleados/catalogos-sociales → { grupos_vulnerables, grupos_prioritarios, tipos_discapacidad, enfermedades_catastroficas }
 views/acciones/         # Acciones de personal (lista + formulario + PDF)
 views/planificacion/    # Planificación anual de vacaciones, liquidación, reporte
                         # ReporteSaldoVacView.vue — reporte de saldo de vacaciones (TH/ADMIN)
@@ -423,6 +442,13 @@ views/horasextras/
                         #   MIS HORAS TRABAJADAS: registrar horas, PDF horas trabajadas
                         #   PLANIFICACIONES DEL EQUIPO: aprobar/negar (supervisor/admin)
                         #   REGISTROS DEL EQUIPO: revisar/confirmar/negar + desglose monetario (TH NOMINA)
+                        #   Badge naranja "Dev. Xv" en registros devueltos al empleado (campo devuelto_count en nom_he_registro)
+views/asistencia/
+  ReporteSinAtrasosView.vue  # Reporte de personal SIN atrasos en el período
+                             # Ruta: asistencia/sin-atrasos — requiere agregar en Admin → Menú (ADMINISTRADOR o TALENTO HUMANO)
+                             # Filtros: fecha_desde / fecha_hasta (default: mes actual)
+                             # Tabla agrupada por departamento; badge cuenta por grupo
+                             # API: GET /api/asistencia/reporte-sin-atrasos?fecha_desde=&fecha_hasta=
 views/admin/            # Roles, departamentos, turnos, configuración, IESS, avisos ticker
                         # ZktecoView.vue: tabla de dispositivos, toggle activo/inactivo, editar nombre, eliminar
 layouts/MainLayout.vue  # Layout del módulo RRHH (menú colapsado, se abre el grupo activo)
@@ -554,7 +580,7 @@ Vista admin SBU: `views/admin/SbuView.vue` (ruta `admin/sbu`) — el SBU se gest
 ### PDFs (`resources/views/reportes/`)
 
 - `nom_decimo_tercero.blade.php`, `nom_decimo_cuarto.blade.php`, `nom_fondos_reserva.blade.php`, `nom_consolidado.blade.php` — portrait letter
-- `nom_rol_pago.blade.php` — **landscape** A4, 7pt; columnas IECE, SECAP, Ap.Patronal, Total Patronal, Programa, Actividad, Póliza Blanket; % en encabezado de columna
+- `nom_rol_pago.blade.php` — **landscape** A4, 7pt; columnas IECE, SECAP, Ap.Patronal, Total Patronal, Programa, Actividad, Póliza Blanket, **Sanciones**, **Otros Descuentos**, **Observaciones**; % en encabezado de columna
 - `nom_rol_pago_resumenes.blade.php` — portrait A4; tabla agrupada por Programa/Actividad con totales
 - Ruta resúmenes PDF: `GET /api/nomina/rol-pago/{cabId}/resumenes/pdf`
 
@@ -589,7 +615,7 @@ Vista admin SBU: `views/admin/SbuView.vue` (ruta `admin/sbu`) — el SBU se gest
 | `IvaController` | CRUD tasas IVA |
 | `AjusteController` | Ajuste de inventario (toma física): store/index — inserta en kardex tipo AJUSTE_POSITIVO/NEGATIVO |
 | `SolicitudMaterialController` | Solicitudes internas: store/aprobar/negar/despachar — **PENDIENTE: despachar() debe insertar en kardex** |
-| `ReporteAdqController` | Kardex NIC 2, Libro de Compras, Egresos Valorizados (JSON + PDF) |
+| `ReporteAdqController` | Kardex NIC 2, Libro de Compras, Egresos Valorizados, **Inventario Mensual** (JSON + PDF) |
 
 ### Reglas de Precio
 
@@ -675,12 +701,22 @@ views/adquisiciones/
   CatalogoInventarioView.vue  # Catálogo MEF nivel1/nivel2
   SolicitudesView.vue         # Solicitudes internas: crear, aprobar (supervisor — sin stock visible), despachar (bienes)
   AjusteInventarioView.vue    # Toma física: buscar artículo, ingresar cant. física, registra ajuste
-  ReporteKardexView.vue       # Kardex NIC 2 — filtros: artículo individual, Nivel 1 MEF, Nivel 2 MEF (combinables)
-                              # Resultado: una sección por artículo; PDF itera todos los artículos encontrados
-  ReporteLibroComprasView.vue # Libro de compras + filtro RUC/proveedor + Top 5 proveedores por monto + PDF
-  ReporteEgresosView.vue      # Egresos valorizados + PDF
-layouts/AdqLayout.vue         # Layout verde, roles ADQUISICIONES/BIENES
-                              # Menú colapsado por defecto, auto-abre el grupo de la ruta activa
+  ReporteKardexView.vue            # Kardex NIC 2 — filtros: artículo individual, Nivel 1 MEF, Nivel 2 MEF (combinables)
+                                   # Resultado: una sección por artículo; PDF itera todos los artículos encontrados
+  ReporteLibroComprasView.vue      # Libro de compras + filtro RUC/proveedor + Top 5 proveedores por monto + PDF
+  ReporteEgresosView.vue           # Egresos valorizados + PDF
+  ReporteInventarioMensualView.vue # Reporte inventario mensual agrupado por partida presupuestaria
+                                   # Ruta: adquisiciones/reportes/inventario-mensual
+                                   # Filtros: mes + año (selector); botón Generar + botón Descargar PDF
+                                   # CUENTA = primeros 6 chars de asociacion_presupuestaria formateado (ej: 53.08.01)
+                                   # DESCRIPCIÓN = STRING_AGG de catalogo_nivel1.descripcion para los nivel1 que
+                                   #   tienen entradas en catalogo_inventario con esa partida en asociacion_presupuestaria
+                                   # Columnas: Saldo Anterior | Ingreso Procesos | Ingreso Caja Chica | Egreso | Saldo Final
+                                   # Ingresos: INGRESO + REVERSO_EGRESO + AJUSTE_POSITIVO (Caja Chica = proceso = CAJA CHICA)
+                                   # Egresos:  EGRESO + REVERSO_INGRESO + AJUSTE_NEGATIVO
+                                   # PDF landscape A4 verde institucional
+layouts/AdqLayout.vue              # Layout verde, roles ADQUISICIONES/BIENES
+                                   # Menú colapsado por defecto, auto-abre el grupo de la ruta activa
 ```
 
 ---
