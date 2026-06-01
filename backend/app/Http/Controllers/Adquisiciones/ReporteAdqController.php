@@ -159,10 +159,11 @@ class ReporteAdqController extends Controller
         $tiposEgreso  = ['EGRESO',  'REVERSO_INGRESO', 'AJUSTE_NEGATIVO'];
         $todosTipos   = array_merge($tiposIngreso, $tiposEgreso);
 
-        // Paso 1: artículos con movimiento en el período
+        // Paso 1: artículos con movimiento, que tengan nivel2 con asociacion_presupuestaria
         $articuloIds = DB::table('adq.kardex as k')
             ->join('adq.articulo as a', 'k.articulo_id', '=', 'a.id')
-            ->whereNotNull('a.nivel2')
+            ->join('adq.catalogo_inventario as ci', 'a.nivel2', '=', 'ci.nivel2')
+            ->whereNotNull('ci.asociacion_presupuestaria')
             ->whereBetween('k.fecha', ["$desde 00:00:00", "$hasta 23:59:59"])
             ->whereIn('k.tipo_movimiento', $todosTipos)
             ->distinct()
@@ -170,16 +171,15 @@ class ReporteAdqController extends Controller
             ->toArray();
 
         if (empty($articuloIds)) {
-            if ($request->formato === 'pdf') {
-                return response()->json(['message' => 'Sin movimientos en el período.'], 422);
-            }
             return response()->json([]);
         }
 
-        // Paso 2: saldo anterior por nivel2 (último kardex antes de fecha_desde por artículo)
-        $idsStr   = implode(',', $articuloIds);
+        // Paso 2: saldo anterior agrupado por partida (primeros 6 chars de asociacion_presupuestaria)
+        $idsStr    = implode(',', $articuloIds);
         $saldoRows = DB::select("
-            SELECT a.nivel2, SUM(ROUND(k.stock_despues::numeric * k.precio_despues::numeric, 2)) as saldo_anterior
+            SELECT
+                LEFT(ci.asociacion_presupuestaria, 6) as partida,
+                SUM(ROUND(k.stock_despues::numeric * k.precio_despues::numeric, 2)) as saldo_anterior
             FROM (
                 SELECT DISTINCT ON (k2.articulo_id)
                        k2.articulo_id,
@@ -191,13 +191,16 @@ class ReporteAdqController extends Controller
                 ORDER BY k2.articulo_id, k2.fecha DESC, k2.id DESC
             ) k
             JOIN adq.articulo a ON k.articulo_id = a.id
-            GROUP BY a.nivel2
+            JOIN adq.catalogo_inventario ci ON ci.nivel2 = a.nivel2
+            WHERE ci.asociacion_presupuestaria IS NOT NULL
+            GROUP BY LEFT(ci.asociacion_presupuestaria, 6)
         ", ["$desde 00:00:00"]);
-        $saldoAnt = collect($saldoRows)->pluck('saldo_anterior', 'nivel2');
+        $saldoAnt = collect($saldoRows)->pluck('saldo_anterior', 'partida');
 
-        // Paso 3: movimientos del período agrupados por nivel2
+        // Paso 3: movimientos agrupados por partida presupuestaria (primeros 6 chars)
         $movRows = DB::table('adq.kardex as k')
             ->join('adq.articulo as a', 'k.articulo_id', '=', 'a.id')
+            ->join('adq.catalogo_inventario as ci', 'a.nivel2', '=', 'ci.nivel2')
             ->leftJoin('adq.orden_compra as oc', function ($join) {
                 $join->on('k.referencia_id', '=', 'oc.id')
                      ->where('k.referencia_tipo', '=', 'ORDEN_COMPRA');
@@ -205,8 +208,9 @@ class ReporteAdqController extends Controller
             ->whereIn('k.articulo_id', $articuloIds)
             ->whereBetween('k.fecha', ["$desde 00:00:00", "$hasta 23:59:59"])
             ->whereIn('k.tipo_movimiento', $todosTipos)
+            ->whereNotNull('ci.asociacion_presupuestaria')
             ->selectRaw("
-                a.nivel2,
+                LEFT(ci.asociacion_presupuestaria, 6) as partida,
                 SUM(CASE
                     WHEN k.tipo_movimiento IN ('INGRESO','REVERSO_EGRESO','AJUSTE_POSITIVO')
                      AND NOT (k.referencia_tipo = 'ORDEN_COMPRA' AND UPPER(oc.proceso_contratacion) LIKE '%CAJA CHICA%')
@@ -223,39 +227,52 @@ class ReporteAdqController extends Controller
                     THEN ROUND(k.cantidad_salida::numeric * k.precio_movimiento::numeric, 2)
                     ELSE 0 END) as egreso_mes
             ")
-            ->groupBy('a.nivel2')
+            ->groupByRaw("LEFT(ci.asociacion_presupuestaria, 6)")
             ->get();
 
-        // Paso 4: catálogo MEF para descripciones
-        $nivel2s  = $movRows->pluck('nivel2')->unique()->toArray();
-        $catalogo = DB::table('adq.catalogo_inventario')
-            ->whereIn('nivel2', $nivel2s)
-            ->pluck('descripcion', 'nivel2');
+        // Paso 4: descripciones — STRING_AGG de catalogo_nivel1 por partida
+        // Para cada partida, busca todos los nivel1 distintos en catalogo_inventario
+        // cuya asociacion_presupuestaria contiene ese código, y concatena sus descripciones
+        $descRows = DB::select("
+            SELECT
+                t.partida,
+                STRING_AGG(cn1.descripcion, ' / ' ORDER BY cn1.descripcion) as descripcion
+            FROM (
+                SELECT DISTINCT
+                    LEFT(ci.asociacion_presupuestaria, 6) as partida,
+                    ci.nivel1
+                FROM adq.catalogo_inventario ci
+                WHERE ci.asociacion_presupuestaria IS NOT NULL
+            ) t
+            JOIN adq.catalogo_nivel1 cn1 ON cn1.nivel1 = t.nivel1
+            GROUP BY t.partida
+        ");
+        $descripciones = collect($descRows)->pluck('descripcion', 'partida');
 
         // Paso 5: combinar y calcular saldo final
-        $resultado = $movRows->map(function ($row) use ($saldoAnt, $catalogo) {
-            $anterior  = round((float)($saldoAnt->get($row->nivel2) ?? 0), 2);
-            $ingProc   = round((float)$row->ingreso_procesos,   2);
-            $ingCaja   = round((float)$row->ingreso_caja_chica, 2);
-            $egreso    = round((float)$row->egreso_mes,          2);
-            $saldoFin  = round($anterior + $ingProc + $ingCaja - $egreso, 2);
+        $resultado = $movRows->map(function ($row) use ($saldoAnt, $descripciones) {
+            $partida  = $row->partida;
+            $anterior = round((float)($saldoAnt->get($partida) ?? 0), 2);
+            $ingProc  = round((float)$row->ingreso_procesos,   2);
+            $ingCaja  = round((float)$row->ingreso_caja_chica, 2);
+            $egreso   = round((float)$row->egreso_mes,          2);
+            $saldoFin = round($anterior + $ingProc + $ingCaja - $egreso, 2);
 
-            $n2     = $row->nivel2;
-            $cuenta = strlen($n2) === 6
-                ? substr($n2, 0, 2) . '.' . substr($n2, 2, 2) . '.' . substr($n2, 4, 2)
-                : $n2;
+            $cuenta = strlen($partida) === 6
+                ? substr($partida, 0, 2) . '.' . substr($partida, 2, 2) . '.' . substr($partida, 4, 2)
+                : $partida;
 
             return [
-                'nivel2'             => $n2,
+                'partida'            => $partida,
                 'cuenta'             => $cuenta,
-                'descripcion'        => $catalogo->get($n2) ?? $n2,
+                'descripcion'        => $descripciones->get($partida) ?? $partida,
                 'saldo_anterior'     => $anterior,
                 'ingreso_procesos'   => $ingProc,
                 'ingreso_caja_chica' => $ingCaja,
                 'egreso_mes'         => $egreso,
                 'saldo_final'        => $saldoFin,
             ];
-        })->sortBy('nivel2')->values();
+        })->sortBy('partida')->values();
 
         if ($request->formato === 'pdf') {
             $meses = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
