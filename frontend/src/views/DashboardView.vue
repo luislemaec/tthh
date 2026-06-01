@@ -40,6 +40,50 @@
         </div>
       </div>
 
+      <!-- Próximo período / Vacaciones en curso -->
+      <div v-if="proximoPeriodo" class="rounded-2xl p-5 text-white"
+        :style="enCurso
+          ? 'background: linear-gradient(135deg,#92400e,#d97706)'
+          : 'background: linear-gradient(135deg,#0b5447,#1a8a6f)'">
+        <div class="flex items-start justify-between gap-4">
+          <div class="flex items-center gap-4">
+            <div class="bg-white/20 p-3 rounded-xl flex-shrink-0">
+              <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+              </svg>
+            </div>
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-widest text-white/70">
+                {{ enCurso ? 'Vacaciones en curso' : 'Próximo período de vacaciones' }}
+              </p>
+              <p class="text-base font-bold mt-0.5">Período {{ proximoPeriodo.numero_periodo }}</p>
+            </div>
+          </div>
+          <div v-if="!enCurso" class="text-right flex-shrink-0">
+            <p class="text-3xl font-extrabold leading-none">{{ diasParaVacaciones }}</p>
+            <p class="text-xs text-white/70 mt-0.5">días para<br>vacaciones</p>
+          </div>
+          <div v-else class="flex-shrink-0">
+            <span class="bg-white/30 text-white text-xs font-bold px-3 py-1.5 rounded-full tracking-wide">EN CURSO</span>
+          </div>
+        </div>
+        <div class="mt-4 flex gap-8 text-sm border-t border-white/20 pt-4">
+          <div>
+            <p class="text-white/60 text-xs uppercase tracking-wide">Desde</p>
+            <p class="font-semibold mt-0.5">{{ formatFecha(proximoPeriodo.fecha_inicial) }}</p>
+          </div>
+          <div>
+            <p class="text-white/60 text-xs uppercase tracking-wide">Hasta</p>
+            <p class="font-semibold mt-0.5">{{ formatFecha(proximoPeriodo.fecha_final) }}</p>
+          </div>
+          <div>
+            <p class="text-white/60 text-xs uppercase tracking-wide">Días</p>
+            <p class="font-semibold mt-0.5">{{ proximoPeriodo.dias }}</p>
+          </div>
+        </div>
+      </div>
+
       <!-- Gráfico de atrasos por mes -->
       <div class="bg-white rounded-2xl shadow p-6">
         <h2 class="text-base font-semibold text-gray-700 mb-1">Días de atraso por mes</h2>
@@ -198,6 +242,50 @@
         </div>
 
       </div>
+      <!-- Vacaciones próximas del equipo -->
+      <div v-if="(stats.datos_supervisor?.vacaciones_proximas_count ?? 0) > 0"
+        class="bg-white rounded-xl shadow p-6">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="bg-teal-100 p-3 rounded-xl">
+              <svg class="w-6 h-6 text-teal-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+              </svg>
+            </div>
+            <div>
+              <p class="font-semibold text-gray-700">Vacaciones próximas del equipo</p>
+              <p class="text-xs text-gray-400">En curso o en los próximos 60 días</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-4">
+            <span class="text-3xl font-bold text-teal-700">
+              {{ stats.datos_supervisor.vacaciones_proximas_count }}
+            </span>
+            <button @click="mostrarVacProximas = !mostrarVacProximas"
+              class="text-sm text-teal-700 border border-teal-200 px-3 py-1 rounded-lg hover:bg-teal-50 transition">
+              {{ mostrarVacProximas ? 'Ocultar' : 'Ver quiénes' }}
+            </button>
+          </div>
+        </div>
+        <div v-if="mostrarVacProximas" class="mt-4 border-t pt-3 space-y-1">
+          <div v-for="v in stats.datos_supervisor.vacaciones_proximas"
+            :key="v.nombre + v.fecha_inicial"
+            class="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+            <div>
+              <p class="text-sm font-medium text-gray-800">{{ v.nombre }}</p>
+              <p class="text-xs text-gray-400 mt-0.5">
+                {{ formatFecha(v.fecha_inicial) }} — {{ formatFecha(v.fecha_final) }} · {{ v.dias }} días
+              </p>
+            </div>
+            <span :class="v.en_curso ? 'bg-amber-100 text-amber-700' : 'bg-teal-100 text-teal-700'"
+              class="text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ml-4">
+              {{ v.en_curso ? 'En curso' : 'Próximo' }}
+            </span>
+          </div>
+        </div>
+      </div>
+
     </template>
 
     <!-- Gráfico atrasos por unidad (solo roles TH) -->
@@ -409,6 +497,25 @@ const equipoHoy = computed(() => {
 function pct(val) {
   const total = stats.value.datos_supervisor?.total_equipo || 1
   return Math.min(100, Math.round(((val ?? 0) / total) * 100))
+}
+
+const mostrarVacProximas = ref(false)
+const proximoPeriodo     = computed(() => stats.value.datos_empleado?.proximo_periodo ?? null)
+const enCurso            = computed(() => proximoPeriodo.value?.en_curso === true)
+const diasParaVacaciones = computed(() => {
+  const p = proximoPeriodo.value
+  if (!p || p.en_curso) return 0
+  const [iy, im, id] = p.fecha_inicial.split('-').map(Number)
+  const hoy = new Date()
+  const inicio = new Date(iy, im - 1, id)
+  return Math.max(0, Math.ceil((inicio - hoy) / 86400000))
+})
+
+function formatFecha(fecha) {
+  if (!fecha) return '—'
+  const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
+  const [, m, d] = fecha.split('-')
+  return `${parseInt(d)} de ${meses[parseInt(m) - 1]}`
 }
 
 onMounted(async () => {

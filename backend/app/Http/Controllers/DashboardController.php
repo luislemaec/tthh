@@ -125,6 +125,30 @@ class DashboardController extends Controller
                                             })
                                             ->count(),
             ];
+
+            $hoyLimite = now()->addDays(60)->toDateString();
+            $vacProximas = DB::table('dbo.vac_planificacion_det as det')
+                ->join('dbo.vac_planificacion_cab as cab', 'det.cab_id', '=', 'cab.id')
+                ->join('dbo.ad_empleado as e', 'cab.id_emp', '=', 'e.id_emp')
+                ->whereIn('cab.id_emp', $empleadosIds)
+                ->where('cab.estado', 'APROBADO')
+                ->whereNotNull('det.fecha_inicial')
+                ->whereNotNull('det.fecha_final')
+                ->where('det.fecha_final', '>=', $hoy)
+                ->where('det.fecha_inicial', '<=', $hoyLimite)
+                ->orderBy('det.fecha_inicial', 'asc')
+                ->select('e.apellido_emp', 'e.nombre_emp', 'det.numero_periodo', 'det.fecha_inicial', 'det.fecha_final', 'det.dias_calculados')
+                ->get();
+
+            $datosSupervisor['vacaciones_proximas_count'] = $vacProximas->count();
+            $datosSupervisor['vacaciones_proximas'] = $vacProximas->map(fn($v) => [
+                'nombre'         => trim($v->apellido_emp) . ' ' . trim($v->nombre_emp),
+                'numero_periodo' => $v->numero_periodo,
+                'fecha_inicial'  => $v->fecha_inicial,
+                'fecha_final'    => $v->fecha_final,
+                'dias'           => round((float) $v->dias_calculados, 1),
+                'en_curso'       => $v->fecha_inicial <= $hoy,
+            ])->values();
         }
 
         // Datos exclusivos para empleado sin rol especial
@@ -167,6 +191,26 @@ class DashboardController extends Controller
                 'saldo_vacaciones' => $saldo,
                 'atrasos_por_mes'  => array_values($atrasosPorMes),
             ];
+
+            $hoyEmp = now()->toDateString();
+            $periodoProximo = DB::table('dbo.vac_planificacion_det as det')
+                ->join('dbo.vac_planificacion_cab as cab', 'det.cab_id', '=', 'cab.id')
+                ->where('cab.id_emp', $emp->id_emp)
+                ->where('cab.estado', 'APROBADO')
+                ->whereNotNull('det.fecha_inicial')
+                ->whereNotNull('det.fecha_final')
+                ->where('det.fecha_final', '>=', $hoyEmp)
+                ->orderBy('det.fecha_inicial', 'asc')
+                ->select('det.numero_periodo', 'det.fecha_inicial', 'det.fecha_final', 'det.dias_calculados')
+                ->first();
+
+            $datosEmpleado['proximo_periodo'] = $periodoProximo ? [
+                'numero_periodo' => $periodoProximo->numero_periodo,
+                'fecha_inicial'  => $periodoProximo->fecha_inicial,
+                'fecha_final'    => $periodoProximo->fecha_final,
+                'dias'           => round((float) $periodoProximo->dias_calculados, 1),
+                'en_curso'       => $periodoProximo->fecha_inicial <= $hoyEmp,
+            ] : null;
         }
 
         return response()->json([

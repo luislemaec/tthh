@@ -444,11 +444,12 @@ views/horasextras/
                         #   REGISTROS DEL EQUIPO: revisar/confirmar/negar + desglose monetario (TH NOMINA)
                         #   Badge naranja "Dev. Xv" en registros devueltos al empleado (campo devuelto_count en nom_he_registro)
 views/asistencia/
-  ReporteSinAtrasosView.vue  # Reporte de personal SIN atrasos en el período
-                             # Ruta: asistencia/sin-atrasos — requiere agregar en Admin → Menú (ADMINISTRADOR o TALENTO HUMANO)
-                             # Filtros: fecha_desde / fecha_hasta (default: mes actual)
-                             # Tabla agrupada por departamento; badge cuenta por grupo
-                             # API: GET /api/asistencia/reporte-sin-atrasos?fecha_desde=&fecha_hasta=
+  ReporteSinAtrasosView.vue  # Vista standalone (ruta asistencia/sin-atrasos) — INTEGRADA también como tercer tab
+                             # en views/reportes/ReportesView.vue (tab "Sin Atrasos")
+views/reportes/
+  ReportesView.vue           # 3 tabs: Atrasos | Marcaciones No Realizadas | Sin Atrasos
+                             # Filtros depto/empleado se ocultan automáticamente en tab "Sin Atrasos"
+                             # APIs: GET /reportes/atrasos | /reportes/marcaciones-faltantes | /asistencia/reporte-sin-atrasos
 views/admin/            # Roles, departamentos, turnos, configuración, IESS, avisos ticker
                         # ZktecoView.vue: tabla de dispositivos, toggle activo/inactivo, editar nombre, eliminar
 layouts/MainLayout.vue  # Layout del módulo RRHH (menú colapsado, se abre el grupo activo)
@@ -613,7 +614,7 @@ Vista admin SBU: `views/admin/SbuView.vue` (ruta `admin/sbu`) — el SBU se gest
 | `EgresoController` | Egresos: store/update/confirmar/reversar/pdf |
 | `ProveedorController` | CRUD proveedores |
 | `IvaController` | CRUD tasas IVA |
-| `AjusteController` | Ajuste de inventario (toma física): store/index — inserta en kardex tipo AJUSTE_POSITIVO/NEGATIVO |
+| `AjusteController` | Ajuste de inventario (toma física): store/index — inserta en kardex tipo AJUSTE_POSITIVO/NEGATIVO. También `importarStock`: carga masiva desde CSV |
 | `SolicitudMaterialController` | Solicitudes internas: store/aprobar/negar/despachar — **PENDIENTE: despachar() debe insertar en kardex** |
 | `ReporteAdqController` | Kardex NIC 2, Libro de Compras, Egresos Valorizados, **Inventario Mensual** (JSON + PDF) |
 
@@ -689,6 +690,12 @@ Todas las rutas de Adquisiciones bajo `/api/adquisiciones/*` en `routes/api.php`
 ```
 views/adquisiciones/
   ArticulosView.vue           # Inventario con precio, IVA, stock, imagen
+                              # Botón "Importar Stock CSV": modal que sube CSV con columnas
+                              #   codigo, stock, precio_unitario, unidad_medida (precio sin IVA)
+                              #   Endpoint: POST /api/adquisiciones/ajustes/importar-stock
+                              #   Busca artículo por código; actualiza precio y unidad; genera AJUSTE_POSITIVO/NEGATIVO
+                              #   en kardex con numero_documento='CARGA INICIAL'. Reporta códigos no encontrados.
+                              #   Artículos no encontrados → se reportan, no se crean (nombre es obligatorio)
   IngresosBienesView.vue      # Ingresos (BORRADOR/RECIBIDO) + descuento + PDF
                               # CAJA CHICA: modal al confirmar — "¿Confirmar sin egreso?" o "¿Confirmar con egreso?"
                               #   Con egreso: selecciona Dirección + Empleado → PATCH /ordenes/{id}/confirmar-con-egreso
