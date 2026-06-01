@@ -145,6 +145,135 @@ class ReporteAdqController extends Controller
         return response()->json($filas);
     }
 
+    public function inventarioMensual(Request $request)
+    {
+        $request->validate([
+            'desde' => 'required|date',
+            'hasta' => 'required|date|after_or_equal:desde',
+        ]);
+
+        $desde = $request->desde;
+        $hasta = $request->hasta;
+
+        $tiposIngreso = ['INGRESO', 'REVERSO_EGRESO', 'AJUSTE_POSITIVO'];
+        $tiposEgreso  = ['EGRESO',  'REVERSO_INGRESO', 'AJUSTE_NEGATIVO'];
+        $todosTipos   = array_merge($tiposIngreso, $tiposEgreso);
+
+        // Paso 1: artículos con movimiento en el período
+        $articuloIds = DB::table('adq.kardex as k')
+            ->join('adq.articulo as a', 'k.articulo_id', '=', 'a.id')
+            ->whereNotNull('a.nivel2')
+            ->whereBetween('k.fecha', ["$desde 00:00:00", "$hasta 23:59:59"])
+            ->whereIn('k.tipo_movimiento', $todosTipos)
+            ->distinct()
+            ->pluck('k.articulo_id')
+            ->toArray();
+
+        if (empty($articuloIds)) {
+            if ($request->formato === 'pdf') {
+                return response()->json(['message' => 'Sin movimientos en el período.'], 422);
+            }
+            return response()->json([]);
+        }
+
+        // Paso 2: saldo anterior por nivel2 (último kardex antes de fecha_desde por artículo)
+        $idsStr   = implode(',', $articuloIds);
+        $saldoRows = DB::select("
+            SELECT a.nivel2, SUM(ROUND(k.stock_despues::numeric * k.precio_despues::numeric, 2)) as saldo_anterior
+            FROM (
+                SELECT DISTINCT ON (k2.articulo_id)
+                       k2.articulo_id,
+                       k2.stock_despues,
+                       k2.precio_despues
+                FROM adq.kardex k2
+                WHERE k2.articulo_id IN ($idsStr)
+                  AND k2.fecha < ?
+                ORDER BY k2.articulo_id, k2.fecha DESC, k2.id DESC
+            ) k
+            JOIN adq.articulo a ON k.articulo_id = a.id
+            GROUP BY a.nivel2
+        ", ["$desde 00:00:00"]);
+        $saldoAnt = collect($saldoRows)->pluck('saldo_anterior', 'nivel2');
+
+        // Paso 3: movimientos del período agrupados por nivel2
+        $movRows = DB::table('adq.kardex as k')
+            ->join('adq.articulo as a', 'k.articulo_id', '=', 'a.id')
+            ->leftJoin('adq.orden_compra as oc', function ($join) {
+                $join->on('k.referencia_id', '=', 'oc.id')
+                     ->where('k.referencia_tipo', '=', 'ORDEN_COMPRA');
+            })
+            ->whereIn('k.articulo_id', $articuloIds)
+            ->whereBetween('k.fecha', ["$desde 00:00:00", "$hasta 23:59:59"])
+            ->whereIn('k.tipo_movimiento', $todosTipos)
+            ->selectRaw("
+                a.nivel2,
+                SUM(CASE
+                    WHEN k.tipo_movimiento IN ('INGRESO','REVERSO_EGRESO','AJUSTE_POSITIVO')
+                     AND NOT (k.referencia_tipo = 'ORDEN_COMPRA' AND UPPER(oc.proceso_contratacion) LIKE '%CAJA CHICA%')
+                    THEN ROUND(k.cantidad_entrada::numeric * k.precio_movimiento::numeric, 2)
+                    ELSE 0 END) as ingreso_procesos,
+                SUM(CASE
+                    WHEN k.tipo_movimiento = 'INGRESO'
+                     AND k.referencia_tipo = 'ORDEN_COMPRA'
+                     AND UPPER(oc.proceso_contratacion) LIKE '%CAJA CHICA%'
+                    THEN ROUND(k.cantidad_entrada::numeric * k.precio_movimiento::numeric, 2)
+                    ELSE 0 END) as ingreso_caja_chica,
+                SUM(CASE
+                    WHEN k.tipo_movimiento IN ('EGRESO','REVERSO_INGRESO','AJUSTE_NEGATIVO')
+                    THEN ROUND(k.cantidad_salida::numeric * k.precio_movimiento::numeric, 2)
+                    ELSE 0 END) as egreso_mes
+            ")
+            ->groupBy('a.nivel2')
+            ->get();
+
+        // Paso 4: catálogo MEF para descripciones
+        $nivel2s  = $movRows->pluck('nivel2')->unique()->toArray();
+        $catalogo = DB::table('adq.catalogo_inventario')
+            ->whereIn('nivel2', $nivel2s)
+            ->pluck('descripcion', 'nivel2');
+
+        // Paso 5: combinar y calcular saldo final
+        $resultado = $movRows->map(function ($row) use ($saldoAnt, $catalogo) {
+            $anterior  = round((float)($saldoAnt->get($row->nivel2) ?? 0), 2);
+            $ingProc   = round((float)$row->ingreso_procesos,   2);
+            $ingCaja   = round((float)$row->ingreso_caja_chica, 2);
+            $egreso    = round((float)$row->egreso_mes,          2);
+            $saldoFin  = round($anterior + $ingProc + $ingCaja - $egreso, 2);
+
+            $n2     = $row->nivel2;
+            $cuenta = strlen($n2) === 6
+                ? substr($n2, 0, 2) . '.' . substr($n2, 2, 2) . '.' . substr($n2, 4, 2)
+                : $n2;
+
+            return [
+                'nivel2'             => $n2,
+                'cuenta'             => $cuenta,
+                'descripcion'        => $catalogo->get($n2) ?? $n2,
+                'saldo_anterior'     => $anterior,
+                'ingreso_procesos'   => $ingProc,
+                'ingreso_caja_chica' => $ingCaja,
+                'egreso_mes'         => $egreso,
+                'saldo_final'        => $saldoFin,
+            ];
+        })->sortBy('nivel2')->values();
+
+        if ($request->formato === 'pdf') {
+            $meses = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+            $logoPath   = public_path('logo.png');
+            $logo       = file_exists($logoPath) ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath)) : null;
+            $nombreInst = DB::table('dbo.d2_configuracion')->whereRaw("LOWER(concepto) = 'nombre_institucion'")->value('valor') ?? 'CONSEJO DE COMUNICACIÓN';
+            $generadoPor = trim($request->user()->apellido_emp . ' ' . $request->user()->nombre_emp);
+
+            $pdf = Pdf::loadView('reportes.adq_inventario_mensual', compact(
+                'resultado', 'meses', 'desde', 'hasta', 'logo', 'nombreInst', 'generadoPor'
+            ))->setPaper('a4', 'landscape');
+
+            return $pdf->download("inventario-mensual.pdf");
+        }
+
+        return response()->json($resultado);
+    }
+
     public function articulosBuscar(Request $request)
     {
         $q = $request->get('q', '');
