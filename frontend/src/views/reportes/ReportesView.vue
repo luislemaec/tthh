@@ -27,21 +27,23 @@
         <input v-model="filtros.fecha_hasta" type="date"
           class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
       </div>
-      <div>
-        <label class="block text-xs text-gray-500 mb-1">Departamento</label>
-        <select v-model="filtros.id_depto"
-          class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186] min-w-48">
-          <option value="">Todos los departamentos</option>
-          <option v-for="d in departamentos" :key="d.id_depto" :value="d.id_depto">
-            {{ d.nombre_depto }}
-          </option>
-        </select>
-      </div>
-      <div>
-        <label class="block text-xs text-gray-500 mb-1">Empleado</label>
-        <input v-model="filtros.id_emp" type="text" placeholder="Nombre, apellido o cédula..."
-          class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186] w-56" />
-      </div>
+      <template v-if="tabActivo !== 'sin-atrasos'">
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Departamento</label>
+          <select v-model="filtros.id_depto"
+            class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186] min-w-48">
+            <option value="">Todos los departamentos</option>
+            <option v-for="d in departamentos" :key="d.id_depto" :value="d.id_depto">
+              {{ d.nombre_depto }}
+            </option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Empleado</label>
+          <input v-model="filtros.id_emp" type="text" placeholder="Nombre, apellido o cédula..."
+            class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186] w-56" />
+        </div>
+      </template>
       <button @click="buscar" :disabled="cargando"
         class="bg-[#0b5447] text-white px-5 py-2 rounded-lg text-sm hover:bg-[#00372e] disabled:opacity-50 font-medium">
         {{ cargando ? "Buscando..." : "Buscar" }}
@@ -119,6 +121,51 @@
       </div>
     </div>
 
+    <!-- Reporte Sin Atrasos -->
+    <div v-if="tabActivo === 'sin-atrasos'" class="bg-white rounded-xl shadow overflow-hidden">
+      <div class="px-6 py-4 border-b flex items-center justify-between">
+        <h2 class="font-semibold text-gray-700">Personal Sin Atrasos</h2>
+        <span class="text-sm text-gray-400">{{ datos.length }} empleado(s)</span>
+      </div>
+      <div v-if="datos.length === 0 && !cargando" class="text-center py-12 text-gray-400 text-sm">
+        Sin resultados para el período seleccionado
+      </div>
+      <template v-else>
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50 border-b">
+            <tr>
+              <th class="text-left px-4 py-3 text-gray-600 font-medium">#</th>
+              <th class="text-left px-4 py-3 text-gray-600 font-medium">Departamento</th>
+              <th class="text-left px-4 py-3 text-gray-600 font-medium">Apellidos y Nombres</th>
+              <th class="text-left px-4 py-3 text-gray-600 font-medium">Cargo</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="cargando">
+              <td colspan="4" class="text-center py-10 text-gray-400">Cargando...</td>
+            </tr>
+            <template v-else v-for="(grupo, depto) in agrupados" :key="depto">
+              <tr class="bg-[#0b5447]/5 border-t">
+                <td colspan="4" class="px-4 py-2 text-xs font-bold text-[#0b5447] uppercase tracking-wide">
+                  {{ depto }} ({{ grupo.length }})
+                </td>
+              </tr>
+              <tr v-for="(emp, idx) in grupo" :key="emp.id_emp" class="border-t hover:bg-gray-50">
+                <td class="px-4 py-2 text-gray-400 text-xs">{{ idx + 1 }}</td>
+                <td class="px-4 py-2 text-gray-500 text-xs">{{ emp.nombre_depto }}</td>
+                <td class="px-4 py-2 font-medium">{{ emp.apellido_emp }} {{ emp.nombre_emp }}</td>
+                <td class="px-4 py-2 text-gray-600 text-xs">{{ emp.cargo_empleado || '—' }}</td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+        <div v-if="datos.length > 0" class="border-t bg-gray-50 px-4 py-3 text-xs text-gray-500">
+          Total: <strong class="text-gray-700">{{ datos.length }} empleados</strong> sin atrasos
+          del {{ filtros.fecha_desde }} al {{ filtros.fecha_hasta }}
+        </div>
+      </template>
+    </div>
+
     <!-- Reporte Marcaciones Faltantes -->
     <div v-if="tabActivo === 'faltantes'" class="bg-white rounded-xl shadow overflow-hidden">
       <div class="px-6 py-4 border-b flex items-center justify-between">
@@ -175,7 +222,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue"
+import { ref, computed, onMounted } from "vue"
 import api from "@/services/api"
 
 const tabActivo    = ref("atrasos")
@@ -184,8 +231,9 @@ const cargando     = ref(false)
 const departamentos = ref([])
 
 const tabs = [
-  { id: "atrasos",   label: "Atrasos" },
-  { id: "faltantes", label: "Marcaciones No Realizadas" },
+  { id: "atrasos",     label: "Atrasos" },
+  { id: "faltantes",   label: "Marcaciones No Realizadas" },
+  { id: "sin-atrasos", label: "Sin Atrasos" },
 ]
 
 const hoy = new Date().toISOString().substring(0, 10)
@@ -214,17 +262,35 @@ const minATexto = (min) => {
   return `${m}min`
 }
 
+const agrupados = computed(() => {
+  if (tabActivo.value !== 'sin-atrasos') return {}
+  const grupos = {}
+  for (const emp of datos.value) {
+    const d = emp.nombre_depto || 'SIN DEPARTAMENTO'
+    if (!grupos[d]) grupos[d] = []
+    grupos[d].push(emp)
+  }
+  return grupos
+})
+
 const buscar = async () => {
   if (!filtros.value.fecha_desde || !filtros.value.fecha_hasta) return
   cargando.value = true
   datos.value = []
   try {
-    const endpoint = tabActivo.value === "atrasos"
-      ? "/reportes/atrasos"
-      : "/reportes/marcaciones-faltantes"
-    const params = { ...filtros.value }
-    if (!params.id_depto) delete params.id_depto
-    if (!params.id_emp)   delete params.id_emp
+    let endpoint, params
+    if (tabActivo.value === "atrasos") {
+      endpoint = "/reportes/atrasos"
+      params = { ...filtros.value }
+    } else if (tabActivo.value === "faltantes") {
+      endpoint = "/reportes/marcaciones-faltantes"
+      params = { ...filtros.value }
+    } else {
+      endpoint = "/asistencia/reporte-sin-atrasos"
+      params = { fecha_desde: filtros.value.fecha_desde, fecha_hasta: filtros.value.fecha_hasta }
+    }
+    if (params.id_depto === "") delete params.id_depto
+    if (params.id_emp   === "") delete params.id_emp
     const { data } = await api.get(endpoint, { params })
     datos.value = data
   } catch (e) {
