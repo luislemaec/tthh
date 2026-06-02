@@ -81,7 +81,7 @@
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Empleado</th>
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Fecha Inicio</th>
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Fecha Fin</th>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium">Todo el día</th>
+            <th class="text-center px-4 py-3 text-gray-600 font-medium">Días</th>
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Estado</th>
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Acciones</th>
           </tr>
@@ -99,9 +99,8 @@
             </td>
             <td class="px-4 py-3 text-gray-600">{{ v.fecha_inicial?.substring(0, 10) }}</td>
             <td class="px-4 py-3 text-gray-600">{{ v.fecha_final?.substring(0, 10) }}</td>
-            <td class="px-4 py-3 text-center">
-              <span v-if="v.todo_dia === 'SI'" class="text-green-600">✓</span>
-              <span v-else class="text-gray-400">—</span>
+            <td class="px-4 py-3 text-center font-semibold text-[#0b5447]">
+              {{ diasVac(v.fecha_inicial, v.fecha_final) }}
             </td>
             <td class="px-4 py-3">
               <span :class="colorEstado(v.estado_permiso)"
@@ -413,6 +412,13 @@ const cargarSaldo = async () => {
   } finally {
     cargandoSaldo.value = false
   }
+}
+
+const diasVac = (desde, hasta) => {
+  if (!desde || !hasta) return '—'
+  const d1 = new Date(desde.substring(0, 10) + 'T00:00:00')
+  const d2 = new Date(hasta.substring(0, 10) + 'T00:00:00')
+  return Math.round((d2 - d1) / 86400000) + 1
 }
 
 const fmtFechaPlan = (fecha) => {
