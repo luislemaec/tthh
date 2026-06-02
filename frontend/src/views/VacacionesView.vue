@@ -159,11 +159,6 @@
         </div>
 
         <div class="space-y-4">
-          <div class="flex items-center gap-2">
-            <input v-model="formNuevo.todo_dia" type="checkbox" id="todo_dia_vac"
-              true-value="SI" false-value="NO" class="rounded" />
-            <label for="todo_dia_vac" class="text-sm text-gray-600">Todo el día</label>
-          </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Fecha Inicio *</label>
@@ -174,16 +169,6 @@
               <label class="block text-sm font-medium text-gray-600 mb-1">Fecha Fin *</label>
               <input v-model="formNuevo.fecha_final" type="date"
                 class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
-            </div>
-          </div>
-          <div v-if="formNuevo.todo_dia !== 'SI'" class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-sm font-medium text-gray-600 mb-1">Hora Desde *</label>
-              <TimePicker24 v-model="formNuevo.hora_desde" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-600 mb-1">Hora Hasta *</label>
-              <TimePicker24 v-model="formNuevo.hora_hasta" />
             </div>
           </div>
           <div>
