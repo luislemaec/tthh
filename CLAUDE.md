@@ -375,6 +375,22 @@ Porcentajes se obtienen de `dbo.d2_jornada` (campos `porc_extraordinaria`, `porc
 ### Vistas Frontend (Talento Humano)
 
 ```
+views/empleados/        # CRUD empleados, detalle, importación, distributivo, reporte de personal
+                        # ReporteEmpleadosView.vue — ruta: empleados/reporte — roles TH/ADMIN
+                        #   Sección 1: 5 tarjetas de alerta clickables (SERCOP vencido/próximo,
+                        #     Sustituta vencida/próxima, Guardería) → al clic aplica el filtro automáticamente
+                        #   Sección 2: 3 gráficos Chart.js — donut por sexo, barras por tipo contrato,
+                        #     barras por modalidad de marcación (datos del endpoint resumen)
+                        #   Sección 3: panel de filtros colapsable con badge de filtros activos —
+                        #     15 filtros: departamento, estado, búsqueda, tipo_contrato, modalidad_marcacion,
+                        #     sexo, tipo_sangre, discapacidad, enf. catastrófica, grupo vulnerable,
+                        #     grupo prioritario, hijos<5 (guardería), persona sustituta, SERCOP, vehículo
+                        #   Sección 4: tabla con badges de color para fechas vencidas/próximas + paginación
+                        #   Exportar Excel (PhpSpreadsheet, 26 columnas, filas alternadas) y PDF (landscape A4)
+                        #   Controlador: ReporteEmpleadosController.php
+                        #   Rutas: GET /api/empleados/reporte/resumen (alertas + stats)
+                        #          GET /api/empleados/reporte (listado filtrado + ?formato=excel|pdf)
+                        #   IMPORTANTE: campo cédula en dbo.ad_empleado se llama `identificacion`, NO `cedula`
 views/empleados/        # CRUD empleados, detalle, importación, distributivo
                         # EmpleadoForm: reorganizado en 4 pestañas con diseño visual atractivo:
                         #   Tab 1 "Datos Personales": nombres, apellidos, cédula, teléfono, email, dirección, sexo, tipo_sangre

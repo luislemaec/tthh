@@ -27,10 +27,6 @@
     <div v-if="saldo.saldo_calculado" class="bg-white rounded-xl shadow p-4 space-y-3">
       <div class="flex items-center justify-between">
         <h2 class="text-sm font-semibold text-gray-700">Saldo de Vacaciones</h2>
-        <button @click="mostrarDetalleSaldo = !mostrarDetalleSaldo"
-          class="text-xs text-[#0b5447] hover:underline">
-          {{ mostrarDetalleSaldo ? "Ocultar detalle" : "Ver detalle por período" }}
-        </button>
       </div>
       <div class="flex gap-6">
         <div class="text-center">
@@ -51,32 +47,6 @@
         </div>
       </div>
 
-      <!-- Detalle por período -->
-      <div v-if="mostrarDetalleSaldo && saldo.detalle.length > 0" class="border-t pt-3">
-        <table class="w-full text-xs">
-          <thead class="bg-gray-50">
-            <tr>
-              <th class="text-left px-3 py-2 text-gray-500">Período</th>
-              <th class="text-right px-3 py-2 text-gray-500">Por tomar</th>
-              <th class="text-right px-3 py-2 text-gray-500">Tomados</th>
-              <th class="text-right px-3 py-2 text-gray-500">Disponibles</th>
-              <th class="text-right px-3 py-2 text-gray-500">Acumulado</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="d in saldo.detalle" :key="d.secuencial" class="border-b">
-              <td class="px-3 py-2 font-medium">{{ d.periodo }}</td>
-              <td class="px-3 py-2 text-right">{{ d.dias_por_tomar }}</td>
-              <td class="px-3 py-2 text-right">{{ d.tomados_normal ?? 0 }}</td>
-              <td class="px-3 py-2 text-right font-semibold text-[#0b5447]">{{ d.disponible_normal ?? 0 }}</td>
-              <td class="px-3 py-2 text-right">{{ d.acumulado }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div v-else-if="mostrarDetalleSaldo" class="border-t pt-3 text-xs text-gray-400 text-center">
-        Sin detalle de períodos registrado
-      </div>
     </div>
 
     <div v-else-if="cargandoSaldo" class="bg-white rounded-xl shadow p-4 text-center text-gray-400 text-sm">
@@ -174,6 +144,20 @@
     <div v-if="modalNuevo" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-lg space-y-4">
         <h2 class="text-lg font-semibold text-gray-700">Solicitar Vacaciones</h2>
+
+        <!-- Recordatorio períodos planificados -->
+        <div v-if="periodosPlani.length" class="bg-[#0b5447]/5 border border-[#0b5447]/20 rounded-lg px-4 py-3">
+          <p class="text-xs font-semibold text-[#0b5447] uppercase tracking-wide mb-2">
+            📅 Tus períodos planificados {{ anioActual }}
+          </p>
+          <div class="flex flex-wrap gap-2">
+            <span v-for="(p, i) in periodosPlani" :key="i"
+              class="inline-flex items-center gap-1 bg-white border border-[#0b5447]/30 text-[#0b5447] text-xs font-medium px-2.5 py-1 rounded-full">
+              Per. {{ i + 1 }}: {{ fmtFechaPlan(p.fecha_inicial) }} — {{ fmtFechaPlan(p.fecha_final) }}
+            </span>
+          </div>
+        </div>
+
         <div class="space-y-4">
           <div class="flex items-center gap-2">
             <input v-model="formNuevo.todo_dia" type="checkbox" id="todo_dia_vac"
@@ -374,6 +358,8 @@ const saldo               = ref({ cabecera: null, detalle: [] })
 const cargandoSaldo       = ref(false)
 const mostrarDetalleSaldo = ref(false)
 
+const periodosPlani  = ref([])
+const anioActual     = new Date().getFullYear()
 const modalNuevo     = ref(false)
 const modalVer       = ref(false)
 const modalNegar          = ref(false)
@@ -444,14 +430,29 @@ const cargarSaldo = async () => {
   }
 }
 
-const abrirModalNuevo = () => {
+const fmtFechaPlan = (fecha) => {
+  if (!fecha) return '—'
+  const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
+  const [, m, d] = fecha.split('-')
+  return `${parseInt(d)} ${meses[parseInt(m) - 1]}`
+}
+
+const abrirModalNuevo = async () => {
   errorNuevo.value = ""
+  periodosPlani.value = []
   formNuevo.value = {
     fecha_inicial: hoy, fecha_final: hoy,
     hora_desde: "08:00", hora_hasta: "17:00",
     todo_dia: "SI", observaciones: "",
   }
   modalNuevo.value = true
+  try {
+    const { data } = await api.get('/planificacion/mi-planificacion', { params: { anio: anioActual } })
+    const plani = data.planificacion
+    if (plani && ['APROBADO', 'REPLANIFICADO'].includes(plani.estado)) {
+      periodosPlani.value = (plani.periodos ?? []).filter(p => p.fecha_inicial && p.fecha_final)
+    }
+  } catch {}
 }
 
 const guardar = async () => {
