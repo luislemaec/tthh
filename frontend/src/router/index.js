@@ -24,6 +24,7 @@ const routes = [
       { path: 'perfil', name: 'Perfil', component: () => import('@/views/PerfilView.vue') },
       { path: 'empleados', name: 'Empleados', component: () => import('@/views/empleados/EmpleadosIndex.vue') },
       { path: 'empleados/crear', name: 'EmpleadoCrear', component: () => import('@/views/empleados/EmpleadoForm.vue') },
+      { path: 'empleados/reporte', name: 'ReporteEmpleados', component: () => import('@/views/empleados/ReporteEmpleadosView.vue') },
       { path: 'empleados/:id', name: 'EmpleadoDetalle', component: () => import('@/views/empleados/EmpleadoDetalle.vue') },
       { path: 'empleados/:id/editar', name: 'EmpleadoEditar', component: () => import('@/views/empleados/EmpleadoForm.vue') },
       { path: 'empleados/importar', name: 'EmpleadoImportar', component: () => import('@/views/empleados/ImportacionView.vue') },

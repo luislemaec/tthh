@@ -131,8 +131,10 @@ Route::middleware("auth:sanctum")->group(function () {
 
     // Departamentos
     Route::get("/departamentos", [EmpleadoController::class, "departamentos"]);
-    Route::get("/empleados/partidas-vacantes",  [EmpleadoController::class, "partidasVacantes"]);
-    Route::get("/empleados/catalogos-sociales", [EmpleadoController::class, "catalogosSociales"]);
+    Route::get("/empleados/partidas-vacantes",    [EmpleadoController::class, "partidasVacantes"]);
+    Route::get("/empleados/catalogos-sociales",   [EmpleadoController::class, "catalogosSociales"]);
+    Route::get("/empleados/reporte/resumen",      [\App\Http\Controllers\ReporteEmpleadosController::class, "resumen"]);
+    Route::get("/empleados/reporte",              [\App\Http\Controllers\ReporteEmpleadosController::class, "index"]);
 
     // Empleados
     Route::get("/empleados",         [EmpleadoController::class, "index"]);
