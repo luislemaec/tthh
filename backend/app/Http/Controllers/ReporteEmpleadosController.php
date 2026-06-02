@@ -77,7 +77,7 @@ class ReporteEmpleadosController extends Controller
             ->leftJoin('dbo.ad_enfermedad_catastrofica as ec', 'e.enfermedad_catastrofica_id', '=', 'ec.id')
             ->where('e.id_depto', '!=', 999)
             ->select([
-                'e.id_emp', 'e.cedula', 'e.apellido_emp', 'e.nombre_emp',
+                'e.id_emp', 'e.identificacion', 'e.apellido_emp', 'e.nombre_emp',
                 'e.cargo_empleado', 'e.estado', 'e.tipo_contrato', 'e.modalidad_laboral',
                 'e.modalidad_marcacion', 'e.sexo', 'e.tipo_sangre',
                 'e.tiene_discapacidad', 'e.porcentaje_discapacidad',
@@ -97,7 +97,7 @@ class ReporteEmpleadosController extends Controller
         if ($request->filled('id_depto'))         $q->where('e.id_depto', $request->id_depto);
         if ($request->filled('busqueda')) {
             $like = '%' . $request->busqueda . '%';
-            $q->where(fn($w) => $w->whereRaw("(e.apellido_emp || ' ' || e.nombre_emp) ILIKE ?", [$like])->orWhere('e.cedula', 'ILIKE', $like));
+            $q->where(fn($w) => $w->whereRaw("(e.apellido_emp || ' ' || e.nombre_emp) ILIKE ?", [$like])->orWhere('e.identificacion', 'ILIKE', $like));
         }
         if ($request->filled('tipo_contrato'))        $q->whereRaw('TRIM(e.tipo_contrato) = ?', [$request->tipo_contrato]);
         if ($request->filled('modalidad_laboral'))    $q->where('e.modalidad_laboral',   $request->modalidad_laboral);
@@ -207,7 +207,7 @@ class ReporteEmpleadosController extends Controller
             $bg = ($nro % 2 === 0) ? 'edf7f4' : 'ffffff';
             $data = [
                 $nro++,
-                $e->cedula,
+                $e->identificacion,
                 $e->apellido_emp,
                 $e->nombre_emp,
                 $e->nombre_depto ?? '',

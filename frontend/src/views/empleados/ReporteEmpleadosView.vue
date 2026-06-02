@@ -283,7 +283,7 @@
             <tr v-for="(e, i) in empleadosPaginados" :key="e.id_emp"
               class="border-b border-gray-100 hover:bg-green-50/40 transition">
               <td class="px-3 py-2 text-gray-400">{{ (paginaActual-1)*porPagina + i + 1 }}</td>
-              <td class="px-3 py-2 font-mono">{{ e.cedula }}</td>
+              <td class="px-3 py-2 font-mono">{{ e.identificacion }}</td>
               <td class="px-3 py-2 font-medium">{{ e.apellido_emp }} {{ e.nombre_emp }}</td>
               <td class="px-3 py-2 text-gray-500">{{ e.nombre_depto || '—' }}</td>
               <td class="px-3 py-2 text-gray-600">{{ e.cargo_empleado || '—' }}</td>

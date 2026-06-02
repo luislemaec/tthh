@@ -72,7 +72,7 @@ table.main tbody td { padding: 3px 3px; border: 1px solid #d1d5db; font-size: 6.
     @forelse($empleados as $i => $e)
     <tr>
       <td class="text-center">{{ $i + 1 }}</td>
-      <td class="text-center">{{ $e->cedula }}</td>
+      <td class="text-center">{{ $e->identificacion }}</td>
       <td class="fw-bold">{{ $e->apellido_emp }} {{ $e->nombre_emp }}</td>
       <td>{{ $e->nombre_depto ?? '—' }}</td>
       <td>{{ $e->cargo_empleado ?? '—' }}</td>
