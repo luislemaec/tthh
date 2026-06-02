@@ -224,6 +224,9 @@
           </div>
         </div>
 
+        <p v-if="errorBuscar" class="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-2">
+          {{ errorBuscar }}
+        </p>
         <div class="flex gap-3 mt-4 pt-4 border-t border-gray-100">
           <button @click="buscar" :disabled="cargando"
             class="bg-[#0b5447] text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-[#00372e] disabled:opacity-50 transition flex items-center gap-2">
@@ -366,6 +369,7 @@ const catalogos      = ref({ grupos_vulnerables: [], grupos_prioritarios: [] })
 const cargando       = ref(false)
 const exportando     = ref(false)
 const buscado        = ref(false)
+const errorBuscar    = ref('')
 const filtrosAbiertos = ref(true)
 const paginaActual   = ref(1)
 const porPagina      = ref(25)
@@ -425,8 +429,9 @@ function limpiar() {
 }
 
 async function buscar() {
-  cargando.value = true
-  buscado.value  = false
+  cargando.value   = true
+  buscado.value    = false
+  errorBuscar.value = ''
   paginaActual.value = 1
   try {
     const params = {}
@@ -435,6 +440,7 @@ async function buscar() {
     empleados.value = data
     buscado.value   = true
   } catch (e) {
+    errorBuscar.value = e.response?.data?.message || 'Error al consultar. Revisa la consola.'
     console.error(e)
   } finally {
     cargando.value = false
@@ -446,7 +452,7 @@ async function exportar(formato) {
   try {
     const params = { formato }
     Object.entries(filtros.value).forEach(([k, v]) => { if (v !== '') params[k] = v })
-    const { data, headers } = await api.get('/empleados/reporte', { params, responseType: 'blob' })
+    const { data } = await api.get('/empleados/reporte', { params, responseType: 'blob' })
     const tipo = formato === 'excel'
       ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       : 'application/pdf'
