@@ -309,9 +309,9 @@
             <div>
               <label class="label-field">Salario Base *</label>
               <div class="relative">
-                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-medium">$</span>
                 <input v-model="form.salario" type="number" step="0.01" min="0" required
-                  class="input-field pl-7" />
+                  class="input-field pl-8" />
               </div>
             </div>
           </div>

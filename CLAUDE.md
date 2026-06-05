@@ -240,11 +240,21 @@ Campos clave de `sg_control_persona`: `nro_documento` (= id_emp), `clasificacion
 
 ### Vacaciones — cálculo de saldo
 
-Calculado en `calcularSaldoDisponible()` / `calcularSaldo()`:
-- `LOSEP` → 2.50 días/mes | `CODIGO DEL TRABAJO` → 1.25 días/mes
-- Fórmula: `(días desde FECHA_CORTE_VACACIONES / 360) × (tasa × 12)`
+Calculado en `calcularSaldoDisponible()` — usa helper `tasaVacaciones()` en VacacionesController:
+- `LOSEP` → fijo 2.50 días/mes (30 días/año)
+- `CODIGO DEL TRABAJO` → tasa variable según antigüedad (Art. 69 Código del Trabajo):
+  - 0–5 años completos → 1.25 días/mes (15 días/año)
+  - 6 años completos → +1 día adicional (16 días/año)
+  - 7 años completos → +2 días adicionales (17 días/año)
+  - ... hasta máximo +15 días adicionales (30 días/año desde los 20 años)
+  - Fórmula: `años_servicio = floor(diffInYears(fecha_ingreso, hoy))` → `dias_extra = min(max(0, años-5), 15)` → `tasa_mensual = (15 + dias_extra) / 12`
+- Fórmula saldo: `(días desde FECHA_CORTE_VACACIONES / 360) × (tasa_mensual × 12)`
 - Si fecha_ingreso > fecha_corte, se usa fecha_ingreso como base
-- Saldo = `dias_adicionales` + devengado − `total_dias_tomados`
+- Saldo = `dias_adicionales` (CSV) + devengado − `total_dias_tomados`
+- El response incluye `dias_adicionales_antiguedad` y `dias_anuales` para mostrar en UI
+- Dashboard (empleado CT con 6+ años): chip "+X días/año por antigüedad" en tarjeta saldo
+- Vista Vacaciones (empleado CT con 6+ años): badge azul "15 base + X por antigüedad"
+- **CSV carga inicial:** el `saldo` debe incluir base + adicionales ya acumulados hasta fecha de corte
 
 ### Acciones de Personal (`dbo.acc_accion_personal`)
 
