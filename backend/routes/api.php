@@ -33,6 +33,13 @@ use Illuminate\Support\Facades\Route;
 // Rutas PÚBLICAS
 Route::post("/login", [AuthController::class, "login"])->name("login");
 
+Route::get("/modo-mantenimiento", function () {
+    $valor = \Illuminate\Support\Facades\DB::table('dbo.d2_configuracion')
+        ->whereRaw("LOWER(concepto) = 'modo_mantenimiento'")
+        ->value('valor');
+    return response()->json(['activo' => $valor === '1']);
+});
+
 // Endpoints ADMS — reloj biométrico ZKTeco (sin autenticación)
 Route::prefix("iclock")->group(function () {
     Route::post("cdata",                        [ZktecoController::class, "cdata"]);
