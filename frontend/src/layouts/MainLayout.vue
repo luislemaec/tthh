@@ -17,6 +17,10 @@
         El sistema se encuentra temporalmente en mantenimiento.<br>
         Por favor intente nuevamente en unos minutos.
       </p>
+      <button @click="handleLogout"
+        class="bg-white text-[#0b5447] font-semibold text-sm px-6 py-2.5 rounded-lg hover:bg-gray-100 transition mb-4">
+        Cerrar Sesión
+      </button>
       <p class="text-white/50 text-xs">Consejo de Comunicación — Talento Humano</p>
     </div>
   </div>
