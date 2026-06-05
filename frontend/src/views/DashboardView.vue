@@ -36,6 +36,10 @@
             <p class="text-xs text-white/70 font-medium uppercase tracking-wide">Saldo de vacaciones</p>
             <p class="text-3xl font-extrabold leading-none mt-0.5">{{ stats.datos_empleado?.saldo_vacaciones ?? 0 }}</p>
             <p class="text-xs text-white/60 mt-0.5">días disponibles</p>
+            <span v-if="(stats.datos_empleado?.dias_adicionales_antiguedad ?? 0) > 0"
+              class="inline-block bg-white/20 text-white text-xs px-2 py-0.5 rounded-full mt-1">
+              +{{ stats.datos_empleado.dias_adicionales_antiguedad }} días/año por antigüedad
+            </span>
           </div>
         </div>
 

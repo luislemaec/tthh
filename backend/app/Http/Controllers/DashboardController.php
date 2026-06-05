@@ -155,8 +155,17 @@ class DashboardController extends Controller
         // Datos exclusivos para empleado sin rol especial
         $datosEmpleado = null;
         if (!$esAdminOTH && !$esSupervisor) {
-            $tasas = ['LOSEP' => 2.50, 'CODIGO DEL TRABAJO' => 1.25];
-            $tasa  = $tasas[trim($emp->tipo_contrato ?? '')] ?? 0;
+            $contrato = trim($emp->tipo_contrato ?? '');
+            if ($contrato === 'LOSEP') {
+                $tasaMensual = 2.50;
+                $diasAdicAntig = 0;
+            } elseif ($contrato === 'CODIGO DEL TRABAJO') {
+                $anios         = $emp->fecha_ingreso ? (int) Carbon::parse($emp->fecha_ingreso)->diffInYears(Carbon::today()) : 0;
+                $diasAdicAntig = min(max(0, $anios - 5), 15);
+                $tasaMensual   = (15 + $diasAdicAntig) / 12;
+            } else {
+                $tasaMensual = 0; $diasAdicAntig = 0;
+            }
 
             $fechaCorteConfig = Configuracion::find('FECHA_CORTE_VACACIONES');
             $fechaCorte       = $fechaCorteConfig ? Carbon::parse($fechaCorteConfig->valor) : Carbon::today();
@@ -164,7 +173,7 @@ class DashboardController extends Controller
                 $fechaCorte = Carbon::parse($emp->fecha_ingreso);
             }
             $diasCalendario = max(0, $fechaCorte->diffInDays(Carbon::today()));
-            $diasAcumulados = round($diasCalendario / 360 * ($tasa * 12), 2);
+            $diasAcumulados = round($diasCalendario / 360 * ($tasaMensual * 12), 2);
 
             $cabecera = CabeceraVacacion::where('id_emp', $emp->id_emp)->first();
             $tomados  = (float) ($cabecera->total_dias_tomados ?? 0);
@@ -189,8 +198,9 @@ class DashboardController extends Controller
             }
 
             $datosEmpleado = [
-                'saldo_vacaciones' => $saldo,
-                'atrasos_por_mes'  => array_values($atrasosPorMes),
+                'saldo_vacaciones'            => $saldo,
+                'atrasos_por_mes'             => array_values($atrasosPorMes),
+                'dias_adicionales_antiguedad' => $diasAdicAntig,
             ];
 
             $hoyEmp = now()->toDateString();

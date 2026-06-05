@@ -45,6 +45,15 @@
           <p class="text-xl font-semibold text-green-600">+{{ saldo.saldo_calculado.acumulado_a_hoy ?? 0 }}</p>
           <p class="text-xs text-gray-500 mt-1">Acumulado a hoy</p>
         </div>
+        <div v-if="saldo.saldo_calculado.dias_adicionales_antiguedad > 0" class="text-center">
+          <p class="text-xl font-semibold text-blue-600">+{{ saldo.saldo_calculado.dias_adicionales_antiguedad }}</p>
+          <p class="text-xs text-gray-500 mt-1">Días adicionales<br>por antigüedad/año</p>
+        </div>
+      </div>
+      <div v-if="saldo.saldo_calculado.dias_adicionales_antiguedad > 0"
+        class="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5">
+        Código del Trabajo — {{ saldo.saldo_calculado.dias_anuales }} días/año
+        (15 base + {{ saldo.saldo_calculado.dias_adicionales_antiguedad }} por antigüedad)
       </div>
 
     </div>

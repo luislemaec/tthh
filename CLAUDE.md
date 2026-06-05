@@ -392,6 +392,8 @@ views/empleados/        # CRUD empleados, detalle, importación, distributivo, r
                         #          GET /api/empleados/reporte (listado filtrado + ?formato=excel|pdf)
                         #   IMPORTANTE: campo cédula en dbo.ad_empleado se llama `identificacion`, NO `cedula`
 views/empleados/        # CRUD empleados, detalle, importación, distributivo
+                        # EmpleadoForm: campos con bg-gray-50 + border-gray-300 en reposo, focus:bg-white
+                        #   (clase .input-field en <style scoped>) — distingue visualmente los campos en fondo blanco
                         # EmpleadoForm: reorganizado en 4 pestañas con diseño visual atractivo:
                         #   Tab 1 "Datos Personales": nombres, apellidos, cédula, teléfono, email, dirección, sexo, tipo_sangre
                         #     + grupo_vulnerable, grupo_prioritario (selects de catálogos sociales)
@@ -435,6 +437,8 @@ DashboardView.vue       # Admin/TH: métricas globales (Empleados, Departamentos
                         # Supervisor (no admin): 4 tarjetas pendientes (permisos/vacaciones/HE/materiales)
                         #   + widget "Mi equipo hoy" (presentes/permiso/vacaciones/sin marcar + barra)
                         #   + atrasos del mes del equipo
+                        #   + tarjeta "Vacaciones próximas del equipo" (próximos 60 días o en curso)
+                        #     botón "Ver quiénes" expande lista con nombre, fechas y badge En curso/Próximo
                         # Las tarjetas originales se ocultan para supervisores (v-if="!es_supervisor||es_admin_th")
                         # TH (TALENTO HUMANO / TH NOMINA / TH ACCIONES PERSONAL): gráfico Chart.js de atrasos
                         #   GET /api/dashboard/atrasos-coordinacion → { meses, unidades[], hijos{} }
@@ -442,6 +446,13 @@ DashboardView.vue       # Admin/TH: métricas globales (Empleados, Departamentos
                         #   Unidades = PRESIDENCIA + coordinaciones (50,60,70,80,90); hijos = sub-áreas
                         #   Drill-down muestra hijos de la unidad clicada; botón "← Volver"
                         #   La tabla "Empleados por Departamento" fue eliminada (reemplazada por el gráfico)
+                        # Empleado sin rol especial: 3 tarjetas compactas en una sola fila (lg:grid-cols-3)
+                        #   1. Permisos pendientes  2. Saldo vacaciones  3. Próximo período de vacaciones
+                        #   Tarjeta 3: título cambia automáticamente "VACACIONES EN CURSO" vs "PRÓXIMO PERÍODO"
+                        #     color ámbar si en curso, verde oscuro si próximo; muestra fechas y días
+                        #     countdown "X días para vacaciones" si es futuro
+                        #   Solo muestra períodos del año actual con estado APROBADO o REPLANIFICADO
+                        #   GET /api/dashboard → datos_empleado.proximo_periodo + datos_supervisor.vacaciones_proximas[]
 views/asistencia/       # Reporte de asistencia personal y admin
                         # AsistenciaView: botones de marcación con íconos PNG desde /public/marcacion/
                         #   Archivos: marcacion_entrada.png, marcacion_salida_almuerzo.png,
@@ -449,9 +460,12 @@ views/asistencia/       # Reporte de asistencia personal y admin
                         #   3 estados visuales con colores hex via inline style (btnStyle()):
                         #     apagado (#c3dbd7) = ya timbrado | activo (#0b5547) = siguiente a timbrar
                         #     por_activarse (#068174) = aún no le toca
-                        #   Tamaño responsivo: w-28 h-28 móvil / md:w-52 md:h-52 PC
+                        #   Tamaño responsivo: w-28 h-28 móvil / md:w-52 md:h-52 PC (íconos)
+                        #   Contorno del botón reducido: py-2 md:py-3 (solo padding, íconos sin cambio)
                         #   Imágenes precargadas en onMounted con new Image() para evitar flash
                         #   Confirmación al marcar SALIDA antes de las 16:30 con window.confirm()
+                        #   ARTICULO_ATRASOS: se muestra con fondo #0b5447 y texto blanco (text-sm)
+                        #     debajo del título "Mis Marcaciones" — más visible que el texto gris anterior
 views/horasextras/
   HorasExtrasView.vue   # 4 tabs:
                         #   MI PLANIFICACIÓN: crear/editar, PDF planificación, subir PDF firmado
@@ -466,6 +480,14 @@ views/reportes/
   ReportesView.vue           # 3 tabs: Atrasos | Marcaciones No Realizadas | Sin Atrasos
                              # Filtros depto/empleado se ocultan automáticamente en tab "Sin Atrasos"
                              # APIs: GET /reportes/atrasos | /reportes/marcaciones-faltantes | /asistencia/reporte-sin-atrasos
+VacacionesView.vue      # Solicitudes de vacaciones del empleado y supervisor
+                        # Tabla muestra: Empleado, Fecha Inicio, Fecha Fin, Días (calculado), Estado, Acciones
+                        #   Columna "Días" = diferencia en días inclusiva (fecha_final - fecha_inicial + 1)
+                        #   "Todo el día" eliminado de tabla y modal — vacaciones siempre son día completo
+                        # Modal "Solicitar Vacaciones": solo fechas + observaciones (sin checkbox todo_dia ni horas)
+                        #   Bloque recordatorio: si el empleado tiene planificación APROBADO/REPLANIFICADO del año
+                        #   actual, muestra sus períodos planificados como referencia (GET /planificacion/mi-planificacion)
+                        # "Ver detalle por período" eliminado — tabla d2_detalle_vacacion vacía (sin migración)
 views/admin/            # Roles, departamentos, turnos, configuración, IESS, avisos ticker
                         # ZktecoView.vue: tabla de dispositivos, toggle activo/inactivo, editar nombre, eliminar
 layouts/MainLayout.vue  # Layout del módulo RRHH (menú colapsado, se abre el grupo activo)

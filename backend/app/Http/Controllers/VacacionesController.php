@@ -14,40 +14,50 @@ use Illuminate\Support\Facades\DB;
 
 class VacacionesController extends Controller
 {
+    private function tasaVacaciones(Empleado $emp, ?Carbon $fechaHasta = null): array
+    {
+        $contrato = trim($emp->tipo_contrato ?? '');
+        if ($contrato === 'LOSEP') {
+            return ['tasa_mensual' => 2.50, 'dias_anuales' => 30, 'dias_adicionales_antiguedad' => 0];
+        }
+        if ($contrato === 'CODIGO DEL TRABAJO') {
+            $hasta         = $fechaHasta ?? Carbon::today();
+            $anios         = $emp->fecha_ingreso ? (int) Carbon::parse($emp->fecha_ingreso)->diffInYears($hasta) : 0;
+            $diasExtra     = min(max(0, $anios - 5), 15);
+            $diasAnuales   = 15 + $diasExtra;
+            return ['tasa_mensual' => $diasAnuales / 12, 'dias_anuales' => $diasAnuales, 'dias_adicionales_antiguedad' => $diasExtra];
+        }
+        return ['tasa_mensual' => 0, 'dias_anuales' => 0, 'dias_adicionales_antiguedad' => 0];
+    }
+
     private function calcularSaldoDisponible(Empleado $emp, CabeceraVacacion $cabecera): array
     {
-        $tasas = [
-            "LOSEP"              => 2.50,
-            "CODIGO DEL TRABAJO" => 1.25,
-        ];
-        $tasa = $tasas[trim($emp->tipo_contrato)] ?? 0;
-
         $fechaCorteConfig = Configuracion::find("FECHA_CORTE_VACACIONES");
         $fechaCorte       = $fechaCorteConfig ? Carbon::parse($fechaCorteConfig->valor) : Carbon::today();
 
-        // Si el empleado ingresó después de la fecha de corte, acumula desde su ingreso
         if ($emp->fecha_ingreso && Carbon::parse($emp->fecha_ingreso)->gt($fechaCorte)) {
             $fechaCorte = Carbon::parse($emp->fecha_ingreso);
         }
 
-        // Si el empleado está inactivo con fecha de salida, acumula hasta esa fecha
-        $estaInactivo   = strtoupper(trim($emp->estado)) === 'INACTIVO';
-        $fechaHasta     = ($estaInactivo && $emp->fecha_salida)
+        $estaInactivo = strtoupper(trim($emp->estado)) === 'INACTIVO';
+        $fechaHasta   = ($estaInactivo && $emp->fecha_salida)
             ? Carbon::parse($emp->fecha_salida)
             : Carbon::today();
 
-        // Base 360 días: días transcurridos / 360 × tasa anual (tasa × 12)
+        $info           = $this->tasaVacaciones($emp, $fechaHasta);
         $diasCalendario = max(0, $fechaCorte->diffInDays($fechaHasta));
-        $diasAcumulados = round($diasCalendario / 360 * ($tasa * 12), 2);
+        $diasAcumulados = round($diasCalendario / 360 * ($info['tasa_mensual'] * 12), 2);
         $saldoInicial   = (float) ($cabecera->dias_adicionales  ?? 0);
         $tomados        = (float) ($cabecera->total_dias_tomados ?? 0);
         $disponibles    = round($saldoInicial + $diasAcumulados - $tomados, 2);
 
         return [
-            "saldo_inicial"   => $saldoInicial,
-            "acumulado_a_hoy" => $diasAcumulados,
-            "tomados"         => $tomados,
-            "dias_disponibles"=> max(0, $disponibles),
+            "saldo_inicial"                => $saldoInicial,
+            "acumulado_a_hoy"              => $diasAcumulados,
+            "tomados"                      => $tomados,
+            "dias_disponibles"             => max(0, $disponibles),
+            "dias_anuales"                 => $info['dias_anuales'],
+            "dias_adicionales_antiguedad"  => $info['dias_adicionales_antiguedad'],
         ];
     }
 
