@@ -12,7 +12,7 @@
           <div class="ticker-vertical" :style="{ '--n': avisos.length }">
             <div v-for="(a, i) in [...avisos, ...avisos]" :key="i"
                  class="py-3 pr-4 border-b border-white/10 last:border-0">
-              <p class="text-white text-xs leading-relaxed">{{ a.texto }}</p>
+              <p class="text-white text-sm leading-relaxed">{{ a.texto }}</p>
             </div>
           </div>
         </div>
@@ -127,7 +127,7 @@
     <div v-if="avisos.length && direccion === 'horizontal'"
          class="w-full overflow-hidden bg-black/25 py-2.5 flex-shrink-0">
       <div class="ticker-horizontal whitespace-nowrap">
-        <span v-for="(a, i) in avisos" :key="i" class="inline-block text-white text-sm font-medium mx-12">
+        <span v-for="(a, i) in avisos" :key="i" class="inline-block text-white text-base font-medium mx-12">
           <span class="text-green-300 mr-2">&#9679;</span>{{ a.texto }}
         </span>
         <!-- Duplicado para loop continuo -->
