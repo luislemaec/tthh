@@ -271,14 +271,15 @@
               <th class="px-3 py-3 text-center text-white/80 font-semibold">SERCOP</th>
               <th class="px-3 py-3 text-center text-white/80 font-semibold">Sustituta</th>
               <th class="px-3 py-3 text-center text-white/80 font-semibold">H&lt;5</th>
+              <th class="px-3 py-3 text-left text-white/80 font-semibold">F. Ingreso</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="cargando">
-              <td colspan="12" class="text-center py-12 text-gray-400">Cargando...</td>
+              <td colspan="13" class="text-center py-12 text-gray-400">Cargando...</td>
             </tr>
             <tr v-else-if="!empleados.length">
-              <td colspan="12" class="text-center py-12 text-gray-400">Sin resultados para los filtros seleccionados</td>
+              <td colspan="13" class="text-center py-12 text-gray-400">Sin resultados para los filtros seleccionados</td>
             </tr>
             <tr v-for="(e, i) in empleadosPaginados" :key="e.id_emp"
               class="border-b border-gray-100 hover:bg-green-50/40 transition">
@@ -321,6 +322,9 @@
                   {{ e.hijos_menores_5 }}
                 </span>
                 <span v-else class="text-gray-300">—</span>
+              </td>
+              <td class="px-3 py-2 text-gray-500 font-mono text-xs whitespace-nowrap">
+                {{ e.fecha_ingreso?.substring(0,10) || '—' }}
               </td>
             </tr>
           </tbody>
