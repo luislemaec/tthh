@@ -33,9 +33,11 @@ use Illuminate\Support\Facades\Route;
 // Rutas PÚBLICAS
 Route::post("/login", [AuthController::class, "login"])->name("login");
 
-Route::get("/modo-mantenimiento", function () {
-    $valor = \Illuminate\Support\Facades\DB::table('dbo.d2_configuracion')
-        ->whereRaw("LOWER(concepto) = 'modo_mantenimiento'")
+Route::get("/modo-mantenimiento", function (\Illuminate\Http\Request $request) {
+    $modulo   = strtolower($request->get('modulo', 'th'));
+    $concepto = 'modo_mantenimiento_' . $modulo;
+    $valor    = \Illuminate\Support\Facades\DB::table('dbo.d2_configuracion')
+        ->whereRaw("LOWER(concepto) = ?", [$concepto])
         ->value('valor');
     return response()->json(['activo' => $valor === '1']);
 });

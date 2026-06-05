@@ -283,7 +283,7 @@ const esAdminOTH    = computed(() =>
 
 onMounted(async () => {
   try {
-    const { data } = await api.get('/modo-mantenimiento')
+    const { data } = await api.get('/modo-mantenimiento', { params: { modulo: 'TH' } })
     mantenimiento.value = data.activo
   } catch {}
 })

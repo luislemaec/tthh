@@ -501,6 +501,10 @@ VacacionesView.vue      # Solicitudes de vacaciones del empleado y supervisor
 views/admin/            # Roles, departamentos, turnos, configuración, IESS, avisos ticker
                         # ZktecoView.vue: tabla de dispositivos, toggle activo/inactivo, editar nombre, eliminar
 layouts/MainLayout.vue  # Layout del módulo RRHH (menú colapsado, se abre el grupo activo)
+                        # Modo mantenimiento: lee GET /api/modo-mantenimiento?modulo=TH
+                        #   Variable en d2_configuracion: MODO_MANTENIMIENTO_TH = 1 (activo) / 0
+                        #   Empleados → pantalla verde bloqueante con botón "Cerrar Sesión"
+                        #   ADMINISTRADOR / TALENTO HUMANO → banner naranja, pueden seguir trabajando
 ```
 
 ### Componentes reutilizables
@@ -771,6 +775,9 @@ views/adquisiciones/
                                    # Egresos:  EGRESO + REVERSO_INGRESO + AJUSTE_NEGATIVO
                                    # PDF landscape A4 verde institucional
 layouts/AdqLayout.vue              # Layout verde, roles ADQUISICIONES/BIENES
+                                   # Modo mantenimiento: variable MODO_MANTENIMIENTO_ADQ = 1
+                                   #   ADMINISTRADOR / ADQUISICIONES → banner naranja, siguen trabajando
+                                   #   Resto → pantalla verde oliva bloqueante con botón "Cerrar Sesión"
                                    # Menú colapsado por defecto, auto-abre el grupo de la ruta activa
 ```
 
@@ -880,6 +887,9 @@ views/transporte/
   MovilizacionView.vue        # Empleado solicita; TRANSPORTE aprueba/niega; conductor llena hoja de ruta
   ValesCombustibleView.vue    # CONDUCTOR + TRANSPORTE; guarda y abre PDF automáticamente
 layouts/TransporteLayout.vue  # Menú dinámico desde auth.menuAgrupado filtrado a transporte/
+                              # Modo mantenimiento: variable MODO_MANTENIMIENTO_TRANS = 1
+                              #   ADMINISTRADOR / TRANSPORTE → banner naranja, siguen trabajando
+                              #   Resto → pantalla azul oscuro bloqueante con botón "Cerrar Sesión"
                               # Notificaciones Web (Opción A): polling cada 30s a /notificaciones-pendientes
                               #   Pide permiso al montar; compara ultima_at para detectar nuevas solicitudes
                               #   new Notification() con clic → navega a /transporte/movilizacion
