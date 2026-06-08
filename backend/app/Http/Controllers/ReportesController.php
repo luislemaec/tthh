@@ -343,125 +343,130 @@ class ReportesController extends Controller
             'fecha_hasta' => 'required|date',
         ]);
 
-        $datos = collect();
+        $tipos = $request->get('tipos', 'VACACIONES,PERMISO,LICENCIA,COMISION');
+        if (!is_array($tipos)) $tipos = explode(',', $tipos);
+        $tipos = array_map('trim', $tipos);
 
-        // VACACIONES tomadas
-        $vac = DB::table('dbo.d2_vacacion as v')
-            ->join('dbo.ad_empleado as e', 'e.id_emp', '=', 'v.id_emp')
-            ->join('dbo.ad_departamento as d', 'd.id_depto', '=', 'e.id_depto')
-            ->where('v.estado_permiso', 'APROBADO')
-            ->whereDate('v.fecha_inicial', '>=', $request->fecha_desde)
-            ->whereDate('v.fecha_inicial', '<=', $request->fecha_hasta)
-            ->where('e.id_depto', '!=', 999)
-            ->select(
+        // Normalizar: aceptar con o sin tilde
+        $tipos = array_map(fn($t) => str_replace('COMISIÓN', 'COMISION', $t), $tipos);
+
+        $resultado = collect();
+
+        // Closure que aplica filtros comunes a cualquier query
+        $applyFilters = function ($q) use ($request) {
+            if ($request->filled('id_depto')) {
+                $q->where('e.id_depto', $request->id_depto);
+            }
+            if ($request->filled('id_emp')) {
+                $b = '%' . $request->id_emp . '%';
+                $q->whereRaw("(e.identificacion ILIKE ? OR e.apellido_emp ILIKE ? OR e.nombre_emp ILIKE ?)", [$b, $b, $b]);
+            }
+            return $q;
+        };
+
+        // VACACIONES
+        if (in_array('VACACIONES', $tipos)) {
+            $q = DB::table('dbo.d2_vacacion as v')
+                ->join('dbo.ad_empleado as e', 'e.id_emp', '=', 'v.id_emp')
+                ->join('dbo.ad_departamento as d', 'd.id_depto', '=', 'e.id_depto')
+                ->where('v.estado_permiso', 'APROBADO')
+                ->whereDate('v.fecha_inicial', '>=', $request->fecha_desde)
+                ->whereDate('v.fecha_inicial', '<=', $request->fecha_hasta)
+                ->where('e.id_depto', '!=', 999);
+            $applyFilters($q);
+            $rows = $q->select(
                 DB::raw("'VACACIONES' as tipo"),
                 'e.id_emp',
-                DB::raw("e.apellido_emp || ' ' || e.nombre_emp as nombre_completo"),
+                DB::raw("trim(e.apellido_emp) || ' ' || trim(e.nombre_emp) as nombre_completo"),
                 'd.nombre_depto',
                 'e.cargo_empleado',
                 DB::raw("v.fecha_inicial::date as fecha_desde"),
                 DB::raw("v.fecha_final::date as fecha_hasta"),
                 DB::raw("(v.fecha_final::date - v.fecha_inicial::date + 1) as dias"),
-                DB::raw("'Vacaciones aprobadas' as detalle"),
-                'v.observaciones'
-            );
+                DB::raw("'Vacaciones aprobadas' as detalle")
+            )->get();
+            $resultado = $resultado->concat($rows);
+        }
 
         // PERMISOS con descuento
-        $permisos = DB::table('dbo.d2_permiso as p')
-            ->join('dbo.ad_empleado as e', 'e.id_emp', '=', 'p.id_emp')
-            ->join('dbo.ad_departamento as d', 'd.id_depto', '=', 'e.id_depto')
-            ->where('p.estado_permiso', 'APROBADO')
-            ->where('p.descontable', 'SI')
-            ->whereDate('p.fecha_desde', '>=', $request->fecha_desde)
-            ->whereDate('p.fecha_desde', '<=', $request->fecha_hasta)
-            ->where('e.id_depto', '!=', 999)
-            ->select(
+        if (in_array('PERMISO', $tipos)) {
+            $q = DB::table('dbo.d2_permiso as p')
+                ->join('dbo.ad_empleado as e', 'e.id_emp', '=', 'p.id_emp')
+                ->join('dbo.ad_departamento as d', 'd.id_depto', '=', 'e.id_depto')
+                ->where('p.estado_permiso', 'APROBADO')
+                ->where('p.descontable', 'SI')
+                ->whereDate('p.fecha_desde', '>=', $request->fecha_desde)
+                ->whereDate('p.fecha_desde', '<=', $request->fecha_hasta)
+                ->where('e.id_depto', '!=', 999);
+            $applyFilters($q);
+            $rows = $q->select(
                 DB::raw("'PERMISO' as tipo"),
                 'e.id_emp',
-                DB::raw("e.apellido_emp || ' ' || e.nombre_emp as nombre_completo"),
+                DB::raw("trim(e.apellido_emp) || ' ' || trim(e.nombre_emp) as nombre_completo"),
                 'd.nombre_depto',
                 'e.cargo_empleado',
                 DB::raw("p.fecha_desde::date as fecha_desde"),
                 DB::raw("p.fecha_hasta::date as fecha_hasta"),
-                DB::raw("CASE WHEN p.todo_dia = 'SI'
-                    THEN (p.fecha_hasta::date - p.fecha_desde::date + 1)
-                    ELSE NULL END as dias"),
-                'p.razon as detalle',
-                'p.observaciones'
-            );
+                DB::raw("CASE WHEN p.todo_dia='SI' THEN (p.fecha_hasta::date - p.fecha_desde::date + 1) ELSE NULL END as dias"),
+                'p.razon as detalle'
+            )->get();
+            $resultado = $resultado->concat($rows);
+        }
 
         // LICENCIAS (permisos sin descuento)
-        $licencias = DB::table('dbo.d2_permiso as p')
-            ->join('dbo.ad_empleado as e', 'e.id_emp', '=', 'p.id_emp')
-            ->join('dbo.ad_departamento as d', 'd.id_depto', '=', 'e.id_depto')
-            ->where('p.estado_permiso', 'APROBADO')
-            ->where('p.descontable', 'NO')
-            ->whereDate('p.fecha_desde', '>=', $request->fecha_desde)
-            ->whereDate('p.fecha_desde', '<=', $request->fecha_hasta)
-            ->where('e.id_depto', '!=', 999)
-            ->select(
+        if (in_array('LICENCIA', $tipos)) {
+            $q = DB::table('dbo.d2_permiso as p')
+                ->join('dbo.ad_empleado as e', 'e.id_emp', '=', 'p.id_emp')
+                ->join('dbo.ad_departamento as d', 'd.id_depto', '=', 'e.id_depto')
+                ->where('p.estado_permiso', 'APROBADO')
+                ->where('p.descontable', 'NO')
+                ->whereDate('p.fecha_desde', '>=', $request->fecha_desde)
+                ->whereDate('p.fecha_desde', '<=', $request->fecha_hasta)
+                ->where('e.id_depto', '!=', 999);
+            $applyFilters($q);
+            $rows = $q->select(
                 DB::raw("'LICENCIA' as tipo"),
                 'e.id_emp',
-                DB::raw("e.apellido_emp || ' ' || e.nombre_emp as nombre_completo"),
+                DB::raw("trim(e.apellido_emp) || ' ' || trim(e.nombre_emp) as nombre_completo"),
                 'd.nombre_depto',
                 'e.cargo_empleado',
                 DB::raw("p.fecha_desde::date as fecha_desde"),
                 DB::raw("p.fecha_hasta::date as fecha_hasta"),
-                DB::raw("CASE WHEN p.todo_dia = 'SI'
-                    THEN (p.fecha_hasta::date - p.fecha_desde::date + 1)
-                    ELSE NULL END as dias"),
-                'p.razon as detalle',
-                'p.observaciones'
-            );
+                DB::raw("CASE WHEN p.todo_dia='SI' THEN (p.fecha_hasta::date - p.fecha_desde::date + 1) ELSE NULL END as dias"),
+                'p.razon as detalle'
+            )->get();
+            $resultado = $resultado->concat($rows);
+        }
 
-        // COMISIONES DE SERVICIOS
-        $comisiones = DB::table('dbo.vac_liquidacion_historico as l')
-            ->join('dbo.ad_empleado as e', 'e.id_emp', '=', 'l.id_emp')
-            ->join('dbo.ad_departamento as d', 'd.id_depto', '=', 'e.id_depto')
-            ->whereIn('l.motivo', ['INICIO_COMISION', 'FIN_COMISION_SALIDA'])
-            ->whereDate('l.fecha_evento', '>=', $request->fecha_desde)
-            ->whereDate('l.fecha_evento', '<=', $request->fecha_hasta)
-            ->where('e.id_depto', '!=', 999)
-            ->select(
-                DB::raw("'COMISIÓN' as tipo"),
+        // COMISIONES
+        if (in_array('COMISION', $tipos)) {
+            $q = DB::table('dbo.vac_liquidacion_historico as l')
+                ->join('dbo.ad_empleado as e', 'e.id_emp', '=', 'l.id_emp')
+                ->join('dbo.ad_departamento as d', 'd.id_depto', '=', 'e.id_depto')
+                ->whereIn('l.motivo', ['INICIO_COMISION', 'FIN_COMISION_SALIDA'])
+                ->whereDate('l.fecha_evento', '>=', $request->fecha_desde)
+                ->whereDate('l.fecha_evento', '<=', $request->fecha_hasta)
+                ->where('e.id_depto', '!=', 999);
+            $applyFilters($q);
+            $rows = $q->select(
+                DB::raw("'COMISION' as tipo"),
                 'e.id_emp',
-                DB::raw("e.apellido_emp || ' ' || e.nombre_emp as nombre_completo"),
+                DB::raw("trim(e.apellido_emp) || ' ' || trim(e.nombre_emp) as nombre_completo"),
                 'd.nombre_depto',
                 'e.cargo_empleado',
                 DB::raw("l.fecha_evento::date as fecha_desde"),
                 DB::raw("l.fecha_evento::date as fecha_hasta"),
                 DB::raw("NULL::integer as dias"),
-                'l.motivo as detalle',
-                'l.observacion as observaciones'
-            );
-
-        // Aplicar filtros comunes
-        foreach ([$vac, $permisos, $licencias, $comisiones] as $q) {
-            if ($request->filled('id_depto')) $q->where('e.id_depto', $request->id_depto);
-            if ($request->filled('id_emp')) {
-                $buscar = '%' . $request->id_emp . '%';
-                $q->whereRaw("(e.identificacion ILIKE ? OR e.apellido_emp ILIKE ? OR e.nombre_emp ILIKE ?)", [$buscar, $buscar, $buscar]);
-            }
+                'l.motivo as detalle'
+            )->get();
+            $resultado = $resultado->concat($rows);
         }
 
-        // Filtro por tipo
-        $tipos = $request->get('tipos', ['VACACIONES','PERMISO','LICENCIA','COMISIÓN']);
-        if (!is_array($tipos)) $tipos = explode(',', $tipos);
-
-        $union = null;
-        $map   = ['VACACIONES' => $vac, 'PERMISO' => $permisos, 'LICENCIA' => $licencias, 'COMISIÓN' => $comisiones];
-        foreach ($tipos as $t) {
-            if (!isset($map[$t])) continue;
-            $union = $union ? $union->unionAll($map[$t]) : $map[$t];
-        }
-
-        $resultado = $union
-            ? DB::table(DB::raw("({$union->toSql()}) as mov"))
-                ->mergeBindings($union)
-                ->orderBy('fecha_desde')
-                ->orderBy('nombre_completo')
-                ->get()
-            : collect();
+        // Ordenar en PHP por fecha y nombre
+        $resultado = $resultado->sortBy([
+            ['fecha_desde', 'asc'],
+            ['nombre_completo', 'asc'],
+        ])->values();
 
         $formato = $request->get('formato');
         if ($formato === 'excel') return $this->exportarMovimientosExcel($resultado, $request);

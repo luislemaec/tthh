@@ -85,6 +85,11 @@
       </template>
     </div>
 
+    <!-- Error de búsqueda -->
+    <div v-if="errorBuscar" class="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
+      {{ errorBuscar }}
+    </div>
+
     <!-- Reporte Atrasos -->
     <div v-if="tabActivo === 'atrasos'" class="bg-white rounded-xl shadow overflow-hidden">
       <div class="px-6 py-4 border-b flex items-center justify-between">
@@ -321,6 +326,7 @@ const tabActivo    = ref("atrasos")
 const datos        = ref([])
 const cargando     = ref(false)
 const exportando   = ref(false)
+const errorBuscar  = ref("")
 const departamentos = ref([])
 
 const tabs = [
@@ -334,7 +340,7 @@ const tiposMovimiento = [
   { value: "VACACIONES", label: "Vacaciones", clase: "text-emerald-700 font-medium", badgeClase: "bg-emerald-100 text-emerald-700" },
   { value: "PERMISO",    label: "Permisos",   clase: "text-yellow-700 font-medium",  badgeClase: "bg-yellow-100 text-yellow-700" },
   { value: "LICENCIA",   label: "Licencias",  clase: "text-indigo-700 font-medium",  badgeClase: "bg-indigo-100 text-indigo-700" },
-  { value: "COMISIÓN",   label: "Comisiones", clase: "text-pink-700 font-medium",    badgeClase: "bg-pink-100 text-pink-700" },
+  { value: "COMISION",   label: "Comisiones", clase: "text-pink-700 font-medium",    badgeClase: "bg-pink-100 text-pink-700" },
 ]
 
 const hoy = new Date().toISOString().substring(0, 10)
@@ -345,7 +351,7 @@ const filtros = ref({
   fecha_hasta: hoy,
   id_depto: "",
   id_emp: "",
-  tipos: ["VACACIONES","PERMISO","LICENCIA","COMISIÓN"],
+  tipos: ["VACACIONES","PERMISO","LICENCIA","COMISION"],
 })
 
 const decimalAHora = (val) => {
@@ -380,7 +386,7 @@ const badgeMovimiento = (tipo) => {
     "VACACIONES": "bg-emerald-100 text-emerald-700",
     "PERMISO":    "bg-yellow-100 text-yellow-700",
     "LICENCIA":   "bg-indigo-100 text-indigo-700",
-    "COMISIÓN":   "bg-pink-100 text-pink-700",
+    "COMISION":   "bg-pink-100 text-pink-700",
   }
   return clases[tipo] || "bg-gray-100 text-gray-700"
 }
@@ -408,11 +414,13 @@ const endpointActivo = () => {
 const buscar = async () => {
   if (!filtros.value.fecha_desde || !filtros.value.fecha_hasta) return
   cargando.value = true
+  errorBuscar.value = ""
   datos.value = []
   try {
     const { data } = await api.get(endpointActivo(), { params: buildParams() })
     datos.value = data
   } catch (e) {
+    errorBuscar.value = e.response?.data?.message || "Error al cargar el reporte. Revise los filtros e intente de nuevo."
     console.error(e)
   } finally {
     cargando.value = false
@@ -445,14 +453,15 @@ const exportar = async (formato) => {
 }
 
 const cambiarTab = (id) => {
-  tabActivo.value = id
-  datos.value     = []
-  filtros.value   = {
+  tabActivo.value   = id
+  datos.value       = []
+  errorBuscar.value = ""
+  filtros.value     = {
     fecha_desde: primerDiaMes,
     fecha_hasta: hoy,
     id_depto: "",
     id_emp: "",
-    tipos: ["VACACIONES","PERMISO","LICENCIA","COMISIÓN"],
+    tipos: ["VACACIONES","PERMISO","LICENCIA","COMISION"],
   }
 }
 
@@ -462,7 +471,7 @@ const limpiar = () => {
     fecha_hasta: hoy,
     id_depto: "",
     id_emp: "",
-    tipos: ["VACACIONES","PERMISO","LICENCIA","COMISIÓN"],
+    tipos: ["VACACIONES","PERMISO","LICENCIA","COMISION"],
   }
   datos.value = []
 }

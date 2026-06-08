@@ -36,7 +36,7 @@ td { padding: 4px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
 </table>
 
 @php
-  $claseTipo = ['VACACIONES'=>'vac','PERMISO'=>'perm','LICENCIA'=>'lic','COMISIÓN'=>'com'];
+  $claseTipo = ['VACACIONES'=>'vac','PERMISO'=>'perm','LICENCIA'=>'lic','COMISION'=>'com'];
 @endphp
 
 <table>
