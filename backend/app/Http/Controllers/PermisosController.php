@@ -195,9 +195,11 @@ class PermisosController extends Controller
 
         $razon = Razon::findOrFail($request->sec_permiso);
 
-        // Verificar que no tenga un permiso con fechas/horas que se crucen
+        // Verificar que no tenga un permiso del mismo tipo con fechas/horas que se crucen.
+        // Permisos de distinto tipo_horario (ej. ENTRADA y SALIDA) pueden coexistir el mismo día.
         $queryExiste = Permiso::where("id_emp", $emp->id_emp)
-            ->whereNotIn("estado_permiso", ["NEGADO", "ELIMINADO"])
+            ->whereNotIn("estado_permiso", ["NEGADO", "ELIMINADO", "ANULADO"])
+            ->where("tipo_horario", $request->tipo_horario)
             ->where(function($q) use ($request) {
                 $q->whereBetween("fecha_desde", [$request->fecha_desde, $request->fecha_hasta])
                   ->orWhereBetween("fecha_hasta", [$request->fecha_desde, $request->fecha_hasta]);
@@ -218,7 +220,7 @@ class PermisosController extends Controller
 
         if ($queryExiste->exists()) {
             return response()->json([
-                "message" => "Ya tienes un permiso registrado en ese horario"
+                "message" => "Ya tienes un permiso de ese tipo registrado en ese horario"
             ], 422);
         }
 
