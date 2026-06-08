@@ -261,12 +261,13 @@
         <div class="flex items-center gap-4">
           <!-- Resumen por tipo -->
           <div class="flex gap-2" v-if="datos.length > 0">
-            <span v-for="t in tiposMovimiento" :key="t.value"
-              v-if="contarTipo(t.value) > 0"
-              :class="t.badgeClase"
-              class="px-2 py-0.5 rounded-full text-xs font-medium">
-              {{ t.label }}: {{ contarTipo(t.value) }}
-            </span>
+            <template v-for="t in tiposMovimiento" :key="t.value">
+              <span v-if="contarTipo(t.value) > 0"
+                :class="t.badgeClase"
+                class="px-2 py-0.5 rounded-full text-xs font-medium">
+                {{ t.label }}: {{ contarTipo(t.value) }}
+              </span>
+            </template>
           </div>
           <span class="text-sm text-gray-400">{{ datos.length }} registros</span>
         </div>

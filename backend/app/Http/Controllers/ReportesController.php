@@ -506,7 +506,7 @@ class ReportesController extends Controller
             'VACACIONES' => 'FFD1FAE5',
             'PERMISO'    => 'FFFEF9C3',
             'LICENCIA'   => 'FFE0E7FF',
-            'COMISIÓN'   => 'FFFCE7F3',
+            'COMISION'   => 'FFFCE7F3',
         ];
 
         $fila = 6;
