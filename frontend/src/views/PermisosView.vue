@@ -33,6 +33,7 @@
         <option value="APROBADO">Aprobado</option>
         <option value="NEGADO">Negado</option>
         <option value="ELIMINADO">Eliminado</option>
+        <option value="ANULADO">Anulado</option>
       </select>
       <label class="flex items-center gap-2 cursor-pointer select-none text-sm text-gray-700 border rounded-lg px-3 py-2 hover:bg-gray-50"
         :class="filtros.descontable === 'SI' ? 'border-[#579186] bg-[#f0faf8]' : ''">
@@ -124,6 +125,12 @@
                     Eliminar
                   </button>
                 </template>
+                <!-- Anular: solo TH/ADMIN, permiso APROBADO -->
+                <button v-if="miRol.es_admin_th && p.estado_permiso === 'APROBADO'"
+                  @click="abrirModalAnular(p)"
+                  class="inline-flex items-center px-2.5 py-1 rounded-md border border-orange-300 text-xs text-orange-700 hover:bg-orange-50 font-medium transition-colors">
+                  Anular
+                </button>
               </div>
             </td>
           </tr>
@@ -405,6 +412,49 @@
       </div>
     </div>
 
+    <!-- Modal Anular Permiso Aprobado -->
+    <div v-if="modalAnular" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md space-y-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
+            <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+          </div>
+          <div>
+            <h2 class="text-lg font-semibold text-gray-700">Anular Permiso Aprobado</h2>
+            <p class="text-xs text-gray-500 mt-0.5">
+              {{ permisoSeleccionado?.empleado?.apellido_emp }}, {{ permisoSeleccionado?.empleado?.nombre_emp }}
+              &mdash; {{ permisoSeleccionado?.fecha_desde?.substring(0,10) }}
+            </p>
+          </div>
+        </div>
+        <div class="bg-orange-50 border border-orange-200 rounded-lg px-4 py-3 text-xs text-orange-700 space-y-1">
+          <p class="font-medium">Esta acción:</p>
+          <p>• Cambia el estado del permiso a ANULADO</p>
+          <p v-if="permisoSeleccionado?.descontable === 'SI'">• Revierte el descuento de vacaciones ya aplicado</p>
+          <p v-else>• El permiso era no descontable (sin afectación a vacaciones)</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">
+            Motivo de anulación <span class="text-red-500">*</span>
+          </label>
+          <textarea v-model="motivoAnulacion" rows="3" maxlength="120" placeholder="Ej: El empleado no hizo uso del permiso..."
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"></textarea>
+          <p v-if="errorAnular" class="text-red-500 text-xs mt-1">{{ errorAnular }}</p>
+        </div>
+        <div class="flex justify-end gap-3">
+          <button @click="modalAnular = false"
+            class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
+          <button @click="confirmarAnular" :disabled="anulando"
+            class="px-4 py-2 rounded-lg bg-orange-600 text-white text-sm hover:bg-orange-700 disabled:opacity-50">
+            {{ anulando ? "Anulando..." : "Confirmar Anulación" }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Modal Estadística -->
     <div v-if="modalEstadistica" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-3xl space-y-4">
@@ -539,6 +589,7 @@ const colorEstado = (estado) => {
     "APROBADO":  "bg-green-100 text-green-700",
     "NEGADO":    "bg-red-100 text-red-700",
     "ELIMINADO": "bg-gray-100 text-gray-700",
+    "ANULADO":   "bg-orange-100 text-orange-700",
   }
   return colores[estado] || "bg-gray-100 text-gray-700"
 }
@@ -726,6 +777,38 @@ const limpiarFiltros = () => {
   filtros.value = { estado: "", fecha_desde: "", fecha_hasta: "", descontable: "" }
   pagina.value  = 1
   cargar()
+}
+
+const modalAnular      = ref(false)
+const motivoAnulacion  = ref("")
+const errorAnular      = ref("")
+const anulando         = ref(false)
+
+const abrirModalAnular = (p) => {
+  permisoSeleccionado.value = p
+  motivoAnulacion.value     = ""
+  errorAnular.value         = ""
+  modalAnular.value         = true
+}
+
+const confirmarAnular = async () => {
+  if (!motivoAnulacion.value.trim()) {
+    errorAnular.value = "El motivo de anulación es obligatorio"
+    return
+  }
+  anulando.value = true
+  errorAnular.value = ""
+  try {
+    await api.patch(`/permisos/${permisoSeleccionado.value.secuencial_clave}/anular`, {
+      observacion_negacion: motivoAnulacion.value
+    })
+    modalAnular.value = false
+    cargar()
+  } catch (e) {
+    errorAnular.value = e.response?.data?.message || "Error al anular el permiso"
+  } finally {
+    anulando.value = false
+  }
 }
 
 const modalEstadistica = ref(false)

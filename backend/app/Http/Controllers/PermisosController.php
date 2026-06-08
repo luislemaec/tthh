@@ -534,6 +534,91 @@ class PermisosController extends Controller
         ]);
     }
 
+    // Anular permiso aprobado (solo TH/ADMIN) — revierte el descuento de vacaciones
+    public function anular(Request $request, $id)
+    {
+        $request->validate([
+            'observacion_negacion' => 'required|string|max:120',
+        ]);
+
+        $actor = $request->user();
+
+        if (!$this->esAdminOTH($actor->id_emp)) {
+            return response()->json(['message' => 'Solo Talento Humano o Administrador puede anular un permiso aprobado'], 403);
+        }
+
+        $permiso = Permiso::findOrFail($id);
+
+        if ($permiso->estado_permiso !== 'APROBADO') {
+            return response()->json(['message' => 'Solo se pueden anular permisos en estado APROBADO'], 422);
+        }
+
+        // Revertir descuento de vacaciones si era descontable
+        if ($permiso->descontable === 'SI') {
+            $empleado     = Empleado::with('jornada')->find($permiso->id_emp);
+            $horasJornada = $empleado?->jornada ? (float) $empleado->jornada->normal : 8.0;
+
+            if ($permiso->todo_dia === 'SI') {
+                $diasDescuento = Carbon::parse($permiso->fecha_desde)
+                    ->diffInDays(Carbon::parse($permiso->fecha_hasta)) + 1;
+            } else {
+                $horas         = Carbon::parse($permiso->hora_desde)
+                    ->diffInMinutes(Carbon::parse($permiso->hora_hasta)) / 60;
+                $diasDescuento = round($horas / $horasJornada, 4);
+            }
+
+            $cabecera = CabeceraVacacion::where('id_emp', $permiso->id_emp)->first();
+            if ($cabecera) {
+                $cabecera->dias_x_tomar_normal = round((float)($cabecera->dias_x_tomar_normal ?? 0) + $diasDescuento, 4);
+                $cabecera->total_dias_tomados  = max(0, round((float)($cabecera->total_dias_tomados ?? 0) - $diasDescuento, 4));
+                $cabecera->save();
+            }
+        }
+
+        // Revertir actualización del cuadre
+        $campo       = $permiso->descontable === 'SI' ? 'horas_decto' : 'horaspermiso_pag';
+        $diasRango   = $permiso->todo_dia === 'SI'
+            ? (Carbon::parse($permiso->fecha_desde)->diffInDays(Carbon::parse($permiso->fecha_hasta)) + 1)
+            : 1;
+
+        if ($permiso->todo_dia === 'SI') {
+            $diasXDia = 1;
+        } else {
+            $empleado     = $empleado ?? Empleado::with('jornada')->find($permiso->id_emp);
+            $horasJornada = $empleado?->jornada ? (float) $empleado->jornada->normal : 8.0;
+            $horas        = Carbon::parse($permiso->hora_desde)
+                ->diffInMinutes(Carbon::parse($permiso->hora_hasta)) / 60;
+            $diasXDia     = round($horas / $horasJornada, 4);
+        }
+
+        $fechaActual = Carbon::parse($permiso->fecha_desde);
+        for ($i = 0; $i < $diasRango; $i++) {
+            DB::table('dbo.d2_cuadre_marcacion')
+                ->where('id_emp', $permiso->id_emp)
+                ->whereDate('fecha', $fechaActual->toDateString())
+                ->update([
+                    $campo => DB::raw("GREATEST(0, COALESCE($campo, 0) - $diasXDia)"),
+                ]);
+            $fechaActual->addDay();
+        }
+
+        $permiso->update([
+            'estado_permiso'       => 'ANULADO',
+            'observacion_negacion' => $request->observacion_negacion,
+            'usuario'              => $actor->id_emp,
+        ]);
+
+        AuditoriaService::log('dbo.d2_permiso', $permiso->id, 'ANULAR',
+            ['estado_permiso' => 'APROBADO', 'descontable' => $permiso->descontable],
+            ['estado_permiso' => 'ANULADO', 'observacion' => $request->observacion_negacion],
+            $request, "Anulación de permiso aprobado: {$permiso->id_emp}");
+
+        return response()->json([
+            'message' => 'Permiso anulado y descuento revertido correctamente',
+            'permiso' => $permiso->load(['empleado', 'razonPermiso']),
+        ]);
+    }
+
     // Listar razones
     public function razones()
     {

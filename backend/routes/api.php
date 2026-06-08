@@ -213,6 +213,7 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::get("/permisos/{id}",                                   [PermisosController::class, "show"]);
     Route::patch("/permisos/{id}/aprobar",                         [PermisosController::class, "aprobar"]);
     Route::patch("/permisos/{id}/negar",                           [PermisosController::class, "negar"]);
+    Route::patch("/permisos/{id}/anular",                          [PermisosController::class, "anular"]);
     Route::delete("/permisos/{id}",                                [PermisosController::class, "destroy"]);
     Route::get("/permisos/{id}/documentos",                        [PermisosController::class, "listarDocumentos"]);
     Route::post("/permisos/{id}/documentos",                       [PermisosController::class, "subirDocumento"]);
@@ -223,9 +224,10 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::post("/cuadre/procesar",  [CuadreController::class, "procesar"]);
     Route::get("/cuadre/listado",    [CuadreController::class, "listado"]);
 
-    // Reportes
+    // Reportes (soportan ?formato=excel|pdf)
     Route::get("/reportes/atrasos",               [ReportesController::class, "atrasos"]);
     Route::get("/reportes/marcaciones-faltantes", [ReportesController::class, "marcacionesFaltantes"]);
+    Route::get("/reportes/movimientos-personal",  [ReportesController::class, "movimientosPersonal"]);
 
     // Períodos de planificación (TH admin)
     Route::get("/admin/periodos-planificacion",          [PeriodoPlanificacionController::class, "index"]);
