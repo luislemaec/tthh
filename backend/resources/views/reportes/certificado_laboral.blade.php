@@ -5,7 +5,7 @@
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: Arial, sans-serif; font-size: 10.5pt; color: #000; }
-  @page { margin: 22mm 25mm 22mm 25mm; size: a4 portrait; }
+  @page { margin: 2.5cm 2.5cm 2.5cm 2.5cm; size: a4 portrait; }
 
   .header-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
   .footer { font-size: 7.5pt; color: #555; text-align: right; margin-top: 30px; }
