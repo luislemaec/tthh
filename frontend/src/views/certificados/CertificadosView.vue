@@ -102,7 +102,7 @@
                 <div class="text-xs text-gray-400">{{ cert.empleado?.identificacion }}</div>
               </td>
               <td class="px-4 py-3 text-gray-500 text-xs">{{ cert.empleado?.cargo_empleado || '—' }}</td>
-              <td class="px-4 py-3 text-center text-xs font-mono">{{ cert.fecha_emision }}</td>
+              <td class="px-4 py-3 text-center text-xs font-mono">{{ cert.fecha_emision?.substring(0, 10) }}</td>
               <td class="px-4 py-3 text-gray-500 text-xs">
                 {{ cert.emisor?.apellido_emp }} {{ cert.emisor?.nombre_emp }}
               </td>
