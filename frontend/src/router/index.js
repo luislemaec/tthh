@@ -61,6 +61,7 @@ const routes = [
       { path: 'nomina/decimos',        name: 'NominaDecimos',       component: () => import('@/views/nomina/DecimosView.vue') },
       { path: 'nomina/fondos-reserva', name: 'NominaFondosReserva', component: () => import('@/views/nomina/FondosReservaView.vue') },
       { path: 'nomina/rol-pago',       name: 'NominaRolPago',       component: () => import('@/views/nomina/RolPagoView.vue') },
+      { path: 'certificados-laborales', name: 'CertificadosLaborales', component: () => import('@/views/certificados/CertificadosView.vue') },
     ],
   },
   // ── Adquisiciones ──────────────────────────────────────────────────────────

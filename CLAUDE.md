@@ -193,11 +193,13 @@ setTimeout(() => URL.revokeObjectURL(url), 60000)   // revocar después de 60s, 
 | `PlanificacionVacController` | Planificación anual de vacaciones — estados `ELIMINADO` y `NEGADO` permiten re-planificar; fechas de períodos se validan contra el año planificado |
 | `LiquidacionVacController` | Liquidación por comisión/desvinculación |
 | `ReportePlanificacionController` | PDF planificación + subida Alfresco |
-| `PermisosController` | Permisos y licencias |
+| `PermisosController` | Permisos y licencias — incluye `anular()` para TH/Admin |
 | `AsistenciaController` | Marcaciones y reportes de asistencia |
 | `CuadreController` | Conciliación de asistencia (atrasos) |
 | `HorasExtrasController` | Planificación y registro de horas extras |
 | `DashboardController` | Estadísticas del dashboard — Admin/TH: métricas globales; Supervisor: pendientes + equipo hoy; TH: gráfico atrasos por coordinación |
+| `ReportesController` | Reportes de atrasos, marcaciones no realizadas y movimientos de personal — todos con export Excel/PDF |
+| `CertificadoLaboralController` | Certificados laborales — emitir (PDF+Alfresco), historial, re-descargar |
 | `Admin/*` | Departamentos, causas, turnos, horarios, calendario, configuración, aportes IESS |
 
 ### Empleados (`dbo.ad_empleado`)
@@ -236,7 +238,12 @@ Campos clave de `sg_control_persona`: `nro_documento` (= id_emp), `clasificacion
 
 **Marcación biométrica:** el reloj ZKTeco escribe en esta misma tabla con `tipo_marcacion = 'BIOMETRICO'`. El sistema asigna el concepto por secuencia del día sin importar el origen — se pueden combinar libremente marcaciones WEB, TELETRABAJO y BIOMETRICO.
 
-**Cuadre** (`dbo.d2_cuadre_marcacion`): tabla con atrasos en minutos por día por empleado (`atraso_entrada`, `atraso_lunch`, `atraso_salida`). Se usa en el reporte personal de asistencia para mostrar atrasos y si están justificados por permisos aprobados.
+**Cuadre** (`dbo.d2_cuadre_marcacion`): tabla con atrasos en minutos por día por empleado (`atraso_entrada`, `atraso_lunch`, `atraso_salida`, `horas_decto`, `horaspermiso_pag`). Se usa en el reporte personal de asistencia para mostrar atrasos y si están justificados por permisos aprobados.
+
+**`ProcesarCuadre.php` — lógica de permisos aprobados:** antes de calcular atrasos, carga todos los permisos APROBADO del empleado para ese día desde `dbo.d2_permiso`:
+- `tipo_horario = 'ENTRADA'` → define `$entradaJustificada` (hora hasta la que puede llegar tarde sin penalidad). Si `hora_real <= entradaJustificada` → `atraso_entrada = 0`.
+- `tipo_horario = 'SALIDA'` → define `$salidaJustificada` (hora mínima de salida sin penalidad). Si `hora_real >= salidaJustificada` → `atraso_salida = 0`. Si `hora_real < salidaJustificada` → `atraso_salida = minutos(salidaJustificada - hora_real)`.
+- `todo_dia = 'SI'` → `entradaJustificada = 99.0` y `salidaJustificada = 0.0` (todo el día justificado).
 
 ### Vacaciones — cálculo de saldo
 
@@ -289,6 +296,37 @@ Auto-cierre corre en cada `index()` para SUBROGACION y VACACIONES con `fecha_fin
 ### Vacaciones — backup al aprobar
 
 Al aprobar una solicitud de vacaciones, el supervisor debe seleccionar un empleado de backup del mismo departamento. Campos en `dbo.d2_vacacion`: `backup_id` (VARCHAR 20, nullable), `backup_nombre` (VARCHAR 300, nullable). Migración `000055`. El endpoint `PATCH /api/vacaciones/{id}/aprobar` acepta `backup_id` y `backup_nombre` opcionales. Endpoint auxiliar: `GET /api/vacaciones/{id}/empleados-depto` — lista empleados activos del mismo departamento del solicitante.
+
+### Permisos y Licencias (`dbo.d2_permiso`)
+
+**Estados:** `PENDIENTE → APROBADO / NEGADO / ELIMINADO / ANULADO`
+
+**`tipo_horario`:** `ENTRADA` / `ENTRE JORNADA` / `SALIDA`. Determina qué parte del día justifica:
+- `ENTRADA`: justifica llegada tarde (cuadre compara con hora_hasta del permiso)
+- `SALIDA`: justifica salida anticipada (cuadre compara con hora_desde del permiso)
+- `ENTRE JORNADA`: justifica atraso de retorno del lunch
+
+**Descuento de vacaciones:** ocurre **inmediatamente al aprobar** (no en el cuadre nocturno). Se calcula sobre las horas del permiso (`hora_desde`/`hora_hasta`), no sobre la marcación real del empleado.
+```php
+$diasDescuento = round(diffInMinutes(hora_desde, hora_hasta) / 60 / $horasJornada, 4);
+```
+
+**Validación de solapamiento:** la validación al crear un permiso filtra por `tipo_horario` — un permiso ENTRADA **no bloquea** la creación de un permiso SALIDA del mismo día aunque compartan rango de fechas. Solo bloquea permisos del **mismo tipo** que se crucen en horario.
+
+**`PATCH /api/permisos/{id}/anular`** — solo ADMINISTRADOR / TALENTO HUMANO:
+- Requiere campo `observacion_negacion` (motivo)
+- Cambia estado a `ANULADO`
+- Si `descontable = 'SI'`: revierte el descuento sumando `diasDescuento` de vuelta al saldo de vacaciones
+- Revierte el campo correspondiente en `d2_cuadre_marcacion` del día del permiso
+- Uso: permiso aprobado que el empleado no utilizó (ej. salió a su hora normal)
+
+**Vista personal de asistencia:** muestra `atraso` (minutos medidos) + `justificado`:
+- `"TOTAL"` si `minutos_permiso >= atraso` → badge verde "Justificado"
+- `"PARCIAL"` si `minutos_permiso > 0 pero < atraso` → badge naranja
+- `"NO"` → badge rojo
+- El "14min Justificado" significa: llegaste 14 min tarde PERO hay un permiso que lo cubre → no se descuenta. No indica minutos pendientes de descuento.
+
+**Advertencia de tipo_horario:** un permiso con `tipo_horario = 'ENTRADA'` y horas amplias (ej. 10:00-16:30) puede hacer que el cuadre y la vista personal muestren el día como "Justificado" para la entrada aunque el rango no tenga sentido semánticamente. Verificar que el tipo_horario sea correcto al crear permisos.
 
 ### Liquidación de Vacaciones
 
@@ -443,6 +481,9 @@ views/permisos/         # Permisos y licencias — fecha_desde/fecha_hasta defau
                         #   - Carpeta Alfresco: permisos/{año}/{cedula_APELLIDO}/
                         #   - Rutas: GET|POST /permisos/{id}/documentos, GET|DELETE /permisos/{id}/documentos/{docId}/descargar
                         #   - Descarga usa blob URL con window.open + revoke después de 60s
+                        # Estado ANULADO: badge naranja en tabla; botón "Anular" visible para TH/Admin
+                        #   en permisos con estado APROBADO; abre modal con campo motivo obligatorio
+                        # Filtro de estado incluye opción "ANULADO" en el select de estados
 DashboardView.vue       # Admin/TH: métricas globales (Empleados, Departamentos, Permisos)
                         # Supervisor (no admin): 4 tarjetas pendientes (permisos/vacaciones/HE/materiales)
                         #   + widget "Mi equipo hoy" (presentes/permiso/vacaciones/sin marcar + barra)
@@ -487,9 +528,41 @@ views/asistencia/
   ReporteSinAtrasosView.vue  # Vista standalone (ruta asistencia/sin-atrasos) — INTEGRADA también como tercer tab
                              # en views/reportes/ReportesView.vue (tab "Sin Atrasos")
 views/reportes/
-  ReportesView.vue           # 3 tabs: Atrasos | Marcaciones No Realizadas | Sin Atrasos
+  ReportesView.vue           # 4 tabs: Atrasos | Marcaciones No Realizadas | Sin Atrasos | Movimientos de Personal
+                             # Filtros comunes: fecha_desde, fecha_hasta, departamento, empleado
                              # Filtros depto/empleado se ocultan automáticamente en tab "Sin Atrasos"
-                             # APIs: GET /reportes/atrasos | /reportes/marcaciones-faltantes | /asistencia/reporte-sin-atrasos
+                             # Botones Excel + PDF visibles cuando datos.length > 0 (excepto tab Sin Atrasos)
+                             # Export usa blob URL + a.download (no window.open)
+                             # IMPORTANTE Vue 3: nunca poner v-for y v-if en el mismo elemento — usar
+                             #   <template v-for><span v-if> anidado. Si ambos están en el mismo tag
+                             #   Vue 3 evalúa v-if primero (antes de v-for) → variable del loop es undefined → crash
+                             #
+                             # Tab "Atrasos":
+                             #   API: GET /reportes/atrasos?fecha_desde&fecha_hasta[&id_depto][&id_emp][&formato=excel|pdf]
+                             #   Fuente: d2_cuadre_marcacion con permisos aprobados como subquery
+                             #   Solo muestra registros con minutos_pendientes > 0 (filtra totalmente justificados)
+                             #   Columna "Justificación": "Parcial (Xmin pend.)" o "Sin justificar"
+                             #   PDF: reporte_atrasos.blade.php (landscape A4)
+                             #
+                             # Tab "Marcaciones No Realizadas":
+                             #   API: GET /reportes/marcaciones-faltantes?... [&formato=excel|pdf]
+                             #   Cruza todos los empleados activos × fechas del rango; muestra solo días con ≥1 marcación faltante
+                             #   PDF: reporte_faltantes.blade.php (landscape A4)
+                             #
+                             # Tab "Sin Atrasos":
+                             #   API: GET /asistencia/reporte-sin-atrasos (sin export)
+                             #
+                             # Tab "Movimientos de Personal":
+                             #   API: GET /reportes/movimientos-personal?fecha_desde&fecha_hasta[&id_depto][&id_emp][&tipos=...][&formato=excel|pdf]
+                             #   Parámetro tipos: valores separados por coma — VACACIONES,PERMISO,LICENCIA,COMISION (default: todos)
+                             #   Fuentes por tipo (queries separadas, merge en PHP con collect()->concat()):
+                             #     VACACIONES → d2_vacacion (estado_permiso=APROBADO, fecha_inicial en rango)
+                             #     PERMISO    → d2_permiso (descontable=SI, estado=APROBADO, fecha_desde en rango)
+                             #     LICENCIA   → d2_permiso (descontable=NO, estado=APROBADO, fecha_desde en rango)
+                             #     COMISION   → vac_liquidacion_historico (motivo IN INICIO_COMISION/FIN_COMISION_SALIDA)
+                             #   Columnas: Tipo (badge de color), Empleado, Cargo, Departamento, Fecha Desde, Fecha Hasta, Días, Detalle
+                             #   PDF: reporte_movimientos.blade.php (landscape A4)
+                             #   Nota: COMISION se usa sin tilde en todo el código (parámetros URL, lógica PHP, template)
 VacacionesView.vue      # Solicitudes de vacaciones del empleado y supervisor
                         # Tabla muestra: Empleado, Fecha Inicio, Fecha Fin, Días (calculado), Estado, Acciones
                         #   Columna "Días" = diferencia en días inclusiva (fecha_final - fecha_inicial + 1)
@@ -498,6 +571,17 @@ VacacionesView.vue      # Solicitudes de vacaciones del empleado y supervisor
                         #   Bloque recordatorio: si el empleado tiene planificación APROBADO/REPLANIFICADO del año
                         #   actual, muestra sus períodos planificados como referencia (GET /planificacion/mi-planificacion)
                         # "Ver detalle por período" eliminado — tabla d2_detalle_vacacion vacía (sin migración)
+views/certificados/
+  CertificadosView.vue    # Certificados laborales — solo TH / ADMINISTRADOR
+                          # Panel superior: buscador de empleado con debounce 300ms + dropdown de resultados
+                          #   Al seleccionar → chip verde con datos del empleado + botón "Cambiar"
+                          #   Botón "Generar Certificado" → modal de confirmación con datos del empleado
+                          #   Modal → POST /api/certificados-laborales → respuesta blob PDF + descarga directa
+                          #   Número en encabezado del header: X-Numero de la respuesta HTTP
+                          # Panel filtros: búsqueda de empleado, fecha_desde, fecha_hasta (default: 1-ene a hoy)
+                          # Historial paginado (30/pág): N° Certificado (mono verde), Empleado+cédula, Cargo,
+                          #   Fecha Emisión, Emitido por, botón PDF (descarga desde Alfresco)
+                          # Ruta Vue: certificados-laborales → CertificadosLaborales
 views/admin/            # Roles, departamentos, turnos, configuración, IESS, avisos ticker
                         # ZktecoView.vue: tabla de dispositivos, toggle activo/inactivo, editar nombre, eliminar
 layouts/MainLayout.vue  # Layout del módulo RRHH (menú colapsado, se abre el grupo activo)
@@ -532,8 +616,9 @@ Implementada para trazabilidad ante la Contraloría General del Estado. Todas la
 | `EmpleadoController` | CREAR, ACTUALIZAR |
 | `RolController` | ASIGNAR_ROL, REVOCAR_ROL |
 | `VacacionesController` | APROBAR, NEGAR, ELIMINAR |
-| `PermisosController` | APROBAR, NEGAR, ELIMINAR |
+| `PermisosController` | APROBAR, NEGAR, ELIMINAR, ANULAR |
 | `HorasExtrasController` | APROBAR, NEGAR, AUTORIZAR, CONFIRMAR, NEGAR (registro) |
+| `CertificadoLaboralController` | EMITIR |
 | `Admin/ConfiguracionController` | ACTUALIZAR (valor anterior/nuevo) |
 | `NominaController` | (vía AuditoriaService desde registrarAuditoria()) |
 | `Adquisiciones/OrdenCompraController` | CONFIRMAR_INGRESO, REVERSAR_INGRESO |
@@ -563,6 +648,54 @@ El filtro de módulo "Talento" en `AuditoriaController` incluye `tabla = 'auth'`
 ### Si se agrega un nuevo módulo
 
 Instrumentar sus controladores con `AuditoriaService::log()` en las acciones irreversibles (aprobar, confirmar, eliminar, cambios de estado).
+
+---
+
+## Certificados Laborales (`dbo.d2_certificado_laboral`)
+
+Módulo para emitir y archivar certificados laborales. Solo accesible por ADMINISTRADOR / TALENTO HUMANO.
+
+### Tabla
+
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `id` | bigint PK | — |
+| `numero` | varchar(25) unique | Formato `DATH-CL-NNN-YYYY`; NNN reinicia cada año |
+| `id_emp` | varchar(20) | Empleado certificado |
+| `fecha_emision` | date | Fecha de emisión |
+| `alfresco_id` | varchar(100) nullable | Node ID en Alfresco |
+| `nombre_archivo` | varchar(200) nullable | Nombre del PDF |
+| `usuario_emision` | varchar(20) | Empleado que lo emitió |
+| `created_at` / `updated_at` | timestamps | Auditoría automática |
+
+Migración: `000072`. Modelo: `App\Models\CertificadoLaboral` — relaciones `empleado()` y `emisor()` (ambas a `Empleado`; `emisor` evita conflicto con la columna `usuario_emision`).
+
+### Numeración
+
+`DATH-CL-{SEQ}-{AÑO}` — SEQ con 3 dígitos y cero a la izquierda, reinicia a 001 cada año. Query: `MAX(CAST(SPLIT_PART(numero, '-', 3) AS INTEGER))` filtrando por `whereYear('fecha_emision', $año)`.
+
+### PDF (`certificado_laboral.blade.php`)
+
+Portrait A4. Texto adaptado al género del empleado (`sexo` = MASCULINO/FEMENINO/NULL):
+- `el señor` / `la señora` · `portador` / `portadora` · `el interesado` / `la interesada`
+- NULL → masculino por defecto
+- Firmantes leídos de `d2_configuracion`: `FIRMANTE_TH_NOMBRE` / `FIRMANTE_TH_CARGO`
+- Texto fijo: "para los fines que estime conveniente" (sin campo motivo)
+
+### Rutas
+
+| Método | Ruta | Función |
+|---|---|---|
+| GET | `/api/certificados-laborales` | Historial paginado (30/pág) con filtros id_emp/fecha_desde/fecha_hasta |
+| POST | `/api/certificados-laborales` | Emitir certificado (valida ACTIVO, genera PDF, sube Alfresco, audita) |
+| GET | `/api/certificados-laborales/{id}/descargar` | Re-descarga desde Alfresco |
+
+Alfresco: carpeta `certificados-laborales/{año}/{cedula_APELLIDO}/` via `relativePath`.
+Si Alfresco no disponible, el certificado igual se genera y guarda en BD (try/catch).
+
+### Vista
+
+`views/certificados/CertificadosView.vue` — ruta `certificados-laborales`. Agregar opción de menú en Admin → Opciones de Menú con roles TH/ADMINISTRADOR.
 
 ---
 
