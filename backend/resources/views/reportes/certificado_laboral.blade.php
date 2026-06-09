@@ -40,8 +40,6 @@
   $cedula = trim($empleado->identificacion);
 @endphp
 
-<div style="padding-left:3cm; padding-right:3cm;">
-
 {{-- Fecha alineada a la derecha --}}
 <p style="text-align:right; margin-bottom:25px;">
   {{ $ciudad }}, {{ $fechaStr }}
@@ -85,8 +83,6 @@
 <p class="footer">
   Generado por: {{ strtoupper($generadoPor) }} &nbsp;&nbsp;|&nbsp;&nbsp; {{ now()->format('d/m/Y H:i') }}
 </p>
-
-</div>
 
 </body>
 </html>
