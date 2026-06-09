@@ -20,9 +20,9 @@ class CertificadoLaboralController extends Controller
     private function esAdminOTH(string $idEmp): bool
     {
         return DB::table('dbo.admin_usuario_rol as ur')
-            ->join('dbo.admin_rol as r', 'r.id_rol', '=', 'ur.id_rol')
+            ->join('dbo.admin_rol as r', 'ur.id_rol', '=', 'r.id')
             ->where('ur.id_emp', $idEmp)
-            ->whereIn('r.nombre_rol', ['ADMINISTRADOR', 'TALENTO HUMANO'])
+            ->whereIn('r.descripcion', ['ADMINISTRADOR', 'TALENTO HUMANO'])
             ->exists();
     }
 
