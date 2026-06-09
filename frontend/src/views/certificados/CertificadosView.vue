@@ -203,7 +203,7 @@ const buscarEmpleado = () => {
   busquedaTimer = setTimeout(async () => {
     try {
       const { data } = await api.get("/empleados", {
-        params: { buscar: busquedaEmp.value, estado: "ACTIVO", per_page: 10 }
+        params: { buscar: busquedaEmp.value, per_page: 10 }
       })
       resultadosBusqueda.value = data.data ?? data
     } catch { resultadosBusqueda.value = [] }

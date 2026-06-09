@@ -111,9 +111,6 @@ class CertificadoLaboralController extends Controller
         if (!$empleado) {
             return response()->json(['message' => 'Empleado no encontrado'], 404);
         }
-        if (strtoupper($empleado->estado) !== 'ACTIVO') {
-            return response()->json(['message' => 'Solo se pueden emitir certificados para empleados activos'], 422);
-        }
 
         // Generar número correlativo: DATH-CL-NNN-YYYY
         $año   = now()->year;
@@ -141,15 +138,23 @@ class CertificadoLaboralController extends Controller
         $fechaStr = $hoy->day . ' de ' . $meses[$hoy->month] . ' de ' . $hoy->year;
 
         // Fecha de ingreso en español
-        $fi     = Carbon::parse($empleado->fecha_ingreso);
+        $fi          = Carbon::parse($empleado->fecha_ingreso);
         $fechaIngStr = $fi->day . ' de ' . $meses[$fi->month] . ' de ' . $fi->year;
+
+        // Fecha de salida (solo inactivos)
+        $activo      = strtoupper($empleado->estado) === 'ACTIVO';
+        $fechaSalStr = null;
+        if (!$activo && $empleado->fecha_salida) {
+            $fs          = Carbon::parse($empleado->fecha_salida);
+            $fechaSalStr = $fs->day . ' de ' . $meses[$fs->month] . ' de ' . $fs->year;
+        }
 
         $logo        = base64_encode(file_get_contents(public_path('logo.png')));
         $generadoPor = trim($actor->apellido_emp) . ' ' . trim($actor->nombre_emp);
 
         $pdf = Pdf::loadView('reportes.certificado_laboral', compact(
             'empleado', 'numero', 'nombreInst', 'firmanteNom', 'firmanteCar',
-            'ciudad', 'fechaStr', 'fechaIngStr', 'logo', 'generadoPor'
+            'ciudad', 'fechaStr', 'fechaIngStr', 'fechaSalStr', 'activo', 'logo', 'generadoPor'
         ))->setPaper('a4', 'portrait');
 
         $pdfContent  = $pdf->output();
