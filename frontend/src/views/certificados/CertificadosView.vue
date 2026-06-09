@@ -107,16 +107,30 @@
                 {{ cert.emisor?.apellido_emp }} {{ cert.emisor?.nombre_emp }}
               </td>
               <td class="px-4 py-3 text-center">
-                <button v-if="cert.alfresco_id" @click="descargar(cert)"
-                  :disabled="descargando === cert.id"
-                  class="inline-flex items-center gap-1 text-xs text-red-600 border border-red-300 px-2 py-1 rounded hover:bg-red-50 disabled:opacity-50">
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
-                  </svg>
-                  {{ descargando === cert.id ? '...' : 'PDF' }}
-                </button>
-                <span v-else class="text-xs text-gray-300">Sin PDF</span>
+                <div class="flex items-center justify-center gap-1">
+                  <!-- Sin firmado: mostrar botón subir -->
+                  <label v-if="!cert.alfresco_id"
+                    class="inline-flex items-center gap-1 text-xs text-blue-600 border border-blue-300 px-2 py-1 rounded hover:bg-blue-50 cursor-pointer"
+                    :class="{ 'opacity-50 pointer-events-none': subiendo === cert.id }">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                    </svg>
+                    {{ subiendo === cert.id ? '...' : 'Subir firmado' }}
+                    <input type="file" accept=".pdf" class="hidden"
+                      @change="subirFirmado(cert, $event)" />
+                  </label>
+                  <!-- Con firmado: descargar -->
+                  <button v-if="cert.alfresco_id" @click="descargar(cert)"
+                    :disabled="descargando === cert.id"
+                    class="inline-flex items-center gap-1 text-xs text-red-600 border border-red-300 px-2 py-1 rounded hover:bg-red-50 disabled:opacity-50">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                    </svg>
+                    {{ descargando === cert.id ? '...' : 'PDF' }}
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>
@@ -243,7 +257,16 @@ const confirmarGenerar = async () => {
     limpiarSeleccion()
     cargarHistorial()
   } catch (e) {
-    errorGenerar.value = e.response?.data?.message || "Error al generar el certificado"
+    try {
+      // responseType blob: el error llega como Blob, hay que leerlo como texto
+      const text = e.response?.data instanceof Blob
+        ? await e.response.data.text()
+        : null
+      const json = text ? JSON.parse(text) : null
+      errorGenerar.value = json?.message || e.response?.data?.message || "Error al generar el certificado"
+    } catch {
+      errorGenerar.value = "Error al generar el certificado"
+    }
   } finally {
     generando.value = false
   }
@@ -256,6 +279,7 @@ const total         = ref(0)
 const totalPaginas  = ref(1)
 const pagina        = ref(1)
 const descargando   = ref(null)
+const subiendo      = ref(null)
 
 const hoy           = new Date().toISOString().substring(0, 10)
 const primerDiaMes  = new Date(new Date().getFullYear(), 0, 1).toISOString().substring(0, 10)
@@ -285,6 +309,25 @@ const limpiarFiltros = () => {
   filtros.value = { buscar: "", fecha_desde: primerDiaMes, fecha_hasta: hoy }
   pagina.value  = 1
   cargarHistorial()
+}
+
+const subirFirmado = async (cert, event) => {
+  const file = event.target.files[0]
+  if (!file) return
+  subiendo.value = cert.id
+  try {
+    const form = new FormData()
+    form.append("archivo", file)
+    await api.post(`/certificados-laborales/${cert.id}/subir-firmado`, form, {
+      headers: { "Content-Type": "multipart/form-data" }
+    })
+    await cargarHistorial()
+  } catch (e) {
+    alert(e.response?.data?.message || "No se pudo subir el archivo")
+  } finally {
+    subiendo.value = null
+    event.target.value = ""
+  }
 }
 
 const descargar = async (cert) => {

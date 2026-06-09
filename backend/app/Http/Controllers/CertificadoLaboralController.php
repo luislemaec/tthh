@@ -125,11 +125,12 @@ class CertificadoLaboralController extends Controller
         $numero = "DATH-CL-{$seq}-{$año}";
 
         // Configuración
-        $config      = DB::table('dbo.d2_configuracion')
+        $configRows  = DB::table('dbo.d2_configuracion')
             ->whereRaw("LOWER(concepto) IN ('nombre_institucion','firmante_th_nombre','firmante_th_cargo','ciudad_institucion')")
-            ->pluck('valor', DB::raw('LOWER(concepto)'));
+            ->get(['concepto', 'valor']);
+        $config      = collect($configRows)->mapWithKeys(fn($r) => [strtolower($r->concepto) => $r->valor]);
         $nombreInst  = $config['nombre_institucion']  ?? 'CONSEJO DE COMUNICACIÓN';
-        $firmanteNom = $config['firmante_th_nombre']  ?? ($config['director_talento_humano'] ?? '');
+        $firmanteNom = $config['firmante_th_nombre']  ?? '';
         $firmanteCar = $config['firmante_th_cargo']   ?? 'RESPONSABLE DE TALENTO HUMANO';
         $ciudad      = $config['ciudad_institucion']  ?? 'Quito';
 
@@ -154,35 +155,12 @@ class CertificadoLaboralController extends Controller
         $pdfContent  = $pdf->output();
         $nombreArch  = "certificado_laboral_{$numero}.pdf";
 
-        // Subir a Alfresco
-        $alfrescoId = null;
-        try {
-            $docLibId    = $this->getDocLibNodeId();
-            $cedula      = trim($empleado->identificacion);
-            $apellido    = strtoupper(trim($empleado->apellido_emp));
-            $carpetaEmp  = "{$cedula}_{$apellido}";
-
-            $upload = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
-                ->attach('filedata', $pdfContent, $nombreArch)
-                ->post("{$this->alfrescoBase}/nodes/{$docLibId}/children", [
-                    'name'         => $nombreArch,
-                    'nodeType'     => 'cm:content',
-                    'relativePath' => "certificados-laborales/{$año}/{$carpetaEmp}",
-                    'autoRename'   => true,
-                ]);
-            if ($upload->successful()) {
-                $alfrescoId = $upload->json('entry.id');
-            }
-        } catch (\Throwable) {
-            // Alfresco no disponible — el certificado igual se genera
-        }
-
-        // Guardar en BD
+        // Guardar en BD (sin Alfresco — el firmado se sube manualmente después)
         $cert = CertificadoLaboral::create([
             'numero'          => $numero,
             'id_emp'          => $empleado->id_emp,
             'fecha_emision'   => $hoy->toDateString(),
-            'alfresco_id'     => $alfrescoId,
+            'alfresco_id'     => null,
             'nombre_archivo'  => $nombreArch,
             'usuario_emision' => $actor->id_emp,
         ]);
@@ -205,6 +183,43 @@ class CertificadoLaboralController extends Controller
         ]);
     }
 
+    // POST /api/certificados-laborales/{id}/subir-firmado
+    public function subirFirmado($id, Request $request)
+    {
+        $actor = $request->user();
+        if (!$this->esAdminOTH($actor->id_emp)) {
+            return response()->json(['message' => 'Sin permisos'], 403);
+        }
+
+        $request->validate(['archivo' => 'required|file|mimes:pdf|max:10240']);
+
+        $cert = CertificadoLaboral::with('empleado')->findOrFail($id);
+
+        $año         = $cert->fecha_emision->year;
+        $cedula      = trim($cert->empleado->identificacion);
+        $apellido    = strtoupper(trim($cert->empleado->apellido_emp));
+        $carpetaEmp  = "{$cedula}_{$apellido}";
+        $nombreArch  = $cert->nombre_archivo ?? "certificado_laboral_{$cert->numero}.pdf";
+
+        $docLibId = $this->getDocLibNodeId();
+        $upload   = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+            ->attach('filedata', file_get_contents($request->file('archivo')->getRealPath()), $nombreArch)
+            ->post("{$this->alfrescoBase}/nodes/{$docLibId}/children", [
+                'name'         => $nombreArch,
+                'nodeType'     => 'cm:content',
+                'relativePath' => "certificados-laborales/{$año}/{$carpetaEmp}",
+                'autoRename'   => true,
+            ]);
+
+        if (!$upload->successful()) {
+            return response()->json(['message' => 'No se pudo subir el archivo a Alfresco'], 502);
+        }
+
+        $cert->update(['alfresco_id' => $upload->json('entry.id')]);
+
+        return response()->json(['message' => 'PDF firmado subido correctamente', 'alfresco_id' => $cert->alfresco_id]);
+    }
+
     // GET /api/certificados-laborales/{id}/descargar
     public function descargar($id, Request $request)
     {
@@ -216,7 +231,7 @@ class CertificadoLaboralController extends Controller
         $cert = CertificadoLaboral::findOrFail($id);
 
         if (!$cert->alfresco_id) {
-            return response()->json(['message' => 'El PDF no está disponible en Alfresco'], 404);
+            return response()->json(['message' => 'El PDF firmado no ha sido subido aún'], 404);
         }
 
         $resp = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
