@@ -3,15 +3,11 @@
 
     <!-- Tarjeta de timbrada del empleado -->
     <div class="bg-white rounded-xl shadow p-6">
-      <div class="flex items-center justify-between mb-6">
-        <div>
-          <h1 class="text-2xl font-bold text-gray-800">Control de Asistencia</h1>
-          <p class="text-gray-500 text-sm mt-1">{{ fechaHoy }} | {{ horaActual }}</p>
-        </div>
-        <div class="text-right">
-          <p class="text-sm font-medium text-gray-700">{{ estado.empleado?.apellido }} {{ estado.empleado?.nombre }}</p>
-          <p class="text-xs text-gray-500">{{ estado.empleado?.departamento }}</p>
-        </div>
+      <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">Control de Asistencia</h1>
+        <p class="text-center text-xl font-bold text-gray-700 mt-3">
+          {{ fechaHoy }} &nbsp;|&nbsp; {{ horaActual }}
+        </p>
       </div>
 
       <!-- Botones de marcacion -->
