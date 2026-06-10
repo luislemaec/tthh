@@ -211,16 +211,19 @@ class EmpleadoController extends Controller
     {
         $emp = Empleado::findOrFail($id);
         $anterior = [
-            'sueldo'              => $emp->sueldo,
-            'estado'              => $emp->estado,
-            'id_depto'            => $emp->id_depto,
-            'cargo_empleado'      => $emp->cargo_empleado,
-            'tipo_contrato'       => $emp->tipo_contrato,
-            'modalidad_laboral'   => $emp->modalidad_laboral,
-            'partida_individual'  => $emp->partida_individual,
-            'programa'            => $emp->programa,
-            'actividad'           => $emp->actividad,
-            'modalidad_marcacion' => $emp->modalidad_marcacion,
+            'sueldo'               => $emp->sueldo,
+            'estado'               => $emp->estado,
+            'id_depto'             => $emp->id_depto,
+            'cargo_empleado'       => $emp->cargo_empleado,
+            'tipo_contrato'        => $emp->tipo_contrato,
+            'modalidad_laboral'    => $emp->modalidad_laboral,
+            'partida_individual'   => $emp->partida_individual,
+            'programa'             => $emp->programa,
+            'actividad'            => $emp->actividad,
+            'modalidad_marcacion'  => $emp->modalidad_marcacion,
+            'motivo_salida'        => $emp->motivo_salida,
+            'motivo_reactivacion'  => $emp->motivo_reactivacion,
+            'institucion_comision' => $emp->institucion_comision,
         ];
 
         $request->validate([
@@ -304,6 +307,9 @@ class EmpleadoController extends Controller
             "tiene_persona_sustituta"       => $request->has('tiene_persona_sustituta')       ? $request->boolean('tiene_persona_sustituta')       : $emp->tiene_persona_sustituta,
             "sustituta_fecha_caducidad"     => $request->sustituta_fecha_caducidad ?? $emp->sustituta_fecha_caducidad,
             "num_hijos_mayores"             => $request->filled('num_hijos_mayores') ? (int)$request->num_hijos_mayores : $emp->num_hijos_mayores,
+            "motivo_salida"         => $request->has('motivo_salida')         ? ($request->motivo_salida         ?: null) : $emp->motivo_salida,
+            "motivo_reactivacion"   => $request->has('motivo_reactivacion')   ? ($request->motivo_reactivacion   ?: null) : $emp->motivo_reactivacion,
+            "institucion_comision"  => $request->has('institucion_comision')  ? ($request->institucion_comision  ?: null) : $emp->institucion_comision,
             "updated_at"                => now(),
             "updated_by"                => auth()->user()->id_emp ?? null,
         ]);

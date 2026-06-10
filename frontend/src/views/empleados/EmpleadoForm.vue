@@ -306,6 +306,38 @@
               <label class="label-field">Fecha de Salida</label>
               <input v-model="form.fecha_salida" type="date" class="input-field" />
             </div>
+            <!-- Motivo de salida — solo INACTIVO -->
+            <div v-if="form.estado === 'INACTIVO'">
+              <label class="label-field">Motivo de Salida</label>
+              <select v-model="form.motivo_salida" class="input-field">
+                <option value="">— Seleccione —</option>
+                <option>COMISIÓN DE SERVICIOS</option>
+                <option>FIN DE COMISIÓN DE SERVICIOS</option>
+                <option>FIN DE CONTRATO</option>
+                <option>RENUNCIA VOLUNTARIA</option>
+                <option>JUBILACIÓN</option>
+              </select>
+            </div>
+            <!-- Institución destino — solo cuando sale en comisión -->
+            <div v-if="form.estado === 'INACTIVO' && form.motivo_salida === 'COMISIÓN DE SERVICIOS'">
+              <label class="label-field">Institución Destino *</label>
+              <input v-model="form.institucion_comision" type="text" placeholder="Nombre de la institución a donde se va"
+                class="input-field" />
+            </div>
+            <!-- Institución origen — empleados que vienen en comisión -->
+            <div v-if="form.modalidad_laboral === 'Comisión de Servicios'">
+              <label class="label-field">Institución de Origen</label>
+              <input v-model="form.institucion_comision" type="text" placeholder="Nombre de la institución de donde viene"
+                class="input-field" />
+            </div>
+            <!-- Motivo de reactivación — solo ACTIVO con motivo_salida previo -->
+            <div v-if="form.estado === 'ACTIVO' && form.motivo_salida">
+              <label class="label-field">Motivo de Reactivación</label>
+              <select v-model="form.motivo_reactivacion" class="input-field">
+                <option value="">— Seleccione —</option>
+                <option>RETORNO DE COMISIÓN DE SERVICIOS</option>
+              </select>
+            </div>
             <div>
               <label class="label-field">Salario Base *</label>
               <div class="relative">
@@ -615,7 +647,10 @@ const form = ref({
   id_jornada:        "",
   estado:            "ACTIVO",
   fecha_ingreso:  "",
-  fecha_salida:   "",
+  fecha_salida:          "",
+  motivo_salida:         "",
+  motivo_reactivacion:   "",
+  institucion_comision:  "",
   salario:        "",
   nivel:                   "",
   grupo_ocupacional:       "",
@@ -645,7 +680,10 @@ const guardar = async () => {
       telefono:       form.value.telefono,
       calle_y_numero: form.value.direccion,
       fecha_ingreso:  form.value.fecha_ingreso,
-      fecha_salida:   form.value.fecha_salida || null,
+      fecha_salida:         form.value.fecha_salida        || null,
+      motivo_salida:        form.value.motivo_salida        || null,
+      motivo_reactivacion:  form.value.motivo_reactivacion  || null,
+      institucion_comision: form.value.institucion_comision || null,
       sueldo:         form.value.salario,
       nivel:          form.value.nivel,
       tipo_contrato:     form.value.tipo_contrato,
@@ -813,7 +851,10 @@ onMounted(async () => {
     form.value.cargo_empleado  = data.cargo_empleado || ""
     form.value.estado          = data.estado || "ACTIVO"
     form.value.fecha_ingreso   = data.fecha_ingreso?.substring(0, 10) || ""
-    form.value.fecha_salida    = data.fecha_salida?.substring(0, 10) || ""
+    form.value.fecha_salida          = data.fecha_salida?.substring(0, 10) || ""
+    form.value.motivo_salida         = data.motivo_salida        || ""
+    form.value.motivo_reactivacion   = data.motivo_reactivacion  || ""
+    form.value.institucion_comision  = data.institucion_comision || ""
     form.value.salario         = data.sueldo || ""
     form.value.nivel           = data.nivel || ""
     form.value.telefono        = data.telefono || ""
