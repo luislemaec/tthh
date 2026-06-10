@@ -84,6 +84,7 @@ class ReporteEmpleadosController extends Controller
                 'e.tiene_enfermedad_catastrofica', 'e.tiene_persona_sustituta',
                 'e.sustituta_fecha_caducidad', 'e.num_sercop', 'e.fecha_vence_sercop',
                 'e.num_hijos_mayores', 'e.puede_solicitar_vehiculo', 'e.fecha_ingreso',
+                'e.motivo_salida', 'e.motivo_reactivacion', 'e.institucion_comision',
                 'd.nombre_depto',
                 'gv.nombre as grupo_vulnerable',
                 'gp.nombre as grupo_prioritario',
@@ -109,6 +110,7 @@ class ReporteEmpleadosController extends Controller
         if ($request->filled('tiene_discapacidad'))   $q->where('e.tiene_discapacidad',  $request->tiene_discapacidad === '1');
         if ($request->filled('tiene_enfermedad'))     $q->where('e.tiene_enfermedad_catastrofica', $request->tiene_enfermedad === '1');
         if ($request->filled('puede_vehiculo'))       $q->where('e.puede_solicitar_vehiculo', $request->puede_vehiculo === '1');
+        if ($request->filled('motivo_salida'))         $q->where('e.motivo_salida', $request->motivo_salida);
 
         switch ($request->sercop_filter) {
             case 'vencido': $q->whereNotNull('e.fecha_vence_sercop')->where('e.fecha_vence_sercop', '<', $hoy); break;

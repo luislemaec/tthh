@@ -222,6 +222,18 @@
               <option value="0">No puede solicitar</option>
             </select>
           </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Motivo de Salida</label>
+            <select v-model="filtros.motivo_salida"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#579186] bg-gray-50 focus:bg-white outline-none">
+              <option value="">Todos</option>
+              <option value="COMISIÓN DE SERVICIOS">Comisión de servicios (saliente)</option>
+              <option value="FIN DE COMISIÓN DE SERVICIOS">Fin de comisión de servicios</option>
+              <option value="FIN DE CONTRATO">Fin de contrato</option>
+              <option value="RENUNCIA VOLUNTARIA">Renuncia voluntaria</option>
+              <option value="JUBILACIÓN">Jubilación</option>
+            </select>
+          </div>
         </div>
 
         <p v-if="errorBuscar" class="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-2">
@@ -393,6 +405,7 @@ const filtrosIniciales = () => ({
   tiene_discapacidad: '', tiene_enfermedad: '',
   con_guarderia: '', sustituta_filter: '', sercop_filter: '',
   puede_vehiculo: '',
+  motivo_salida: '',
 })
 const filtros = ref(filtrosIniciales())
 
