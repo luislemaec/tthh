@@ -125,14 +125,11 @@
 
     <!-- Ticker horizontal (barra inferior) -->
     <div v-if="avisos.length && direccion === 'horizontal'"
-         class="w-full overflow-hidden bg-black/25 py-2.5 flex-shrink-0">
+         class="w-full overflow-hidden flex-shrink-0"
+         style="background-color: #0b5447; border-top: 2px solid #1a8a6f; padding: 8px 0;">
       <div class="ticker-horizontal whitespace-nowrap">
-        <span v-for="(a, i) in avisos" :key="i" class="inline-block text-white text-base font-medium mx-12">
-          <span class="text-green-300 mr-2">&#9679;</span>{{ a.texto }}
-        </span>
-        <!-- Duplicado para loop continuo -->
-        <span v-for="(a, i) in avisos" :key="'d'+i" class="inline-block text-white text-sm font-medium mx-12">
-          <span class="text-green-300 mr-2">&#9679;</span>{{ a.texto }}
+        <span v-for="(a, i) in avisos" :key="i" class="inline-block text-white text-lg font-semibold mx-16">
+          <span style="color: #6ee7b7; margin-right: 8px;">&#9679;</span>{{ a.texto }}
         </span>
       </div>
     </div>
@@ -223,8 +220,8 @@ async function logout() {
 .ticker-horizontal:hover { animation-play-state: paused; }
 
 @keyframes scroll-left {
-  0%   { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
+  0%   { transform: translateX(100vw); }
+  100% { transform: translateX(-100%); }
 }
 
 /* ── Ticker vertical ─────────────────────────────────────────────────── */
