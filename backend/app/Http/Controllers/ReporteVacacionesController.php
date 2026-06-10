@@ -32,10 +32,24 @@ class ReporteVacacionesController extends Controller
             ->exists();
     }
 
+    private function tasaVacaciones(Empleado $emp): array
+    {
+        $contrato = trim($emp->tipo_contrato ?? '');
+        if ($contrato === 'LOSEP') {
+            return ['tasa_mensual' => 2.50, 'dias_anuales' => 30, 'dias_adicionales_antiguedad' => 0];
+        }
+        if ($contrato === 'CODIGO DEL TRABAJO') {
+            $anios     = $emp->fecha_ingreso ? (int) Carbon::parse($emp->fecha_ingreso)->diffInYears(Carbon::today()) : 0;
+            $diasExtra = min(max(0, $anios - 5), 15);
+            $diasAnuales = 15 + $diasExtra;
+            return ['tasa_mensual' => $diasAnuales / 12, 'dias_anuales' => $diasAnuales, 'dias_adicionales_antiguedad' => $diasExtra];
+        }
+        return ['tasa_mensual' => 0, 'dias_anuales' => 0, 'dias_adicionales_antiguedad' => 0];
+    }
+
     private function calcularSaldoActual(Empleado $emp): float
     {
-        $tasas = ['LOSEP' => 2.50, 'CODIGO DEL TRABAJO' => 1.25];
-        $tasa  = $tasas[trim($emp->tipo_contrato)] ?? 0;
+        $tasa = $this->tasaVacaciones($emp)['tasa_mensual'];
 
         $fechaCorteConfig = Configuracion::find('FECHA_CORTE_VACACIONES');
         $fechaCorte       = $fechaCorteConfig ? Carbon::parse($fechaCorteConfig->valor) : Carbon::today();
@@ -87,8 +101,8 @@ class ReporteVacacionesController extends Controller
         }
         $vacaciones = $vacQuery->get();
 
-        $tasas = ['LOSEP' => 2.50, 'CODIGO DEL TRABAJO' => 1.25];
-        $tasa  = $tasas[trim($emp->tipo_contrato)] ?? 0;
+        $infoTasa = $this->tasaVacaciones($emp);
+        $tasa     = $infoTasa['tasa_mensual'];
 
         $fechaCorteConfig = Configuracion::find('FECHA_CORTE_VACACIONES');
         $fechaCorte       = $fechaCorteConfig ? Carbon::parse($fechaCorteConfig->valor) : Carbon::today();
@@ -165,10 +179,14 @@ class ReporteVacacionesController extends Controller
         }
 
         // 4. Días acumulados a la fecha — fecha = hoy
+        $descDevengado = 'Días acumulados a la fecha (desde ' . $fechaCorte->format('d/m/Y') . ')';
+        if ($infoTasa['dias_adicionales_antiguedad'] > 0) {
+            $descDevengado .= ' — ' . $infoTasa['dias_anuales'] . ' días/año (15 base + ' . $infoTasa['dias_adicionales_antiguedad'] . ' por antigüedad)';
+        }
         $movimientos[] = [
             'tipo'        => 'DEVENGADO',
             'fecha'       => Carbon::today()->toDateString(),
-            'descripcion' => 'Días acumulados a la fecha (desde ' . $fechaCorte->format('d/m/Y') . ')',
+            'descripcion' => $descDevengado,
             'entrada'     => $acumulado,
             'salida'      => null,
             'saldo'       => null,
