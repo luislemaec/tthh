@@ -4,7 +4,7 @@
     <!-- Tarjeta de timbrada del empleado -->
     <div class="bg-white rounded-xl shadow p-6">
       <div class="mb-6">
-        <h1 class="text-2xl font-bold text-gray-800">Control de Asistencia</h1>
+        <h1 class="text-2xl font-bold text-gray-800 text-center">Control de Asistencia</h1>
         <p class="text-center text-xl font-bold text-gray-700 mt-3">
           {{ fechaHoy }} &nbsp;|&nbsp; {{ horaActual }}
         </p>
@@ -21,7 +21,7 @@
             btn.disponible ? 'cursor-pointer hover:opacity-90' : 'cursor-not-allowed opacity-80',
             'w-full py-2 rounded-xl text-sm font-semibold transition flex flex-col items-center gap-1'
           ]">
-          <img :src="btn.icono" class="w-28 h-28 md:w-36 md:h-36 object-contain" decoding="async" />
+          <img :src="btn.icono" class="w-28 h-28 md:w-44 md:h-44 object-contain" decoding="async" />
           <span>{{ btn.label }}</span>
           <span v-if="getMarcacion(btn.concepto)" class="text-xs font-normal opacity-70">
             {{ formatHora(getMarcacion(btn.concepto)?.fecha_hora) }}
