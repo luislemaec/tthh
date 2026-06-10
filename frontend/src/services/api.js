@@ -8,7 +8,7 @@ const api = axios.create({
 })
 
 api.interceptors.request.use(cfg => {
-  const token = localStorage.getItem('token')
+  const token = sessionStorage.getItem('token')
   if (token) cfg.headers.Authorization = `Bearer ${token}`
   delete cfg.headers['X-XSRF-TOKEN']
   if (cfg.data instanceof FormData) {
@@ -21,7 +21,7 @@ api.interceptors.response.use(
   res => res,
   err => {
     if (err.response?.status === 401 && !err.config.url.includes('/login')) {
-      localStorage.removeItem('token')
+      sessionStorage.removeItem('token')
       window.location.href = '/login'
     }
     return Promise.reject(err)

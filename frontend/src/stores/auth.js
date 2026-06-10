@@ -6,10 +6,10 @@ import { ref, computed } from 'vue'
 import api from '@/services/api'
 
 export const useAuthStore = defineStore('auth', () => {
-  const token    = ref(localStorage.getItem('token') || null)
-  const empleado = ref(JSON.parse(localStorage.getItem('empleado') || 'null'))
-  const roles    = ref(JSON.parse(localStorage.getItem('roles')    || '[]'))
-  const menu     = ref(JSON.parse(localStorage.getItem('menu')     || '[]'))
+  const token    = ref(sessionStorage.getItem('token') || null)
+  const empleado = ref(JSON.parse(sessionStorage.getItem('empleado') || 'null'))
+  const roles    = ref(JSON.parse(sessionStorage.getItem('roles')    || '[]'))
+  const menu     = ref(JSON.parse(sessionStorage.getItem('menu')     || '[]'))
 
   const isAuthenticated = computed(() => !!token.value)
   const isAdmin = computed(() => roles.value.includes('ADMINISTRADOR'))
@@ -38,10 +38,10 @@ export const useAuthStore = defineStore('auth', () => {
     roles.value    = data.roles
     menu.value     = data.menu
 
-    localStorage.setItem('token',    data.token)
-    localStorage.setItem('empleado', JSON.stringify(data.empleado))
-    localStorage.setItem('roles',    JSON.stringify(data.roles))
-    localStorage.setItem('menu',     JSON.stringify(data.menu))
+    sessionStorage.setItem('token',    data.token)
+    sessionStorage.setItem('empleado', JSON.stringify(data.empleado))
+    sessionStorage.setItem('roles',    JSON.stringify(data.roles))
+    sessionStorage.setItem('menu',     JSON.stringify(data.menu))
 
     return data
   }
@@ -50,7 +50,7 @@ export const useAuthStore = defineStore('auth', () => {
     try { await api.post('/logout') } catch {}
     token.value = null; empleado.value = null
     roles.value = [];   menu.value = []
-    localStorage.clear()
+    sessionStorage.clear()
   }
 
   function tieneRol(rol) {
