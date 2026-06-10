@@ -39,7 +39,7 @@ Después de cualquier cambio: Push → Pull en servidor → `npm run build` (sol
 
 - Login: `POST /api/login` con `identificacion` + `password`
 - Guard usa modelo `Empleado` (tabla `dbo.ad_empleado`), no el `User` de Laravel
-- Token Sanctum en localStorage; Axios lo inyecta en cada request
+- Token Sanctum en **sessionStorage** (no localStorage — sesión se cierra al cerrar el navegador); Axios lo inyecta en cada request
 - 401 → limpia token y redirige a `/login`
 
 ## Roles
@@ -56,7 +56,7 @@ Roles: `ADMINISTRADOR`, `TALENTO HUMANO`, `TH ACCIONES PERSONAL`, `TH NOMINA`,`S
 - Depto 999 excluido de todas las consultas (placeholder de sistema)
 - `dbo.d2_configuracion` → parámetros globales (clave/valor/descripcion). Campos de auditoría: `created_at`, `created_by`, `updated_at`, `updated_by`. La query siempre usa `LOWER(concepto)` porque los conceptos se guardan en MAYÚSCULAS. Migración `000030` agregó `descripcion`, migración `000031` agregó auditoría.
 - `dbo.ad_departamento` → numeración manual recomendada: padres en múltiplos de 10 (10,50,60,70,80,90), hijos en +1 a +9 del padre. Al crear desde la app, el campo ID es opcional; si se omite genera el siguiente correlativo (excluyendo 999). Campos de auditoría implementados (migración `000032`): `created_at`, `created_by`, `updated_at`, `updated_by`.
-- `dbo.ad_empleado` → campos de auditoría implementados (migración `000032`): `created_at`, `created_by`, `updated_at`, `updated_by`. Campos adicionales: `puede_solicitar_vehiculo BOOLEAN DEFAULT false`, `sexo VARCHAR(10) NULL` (MASCULINO/FEMENINO), `tipo_sangre VARCHAR(5) NULL` (A+, A-, B+, B-, AB+, AB-, O+, O-) — migración `000063`. Campos SERCOP: `num_sercop VARCHAR(50) NULL`, `fecha_vence_sercop DATE NULL` — migración `000065`. Campos sociales — migración `000070`: `grupo_vulnerable_id`, `grupo_prioritario_id`, `tiene_discapacidad`, `tipo_discapacidad_id`, `porcentaje_discapacidad`, `tiene_enfermedad_catastrofica`, `enfermedad_catastrofica_id`, `tiene_persona_sustituta`, `sustituta_alfresco_id`, `sustituta_nombre_archivo`, `sustituta_fecha_caducidad`, `num_hijos_mayores`.
+- `dbo.ad_empleado` → campos de auditoría implementados (migración `000032`): `created_at`, `created_by`, `updated_at`, `updated_by`. Campos adicionales: `puede_solicitar_vehiculo BOOLEAN DEFAULT false`, `sexo VARCHAR(10) NULL` (MASCULINO/FEMENINO), `tipo_sangre VARCHAR(5) NULL` (A+, A-, B+, B-, AB+, AB-, O+, O-) — migración `000063`. Campos SERCOP: `num_sercop VARCHAR(50) NULL`, `fecha_vence_sercop DATE NULL` — migración `000065`. Campos sociales — migración `000070`: `grupo_vulnerable_id`, `grupo_prioritario_id`, `tiene_discapacidad`, `tipo_discapacidad_id`, `porcentaje_discapacidad`, `tiene_enfermedad_catastrofica`, `enfermedad_catastrofica_id`, `tiene_persona_sustituta`, `sustituta_alfresco_id`, `sustituta_nombre_archivo`, `sustituta_fecha_caducidad`, `num_hijos_mayores`. Campos de baja/comisión — migración `000073`: `motivo_salida VARCHAR(50) NULL`, `motivo_reactivacion VARCHAR(50) NULL`, `institucion_comision VARCHAR(200) NULL`.
 - `dbo.ad_empleado_hijo` — hijos menores de edad: `id_emp`, `nombre NULL`, `fecha_nacimiento` — migración `000071`. Sin límite de registros. El sistema calcula si el hijo es menor de 5 años (derecho a guardería).
 - Catálogos sociales precargados (migración `000069`): `dbo.ad_grupo_vulnerable` (8 registros), `dbo.ad_grupo_prioritario` (8), `dbo.ad_tipo_discapacidad` CONADIS (7), `dbo.ad_enfermedad_catastrofica` MSP (15).
 - Stock: siempre usar `DB::table()->update(['stock_actual' => DB::raw('stock_actual + N')])` — nunca Eloquent para tablas con schema prefix en PostgreSQL
@@ -215,6 +215,9 @@ Campos relevantes:
 - `sexo`: `MASCULINO` / `FEMENINO` / NULL — para estadísticas de género (migración `000063`)
 - `tipo_sangre`: `A+`, `A-`, `B+`, `B-`, `AB+`, `AB-`, `O+`, `O-` / NULL (migración `000063`)
 - `num_sercop` / `fecha_vence_sercop`: certificado SERCOP y fecha de vigencia (migración `000065`)
+- `motivo_salida`: por qué pasó a INACTIVO — valores: `COMISIÓN DE SERVICIOS` / `FIN DE COMISIÓN DE SERVICIOS` / `FIN DE CONTRATO` / `RENUNCIA VOLUNTARIA` / `JUBILACIÓN` — migración `000073`
+- `motivo_reactivacion`: por qué volvió a ACTIVO — valor actual: `RETORNO DE COMISIÓN DE SERVICIOS` — migración `000073`
+- `institucion_comision`: nombre de la institución destino (si `motivo_salida = COMISIÓN DE SERVICIOS`) o institución de origen (si `modalidad_laboral = Comisión de Servicios` en empleado entrante) — migración `000073`
 
 **Partidas disponibles** (`GET /api/empleados/partidas-vacantes`): devuelve empleados con `estado=INACTIVO` + `estado_puesto=DISPONIBLE`. En `EmpleadoForm.vue`, el campo Partida Individual tiene input libre + botón "Seleccionar libre" que abre un modal con la lista — al seleccionar una fila se auto-llenan `partida_individual` y `partida_presupuestaria`.
 
@@ -430,9 +433,10 @@ views/empleados/        # CRUD empleados, detalle, importación, distributivo, r
                         #   Sección 2: 3 gráficos Chart.js — donut por sexo, barras por tipo contrato,
                         #     barras por modalidad de marcación (datos del endpoint resumen)
                         #   Sección 3: panel de filtros colapsable con badge de filtros activos —
-                        #     15 filtros: departamento, estado, búsqueda, tipo_contrato, modalidad_marcacion,
+                        #     16 filtros: departamento, estado, búsqueda, tipo_contrato, modalidad_marcacion,
                         #     sexo, tipo_sangre, discapacidad, enf. catastrófica, grupo vulnerable,
-                        #     grupo prioritario, hijos<5 (guardería), persona sustituta, SERCOP, vehículo
+                        #     grupo prioritario, hijos<5 (guardería), persona sustituta, SERCOP, vehículo,
+                        #     motivo_salida
                         #   Sección 4: tabla con badges de color para fechas vencidas/próximas + paginación
                         #   Exportar Excel (PhpSpreadsheet, 26 columnas, filas alternadas) y PDF (landscape A4)
                         #   Controlador: ReporteEmpleadosController.php
@@ -452,6 +456,10 @@ views/empleados/        # CRUD empleados, detalle, importación, distributivo
                         #       badge "Guardería" automático si hijo < 5 años
                         #   Tab 2 "Cargo y Contrato": departamento, cargo, tipo_contrato, modalidad_laboral, jornada,
                         #     estado, fecha_ingreso, fecha_salida (v-if INACTIVO), salario
+                        #     + motivo_salida (select, v-if INACTIVO): COMISIÓN DE SERVICIOS / FIN DE COMISIÓN / FIN DE CONTRATO / RENUNCIA / JUBILACIÓN
+                        #     + institucion_comision "Institución Destino" (v-if INACTIVO && motivo_salida=COMISIÓN DE SERVICIOS)
+                        #     + institucion_comision "Institución de Origen" (v-if modalidad_laboral=Comisión de Servicios, aplica activos e inactivos)
+                        #     + motivo_reactivacion (select, v-if ACTIVO && motivo_salida previo registrado): RETORNO DE COMISIÓN DE SERVICIOS
                         #   Tab 3 "Datos del Puesto": grupo_ocupacional, grado, proceso_institucional, estado_puesto,
                         #     partida_individual (+ botón "Seleccionar libre"), programa, actividad, décimos, fondos_reserva,
                         #     "Estructura Programática" (antes "Partida Presupuestaria"), N° SERCOP, Vigencia SERCOP
@@ -676,22 +684,30 @@ Migración: `000072`. Modelo: `App\Models\CertificadoLaboral` — relaciones `em
 
 ### PDF (`certificado_laboral.blade.php`)
 
-Portrait A4. Texto adaptado al género del empleado (`sexo` = MASCULINO/FEMENINO/NULL):
+Portrait A4. Márgenes `body { margin: 2.5cm }` (NO `@page { margin }` — DomPDF no lo aplica al margen superior con `@page`).
+Texto adaptado al género del empleado (`sexo` = MASCULINO/FEMENINO/NULL):
 - `el señor` / `la señora` · `portador` / `portadora` · `el interesado` / `la interesada`
 - NULL → masculino por defecto
+- Empleados INACTIVOS: verbo en pasado (`prestó`), agrega `hasta el {fecha_salida}` en el texto
 - Firmantes leídos de `d2_configuracion`: `FIRMANTE_TH_NOMBRE` / `FIRMANTE_TH_CARGO`
 - Texto fijo: "para los fines que estime conveniente" (sin campo motivo)
+- Espaciado: 44px después de "EL RESPONSABLE..." y después de "CERTIFICA:"; 100px antes de la firma
+
+### Flujo de firma
+
+El certificado se genera y descarga **sin subir a Alfresco**. Después de imprimirlo y firmarlo manualmente, el usuario sube el PDF firmado con el botón "Subir firmado" (color azul). Una vez subido, el botón cambia a "PDF" (rojo) que descarga desde Alfresco. Este flujo es igual al de horas extras — primero se descarga, se firma físicamente, luego se sube el escaneado.
 
 ### Rutas
 
 | Método | Ruta | Función |
 |---|---|---|
 | GET | `/api/certificados-laborales` | Historial paginado (30/pág) con filtros id_emp/fecha_desde/fecha_hasta |
-| POST | `/api/certificados-laborales` | Emitir certificado (valida ACTIVO, genera PDF, sube Alfresco, audita) |
+| POST | `/api/certificados-laborales` | Emitir certificado — genera PDF, guarda en BD, retorna blob con header `X-Numero` |
+| POST | `/api/certificados-laborales/{id}/subir-firmado` | Sube PDF firmado a Alfresco, guarda `alfresco_id` |
 | GET | `/api/certificados-laborales/{id}/descargar` | Re-descarga desde Alfresco |
 
 Alfresco: carpeta `certificados-laborales/{año}/{cedula_APELLIDO}/` via `relativePath`.
-Si Alfresco no disponible, el certificado igual se genera y guarda en BD (try/catch).
+Si Alfresco no disponible al subir firmado, retorna error 502 (el certificado ya está en BD desde la emisión).
 
 ### Vista
 

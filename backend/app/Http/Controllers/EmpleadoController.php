@@ -348,6 +348,9 @@ class EmpleadoController extends Controller
                 'programa'            => $emp->programa,
                 'actividad'           => $emp->actividad,
                 'modalidad_marcacion' => $emp->modalidad_marcacion,
+                'motivo_salida'        => $emp->motivo_salida,
+                'motivo_reactivacion'  => $emp->motivo_reactivacion,
+                'institucion_comision' => $emp->institucion_comision,
             ],
             $request, 'Actualización de empleado: ' . trim($emp->apellido_emp . ' ' . $emp->nombre_emp));
 

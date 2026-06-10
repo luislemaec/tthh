@@ -46,12 +46,12 @@
 </p>
 
 {{-- Certifica quién — centrado --}}
-<p style="text-align:center; font-weight:bold; text-transform:uppercase; line-height:1.6; margin-bottom:12px;">
+<p style="text-align:center; font-weight:bold; text-transform:uppercase; line-height:1.6; margin-bottom:44px;">
   EL RESPONSABLE DE TALENTO HUMANO DEL {{ strtoupper($nombreInst) }},
 </p>
 
 {{-- CERTIFICA — centrado --}}
-<p style="text-align:center; font-weight:bold; font-size:11pt; margin-bottom:18px;">
+<p style="text-align:center; font-weight:bold; font-size:11pt; margin-bottom:44px;">
   CERTIFICA:
 </p>
 
@@ -72,7 +72,7 @@
 </p>
 
 {{-- Firma — centrada --}}
-<div style="margin-top:70px; text-align:center;">
+<div style="margin-top:100px; text-align:center;">
   <div style="border-top:1px solid #000; width:280px; margin:0 auto 6px;"></div>
   <p style="font-weight:bold; text-transform:uppercase; line-height:1.6; text-align:center;">{{ strtoupper($firmanteNom) }}</p>
   <p style="text-transform:uppercase; line-height:1.5; text-align:center;">{{ strtoupper($firmanteCar) }}</p>
