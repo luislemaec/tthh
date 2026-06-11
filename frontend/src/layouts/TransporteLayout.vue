@@ -216,6 +216,8 @@
     </main>
   </div>
 
+  <ChatbotFAB />
+
 </template>
 
 <script setup>
@@ -223,6 +225,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/services/api'
+import ChatbotFAB from '@/components/ChatbotFAB.vue'
 
 const router = useRouter()
 const route  = useRoute()

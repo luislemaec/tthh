@@ -135,6 +135,9 @@
     </div>
 
   </div>
+
+  <ChatbotFAB />
+
 </template>
 
 <script setup>
@@ -142,6 +145,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/services/api'
+import ChatbotFAB from '@/components/ChatbotFAB.vue'
 
 const router    = useRouter()
 const store     = useAuthStore()

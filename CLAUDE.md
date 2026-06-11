@@ -481,7 +481,12 @@ views/planificacion/    # Planificación anual de vacaciones, liquidación, repo
                         #   Rutas: GET /api/reporte-vacaciones, GET /api/reporte-vacaciones/{id_emp},
                         #          GET /api/reporte-vacaciones/pdf, POST /api/reporte-vacaciones/cargar-saldos
                         #   Controlador: ReporteVacacionesController.php
+                        #     — tiene su propio helper `tasaVacaciones()` (igual que VacacionesController)
+                        #       que calcula la tasa correcta incluyendo días adicionales por antigüedad (CT)
+                        #     — NO usar tasa fija 1.25 para CÓDIGO DEL TRABAJO: siempre llamar tasaVacaciones()
                         #   Kardex: dias legados (sin registro en d2_vacacion) aparecen como fila "registros anteriores"
+                        #   Kardex fila DEVENGADO: descripción incluye "X días/año (15 base + Y por antigüedad)"
+                        #     cuando el empleado CT tiene 6+ años de servicio
 views/permisos/         # Permisos y licencias — fecha_desde/fecha_hasta default = hoy al abrir modal
                         # Permisos NO descontables (descontable='NO'): sección "Documentos de respaldo"
                         #   - Subir/ver/eliminar archivos solo cuando estado_permiso = 'PENDIENTE'
