@@ -602,6 +602,7 @@ layouts/MainLayout.vue  # Layout del módulo RRHH (menú colapsado, se abre el g
                         #   Variable en d2_configuracion: MODO_MANTENIMIENTO_TH = 1 (activo) / 0
                         #   Empleados → pantalla verde bloqueante con botón "Cerrar Sesión"
                         #   ADMINISTRADOR / TALENTO HUMANO → banner naranja, pueden seguir trabajando
+                        # Incluye <ChatbotFAB /> como elemento raíz adicional (Vue 3 fragment)
 ```
 
 ### Componentes reutilizables
@@ -610,6 +611,24 @@ layouts/MainLayout.vue  # Layout del módulo RRHH (menú colapsado, se abre el g
 components/TimePicker24.vue  # Selector de hora 24h con dos <select> (horas 0-23, minutos en intervalo configurable)
                              # Props: modelValue (HH:mm string), minuteInterval (default 5)
                              # Sin AM/PM; intervalo de minutos configurable (se usa intervalo de 1 min en asistencia)
+
+components/ChatbotFAB.vue    # Botón flotante estilo WhatsApp con asistente de ayuda contextual
+                             # Posición: fixed bottom-6 right-6 z-[9980] (visible en todos los módulos)
+                             # Al abrir: ventana de chat 320px × 480px con header verde #0b5547
+                             # Mensajes: burbuja bot (blanca, izquierda) / usuario (verde, derecha)
+                             # Quick replies: 4 botones de acceso rápido al iniciar la conversación
+                             # Matching: función findAnswer() busca en knowledge base por keywords normalizados
+                             #   normalize() → lowercase + NFD + strip \p{M} (tildes/diacríticos)
+                             #   Score = nº de keywords que el input contiene como substring
+                             #   Si score = 0 → FALLBACK: "Comuníquese con la Dirección de Tecnologías"
+                             # Base de conocimiento: src/data/chatbot-knowledge.js
+                             #   Array de { keywords: string[], answer: string } — ~40 temas del sistema
+                             #   Temas: asistencia, permisos, vacaciones, horas extras, acciones personal,
+                             #     certificados, nómina, adquisiciones, transportes, administración
+                             # Sin props ni emits — completamente autocontenido
+                             # Incluido en: MainLayout, AdqLayout, TransporteLayout, LauncherView
+                             # z-index [9980]: visible sobre modales (z-50) pero tapado por overlay
+                             #   mantenimiento (z-[9999]) — correcto, no usar durante mantenimiento
 ```
 
 ---
@@ -933,6 +952,7 @@ layouts/AdqLayout.vue              # Layout verde, roles ADQUISICIONES/BIENES
                                    #   ADMINISTRADOR / ADQUISICIONES → banner naranja, siguen trabajando
                                    #   Resto → pantalla verde oliva bloqueante con botón "Cerrar Sesión"
                                    # Menú colapsado por defecto, auto-abre el grupo de la ruta activa
+                                   # Incluye <ChatbotFAB /> como elemento raíz adicional (Vue 3 fragment)
 ```
 
 ---
@@ -1048,6 +1068,7 @@ layouts/TransporteLayout.vue  # Menú dinámico desde auth.menuAgrupado filtrado
                               #   Pide permiso al montar; compara ultima_at para detectar nuevas solicitudes
                               #   new Notification() con clic → navega a /transporte/movilizacion
                               #   Funciona con navegador minimizado; se detiene al hacer logout (onUnmounted)
+                              # Incluye <ChatbotFAB /> como elemento raíz adicional (Vue 3 fragment)
 ```
 
 `MainLayout.vue` excluye `transporte/` y `adquisiciones/` de su menú. `LauncherView.vue` muestra tarjeta Transportes si tiene rol TRANSPORTE, CONDUCTOR, o `puede_solicitar_vehiculo`. Tarjetas del launcher: `w-44 p-5` con íconos `w-12 h-12`.
