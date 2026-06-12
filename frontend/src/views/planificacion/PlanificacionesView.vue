@@ -579,13 +579,14 @@ const abrirModalReplanificar = async (plan) => {
   errorAccion.value      = ''
   guardandoReplan.value  = false
 
-  // Precargar períodos existentes
+  // Precargar períodos existentes — recalcular días desde fechas para que el
+  // contador coincida exactamente con lo que el backend va a calcular
   formReplan.value = Array.from({ length: 4 }, (_, i) => {
     const p = plan.periodos[i]
     return {
       fecha_inicial: p?.fecha_inicial || '',
       fecha_final:   p?.fecha_final   || '',
-      dias:          p?.dias_calculados != null ? Number(p.dias_calculados) : null,
+      dias:          diasEntreFechas(p?.fecha_inicial, p?.fecha_final),
     }
   })
 
