@@ -2,11 +2,12 @@
 import { ref, nextTick } from 'vue'
 import { knowledge, FALLBACK } from '@/data/chatbot-knowledge.js'
 
-const open      = ref(false)
-const input     = ref('')
-const loading   = ref(false)
-const messages  = ref([])
+const open         = ref(false)
+const input        = ref('')
+const loading      = ref(false)
+const messages     = ref([])
 const messagesArea = ref(null)
+const menuVisible  = ref(false)
 
 const QUICK_REPLIES = [
   '¿Cómo marco mi asistencia?',
@@ -49,13 +50,16 @@ async function sendMessage(text) {
   const msg = (text ?? input.value).trim()
   if (!msg || loading.value) return
   input.value = ''
+  menuVisible.value = false
 
   messages.value.push({ from: 'user', text: msg })
   await scrollToBottom()
 
   loading.value = true
+  const esMenu = normalize(msg).includes('menu')
   setTimeout(async () => {
     messages.value.push({ from: 'bot', text: findAnswer(msg) })
+    if (esMenu) menuVisible.value = true
     loading.value = false
     await scrollToBottom()
   }, 320)
@@ -137,8 +141,8 @@ function onKeydown(e) {
             </div>
           </div>
 
-          <!-- Quick replies (solo al inicio) -->
-          <div v-if="messages.length === 1 && !loading" class="flex flex-col gap-2 pt-1">
+          <!-- Quick replies (al inicio o al escribir "menu") -->
+          <div v-if="(messages.length === 1 || menuVisible) && !loading" class="flex flex-col gap-2 pt-1">
             <button
               v-for="q in QUICK_REPLIES"
               :key="q"

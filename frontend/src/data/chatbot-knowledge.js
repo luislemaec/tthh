@@ -6,6 +6,13 @@ export const FALLBACK =
   'Para esta consulta comuníquese con la Dirección de Tecnologías de la Información.'
 
 export const knowledge = [
+  // ── MENÚ / OPCIONES ───────────────────────────────────────────────────────
+  {
+    keywords: ['menu', 'opciones', 'que puedo preguntar', 'consultas disponibles', 'ayuda opciones', 'que sabes'],
+    answer:
+      'Aquí tienes las consultas más frecuentes. Selecciona una opción o escribe tu pregunta:',
+  },
+
   // ── LOGIN / ACCESO ────────────────────────────────────────────────────────
   {
     keywords: ['contrasena', 'clave', 'password', 'olvide', 'recuperar', 'cambiar contrasena'],
@@ -79,9 +86,9 @@ export const knowledge = [
       'Un permiso aprobado puede anularse si el empleado no lo utilizó (llegó a su hora normal).\nSolo TH/Admin puede anularlo:\n1. Busque el permiso APROBADO.\n2. Haga clic en "Anular".\n3. Ingrese el motivo.\n4. Confirme.\n\nAl anular, el saldo de vacaciones descontado se devuelve automáticamente.',
   },
   {
-    keywords: ['tipo permiso', 'tipo horario', 'que cubre permiso', 'justifica atraso'],
+    keywords: ['tipo permiso', 'tipo horario', 'que cubre permiso', 'justifica atraso', 'descontable', 'no descontable', 'diferencia permiso', 'justificativo permiso', 'documentos permiso', 'adjuntar permiso'],
     answer:
-      'Los permisos tienen tipo de horario:\n• ENTRADA: justifica llegada tarde (cubre el atraso de entrada).\n• SALIDA: justifica salida anticipada.\n• ENTRE JORNADA: justifica atraso en el regreso del almuerzo.\n\nLos permisos descontables descuentan días del saldo de vacaciones; los no descontables no.',
+      'Tipos de permiso según descuento:\n\n• DESCONTABLE: descuenta días del saldo de vacaciones. No requiere documentos.\n• NO DESCONTABLE (licencia): no descuenta saldo. Debe adjuntar los documentos de respaldo (certificados médicos, oficios, etc.) desde la sección "Documentos de respaldo" del permiso. Solo puede subir documentos mientras el permiso esté en estado PENDIENTE.\n\nTipo de horario:\n• ENTRADA: justifica llegada tarde.\n• SALIDA: justifica salida anticipada.\n• ENTRE JORNADA: justifica atraso en el regreso del almuerzo.',
   },
 
   // ── VACACIONES ────────────────────────────────────────────────────────────
@@ -101,9 +108,14 @@ export const knowledge = [
       'Al aprobar una solicitud de vacaciones, el supervisor debe seleccionar un empleado de backup del mismo departamento. El sistema mostrará automáticamente los empleados disponibles del departamento.',
   },
   {
-    keywords: ['planificacion vacaciones', 'planificar vacacion', 'planificacion anual'],
+    keywords: ['planificacion vacaciones', 'planificar vacacion', 'planificacion anual', 'ingresar planificacion', 'crear planificacion', 'planificacion institucional', 'como ingreso planificacion', 'como planificar vacaciones'],
     answer:
-      'La planificación anual de vacaciones permite organizar los períodos del año. Estados:\n• PLANIFICADO: período programado.\n• APROBADO: confirmado.\n• REPLANIFICADO: modificado.\n• NEGADO/ELIMINADO: el empleado puede volver a planificar ese período.',
+      'La planificación anual de vacaciones la ingresa cada empleado desde el menú "Planificación" → "Mi Planificación".\n\nPasos:\n1. Abra "Mi Planificación" y seleccione el año.\n2. Ingrese hasta 4 períodos con fecha de inicio y fin (deben ser fechas del año planificado).\n3. Haga clic en "Guardar Planificación".\n4. Queda en estado PENDIENTE y el supervisor la revisa.\n\nNota: debe tener al menos 11 meses de servicio y estar dentro del período de planificación activo.',
+  },
+  {
+    keywords: ['replanificar', 'replanificacion', 'vacaciones no tome', 'vacacion no utilizada', 'cambiar periodo vacacion', 'modificar planificacion vacacion', 'no pude tomar mis vacaciones', 'vacaciones pendientes', 'cambiar fechas vacacion'],
+    answer:
+      'La replanificación de vacaciones la realiza el supervisor (no el empleado) directamente desde el sistema:\n\n1. El supervisor va a "Planificación" → "Planificaciones del Equipo".\n2. Busca la planificación del empleado — debe estar en estado APROBADO.\n3. Hace clic en "Replanificar" e ingresa las nuevas fechas (deben ser del año actual).\n4. Guarda. El estado cambia a REPLANIFICADO.\n\nRestricciones:\n• Solo se puede replanificar una vez por planificación.\n• No se puede replanificar si ya estaba en REPLANIFICADO.\n• Las nuevas fechas deben pertenecer al año en curso.\n\nSi su planificación no fue aún aprobada, solicite al supervisor que primero la apruebe.',
   },
   {
     keywords: ['liquidacion vacaciones', 'liquidar vacacion', 'comision servicios', 'desvinculacion'],
