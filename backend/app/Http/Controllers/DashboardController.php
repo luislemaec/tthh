@@ -11,6 +11,27 @@ use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
+    // Misma lógica que PermisosController::empleadosDeSupervisor()
+    private function empleadosDeSupervisor(string $id_supervisor)
+    {
+        $deptos = Supervisor::where("id_supervisor", $id_supervisor)->pluck("id_depto");
+
+        $empleadosDirectos = Empleado::whereIn("id_depto", $deptos)
+            ->where("estado", "ACTIVO")
+            ->where("id_emp", "!=", $id_supervisor)
+            ->pluck("id_emp");
+
+        $deptosHijos = DB::table("dbo.ad_departamento")
+            ->whereIn("padre_id", $deptos)
+            ->pluck("id_depto");
+
+        $supervisoresHijos = Supervisor::whereIn("id_depto", $deptosHijos)
+            ->where("id_supervisor", "!=", $id_supervisor)
+            ->pluck("id_supervisor");
+
+        return $empleadosDirectos->merge($supervisoresHijos)->unique()->values();
+    }
+
     public function index(Request $request)
     {
         $emp = $request->user();
@@ -48,11 +69,9 @@ class DashboardController extends Controller
             ->where("e.id_depto", "!=", 999);
 
         if (!$esAdminOTH && $esSupervisor) {
-            // Supervisor ve solo pendientes de su área
-            $deptos = Supervisor::where("id_supervisor", $emp->id_emp)->pluck("id_depto");
-            $queryPermisos->whereIn("e.id_depto", $deptos);
+            $idsEquipo = $this->empleadosDeSupervisor($emp->id_emp);
+            $queryPermisos->whereIn("p.id_emp", $idsEquipo);
         } elseif (!$esAdminOTH && !$esSupervisor) {
-            // Empleado ve solo sus propios pendientes
             $queryPermisos->where("p.id_emp", $emp->id_emp);
         }
 
@@ -65,8 +84,8 @@ class DashboardController extends Controller
             ->where("e.id_depto", "!=", 999);
 
         if (!$esAdminOTH && $esSupervisor) {
-            $deptos = Supervisor::where("id_supervisor", $emp->id_emp)->pluck("id_depto");
-            $queryVacaciones->whereIn("e.id_depto", $deptos);
+            $idsEquipo = $idsEquipo ?? $this->empleadosDeSupervisor($emp->id_emp);
+            $queryVacaciones->whereIn("v.id_emp", $idsEquipo);
         } elseif (!$esAdminOTH && !$esSupervisor) {
             $queryVacaciones->where("v.id_emp", $emp->id_emp);
         }
@@ -76,12 +95,7 @@ class DashboardController extends Controller
         // Datos exclusivos para supervisores (no admin/TH)
         $datosSupervisor = null;
         if ($esSupervisor && !$esAdminOTH) {
-            $deptos = Supervisor::where("id_supervisor", $emp->id_emp)->pluck("id_depto");
-            $empleadosIds = DB::table("dbo.ad_empleado")
-                ->whereIn("id_depto", $deptos)
-                ->where("estado", "ACTIVO")
-                ->where("id_depto", "!=", 999)
-                ->pluck("id_emp");
+            $empleadosIds = $idsEquipo ?? $this->empleadosDeSupervisor($emp->id_emp);
 
             $hoy = now()->toDateString();
 
