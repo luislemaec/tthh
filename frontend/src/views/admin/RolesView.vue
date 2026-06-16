@@ -141,13 +141,17 @@ function editarRol(rol) {
 }
 
 async function guardarRol() {
-  if (modal.value.form.id) {
-    await api.put(`/roles/${modal.value.form.id}`, modal.value.form)
-  } else {
-    await api.post('/roles', modal.value.form)
+  try {
+    if (modal.value.form.id) {
+      await api.put(`/roles/${modal.value.form.id}`, modal.value.form)
+    } else {
+      await api.post('/roles', modal.value.form)
+    }
+    modal.value.show = false
+    cargar()
+  } catch (e) {
+    alert('Error al guardar: ' + (e.response?.data?.message || e.message))
   }
-  modal.value.show = false
-  cargar()
 }
 
 async function desactivarRol(id) {

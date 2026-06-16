@@ -25,7 +25,7 @@ class RolController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate(['descripcion' => 'required|string|max:20']);
+        $request->validate(['descripcion' => 'required|string|max:50']);
         $rol = AdminRol::create([
             'descripcion' => strtoupper($request->descripcion),
             'estado'      => true,
