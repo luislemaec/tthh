@@ -213,8 +213,7 @@ const tieneAccesoComisiones = computed(() =>
   store.tieneRol('DIRECTOR FINANCIERO') ||
   store.tieneRol('TESORERIA') ||
   store.tieneRol('ADMINISTRADOR') ||
-  store.tieneRol('TALENTO HUMANO') ||
-  !!store.empleado?.id_emp  // todos los empleados pueden solicitar comisiones
+  store.tieneRol('TALENTO HUMANO')
 )
 
 const rutaTransportes = computed(() => {
