@@ -56,7 +56,7 @@
         <form @submit.prevent="guardarRol" class="space-y-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
-            <input v-model="modal.form.descripcion" type="text" maxlength="20"
+            <input v-model="modal.form.descripcion" type="text" maxlength="50"
               class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#579186] outline-none"
               required />
           </div>
