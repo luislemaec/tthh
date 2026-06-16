@@ -104,6 +104,16 @@ const routes = [
       { path: 'vales-combustible',  name: 'TransValesCombustible',   component: () => import('@/views/transporte/ValesCombustibleView.vue') },
     ],
   },
+  {
+    path: '/comisiones',
+    component: () => import('@/layouts/ComisionesLayout.vue'),
+    children: [
+      { path: '',               redirect: '/comisiones/solicitudes' },
+      { path: 'solicitudes',    name: 'ComSolicitudes',    component: () => import('@/views/comisiones/ComisionesView.vue') },
+      { path: 'liquidaciones',  name: 'ComLiquidaciones',  component: () => import('@/views/comisiones/LiquidacionesView.vue') },
+      { path: 'tarifas',        name: 'ComTarifas',        component: () => import('@/views/admin/TarifasViaticosView.vue') },
+    ],
+  },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]
 

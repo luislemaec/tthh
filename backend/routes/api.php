@@ -28,6 +28,11 @@ use App\Http\Controllers\Adquisiciones\SolicitudMaterialController;
 use App\Http\Controllers\Adquisiciones\ReporteAdqController;
 use App\Http\Controllers\Adquisiciones\AjusteController;
 use App\Http\Controllers\ZktecoController;
+use App\Http\Controllers\Comisiones\ComisionController;
+use App\Http\Controllers\Comisiones\InformeComisionController;
+use App\Http\Controllers\Comisiones\AnticipController;
+use App\Http\Controllers\Comisiones\LiquidacionController;
+use App\Http\Controllers\Comisiones\TarifaViaticosController;
 use Illuminate\Support\Facades\Route;
 
 // Rutas PÚBLICAS
@@ -495,5 +500,55 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get('movilizacion/{id}/pdf', [TransporteController::class, 'pdfMov']);
 
         Route::get('conductores', [TransporteController::class, 'conductores']);
+    });
+
+    // Comisiones de Servicios
+    Route::prefix('comisiones')->group(function () {
+        Route::get('mi-rol',                                      [ComisionController::class, 'miRol']);
+
+        // Solicitudes
+        Route::get('solicitudes',                                 [ComisionController::class, 'index']);
+        Route::post('solicitudes',                                [ComisionController::class, 'store']);
+        Route::get('solicitudes/{id}',                            [ComisionController::class, 'detalle']);
+        Route::put('solicitudes/{id}',                            [ComisionController::class, 'update']);
+        Route::patch('solicitudes/{id}/enviar',                   [ComisionController::class, 'enviar']);
+        Route::patch('solicitudes/{id}/aprobar-dir-adm',          [ComisionController::class, 'aprobarDirAdm']);
+        Route::patch('solicitudes/{id}/negar-dir-adm',            [ComisionController::class, 'negarDirAdm']);
+        Route::patch('solicitudes/{id}/aprobar-jefe',             [ComisionController::class, 'aprobarJefe']);
+        Route::patch('solicitudes/{id}/negar-jefe',               [ComisionController::class, 'negarJefe']);
+        Route::patch('solicitudes/{id}/aprobar-autoridad',        [ComisionController::class, 'aprobarAutoridad']);
+        Route::patch('solicitudes/{id}/negar-autoridad',          [ComisionController::class, 'negarAutoridad']);
+        Route::patch('solicitudes/{id}/emitir-resolucion',        [ComisionController::class, 'emitirResolucion']);
+        Route::patch('solicitudes/{id}/registrar-ext',            [ComisionController::class, 'registrarSistemaExt']);
+        Route::patch('solicitudes/{id}/solicitar-pago',           [ComisionController::class, 'solicitarPago']);
+        Route::get('solicitudes/{id}/pdf',                        [ComisionController::class, 'pdf']);
+
+        // Informe de cumplimiento
+        Route::post('solicitudes/{id}/informe',                   [InformeComisionController::class, 'store']);
+        Route::put('informes/{id}',                               [InformeComisionController::class, 'update']);
+        Route::patch('informes/{id}/revisar',                     [InformeComisionController::class, 'revisar']);
+        Route::patch('informes/{id}/aprobar',                     [InformeComisionController::class, 'aprobar']);
+        Route::get('solicitudes/{id}/informe/pdf',                [InformeComisionController::class, 'pdf']);
+
+        // Anticipo de viáticos
+        Route::post('solicitudes/{id}/anticipo',                  [AnticipController::class, 'store']);
+        Route::patch('anticipos/{id}/cur-compromiso',             [AnticipController::class, 'registrarCurCompromiso']);
+        Route::patch('anticipos/{id}/cur-devengado',              [AnticipController::class, 'registrarCurDevengado']);
+        Route::patch('anticipos/{id}/confirmar-pago',             [AnticipController::class, 'confirmarPago']);
+
+        // Ficha de liquidación
+        Route::post('solicitudes/{id}/liquidacion',               [LiquidacionController::class, 'store']);
+        Route::put('liquidaciones/{id}',                          [LiquidacionController::class, 'update']);
+        Route::patch('liquidaciones/{id}/cur-compromiso',         [LiquidacionController::class, 'registrarCurCompromiso']);
+        Route::patch('liquidaciones/{id}/cur-devengado',          [LiquidacionController::class, 'registrarCurDevengado']);
+        Route::patch('liquidaciones/{id}/confirmar-pago',         [LiquidacionController::class, 'confirmarPago']);
+        Route::patch('liquidaciones/{id}/registrar-devolucion',   [LiquidacionController::class, 'registrarDevolucion']);
+        Route::get('solicitudes/{id}/liquidacion/pdf',            [LiquidacionController::class, 'pdf']);
+
+        // Tarifas de viáticos (admin)
+        Route::get('admin/tarifas-viaticos',                      [TarifaViaticosController::class, 'index']);
+        Route::post('admin/tarifas-viaticos',                     [TarifaViaticosController::class, 'store']);
+        Route::put('admin/tarifas-viaticos/{id}',                 [TarifaViaticosController::class, 'update']);
+        Route::delete('admin/tarifas-viaticos/{id}',              [TarifaViaticosController::class, 'destroy']);
     });
 });

@@ -339,4 +339,51 @@ export const knowledge = [
     answer:
       'El Dashboard muestra información según su rol:\n• Empleado: saldo de vacaciones, permisos pendientes y próximo período de vacaciones.\n• Supervisor: pendientes del equipo, estado del equipo hoy y vacaciones próximas.\n• Admin/TH: métricas globales y gráfico de atrasos por coordinación.',
   },
+
+  // ── COMISIONES DE SERVICIO ────────────────────────────────────────────────
+  {
+    keywords: ['comision', 'comision de servicios', 'viatico', 'viaticos', 'viaje', 'viaje exterior', 'viaje interior', 'pasajes'],
+    answer:
+      'El módulo de Comisiones de Servicio permite gestionar viajes institucionales al interior y exterior del país.\n\nFlujo general:\n1. El empleado crea la solicitud (destino, fechas, actividades, transporte).\n2. La Dirección Administrativa verifica disponibilidad de presupuesto y transporte.\n3. El Jefe Inmediato aprueba.\n4. La Máxima Autoridad autoriza (exterior: pasa por Asesoría Jurídica y sistema externo).\n5. El empleado viaja y presenta el Informe de Cumplimiento.\n6. El supervisor revisa y la Máxima Autoridad aprueba el informe.\n7. Se tramita el pago (Contabilidad → Presupuesto → Dir. Financiero → Tesorería).\n\nAcceda desde el Launcher → Comisiones.',
+  },
+  {
+    keywords: ['solicitud comision', 'crear comision', 'nueva comision', 'solicitar viaje'],
+    answer:
+      'Para crear una solicitud de comisión:\n1. Vaya a Comisiones → Solicitudes → "Nueva Comisión".\n2. Complete los 4 tabs: Datos Generales (tipo, destino, fechas, actividades), Servidores, Transporte e Itinerario, y Datos Bancarios.\n3. Guarde en BORRADOR y luego haga clic en "Enviar".\n\nLa solicitud pasa a revisión de la Dirección Administrativa. Puede adjuntar múltiples servidores comisionados y tramos de transporte.',
+  },
+  {
+    keywords: ['informe cumplimiento', 'informe comision', 'presentar informe viaje'],
+    answer:
+      'Una vez autorizada la comisión y realizado el viaje, debe presentar el Informe de Cumplimiento:\n1. En "Mis Comisiones" haga clic en "Crear Informe" cuando el estado sea AUTORIZADO.\n2. Complete las actividades realizadas, productos obtenidos y el itinerario real de transporte.\n3. Haga clic en "Presentar Informe".\n\nEl informe debe presentarse dentro de los 4 días laborales posteriores al regreso. El supervisor lo revisa y la Máxima Autoridad lo aprueba.',
+  },
+  {
+    keywords: ['anticipo viatico', 'anticipo comision', 'solicitar anticipo'],
+    answer:
+      'Si la comisión tiene anticipo habilitado (marcó "Anticipo" al crear), puede solicitarlo una vez que la comisión esté AUTORIZADA. El anticipo sigue el flujo financiero completo: Presupuesto registra el CUR de compromiso, Contabilidad registra el CUR de devengado, y Tesorería confirma el pago.',
+  },
+  {
+    keywords: ['ficha liquidacion', 'liquidacion viaticos', 'liquidar comision', 'cobrar viaticos'],
+    answer:
+      'La ficha de liquidación la crea Contabilidad después de que el empleado presente el Informe de Cumplimiento y solicite el pago. Incluye:\n• Viáticos (valor/día × días)\n• Anticipo recibido\n• Justificativos con comprobantes\n• Movilización, peajes y combustibles\n\nSi el anticipo supera el gasto, el resultado es POR COBRAR (el empleado deposita el saldo). Si hay saldo a favor del empleado, la institución paga.',
+  },
+  {
+    keywords: ['estado comision', 'estados solicitud comision'],
+    answer:
+      'Estados de una comisión:\n• BORRADOR → en preparación\n• PENDIENTE DIR. ADM. → revisando transporte y presupuesto\n• PENDIENTE JEFE → aprobación del supervisor\n• PENDIENTE AUTORIDAD → firma de la Máxima Autoridad\n• PENDIENTE JURÍDICA → resolución jurídica (solo exterior)\n• AUTORIZADO → listo para viajar\n• INFORME PRESENTADO / REVISADO / APROBADO → flujo del informe\n• EN PAGO → en proceso de liquidación financiera\n• CERRADO → proceso completado\n• NEGADO → rechazado (se indica el motivo)',
+  },
+  {
+    keywords: ['cur esigef', 'cur compromiso', 'cur devengado', 'numero cur'],
+    answer:
+      'Los CURs (Comprobantes Únicos de Registro) son números de referencia del sistema eSIGEF. El sistema almacena solo la referencia, no hay integración directa.\n• CUR Compromiso: lo registra Presupuesto.\n• CUR Devengado: lo registra Contabilidad.\nEstos números se imprimen en la ficha de liquidación para control contable.',
+  },
+  {
+    keywords: ['tarifas viaticos', 'valor por dia viatico', 'cuanto es el viatico'],
+    answer:
+      'Las tarifas diarias de viáticos se configuran en Admin → Tarifas de Viáticos. Puede crear tarifas para Interior, Exterior o Ambos. Contabilidad ingresa el valor por día al crear la ficha de liquidación, que puede seleccionarse de estas tarifas configuradas.',
+  },
+  {
+    keywords: ['rol comision', 'quien aprueba comision', 'director administrativo juridico financiero'],
+    answer:
+      'Roles en el módulo de Comisiones:\n• DIRECCION ADMINISTRATIVA: verifica disponibilidad de transporte y presupuesto.\n• MAXIMA AUTORIDAD: autoriza la comisión y aprueba el informe de cumplimiento.\n• ASESORIA JURIDICA: emite resolución para comisiones al exterior.\n• PRESUPUESTO: registra el CUR de compromiso.\n• CONTABILIDAD: crea la ficha de liquidación y registra el CUR de devengado.\n• DIRECTOR FINANCIERO: supervisa el proceso financiero.\n• TESORERIA: confirma el pago o registra la devolución cuando hay saldo a cobrar.',
+  },
 ]
