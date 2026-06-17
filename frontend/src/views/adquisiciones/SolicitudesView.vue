@@ -280,7 +280,7 @@
             <p class="text-sm font-medium text-gray-700 mb-2">{{ det.articulo?.nombre }}</p>
             <div class="flex items-center gap-4 text-sm">
               <span class="text-gray-500">Solicitado: <b>{{ det.cantidad_solicitada }}</b></span>
-              <span class="text-gray-500">Stock disponible: <b :class="det.articulo?.stock_actual < det.cantidad_solicitada ? 'text-orange-600' : 'text-green-700'">
+              <span class="text-gray-500">Stock disponible: <b :class="Number(det.articulo?.stock_actual) < Number(det.cantidad_autorizada ?? det.cantidad_solicitada) ? 'text-orange-600' : 'text-green-700'">
                 {{ det.articulo?.stock_actual }}
               </b></span>
             </div>
