@@ -44,17 +44,16 @@
 
       <!-- Navegación de pestañas -->
       <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div class="flex gap-1 border-b border-gray-200">
+        <div class="flex gap-1 border-b border-gray-200 px-2">
           <button v-for="tab in tabs" :key="tab.id" type="button"
             @click="tabActivo = tab.id"
             :class="[
-              'flex items-center gap-2 px-5 py-3 text-sm font-medium transition border-b-2 -mb-px',
+              'px-4 py-2.5 text-sm font-medium transition border-b-2 -mb-px',
               tabActivo === tab.id
                 ? 'border-[#0b5447] text-[#0b5447]'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             ]">
-            <span v-html="tab.icon" class="w-4 h-4 flex-shrink-0"></span>
-            <span class="hidden sm:inline">{{ tab.label }}</span>
+            {{ tab.label }}
           </button>
         </div>
 
