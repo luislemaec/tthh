@@ -354,7 +354,7 @@
       <div class="p-6">
         <label class="text-xs font-semibold text-gray-600 mb-1 block">N° CUR (eSIGEF) *</label>
         <input v-model="curValor" type="text" placeholder="Ej: 2026-CUR-00123"
-          class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]"/>
+          class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]" style="text-transform:uppercase"/>
         <p v-if="errorCur" class="text-red-600 text-xs mt-2">{{ errorCur }}</p>
         <div class="flex justify-end gap-3 mt-4">
           <button @click="modalCur = false" class="px-4 py-2 text-sm text-gray-600">Cancelar</button>
@@ -378,7 +378,7 @@
           <div>
             <label class="text-xs font-semibold text-gray-600 mb-1 block">N° Comprobante de Depósito *</label>
             <input v-model="devolucionForm.comprobante" type="text" placeholder="N° del comprobante"
-              class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]"/>
+              class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]" style="text-transform:uppercase"/>
           </div>
           <div>
             <label class="text-xs font-semibold text-gray-600 mb-1 block">Fecha de Devolución *</label>

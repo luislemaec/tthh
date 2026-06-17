@@ -249,7 +249,7 @@
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label class="label-field">Banco</label>
-                <input v-model="form.banco" type="text" placeholder="Nombre del banco" class="input-field"/>
+                <input v-model="form.banco" type="text" placeholder="Nombre del banco" class="input-field" style="text-transform:uppercase"/>
               </div>
               <div>
                 <label class="label-field">Tipo de Cuenta</label>
@@ -261,7 +261,7 @@
               </div>
               <div>
                 <label class="label-field">Número de Cuenta</label>
-                <input v-model="form.numero_cuenta" type="text" placeholder="N° de cuenta" class="input-field"/>
+                <input v-model="form.numero_cuenta" type="text" placeholder="N° de cuenta" class="input-field" style="text-transform:uppercase"/>
               </div>
             </div>
           </div>

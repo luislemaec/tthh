@@ -77,18 +77,18 @@
             <div>
               <label class="text-xs font-semibold text-gray-600 mb-1 block">Cédula *</label>
               <input v-model="modal.form.cedula" type="text" :disabled="!!modal.id" maxlength="20"
-                class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e] disabled:bg-gray-50"/>
+                class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e] disabled:bg-gray-50" style="text-transform:uppercase"/>
             </div>
             <div>
               <label class="text-xs font-semibold text-gray-600 mb-1 block">Cargo *</label>
               <input v-model="modal.form.cargo" type="text" maxlength="200"
-                class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]"/>
+                class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]" style="text-transform:uppercase"/>
             </div>
           </div>
           <div>
             <label class="text-xs font-semibold text-gray-600 mb-1 block">Nombres completos *</label>
             <input v-model="modal.form.nombres" type="text" maxlength="200"
-              class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]"/>
+              class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]" style="text-transform:uppercase"/>
           </div>
 
           <!-- Datos bancarios -->
@@ -96,7 +96,7 @@
             <p class="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Datos Bancarios</p>
             <div class="space-y-2">
               <input v-model="modal.form.banco" type="text" placeholder="Nombre del banco"
-                class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]"/>
+                class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]" style="text-transform:uppercase"/>
               <div class="grid grid-cols-2 gap-2">
                 <select v-model="modal.form.tipo_cuenta" class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none">
                   <option value="">Tipo de cuenta...</option>
@@ -104,7 +104,7 @@
                   <option value="CORRIENTE">Corriente</option>
                 </select>
                 <input v-model="modal.form.numero_cuenta" type="text" placeholder="Número de cuenta"
-                  class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]"/>
+                  class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]" style="text-transform:uppercase"/>
               </div>
             </div>
           </div>

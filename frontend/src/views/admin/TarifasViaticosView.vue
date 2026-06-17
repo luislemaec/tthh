@@ -86,9 +86,24 @@
         Fórmula: <em>${{ valorBase }} × coeficiente × días autorizados</em>.
         Para países no listados, usar el coeficiente del país geográficamente más cercano con el menor coeficiente.
       </div>
-      <div v-for="(paises, region) in coeficientesAgrupados" :key="region" class="mb-4">
-        <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 px-1">{{ region }}</h3>
-        <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+      <div v-for="(paises, region) in coeficientesAgrupados" :key="region" class="mb-2">
+        <!-- Cabecera acordeón -->
+        <button @click="toggleRegion(region)"
+          class="w-full flex items-center justify-between px-4 py-3 bg-white border border-gray-200 hover:bg-purple-50/40 transition text-left"
+          :class="regionesAbiertas[region] ? 'rounded-t-lg border-b-0' : 'rounded-lg'">
+          <div class="flex items-center gap-3">
+            <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :style="regionesAbiertas[region] ? 'transform:rotate(180deg)' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+            <span class="text-sm font-bold text-gray-700 uppercase tracking-wide">{{ region }}</span>
+            <span class="text-xs text-gray-400">{{ paises.length }} países</span>
+          </div>
+          <span class="text-xs font-mono text-blue-600">
+            ${{ (valorBase * Math.min(...paises.map(p => p.coeficiente))).toFixed(2) }} – ${{ (valorBase * Math.max(...paises.map(p => p.coeficiente))).toFixed(2) }}/día
+          </span>
+        </button>
+        <!-- Contenido acordeón -->
+        <div v-if="regionesAbiertas[region]" class="bg-white rounded-b-lg border border-t-0 border-gray-200 overflow-hidden">
           <table class="w-full text-sm">
             <tbody>
               <tr v-for="p in paises" :key="p.id" class="border-b border-gray-50 hover:bg-blue-50/20 transition">
@@ -219,11 +234,16 @@ const tabs = [
   { key: 'interior', label: 'Interior' },
   { key: 'exterior', label: 'Exterior — Coeficientes' },
 ]
-const tabActivo   = ref('interior')
-const cargando    = ref(true)
-const tarifas     = ref([])
-const coeficientes = ref([])
-const valorBase   = ref(185)
+const tabActivo      = ref('interior')
+const cargando       = ref(true)
+const tarifas        = ref([])
+const coeficientes   = ref([])
+const valorBase      = ref(185)
+const regionesAbiertas = ref({})
+
+function toggleRegion(region) {
+  regionesAbiertas.value[region] = !regionesAbiertas.value[region]
+}
 
 const regiones = ['ÁFRICA', 'AMÉRICA CENTRAL', 'AMÉRICA DEL NORTE', 'AMÉRICA DEL SUR', 'ASIA', 'EUROPA', 'OCEANÍA']
 

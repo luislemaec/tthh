@@ -311,7 +311,7 @@
             <div>
               <label class="text-xs font-semibold text-gray-600 mb-1 block">Destino *</label>
               <input v-model="form.destino" type="text" placeholder="Ciudad - Provincia / País"
-                class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]"/>
+                class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]" style="text-transform:uppercase"/>
             </div>
           </div>
           <div class="grid grid-cols-2 gap-3">
@@ -341,7 +341,7 @@
           <div>
             <label class="text-xs font-semibold text-gray-600 mb-1 block">Descripción de Actividades *</label>
             <textarea v-model="form.descripcion_actividades" rows="3" placeholder="Describa las actividades a realizar..."
-              class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e] resize-none"/>
+              class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e] resize-none" style="text-transform:uppercase"/>
           </div>
           <div class="flex gap-4">
             <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
@@ -392,21 +392,21 @@
                 <input v-model="srv.id_emp" type="text" placeholder="Cédula" readonly
                   class="text-sm border border-gray-200 rounded px-2 py-1.5 bg-gray-50 text-gray-600"/>
                 <input v-model="srv.unidad" type="text" placeholder="Unidad"
-                  class="text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none"/>
+                  class="text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none" style="text-transform:uppercase"/>
                 <input v-model="srv.puesto" type="text" placeholder="Cargo"
-                  class="text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none"/>
+                  class="text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none" style="text-transform:uppercase"/>
               </div>
               <!-- Datos bancarios por servidor -->
               <div class="grid grid-cols-3 gap-2 pt-1 border-t border-gray-100">
                 <input v-model="srv.banco" type="text" placeholder="Banco"
-                  class="text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]"/>
+                  class="text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]" style="text-transform:uppercase"/>
                 <select v-model="srv.tipo_cuenta" class="text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none">
                   <option value="">Tipo cuenta...</option>
                   <option value="AHORROS">Ahorros</option>
                   <option value="CORRIENTE">Corriente</option>
                 </select>
                 <input v-model="srv.numero_cuenta" type="text" placeholder="N° cuenta"
-                  class="text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]"/>
+                  class="text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]" style="text-transform:uppercase"/>
               </div>
             </div>
             <div class="flex justify-end">
@@ -436,12 +436,12 @@
             </div>
             <div class="grid grid-cols-2 gap-2">
               <input v-model="trn.tipo" type="text" placeholder="Tipo (Aéreo, Terrestre...)"
-                class="text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none"/>
+                class="text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none" style="text-transform:uppercase"/>
               <input v-model="trn.nombre" type="text" placeholder="Empresa / Vuelo"
-                class="text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none"/>
+                class="text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none" style="text-transform:uppercase"/>
             </div>
             <input v-model="trn.ruta" type="text" placeholder="Ruta (Ej: Quito - Guayaquil)"
-              class="w-full text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none"/>
+              class="w-full text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none" style="text-transform:uppercase"/>
             <div class="grid grid-cols-4 gap-2">
               <input v-model="trn.salida_fecha" type="date" class="text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none"/>
               <input v-model="trn.salida_hora" type="time" class="text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none"/>
@@ -478,7 +478,7 @@
       <div class="p-6">
       <label class="text-xs font-semibold text-gray-600 mb-1 block">Motivo / Observación *</label>
       <textarea v-model="negarObservacion" rows="3" placeholder="Indique el motivo..."
-        class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-red-400 resize-none"/>
+        class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-red-400 resize-none" style="text-transform:uppercase"/>
       <p v-if="errorAccion" class="text-red-600 text-xs mt-2">{{ errorAccion }}</p>
       <div class="flex justify-end gap-3 mt-4">
         <button @click="modalNegar = false" class="px-4 py-2 text-sm text-gray-600">Cancelar</button>
@@ -499,7 +499,7 @@
       <div class="p-6">
       <label class="text-xs font-semibold text-gray-600 mb-1 block">N° Resolución / Referencia *</label>
       <input v-model="resolucionJuridica" type="text" placeholder="Ej: RES-JUR-2026-001"
-        class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]"/>
+        class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]" style="text-transform:uppercase"/>
       <p v-if="errorAccion" class="text-red-600 text-xs mt-2">{{ errorAccion }}</p>
       <div class="flex justify-end gap-3 mt-4">
         <button @click="modalResolucion = false" class="px-4 py-2 text-sm text-gray-600">Cancelar</button>
@@ -521,7 +521,7 @@
       <div class="p-6">
       <label class="text-xs font-semibold text-gray-600 mb-1 block">Código / Número del Sistema *</label>
       <input v-model="numSistemaExt" type="text" placeholder="Código asignado en el sistema"
-        class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]"/>
+        class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]" style="text-transform:uppercase"/>
       <p v-if="errorAccion" class="text-red-600 text-xs mt-2">{{ errorAccion }}</p>
       <div class="flex justify-end gap-3 mt-4">
         <button @click="modalRegistroExt = false" class="px-4 py-2 text-sm text-gray-600">Cancelar</button>
@@ -579,12 +579,12 @@
         <div>
           <label class="text-xs font-semibold text-gray-600 mb-1 block">Actividades Realizadas *</label>
           <textarea v-model="informeForm.actividades" rows="4" placeholder="Describa las actividades realizadas..."
-            class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none resize-none"/>
+            class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none resize-none" style="text-transform:uppercase"/>
         </div>
         <div>
           <label class="text-xs font-semibold text-gray-600 mb-1 block">Productos / Resultados</label>
           <textarea v-model="informeForm.productos" rows="2" placeholder="Resultados obtenidos..."
-            class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none resize-none"/>
+            class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none resize-none" style="text-transform:uppercase"/>
         </div>
         <p v-if="errorAccion" class="text-red-600 text-xs">{{ errorAccion }}</p>
       </div>
