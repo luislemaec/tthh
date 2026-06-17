@@ -46,6 +46,7 @@ const routes = [
       { path: 'admin/avisos', name: 'AdminAvisos', component: () => import('@/views/admin/AvisosView.vue') },
       { path: 'admin/auditoria', name: 'AdminAuditoria', component: () => import('@/views/admin/AuditoriaView.vue') },
       { path: 'admin/zkteco', name: 'AdminZkteco', component: () => import('@/views/admin/ZktecoView.vue') },
+      { path: 'admin/funcionarios-externos', name: 'AdminFuncionariosExternos', component: () => import('@/views/comisiones/FuncionariosExternosView.vue') },
       { path: 'admin/modalidades-laborales', name: 'AdminModalidadesLaborales', component: () => import('@/views/admin/ModalidadLaboralView.vue') },
       { path: 'acciones-personal', name: 'AccionesPersonal', component: () => import('@/views/acciones/AccionesPersonalView.vue') },
       { path: 'acciones-personal/nueva', name: 'AccionPersonalNueva', component: () => import('@/views/acciones/AccionPersonalForm.vue') },
