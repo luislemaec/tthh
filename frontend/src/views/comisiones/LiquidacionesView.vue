@@ -8,12 +8,11 @@
     </div>
 
     <!-- Tabs financieras -->
-    <div class="flex gap-1 mb-4 border-b border-gray-200">
+    <div class="flex gap-0 rounded-xl overflow-hidden border border-gray-200 mb-4">
       <button v-for="tab in tabsVisibles" :key="tab.key"
         @click="tabActivo = tab.key"
-        :class="['px-4 py-2.5 text-sm font-medium transition border-b-2 -mb-px', tabActivo === tab.key
-          ? 'border-[#5c4a6e] text-[#5c4a6e]'
-          : 'border-transparent text-gray-500 hover:text-gray-700']">
+        :class="['flex-1 py-2.5 text-sm font-semibold transition', tabActivo === tab.key ? 'text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100']"
+        :style="tabActivo === tab.key ? 'background-color:#5c4a6e' : ''">
         {{ tab.label }}
         <span v-if="tab.badge" class="ml-1.5 bg-amber-400 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">{{ tab.badge }}</span>
       </button>
@@ -245,10 +244,10 @@
   <!-- ══════════════════ MODAL FICHA DE LIQUIDACIÓN ══════════════════ -->
   <div v-if="modalFicha" class="fixed inset-0 z-50 flex items-start justify-center pt-8 pb-4 px-4">
     <div class="fixed inset-0 bg-black/40" @click="modalFicha = false"/>
-    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-xl max-h-[90vh] flex flex-col z-10">
-      <div class="flex items-center justify-between p-5 border-b border-gray-100">
-        <h2 class="text-lg font-bold text-gray-800">Ficha de Liquidación</h2>
-        <button @click="modalFicha = false" class="text-gray-400 hover:text-gray-600">
+    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-xl max-h-[90vh] flex flex-col z-10 overflow-hidden">
+      <div class="flex items-center justify-between px-5 py-4 text-white" style="background-color:#5c4a6e;">
+        <h2 class="text-base font-bold">Ficha de Liquidación</h2>
+        <button @click="modalFicha = false" class="text-white/80 hover:text-white">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
           </svg>
@@ -350,19 +349,21 @@
   <!-- ══════════════════ MODAL CUR ══════════════════ -->
   <div v-if="modalCur" class="fixed inset-0 z-50 flex items-center justify-center px-4">
     <div class="fixed inset-0 bg-black/40" @click="modalCur = false"/>
-    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md p-6 z-10">
-      <h3 class="text-lg font-bold text-gray-800 mb-4">{{ curTitulo }}</h3>
-      <label class="text-xs font-semibold text-gray-600 mb-1 block">N° CUR (eSIGEF) *</label>
-      <input v-model="curValor" type="text" placeholder="Ej: 2026-CUR-00123"
-        class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]"/>
-      <p v-if="errorCur" class="text-red-600 text-xs mt-2">{{ errorCur }}</p>
-      <div class="flex justify-end gap-3 mt-4">
-        <button @click="modalCur = false" class="px-4 py-2 text-sm text-gray-600">Cancelar</button>
-        <button @click="guardarCur" :disabled="guardando"
-          class="px-5 py-2 text-sm font-semibold text-white rounded-lg hover:opacity-90 transition disabled:opacity-50"
-          style="background-color:#5c4a6e;">
-          {{ guardando ? 'Guardando...' : 'Registrar' }}
-        </button>
+    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden z-10">
+      <div class="px-6 py-4 text-white font-bold text-base" style="background-color:#5c4a6e">{{ curTitulo }}</div>
+      <div class="p-6">
+        <label class="text-xs font-semibold text-gray-600 mb-1 block">N° CUR (eSIGEF) *</label>
+        <input v-model="curValor" type="text" placeholder="Ej: 2026-CUR-00123"
+          class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]"/>
+        <p v-if="errorCur" class="text-red-600 text-xs mt-2">{{ errorCur }}</p>
+        <div class="flex justify-end gap-3 mt-4">
+          <button @click="modalCur = false" class="px-4 py-2 text-sm text-gray-600">Cancelar</button>
+          <button @click="guardarCur" :disabled="guardando"
+            class="px-5 py-2 text-sm font-semibold text-white rounded-lg hover:opacity-90 transition disabled:opacity-50"
+            style="background-color:#5c4a6e;">
+            {{ guardando ? 'Guardando...' : 'Registrar' }}
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -370,27 +371,29 @@
   <!-- ══════════════════ MODAL DEVOLUCIÓN ══════════════════ -->
   <div v-if="modalDevolucion" class="fixed inset-0 z-50 flex items-center justify-center px-4">
     <div class="fixed inset-0 bg-black/40" @click="modalDevolucion = false"/>
-    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md p-6 z-10">
-      <h3 class="text-lg font-bold text-gray-800 mb-4">Registrar Devolución</h3>
-      <div class="space-y-3">
-        <div>
-          <label class="text-xs font-semibold text-gray-600 mb-1 block">N° Comprobante de Depósito *</label>
-          <input v-model="devolucionForm.comprobante" type="text" placeholder="N° del comprobante"
-            class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]"/>
+    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden z-10">
+      <div class="px-6 py-4 text-white font-bold text-base" style="background-color:#5c4a6e">Registrar Devolución</div>
+      <div class="p-6">
+        <div class="space-y-3">
+          <div>
+            <label class="text-xs font-semibold text-gray-600 mb-1 block">N° Comprobante de Depósito *</label>
+            <input v-model="devolucionForm.comprobante" type="text" placeholder="N° del comprobante"
+              class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]"/>
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-gray-600 mb-1 block">Fecha de Devolución *</label>
+            <input v-model="devolucionForm.fecha" type="date"
+              class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]"/>
+          </div>
         </div>
-        <div>
-          <label class="text-xs font-semibold text-gray-600 mb-1 block">Fecha de Devolución *</label>
-          <input v-model="devolucionForm.fecha" type="date"
-            class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]"/>
+        <p v-if="errorCur" class="text-red-600 text-xs mt-2">{{ errorCur }}</p>
+        <div class="flex justify-end gap-3 mt-4">
+          <button @click="modalDevolucion = false" class="px-4 py-2 text-sm text-gray-600">Cancelar</button>
+          <button @click="guardarDevolucion" :disabled="guardando"
+            class="px-5 py-2 text-sm font-semibold bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition disabled:opacity-50">
+            {{ guardando ? 'Guardando...' : 'Registrar' }}
+          </button>
         </div>
-      </div>
-      <p v-if="errorCur" class="text-red-600 text-xs mt-2">{{ errorCur }}</p>
-      <div class="flex justify-end gap-3 mt-4">
-        <button @click="modalDevolucion = false" class="px-4 py-2 text-sm text-gray-600">Cancelar</button>
-        <button @click="guardarDevolucion" :disabled="guardando"
-          class="px-5 py-2 text-sm font-semibold bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition disabled:opacity-50">
-          {{ guardando ? 'Guardando...' : 'Registrar' }}
-        </button>
       </div>
     </div>
   </div>

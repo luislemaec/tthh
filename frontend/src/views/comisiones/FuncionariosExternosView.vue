@@ -68,8 +68,9 @@
     <!-- Modal -->
     <div v-if="modal.show" class="fixed inset-0 z-50 flex items-center justify-center px-4">
       <div class="fixed inset-0 bg-black/40" @click="modal.show = false"/>
-      <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 z-10">
-        <h3 class="text-lg font-bold text-gray-800 mb-5">{{ modal.id ? 'Editar Funcionario' : 'Nuevo Funcionario Externo' }}</h3>
+      <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden z-10">
+        <div class="px-6 py-4 text-white font-bold text-base" style="background-color:#5c4a6e">{{ modal.id ? 'Editar Funcionario' : 'Nuevo Funcionario Externo' }}</div>
+        <div class="p-6">
         <div class="space-y-4">
           <!-- Datos personales -->
           <div class="grid grid-cols-2 gap-3">
@@ -123,6 +124,7 @@
             style="background-color:#5c4a6e;">
             {{ modal.guardando ? 'Guardando...' : 'Guardar' }}
           </button>
+        </div>
         </div>
       </div>
     </div>

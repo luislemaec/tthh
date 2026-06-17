@@ -277,9 +277,9 @@
   <div v-if="modalSolicitud" class="fixed inset-0 z-50 flex items-start justify-center pt-8 pb-4 px-4">
     <div class="fixed inset-0 bg-black/40" @click="cerrarModalSolicitud"/>
     <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col z-10">
-      <div class="flex items-center justify-between p-5 border-b border-gray-100">
-        <h2 class="text-lg font-bold text-gray-800">{{ modoEdicion ? 'Editar Comisión' : 'Nueva Comisión' }}</h2>
-        <button @click="cerrarModalSolicitud" class="text-gray-400 hover:text-gray-600 transition">
+      <div class="flex items-center justify-between px-6 py-4 text-white" style="background-color:#5c4a6e">
+        <h2 class="text-base font-bold">{{ modoEdicion ? 'Editar Comisión' : 'Nueva Comisión' }}</h2>
+        <button @click="cerrarModalSolicitud" class="text-white/70 hover:text-white transition">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
           </svg>
@@ -473,8 +473,9 @@
   <!-- ══════════════════ MODAL NEGAR ══════════════════ -->
   <div v-if="modalNegar" class="fixed inset-0 z-50 flex items-center justify-center px-4">
     <div class="fixed inset-0 bg-black/40" @click="modalNegar = false"/>
-    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md p-6 z-10">
-      <h3 class="text-lg font-bold text-gray-800 mb-4">Negar Comisión</h3>
+    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden z-10">
+      <div class="px-6 py-4 text-white font-bold text-base" style="background-color:#5c4a6e">Negar Comisión</div>
+      <div class="p-6">
       <label class="text-xs font-semibold text-gray-600 mb-1 block">Motivo / Observación *</label>
       <textarea v-model="negarObservacion" rows="3" placeholder="Indique el motivo..."
         class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-red-400 resize-none"/>
@@ -486,14 +487,16 @@
           {{ guardando ? 'Procesando...' : 'Negar' }}
         </button>
       </div>
+      </div>
     </div>
   </div>
 
   <!-- ══════════════════ MODAL RESOLUCIÓN JURÍDICA ══════════════════ -->
   <div v-if="modalResolucion" class="fixed inset-0 z-50 flex items-center justify-center px-4">
     <div class="fixed inset-0 bg-black/40" @click="modalResolucion = false"/>
-    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md p-6 z-10">
-      <h3 class="text-lg font-bold text-gray-800 mb-4">Emitir Resolución Jurídica</h3>
+    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden z-10">
+      <div class="px-6 py-4 text-white font-bold text-base" style="background-color:#5c4a6e">Emitir Resolución Jurídica</div>
+      <div class="p-6">
       <label class="text-xs font-semibold text-gray-600 mb-1 block">N° Resolución / Referencia *</label>
       <input v-model="resolucionJuridica" type="text" placeholder="Ej: RES-JUR-2026-001"
         class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]"/>
@@ -506,14 +509,16 @@
           {{ guardando ? 'Procesando...' : 'Emitir' }}
         </button>
       </div>
+      </div>
     </div>
   </div>
 
   <!-- ══════════════════ MODAL REGISTRO EXT. ══════════════════ -->
   <div v-if="modalRegistroExt" class="fixed inset-0 z-50 flex items-center justify-center px-4">
     <div class="fixed inset-0 bg-black/40" @click="modalRegistroExt = false"/>
-    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md p-6 z-10">
-      <h3 class="text-lg font-bold text-gray-800 mb-4">Registrar en Sistema Exterior</h3>
+    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden z-10">
+      <div class="px-6 py-4 text-white font-bold text-base" style="background-color:#5c4a6e">Registrar en Sistema Exterior</div>
+      <div class="p-6">
       <label class="text-xs font-semibold text-gray-600 mb-1 block">Código / Número del Sistema *</label>
       <input v-model="numSistemaExt" type="text" placeholder="Código asignado en el sistema"
         class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]"/>
@@ -526,6 +531,7 @@
           {{ guardando ? 'Procesando...' : 'Registrar' }}
         </button>
       </div>
+      </div>
     </div>
   </div>
 
@@ -533,9 +539,9 @@
   <div v-if="modalInforme" class="fixed inset-0 z-50 flex items-start justify-center pt-8 pb-4 px-4">
     <div class="fixed inset-0 bg-black/40" @click="modalInforme = false"/>
     <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col z-10">
-      <div class="flex items-center justify-between p-5 border-b border-gray-100">
-        <h2 class="text-lg font-bold text-gray-800">Informe de Cumplimiento</h2>
-        <button @click="modalInforme = false" class="text-gray-400 hover:text-gray-600">
+      <div class="flex items-center justify-between px-6 py-4 text-white" style="background-color:#5c4a6e">
+        <h2 class="text-base font-bold">Informe de Cumplimiento</h2>
+        <button @click="modalInforme = false" class="text-white/70 hover:text-white">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
           </svg>

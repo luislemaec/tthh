@@ -16,9 +16,10 @@
     </div>
 
     <!-- Tabs -->
-    <div class="flex gap-1 mb-4 bg-gray-100 p-1 rounded-lg w-fit">
+    <div class="flex gap-0 rounded-xl overflow-hidden border border-gray-200 mb-4 w-fit">
       <button v-for="t in tabs" :key="t.key" @click="tabActivo = t.key"
-        :class="['px-4 py-2 text-sm font-medium rounded-md transition', tabActivo === t.key ? 'bg-white text-[#5c4a6e] shadow-sm' : 'text-gray-500 hover:text-gray-700']">
+        :class="['px-6 py-2.5 text-sm font-semibold transition', tabActivo === t.key ? 'text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100']"
+        :style="tabActivo === t.key ? 'background-color:#5c4a6e' : ''">
         {{ t.label }}
       </button>
     </div>
@@ -121,8 +122,9 @@
   <!-- Modal tarifa interior -->
   <div v-if="modalAbierto" class="fixed inset-0 z-50 flex items-center justify-center px-4">
     <div class="fixed inset-0 bg-black/40" @click="cerrar"/>
-    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md p-6 z-10">
-      <h3 class="text-lg font-bold text-gray-800 mb-5">{{ editandoId ? 'Editar Tarifa' : 'Nueva Tarifa Interior' }}</h3>
+    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden z-10">
+      <div class="px-6 py-4 text-white font-bold text-base" style="background-color:#5c4a6e">{{ editandoId ? 'Editar Tarifa' : 'Nueva Tarifa Interior' }}</div>
+      <div class="p-6">
       <div class="space-y-4">
         <div>
           <label class="text-xs font-semibold text-gray-600 mb-1 block">Descripción *</label>
@@ -158,14 +160,16 @@
           {{ guardando ? 'Guardando...' : 'Guardar' }}
         </button>
       </div>
+      </div>
     </div>
   </div>
 
   <!-- Modal coeficiente exterior -->
   <div v-if="modalCoef.show" class="fixed inset-0 z-50 flex items-center justify-center px-4">
     <div class="fixed inset-0 bg-black/40" @click="modalCoef.show = false"/>
-    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 z-10">
-      <h3 class="text-lg font-bold text-gray-800 mb-5">{{ modalCoef.id ? 'Editar Coeficiente' : 'Nuevo País' }}</h3>
+    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden z-10">
+      <div class="px-6 py-4 text-white font-bold text-base" style="background-color:#5c4a6e">{{ modalCoef.id ? 'Editar Coeficiente' : 'Nuevo País' }}</div>
+      <div class="p-6">
       <div class="space-y-4">
         <div>
           <label class="text-xs font-semibold text-gray-600 mb-1 block">País *</label>
@@ -197,9 +201,11 @@
       <div class="flex justify-end gap-3 mt-6">
         <button @click="modalCoef.show = false" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancelar</button>
         <button @click="guardarCoeficiente" :disabled="modalCoef.guardando"
-          class="px-5 py-2 text-sm font-semibold text-white rounded-lg hover:opacity-90 disabled:opacity-50 bg-blue-600">
+          class="px-5 py-2 text-sm font-semibold text-white rounded-lg hover:opacity-90 disabled:opacity-50"
+          style="background-color:#5c4a6e">
           {{ modalCoef.guardando ? 'Guardando...' : 'Guardar' }}
         </button>
+      </div>
       </div>
     </div>
   </div>
