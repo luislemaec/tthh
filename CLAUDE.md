@@ -218,6 +218,7 @@ Campos relevantes:
 - `motivo_salida`: por qué pasó a INACTIVO — valores: `COMISIÓN DE SERVICIOS` / `FIN DE COMISIÓN DE SERVICIOS` / `FIN DE CONTRATO` / `RENUNCIA VOLUNTARIA` / `JUBILACIÓN` — migración `000073`
 - `motivo_reactivacion`: por qué volvió a ACTIVO — valor actual: `RETORNO DE COMISIÓN DE SERVICIOS` — migración `000073`
 - `institucion_comision`: nombre de la institución destino (si `motivo_salida = COMISIÓN DE SERVICIOS`) o institución de origen (si `modalidad_laboral = Comisión de Servicios` en empleado entrante) — migración `000073`
+- `banco` / `tipo_cuenta` / `numero_cuenta`: datos bancarios del empleado para transferencias (migración `000081`); se auto-rellenan en el formulario de comisión al buscar un servidor
 
 **Partidas disponibles** (`GET /api/empleados/partidas-vacantes`): devuelve empleados con `estado=INACTIVO` + `estado_puesto=DISPONIBLE`. En `EmpleadoForm.vue`, el campo Partida Individual tiene input libre + botón "Seleccionar libre" que abre un modal con la lista — al seleccionar una fila se auto-llenan `partida_individual` y `partida_presupuestaria`.
 
@@ -454,6 +455,8 @@ views/empleados/        # CRUD empleados, detalle, importación, distributivo
                         #     + bloque Persona Sustituta (toggle → fecha caducidad + subir/ver/eliminar PDF Alfresco)
                         #     + bloque Hijos: num_hijos_mayores + lista dinámica menores con fecha nacimiento
                         #       badge "Guardería" automático si hijo < 5 años
+                        #     + bloque Datos Bancarios: banco (text-transform:uppercase), tipo_cuenta (select AHORROS/CORRIENTE),
+                        #       numero_cuenta (text-transform:uppercase) — migración 000081
                         #   Tab 2 "Cargo y Contrato": departamento, cargo, tipo_contrato, modalidad_laboral, jornada,
                         #     estado, fecha_ingreso, fecha_salida (v-if INACTIVO), salario
                         #     + motivo_salida (select, v-if INACTIVO): COMISIÓN DE SERVICIOS / FIN DE COMISIÓN / FIN DE CONTRATO / RENUNCIA / JUBILACIÓN
@@ -1120,7 +1123,7 @@ Estos roles se suman a los existentes — un empleado puede tener SUPERVISOR + D
 | `com_ficha_liquidacion` | Ficha financiera; campos: solicitud_id, valor_por_dia, dias, total, cur_compromiso, cur_devengado, comprobante_pago, comprobante_devolucion, pais_destino, coeficiente_pais, estado |
 | `com_tarifa_viatico` | Tarifas diarias; campos: descripcion, valor_dia, tipo (INTERIOR/EXTERIOR), aplica_jerarquico BOOLEAN, activo |
 | `com_coeficiente_pais` | 40 países MEF con coeficiente DECIMAL(6,4) y región; CRUD editable desde Admin → Tarifas (tab Exterior) |
-| `com_funcionario_externo` | Personal temporal (seguridad presidencial) sin acceso al sistema; campos: cedula UNIQUE, nombres, cargo, activo |
+| `com_funcionario_externo` | Personal temporal (seguridad presidencial) sin acceso al sistema; campos: cedula UNIQUE, nombres, cargo, banco, tipo_cuenta, numero_cuenta, activo — migración `000081` agrega campos bancarios |
 
 ### Migraciones
 
@@ -1131,6 +1134,7 @@ Estos roles se suman a los existentes — un empleado puede tener SUPERVISOR + D
 - `000078` — amplía admin_rol.descripcion a VARCHAR(50) (drop/recreate view_usuario_opciones)
 - `000079` — aplica_jerarquico en tarifa_viatico; seed 2 tarifas INTERIOR ($130/$80); com_coeficiente_pais + seed 40 países; com_funcionario_externo; VALOR_BASE_EXTERIOR=185 en d2_configuracion; pais_destino/coeficiente_pais en com_ficha_liquidacion
 - `000080` — banco/tipo_cuenta/numero_cuenta en com_solicitud_servidor (datos bancarios por servidor)
+- `000081` — banco/tipo_cuenta/numero_cuenta en ad_empleado y com_funcionario_externo; EmpleadoController.store()/update() actualizado para persistir estos campos
 
 ### Tarifas de viáticos
 
@@ -1159,6 +1163,8 @@ Formato: `CS-{centro_de_costo}-{año}-{NNN}`
 ### Datos bancarios por servidor
 
 Cada servidor de la comisión tiene su propia cuenta bancaria (banco, tipo_cuenta, numero_cuenta) en `com_solicitud_servidor`. Los campos se muestran siempre al seleccionar un servidor (no solo cuando tiene_viaticos=true) porque Tesorería puede hacer transferencias por viáticos, movilización o combustible.
+
+Los datos bancarios se guardan también en `ad_empleado` y `com_funcionario_externo` (migración `000081`). El endpoint `buscarServidor` los retorna y `seleccionarServidor()` en el frontend los auto-rellena al escoger un servidor — editables si cambian por esa comisión.
 
 ### Flujo INTERIOR — estados y actores
 
@@ -1212,15 +1218,29 @@ Resto del flujo igual que INTERIOR. En ficha de liquidación se selecciona país
 views/comisiones/
   ComisionesView.vue          # Lista + modal creación/edición (tabs: Datos Generales, Servidores, Transporte)
                               # Tab Servidores: autocomplete debounce 300ms, busca en ad_empleado + com_funcionario_externo
+                              #   buscarServidor retorna banco/tipo_cuenta/numero_cuenta; seleccionarServidor() auto-rellena
                               # Datos bancarios (banco/tipo_cuenta/numero_cuenta) por servidor — siempre visibles al seleccionar
                               # Tabs de revisión según rol: Mis Comisiones, Pendientes Dir.Adm, Pendientes Jefe,
                               #   Pendientes Autoridad, Pendientes Jurídica, Pendientes Sistema Ext
-  LiquidacionesView.vue       # Lista fichas por estado; crear ficha (valor_por_dia auto), CURs, confirmar pago
+                              # CONVENCIÓN MAYÚSCULAS: todos los inputs/textareas de texto libre tienen
+                              #   style="text-transform:uppercase" — aplica a toda la vista y a todos los modales
+                              #   (negar, resolución jurídica, sistema exterior, informe). El backend también hace
+                              #   strtoupper() en los campos relevantes. Esta convención aplica a todas las vistas
+                              #   del módulo de Comisiones (LiquidacionesView, FuncionariosExternosView)
+  LiquidacionesView.vue       # Tabs sólidos con #5c4a6e (igual que resto del módulo)
+                              # Lista fichas por estado; crear ficha (valor_por_dia auto), CURs, confirmar pago
+                              # Modales con cabecera coloreada #5c4a6e: Ficha Liquidación, CUR, Devolución
+                              # Campos CUR y comprobante con text-transform:uppercase
   FuncionariosExternosView.vue # CRUD funcionarios externos (ruta: comisiones/funcionarios-externos)
                                # También accesible desde TH Admin con ruta admin/funcionarios-externos
+                               # Incluye campos bancarios: banco, tipo_cuenta, numero_cuenta (migración 000081)
+                               # Modal con cabecera coloreada #5c4a6e; todos los campos text-transform:uppercase
 views/admin/
   TarifasViaticosView.vue     # Tab INTERIOR: 2 filas con badge Jerárquico/Otros
-                              # Tab EXTERIOR: CRUD coeficientes agrupados por región + preview $185 × coef = $/día
+                              # Tab EXTERIOR: acordeón colapsable por región — por defecto todos cerrados;
+                              #   clic en cabecera de región abre/cierra; muestra rango de $/día de la región
+                              #   Estado reactivo: regionesAbiertas = ref({}) + toggleRegion(region)
+                              #   CRUD coeficientes con preview $185 × coef = $/día en modal
 layouts/ComisionesLayout.vue  # Color #5c4a6e; menú dinámico; modo mantenimiento MODO_MANTENIMIENTO_COM
                               # Incluye <ChatbotFAB />
 ```

@@ -150,13 +150,23 @@
             placeholder="Escribe código o nombre del artículo..."
             class="w-full border rounded px-3 py-2 text-sm focus:ring-2 outline-none" />
           <div v-if="articulosFiltrados.length && busquedaArticulo"
-            class="absolute z-10 bg-white border rounded-lg shadow-lg w-full mt-1 max-h-48 overflow-y-auto">
-            <div v-for="a in articulosFiltrados" :key="a.id"
-              @click="agregarDetalle(a)"
-              class="px-4 py-2 text-sm hover:bg-gray-100 cursor-pointer">
-              <span class="font-mono text-xs text-gray-400 mr-2">{{ a.codigo }}</span>
-              <span class="font-medium">{{ a.nombre }}</span>
-              <span v-if="a.marca" class="text-gray-400 text-xs ml-1">({{ a.marca }})</span>
+            class="absolute z-10 w-full mt-1 rounded-lg shadow-xl overflow-hidden border-2"
+            style="border-color:#4a5e3a;">
+            <!-- Cabecera del dropdown -->
+            <div class="px-3 py-1.5 text-xs font-semibold text-white flex items-center justify-between"
+              style="background-color:#4a5e3a;">
+              <span>{{ articulosFiltrados.length }} artículo{{ articulosFiltrados.length !== 1 ? 's' : '' }} encontrado{{ articulosFiltrados.length !== 1 ? 's' : '' }}</span>
+              <span class="opacity-75 font-normal">clic para agregar →</span>
+            </div>
+            <!-- Lista de resultados -->
+            <div class="bg-white max-h-64 overflow-y-auto">
+              <div v-for="a in articulosFiltrados" :key="a.id"
+                @click="agregarDetalle(a)"
+                class="px-4 py-2.5 text-sm cursor-pointer border-b border-gray-100 last:border-0 hover:bg-green-50 transition flex items-center gap-3">
+                <span class="font-mono text-xs font-bold flex-shrink-0" style="color:#4a5e3a;">{{ a.codigo }}</span>
+                <span class="font-medium text-gray-800 flex-1">{{ a.nombre }}</span>
+                <span v-if="a.marca" class="text-gray-400 text-xs flex-shrink-0">({{ a.marca }})</span>
+              </div>
             </div>
           </div>
         </div>
