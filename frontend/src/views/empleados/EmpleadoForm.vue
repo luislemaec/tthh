@@ -43,7 +43,7 @@
       </div>
 
       <!-- Navegación de pestañas -->
-      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100">
         <div class="flex gap-1 border-b border-gray-200 px-2">
           <button v-for="tab in tabs" :key="tab.id" type="button"
             @click="tabActivo = tab.id"
