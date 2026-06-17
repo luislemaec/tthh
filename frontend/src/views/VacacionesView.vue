@@ -9,13 +9,13 @@
     </div>
 
     <!-- Tabs (solo supervisor/admin) -->
-    <div v-if="esSupervisorOAdmin" class="flex border-b">
+    <div v-if="esSupervisorOAdmin" class="flex gap-0 rounded-xl overflow-hidden border border-gray-200 mb-1">
       <button @click="cambiarTab('mia')"
-        :class="tabActivo === 'mia' ? 'border-b-2 border-[#0b5447] text-[#0b5447] font-medium' : 'text-gray-500 hover:text-gray-700'"
-        class="px-6 py-3 text-sm transition">Mis Vacaciones</button>
+        :class="['flex-1 py-2.5 text-sm font-semibold transition', tabActivo === 'mia' ? 'text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100']"
+        :style="tabActivo === 'mia' ? 'background-color:#0b5447' : ''">Mis Vacaciones</button>
       <button @click="cambiarTab('equipo')"
-        :class="tabActivo === 'equipo' ? 'border-b-2 border-[#0b5447] text-[#0b5447] font-medium' : 'text-gray-500 hover:text-gray-700'"
-        class="px-6 py-3 text-sm transition">Vacaciones Equipo</button>
+        :class="['flex-1 py-2.5 text-sm font-semibold transition', tabActivo === 'equipo' ? 'text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100']"
+        :style="tabActivo === 'equipo' ? 'background-color:#0b5447' : ''">Vacaciones Equipo</button>
     </div>
 
     <!-- Empleado inactivo -->
