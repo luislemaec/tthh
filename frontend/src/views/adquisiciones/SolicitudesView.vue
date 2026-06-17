@@ -132,11 +132,11 @@
 
     <!-- Modal crear solicitud -->
     <div v-if="modalCrear.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[95vh] overflow-hidden flex flex-col">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-3xl h-[90vh] overflow-hidden flex flex-col">
         <div class="px-6 py-4 flex-shrink-0" style="background-color:#4a5e3a;">
           <h2 class="text-lg font-bold text-white">Nueva Solicitud de Materiales</h2>
         </div>
-        <div class="p-6 overflow-y-auto">
+        <div class="p-6 overflow-y-auto flex-1">
         <div class="mb-4">
           <label class="block text-xs text-gray-600 mb-1">Justificación</label>
           <textarea v-model="modalCrear.form.justificacion" rows="2" maxlength="500"
