@@ -35,6 +35,7 @@ class Empleado extends Authenticatable
         "tiene_persona_sustituta", "sustituta_alfresco_id", "sustituta_nombre_archivo", "sustituta_fecha_caducidad",
         "num_hijos_mayores",
         "motivo_salida", "motivo_reactivacion", "institucion_comision",
+        "banco", "tipo_cuenta", "numero_cuenta",
         "foto",
         "created_at", "created_by", "updated_at", "updated_by",
     ];

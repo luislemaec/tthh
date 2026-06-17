@@ -462,7 +462,10 @@ class ComisionController extends Controller
                 'e.identificacion as cedula',
                 DB::raw("TRIM(e.apellido_emp) || ' ' || TRIM(e.nombre_emp) AS nombres"),
                 'e.cargo_empleado as cargo',
-                'd.nombre_depto as unidad'
+                'd.nombre_depto as unidad',
+                'e.banco',
+                'e.tipo_cuenta',
+                'e.numero_cuenta'
             )
             ->limit(6)
             ->get()
@@ -475,7 +478,7 @@ class ComisionController extends Controller
                 $query->whereRaw("cedula ILIKE ?", [$like])
                       ->orWhereRaw("UPPER(nombres) ILIKE ?", [$like]);
             })
-            ->select('cedula', 'nombres', 'cargo', DB::raw("'Funcionario Externo' as unidad"))
+            ->select('cedula', 'nombres', 'cargo', DB::raw("'Funcionario Externo' as unidad"), 'banco', 'tipo_cuenta', 'numero_cuenta')
             ->limit(4)
             ->get()
             ->map(fn($r) => [...(array)$r, 'tipo' => 'EXTERNO']);

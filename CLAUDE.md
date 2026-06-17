@@ -1088,6 +1088,186 @@ layouts/TransporteLayout.vue  # Menú dinámico desde auth.menuAgrupado filtrado
 
 ---
 
+## Módulo Comisiones de Servicios
+
+Cuarto módulo del sistema. Color institucional: `#5c4a6e` (malva apagado). Digitaliza el proceso PRO.GF-CS.001 v5 (24/03/2026).
+
+### Roles requeridos (crear en Admin → Roles)
+
+`MAXIMA AUTORIDAD`, `DIRECCION ADMINISTRATIVA`, `ASESORIA JURIDICA`, `CONTABILIDAD`, `PRESUPUESTO`, `DIRECTOR FINANCIERO`, `TESORERIA`
+
+Estos roles se suman a los existentes — un empleado puede tener SUPERVISOR + DIRECTOR FINANCIERO simultáneamente.
+
+### Opciones de menú
+
+| URL | Descripción | Roles |
+|---|---|---|
+| `comisiones/solicitudes` | Comisiones de Servicio | Los 7 roles + ADMINISTRADOR |
+| `comisiones/liquidaciones` | Liquidaciones de Viáticos | CONTABILIDAD + PRESUPUESTO + DIRECTOR FINANCIERO + TESORERIA + ADMINISTRADOR |
+| `comisiones/tarifas` | Tarifas de Viáticos | ADMINISTRADOR |
+| `admin/funcionarios-externos` | Funcionarios Externos | ADMINISTRADOR (en menú de TH Admin, no en Comisiones) |
+
+### Tablas (`dbo.*`)
+
+| Tabla | Descripción |
+|---|---|
+| `com_solicitud` | Cabecera de la solicitud; campos: tipo (INTERIOR/EXTERIOR), id_emp, id_depto, fechas, destino, tiene_viaticos, tiene_movilizaciones, tiene_anticipo, estado, numero_solicitud, resolucion_juridica, num_sistema_exterior |
+| `com_solicitud_servidor` | Servidores que integran la comisión; campos: solicitud_id, id_emp, unidad, puesto, orden, **banco, tipo_cuenta, numero_cuenta** (datos bancarios por servidor — migración 000080) |
+| `com_solicitud_transporte` | Transportes de la solicitud (tipo, nombre, ruta, salida/llegada) |
+| `com_anticipo` | Anticipo de viáticos; campos: solicitud_id, monto, cur_compromiso, cur_devengado, estado |
+| `com_informe` | Informe de actividades post-comisión; campos: solicitud_id, actividades, productos, estado |
+| `com_informe_transporte` | Transportes del informe (real vs planificado) |
+| `com_ficha_liquidacion` | Ficha financiera; campos: solicitud_id, valor_por_dia, dias, total, cur_compromiso, cur_devengado, comprobante_pago, comprobante_devolucion, pais_destino, coeficiente_pais, estado |
+| `com_tarifa_viatico` | Tarifas diarias; campos: descripcion, valor_dia, tipo (INTERIOR/EXTERIOR), aplica_jerarquico BOOLEAN, activo |
+| `com_coeficiente_pais` | 40 países MEF con coeficiente DECIMAL(6,4) y región; CRUD editable desde Admin → Tarifas (tab Exterior) |
+| `com_funcionario_externo` | Personal temporal (seguridad presidencial) sin acceso al sistema; campos: cedula UNIQUE, nombres, cargo, activo |
+
+### Migraciones
+
+- `000074` — com_solicitud, com_solicitud_servidor, com_solicitud_transporte, com_tarifa_viatico
+- `000075` — com_anticipo
+- `000076` — com_informe, com_informe_transporte
+- `000077` — com_ficha_liquidacion
+- `000078` — amplía admin_rol.descripcion a VARCHAR(50) (drop/recreate view_usuario_opciones)
+- `000079` — aplica_jerarquico en tarifa_viatico; seed 2 tarifas INTERIOR ($130/$80); com_coeficiente_pais + seed 40 países; com_funcionario_externo; VALOR_BASE_EXTERIOR=185 en d2_configuracion; pais_destino/coeficiente_pais en com_ficha_liquidacion
+- `000080` — banco/tipo_cuenta/numero_cuenta en com_solicitud_servidor (datos bancarios por servidor)
+
+### Tarifas de viáticos
+
+**INTERIOR** — 2 niveles según `grupo_ocupacional` del empleado:
+- `aplica_jerarquico = true` → empleados cuyo grupo_ocupacional contiene 'JERARQUICO' → **$130/día**
+- `aplica_jerarquico = false` → todos los demás → **$80/día**
+
+**EXTERIOR** — fórmula única para todos:
+- `valor_por_dia = VALOR_BASE_EXTERIOR ($185) × coeficiente_pais`
+- País destino se selecciona en el frontend al crear la ficha de liquidación
+- 40 países MEF agrupados por región (AFRICA, AMERICA CENTRAL, AMERICA DEL SUR, AMERICA DEL NORTE, ASIA, EUROPA, OCEANIA)
+- Coeficientes editables desde Admin → Tarifas → tab Exterior (CRUD via CoeficientePaisController)
+
+### Numeración de solicitudes
+
+Formato: `CS-{centro_de_costo}-{año}-{NNN}`
+- `centro_de_costo` viene de `dbo.ad_departamento.centro_de_costo` del departamento del solicitante
+- NNN: secuencial anual de 3 dígitos, institución-wide (no por área)
+- Ejemplo: `CS-100-2026-001`
+- Se genera al momento de AUTORIZAR (Máxima Autoridad para INTERIOR; registrar en sistema exterior para EXTERIOR)
+
+### Funcionarios externos
+
+`com_funcionario_externo` — personal temporal (ej. seguridad presidencial) que cobra viáticos pero no tiene acceso al sistema, roles, ni marcaciones. Gestionados desde TH Admin (`admin/funcionarios-externos`). Al buscar servidores en el formulario de solicitud, aparecen con badge naranja "Externo" en el dropdown.
+
+### Datos bancarios por servidor
+
+Cada servidor de la comisión tiene su propia cuenta bancaria (banco, tipo_cuenta, numero_cuenta) en `com_solicitud_servidor`. Los campos se muestran siempre al seleccionar un servidor (no solo cuando tiene_viaticos=true) porque Tesorería puede hacer transferencias por viáticos, movilización o combustible.
+
+### Flujo INTERIOR — estados y actores
+
+```
+BORRADOR          → Empleado crea (tab Datos Generales + Servidores con cuenta bancaria + Transporte)
+PENDIENTE_DIR_ADM → Empleado envía → DIRECCION ADMINISTRATIVA aprueba/niega
+PENDIENTE_JEFE    → Supervisor del depto aprueba/niega
+PENDIENTE_AUTORIDAD → MAXIMA AUTORIDAD autoriza → genera número CS-xxx-año-NNN → AUTORIZADO
+AUTORIZADO        → (opcional) Anticipo: PRESUPUESTO CUR compromiso → CONTABILIDAD CUR devengado → TESORERIA paga
+                  → Empleado regresa y crea Informe → INFORME_PRESENTADO
+INFORME_PRESENTADO → Supervisor revisa → INFORME_REVISADO
+INFORME_REVISADO  → MAXIMA AUTORIDAD aprueba informe → INFORME_APROBADO
+INFORME_APROBADO  → Empleado solicita pago → EN_PAGO
+EN_PAGO           → CONTABILIDAD/PRESUPUESTO crea ficha liquidación (valor_por_dia auto-calculado) → EN_LIQUIDACION
+                  → PRESUPUESTO CUR compromiso → CONTABILIDAD CUR devengado
+                  → TESORERIA confirma pago → CERRADO (o POR_COBRAR si hay devolución)
+POR_COBRAR        → TESORERIA registra devolución → CERRADO
+NEGADO            → cualquier nivel puede negar (con observación)
+```
+
+### Flujo EXTERIOR — diferencias vs INTERIOR
+
+```
+PENDIENTE_AUTORIDAD → MAXIMA AUTORIDAD autoriza → PENDIENTE_JURIDICA (no AUTORIZADO directamente)
+PENDIENTE_JURIDICA  → ASESORIA JURIDICA emite resolución → PENDIENTE_SISTEMA_EXT
+PENDIENTE_SISTEMA_EXT → DIRECCION ADMINISTRATIVA registra en sistema exterior → AUTORIZADO + número
+```
+Resto del flujo igual que INTERIOR. En ficha de liquidación se selecciona país destino → auto-calcula `$185 × coeficiente`.
+
+### Controladores (`app/Http/Controllers/Comisiones/`)
+
+| Controlador | Métodos clave |
+|---|---|
+| `ComisionController` | index, store, update, enviar, aprobarDirAdm, negarDirAdm, aprobarJefe, negarJefe, aprobarAutoridad, emitirResolucion, registrarSistemaExt, solicitarPago, buscarServidor |
+| `InformeComisionController` | store, update, revisar, aprobar, pdf |
+| `AnticipController` | store, curCompromiso, curDevengado, pagar |
+| `LiquidacionController` | store, update, curCompromiso, curDevengado, confirmarPago, registrarDevolucion, coeficientes, calcularValorDia |
+| `TarifaViaticosController` | index, store, update, destroy |
+| `CoeficientePaisController` | index, store, update |
+| `FuncionarioExternoController` | index, store, update, destroy |
+
+### PDFs
+
+- `com_solicitud_interior.blade.php` / `com_solicitud_exterior.blade.php`
+- `com_informe_interior.blade.php` / `com_informe_exterior.blade.php`
+- `com_ficha_interior.blade.php` / `com_ficha_exterior.blade.php`
+
+### Vistas Frontend
+
+```
+views/comisiones/
+  ComisionesView.vue          # Lista + modal creación/edición (tabs: Datos Generales, Servidores, Transporte)
+                              # Tab Servidores: autocomplete debounce 300ms, busca en ad_empleado + com_funcionario_externo
+                              # Datos bancarios (banco/tipo_cuenta/numero_cuenta) por servidor — siempre visibles al seleccionar
+                              # Tabs de revisión según rol: Mis Comisiones, Pendientes Dir.Adm, Pendientes Jefe,
+                              #   Pendientes Autoridad, Pendientes Jurídica, Pendientes Sistema Ext
+  LiquidacionesView.vue       # Lista fichas por estado; crear ficha (valor_por_dia auto), CURs, confirmar pago
+  FuncionariosExternosView.vue # CRUD funcionarios externos (ruta: comisiones/funcionarios-externos)
+                               # También accesible desde TH Admin con ruta admin/funcionarios-externos
+views/admin/
+  TarifasViaticosView.vue     # Tab INTERIOR: 2 filas con badge Jerárquico/Otros
+                              # Tab EXTERIOR: CRUD coeficientes agrupados por región + preview $185 × coef = $/día
+layouts/ComisionesLayout.vue  # Color #5c4a6e; menú dinámico; modo mantenimiento MODO_MANTENIMIENTO_COM
+                              # Incluye <ChatbotFAB />
+```
+
+### Rutas (`/api/comisiones/*`)
+
+| Método | Ruta | Función |
+|---|---|---|
+| GET/POST | `/solicitudes` | Listar / crear |
+| GET/PUT | `/solicitudes/{id}` | Ver / editar (solo BORRADOR) |
+| GET | `/solicitudes/{id}/pdf` | PDF solicitud |
+| PATCH | `/solicitudes/{id}/enviar` | BORRADOR → PENDIENTE_DIR_ADM |
+| PATCH | `/solicitudes/{id}/aprobar-dir-adm` | Dir. Adm. aprueba |
+| PATCH | `/solicitudes/{id}/negar-dir-adm` | Dir. Adm. niega |
+| PATCH | `/solicitudes/{id}/aprobar-jefe` | Jefe aprueba |
+| PATCH | `/solicitudes/{id}/negar-jefe` | Jefe niega |
+| PATCH | `/solicitudes/{id}/aprobar-autoridad` | Máxima Autoridad autoriza |
+| PATCH | `/solicitudes/{id}/emitir-resolucion` | Asesoría Jurídica (EXTERIOR) |
+| PATCH | `/solicitudes/{id}/registrar-sistema-ext` | Dir. Adm. registra exterior |
+| PATCH | `/solicitudes/{id}/solicitar-pago` | Empleado solicita pago |
+| GET | `/buscar-servidor` | Autocomplete empleados + externos |
+| GET/POST | `/informe/{solicitudId}` | Ver / crear informe |
+| PUT | `/informe/{id}` | Editar informe |
+| PATCH | `/informe/{id}/revisar` | Supervisor revisa |
+| PATCH | `/informe/{id}/aprobar` | Máxima Autoridad aprueba informe |
+| GET | `/informe/{solicitudId}/pdf` | PDF informe |
+| POST | `/anticipo/{solicitudId}` | Crear anticipo |
+| PATCH | `/anticipo/{id}/cur-compromiso` | PRESUPUESTO registra CUR |
+| PATCH | `/anticipo/{id}/cur-devengado` | CONTABILIDAD registra CUR |
+| PATCH | `/anticipo/{id}/pagar` | TESORERIA confirma pago anticipo |
+| GET/POST | `/liquidaciones` | Listar / crear ficha |
+| PUT | `/liquidaciones/{id}` | Editar ficha |
+| GET | `/liquidaciones/{id}/pdf` | PDF ficha |
+| PATCH | `/liquidaciones/{id}/cur-compromiso` | PRESUPUESTO |
+| PATCH | `/liquidaciones/{id}/cur-devengado` | CONTABILIDAD |
+| PATCH | `/liquidaciones/{id}/confirmar-pago` | TESORERIA confirma |
+| PATCH | `/liquidaciones/{id}/registrar-devolucion` | TESORERIA devolución |
+| GET | `/coeficientes-pais` | Lista países activos |
+| GET/POST | `/admin/tarifas` | Tarifas viáticos |
+| PUT/DELETE | `/admin/tarifas/{id}` | Editar / eliminar tarifa |
+| GET/POST | `/admin/coeficientes-pais` | CRUD países |
+| PUT | `/admin/coeficientes-pais/{id}` | Editar coeficiente |
+| GET/POST | `/admin/funcionarios-externos` | CRUD externos |
+| PUT/DELETE | `/admin/funcionarios-externos/{id}` | Editar / desactivar |
+
+---
+
 ## Avisos Ticker (Launcher)
 
 Mensajes de publicidad/información que se muestran en `LauncherView.vue` con animación CSS.

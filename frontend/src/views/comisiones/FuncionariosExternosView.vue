@@ -26,18 +26,23 @@
             <th class="px-4 py-3 text-left font-semibold">Cédula</th>
             <th class="px-4 py-3 text-left font-semibold">Nombres</th>
             <th class="px-4 py-3 text-left font-semibold">Cargo</th>
+            <th class="px-4 py-3 text-left font-semibold">Banco / Cuenta</th>
             <th class="px-4 py-3 text-center font-semibold">Estado</th>
             <th class="px-4 py-3 text-left font-semibold">Acciones</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="lista.length === 0">
-            <td colspan="5" class="px-4 py-12 text-center text-gray-400 text-sm">No hay funcionarios externos registrados.</td>
+            <td colspan="6" class="px-4 py-12 text-center text-gray-400 text-sm">No hay funcionarios externos registrados.</td>
           </tr>
           <tr v-for="f in lista" :key="f.id" class="border-b border-gray-50 hover:bg-purple-50/20 transition">
             <td class="px-4 py-3 font-mono text-sm text-gray-700">{{ f.cedula }}</td>
             <td class="px-4 py-3 font-medium text-gray-800">{{ f.nombres }}</td>
             <td class="px-4 py-3 text-gray-600">{{ f.cargo }}</td>
+            <td class="px-4 py-3 text-gray-600 text-xs">
+              <span v-if="f.banco">{{ f.banco }} · {{ f.tipo_cuenta }} · {{ f.numero_cuenta }}</span>
+              <span v-else class="text-gray-300 italic">Sin cuenta registrada</span>
+            </td>
             <td class="px-4 py-3 text-center">
               <span :class="['text-xs font-semibold px-2 py-0.5 rounded-full', f.activo ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500']">
                 {{ f.activo ? 'Activo' : 'Inactivo' }}
@@ -51,7 +56,7 @@
               </button>
               <button @click="desactivar(f)" class="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 715.636 5.636m12.728 12.728L5.636 5.636"/>
                 </svg>
               </button>
             </td>
@@ -63,24 +68,46 @@
     <!-- Modal -->
     <div v-if="modal.show" class="fixed inset-0 z-50 flex items-center justify-center px-4">
       <div class="fixed inset-0 bg-black/40" @click="modal.show = false"/>
-      <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md p-6 z-10">
+      <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 z-10">
         <h3 class="text-lg font-bold text-gray-800 mb-5">{{ modal.id ? 'Editar Funcionario' : 'Nuevo Funcionario Externo' }}</h3>
         <div class="space-y-4">
-          <div>
-            <label class="text-xs font-semibold text-gray-600 mb-1 block">Cédula *</label>
-            <input v-model="modal.form.cedula" type="text" :disabled="!!modal.id" maxlength="20"
-              class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e] disabled:bg-gray-50"/>
+          <!-- Datos personales -->
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs font-semibold text-gray-600 mb-1 block">Cédula *</label>
+              <input v-model="modal.form.cedula" type="text" :disabled="!!modal.id" maxlength="20"
+                class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e] disabled:bg-gray-50"/>
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-gray-600 mb-1 block">Cargo *</label>
+              <input v-model="modal.form.cargo" type="text" maxlength="200"
+                class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]"/>
+            </div>
           </div>
           <div>
             <label class="text-xs font-semibold text-gray-600 mb-1 block">Nombres completos *</label>
             <input v-model="modal.form.nombres" type="text" maxlength="200"
               class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]"/>
           </div>
-          <div>
-            <label class="text-xs font-semibold text-gray-600 mb-1 block">Cargo *</label>
-            <input v-model="modal.form.cargo" type="text" maxlength="200"
-              class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]"/>
+
+          <!-- Datos bancarios -->
+          <div class="border-t border-gray-100 pt-3">
+            <p class="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Datos Bancarios</p>
+            <div class="space-y-2">
+              <input v-model="modal.form.banco" type="text" placeholder="Nombre del banco"
+                class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]"/>
+              <div class="grid grid-cols-2 gap-2">
+                <select v-model="modal.form.tipo_cuenta" class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none">
+                  <option value="">Tipo de cuenta...</option>
+                  <option value="AHORROS">Ahorros</option>
+                  <option value="CORRIENTE">Corriente</option>
+                </select>
+                <input v-model="modal.form.numero_cuenta" type="text" placeholder="Número de cuenta"
+                  class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]"/>
+              </div>
+            </div>
           </div>
+
           <div v-if="modal.id">
             <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
               <input type="checkbox" v-model="modal.form.activo" class="rounded"/>
@@ -106,9 +133,11 @@
 import { ref, onMounted } from 'vue'
 import api from '@/services/api'
 
+const formVacio = () => ({ cedula: '', nombres: '', cargo: '', banco: '', tipo_cuenta: '', numero_cuenta: '', activo: true })
+
 const cargando = ref(true)
 const lista    = ref([])
-const modal    = ref({ show: false, id: null, form: { cedula: '', nombres: '', cargo: '', activo: true }, error: '', guardando: false })
+const modal    = ref({ show: false, id: null, form: formVacio(), error: '', guardando: false })
 
 async function cargar() {
   cargando.value = true
@@ -121,18 +150,22 @@ async function cargar() {
 }
 
 function abrirNuevo() {
-  modal.value = { show: true, id: null, form: { cedula: '', nombres: '', cargo: '', activo: true }, error: '', guardando: false }
+  modal.value = { show: true, id: null, form: formVacio(), error: '', guardando: false }
 }
 
 function editar(f) {
-  modal.value = { show: true, id: f.id, form: { cedula: f.cedula, nombres: f.nombres, cargo: f.cargo, activo: f.activo }, error: '', guardando: false }
+  modal.value = {
+    show: true, id: f.id,
+    form: { cedula: f.cedula, nombres: f.nombres, cargo: f.cargo, banco: f.banco || '', tipo_cuenta: f.tipo_cuenta || '', numero_cuenta: f.numero_cuenta || '', activo: f.activo },
+    error: '', guardando: false
+  }
 }
 
 async function guardar() {
   modal.value.error = ''
   const { cedula, nombres, cargo } = modal.value.form
   if (!cedula.trim() || !nombres.trim() || !cargo.trim()) {
-    modal.value.error = 'Complete todos los campos obligatorios.'
+    modal.value.error = 'Complete los campos obligatorios: cédula, nombres y cargo.'
     return
   }
   modal.value.guardando = true

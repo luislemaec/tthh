@@ -44,16 +44,15 @@
 
       <!-- Navegación de pestañas -->
       <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div class="flex border-b border-gray-100">
+        <div class="flex gap-1 border-b border-gray-200">
           <button v-for="tab in tabs" :key="tab.id" type="button"
             @click="tabActivo = tab.id"
             :class="[
-              'flex items-center gap-2 px-5 py-4 text-sm font-medium transition-all duration-200 flex-1 justify-center',
+              'flex items-center gap-2 px-5 py-3 text-sm font-medium transition border-b-2 -mb-px',
               tabActivo === tab.id
-                ? 'border-b-2 text-white'
-                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50 border-b-2 border-transparent'
-            ]"
-            :style="tabActivo === tab.id ? `border-color: ${tab.color}; background: ${tab.bg}; color: ${tab.color}` : ''">
+                ? 'border-[#0b5447] text-[#0b5447]'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            ]">
             <span v-html="tab.icon" class="w-4 h-4 flex-shrink-0"></span>
             <span class="hidden sm:inline">{{ tab.label }}</span>
           </button>
@@ -62,7 +61,7 @@
         <!-- ─── Tab 1: Datos Personales ─── -->
         <div v-show="tabActivo === 'personal'" class="p-6 space-y-4">
           <div class="flex items-center gap-2 mb-4">
-            <span class="w-1 h-5 rounded-full" style="background:#3b82f6"></span>
+            <span class="w-1 h-5 rounded-full" style="background:#0b5447"></span>
             <h2 class="text-base font-semibold text-gray-700">Datos Personales</h2>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -245,12 +244,38 @@
             </div>
           </div>
 
+          <!-- Datos bancarios -->
+          <div class="border rounded-xl p-4 space-y-3">
+            <div class="flex items-center gap-2">
+              <span class="w-1 h-4 rounded-full bg-purple-400"></span>
+              <p class="text-sm font-semibold text-gray-700">Datos Bancarios (Viáticos / Comisiones)</p>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label class="label-field">Banco</label>
+                <input v-model="form.banco" type="text" placeholder="Nombre del banco" class="input-field"/>
+              </div>
+              <div>
+                <label class="label-field">Tipo de Cuenta</label>
+                <select v-model="form.tipo_cuenta" class="input-field">
+                  <option value="">Seleccionar...</option>
+                  <option value="AHORROS">Ahorros</option>
+                  <option value="CORRIENTE">Corriente</option>
+                </select>
+              </div>
+              <div>
+                <label class="label-field">Número de Cuenta</label>
+                <input v-model="form.numero_cuenta" type="text" placeholder="N° de cuenta" class="input-field"/>
+              </div>
+            </div>
+          </div>
+
         </div>
 
         <!-- ─── Tab 2: Cargo y Contrato ─── -->
         <div v-show="tabActivo === 'cargo'" class="p-6 space-y-4">
           <div class="flex items-center gap-2 mb-4">
-            <span class="w-1 h-5 rounded-full" style="background:#10b981"></span>
+            <span class="w-1 h-5 rounded-full" style="background:#0b5447"></span>
             <h2 class="text-base font-semibold text-gray-700">Cargo y Contrato</h2>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -352,7 +377,7 @@
         <!-- ─── Tab 3: Datos del Puesto ─── -->
         <div v-show="tabActivo === 'puesto'" class="p-6 space-y-4">
           <div class="flex items-center gap-2 mb-4">
-            <span class="w-1 h-5 rounded-full" style="background:#8b5cf6"></span>
+            <span class="w-1 h-5 rounded-full" style="background:#0b5447"></span>
             <h2 class="text-base font-semibold text-gray-700">Datos del Puesto</h2>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -435,7 +460,7 @@
         <!-- ─── Tab 4: Control de Asistencia ─── -->
         <div v-show="tabActivo === 'asistencia'" class="p-6 space-y-5">
           <div class="flex items-center gap-2 mb-4">
-            <span class="w-1 h-5 rounded-full" style="background:#f59e0b"></span>
+            <span class="w-1 h-5 rounded-full" style="background:#0b5447"></span>
             <h2 class="text-base font-semibold text-gray-700">Control de Asistencia</h2>
           </div>
 
@@ -477,6 +502,7 @@
               </div>
             </div>
           </div>
+
         </div>
       </div>
 
@@ -664,6 +690,9 @@ const form = ref({
   actividad:                 "",
   modalidad_marcacion:       "PRESENCIAL",
   puede_solicitar_vehiculo:  false,
+  banco:                     "",
+  tipo_cuenta:               "",
+  numero_cuenta:             "",
 })
 
 const guardar = async () => {
@@ -702,6 +731,9 @@ const guardar = async () => {
       actividad:                form.value.actividad || null,
       modalidad_marcacion:      form.value.modalidad_marcacion,
       puede_solicitar_vehiculo: form.value.puede_solicitar_vehiculo,
+      banco:         form.value.banco         || null,
+      tipo_cuenta:   form.value.tipo_cuenta   || null,
+      numero_cuenta: form.value.numero_cuenta || null,
       sexo:                     form.value.sexo       || null,
       tipo_sangre:              form.value.tipo_sangre || null,
       num_sercop:               form.value.num_sercop         || null,
@@ -874,7 +906,10 @@ onMounted(async () => {
     form.value.actividad                = data.actividad                ?? ""
     form.value.modalidad_marcacion      = data.modalidad_marcacion      ?? "PRESENCIAL"
     form.value.puede_solicitar_vehiculo = data.puede_solicitar_vehiculo ?? false
-    form.value.sexo                     = data.sexo                     ?? ""
+    form.value.banco                    = data.banco         ?? ""
+    form.value.tipo_cuenta              = data.tipo_cuenta   ?? ""
+    form.value.numero_cuenta            = data.numero_cuenta ?? ""
+    form.value.sexo                     = data.sexo          ?? ""
     form.value.tipo_sangre              = data.tipo_sangre              ?? ""
     form.value.num_sercop               = data.num_sercop               ?? ""
     form.value.fecha_vence_sercop       = data.fecha_vence_sercop?.substring(0, 10) ?? ""

@@ -21,10 +21,13 @@ class FuncionarioExternoController extends Controller
         ]);
 
         $f = ComFuncionarioExterno::create([
-            'cedula'  => $request->cedula,
-            'nombres' => strtoupper($request->nombres),
-            'cargo'   => strtoupper($request->cargo),
-            'activo'  => true,
+            'cedula'        => $request->cedula,
+            'nombres'       => strtoupper($request->nombres),
+            'cargo'         => strtoupper($request->cargo),
+            'banco'         => $request->banco         ? strtoupper($request->banco) : null,
+            'tipo_cuenta'   => $request->tipo_cuenta   ?: null,
+            'numero_cuenta' => $request->numero_cuenta ?: null,
+            'activo'        => true,
         ]);
 
         return response()->json($f, 201);
@@ -41,9 +44,12 @@ class FuncionarioExternoController extends Controller
         ]);
 
         $f->update([
-            'nombres' => isset($request->nombres) ? strtoupper($request->nombres) : $f->nombres,
-            'cargo'   => isset($request->cargo)   ? strtoupper($request->cargo)   : $f->cargo,
-            'activo'  => $request->has('activo') ? $request->activo : $f->activo,
+            'nombres'       => isset($request->nombres) ? strtoupper($request->nombres) : $f->nombres,
+            'cargo'         => isset($request->cargo)   ? strtoupper($request->cargo)   : $f->cargo,
+            'banco'         => $request->filled('banco')         ? strtoupper($request->banco) : $f->banco,
+            'tipo_cuenta'   => $request->filled('tipo_cuenta')   ? $request->tipo_cuenta       : $f->tipo_cuenta,
+            'numero_cuenta' => $request->filled('numero_cuenta') ? $request->numero_cuenta     : $f->numero_cuenta,
+            'activo'        => $request->has('activo') ? $request->activo : $f->activo,
         ]);
 
         return response()->json($f);

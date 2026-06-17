@@ -973,11 +973,15 @@ async function ejecutarBusqueda(i) {
 
 function seleccionarServidor(i, r) {
   const srv = form.value.servidores[i]
-  srv.id_emp      = r.cedula
-  srv.unidad      = r.unidad
-  srv.puesto      = r.cargo
-  srv._busqueda   = r.nombres
-  srv._resultados = []
+  srv.id_emp        = r.cedula
+  srv.unidad        = r.unidad
+  srv.puesto        = r.cargo
+  srv._busqueda     = r.nombres
+  srv._resultados   = []
+  // Auto-llenar datos bancarios guardados (editables si el servidor quiere cambiarlos)
+  srv.banco         = r.banco        || ''
+  srv.tipo_cuenta   = r.tipo_cuenta  || ''
+  srv.numero_cuenta = r.numero_cuenta || ''
 }
 
 async function guardarSolicitud() {
