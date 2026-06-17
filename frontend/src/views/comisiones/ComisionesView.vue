@@ -361,24 +361,47 @@
 
         <!-- Tab: Servidores -->
         <div v-if="formTab === 'Servidores'" class="space-y-3">
-          <p class="text-xs text-gray-500">Empleados que integran la comisión (incluido usted)</p>
+          <p class="text-xs text-gray-500">Empleados que integran la comisión (incluido usted). Busque por cédula o nombre.</p>
           <div v-for="(srv, i) in form.servidores" :key="i"
-            class="flex gap-2 items-start border border-gray-100 rounded-lg p-3">
-            <div class="flex-1 grid grid-cols-3 gap-2">
-              <input v-model="srv.id_emp" type="text" placeholder="Cédula"
-                class="text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none"/>
+            class="border border-gray-100 rounded-lg p-3 space-y-2">
+            <!-- Fila de búsqueda -->
+            <div class="relative">
+              <input
+                v-model="srv._busqueda"
+                @input="onBuscarServidor(i)"
+                type="text"
+                placeholder="Buscar por cédula o nombre..."
+                class="w-full text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]"/>
+              <!-- Dropdown resultados -->
+              <div v-if="srv._resultados && srv._resultados.length"
+                class="absolute z-20 bg-white border border-gray-200 rounded-lg shadow-lg w-full mt-1 max-h-48 overflow-y-auto">
+                <button v-for="r in srv._resultados" :key="r.cedula"
+                  @click="seleccionarServidor(i, r)"
+                  class="w-full text-left px-3 py-2 hover:bg-purple-50 transition text-sm border-b border-gray-50 last:border-0">
+                  <div class="flex items-center gap-2">
+                    <span class="font-medium text-gray-800">{{ r.nombres }}</span>
+                    <span v-if="r.tipo === 'EXTERNO'" class="text-xs bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded">Externo</span>
+                  </div>
+                  <div class="text-xs text-gray-500">{{ r.cargo }} — {{ r.unidad }}</div>
+                </button>
+              </div>
+            </div>
+            <!-- Datos auto-llenados -->
+            <div v-if="srv.id_emp" class="grid grid-cols-3 gap-2">
+              <input v-model="srv.id_emp" type="text" placeholder="Cédula" readonly
+                class="text-sm border border-gray-200 rounded px-2 py-1.5 bg-gray-50 text-gray-600"/>
               <input v-model="srv.unidad" type="text" placeholder="Unidad"
                 class="text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none"/>
               <input v-model="srv.puesto" type="text" placeholder="Cargo"
                 class="text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none"/>
             </div>
-            <button @click="form.servidores.splice(i,1)" class="text-red-400 hover:text-red-600 mt-1.5">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-              </svg>
-            </button>
+            <div class="flex justify-end">
+              <button @click="quitarServidor(i)" class="text-xs text-red-400 hover:text-red-600">
+                Quitar
+              </button>
+            </div>
           </div>
-          <button @click="form.servidores.push({id_emp:'',unidad:'',puesto:''})"
+          <button @click="agregarServidor"
             class="text-sm font-medium" style="color:#5c4a6e;">
             + Agregar servidor
           </button>
@@ -922,7 +945,7 @@ function editarSolicitud(sol) {
     banco: sol.banco || '',
     tipo_cuenta: sol.tipo_cuenta || '',
     numero_cuenta: sol.numero_cuenta || '',
-    servidores: sol.servidores || [],
+    servidores: (sol.servidores || []).map(s => ({ ...s, _busqueda: s.nombre || s.id_emp, _resultados: [] })),
     transportes: sol.transportes || [],
   }
   modoEdicion.value = true
@@ -936,6 +959,41 @@ const modoEdicionId = ref(null)
 
 function cerrarModalSolicitud() {
   modalSolicitud.value = false
+}
+
+// ── Autocomplete servidores ───────────────────────────────────────────────────
+let _buscarTimer = null
+
+function agregarServidor() {
+  form.value.servidores.push({ id_emp: '', unidad: '', puesto: '', _busqueda: '', _resultados: [] })
+}
+
+function quitarServidor(i) {
+  form.value.servidores.splice(i, 1)
+}
+
+function onBuscarServidor(i) {
+  clearTimeout(_buscarTimer)
+  const srv = form.value.servidores[i]
+  if (!srv._busqueda || srv._busqueda.length < 2) { srv._resultados = []; return }
+  _buscarTimer = setTimeout(() => ejecutarBusqueda(i), 300)
+}
+
+async function ejecutarBusqueda(i) {
+  const srv = form.value.servidores[i]
+  try {
+    const { data } = await api.get('/comisiones/buscar-servidor', { params: { q: srv._busqueda } })
+    srv._resultados = data
+  } catch { srv._resultados = [] }
+}
+
+function seleccionarServidor(i, r) {
+  const srv = form.value.servidores[i]
+  srv.id_emp      = r.cedula
+  srv.unidad      = r.unidad
+  srv.puesto      = r.cargo
+  srv._busqueda   = r.nombres
+  srv._resultados = []
 }
 
 async function guardarSolicitud() {

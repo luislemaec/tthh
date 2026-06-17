@@ -109,9 +109,10 @@ const routes = [
     component: () => import('@/layouts/ComisionesLayout.vue'),
     children: [
       { path: '',               redirect: '/comisiones/solicitudes' },
-      { path: 'solicitudes',    name: 'ComSolicitudes',    component: () => import('@/views/comisiones/ComisionesView.vue') },
-      { path: 'liquidaciones',  name: 'ComLiquidaciones',  component: () => import('@/views/comisiones/LiquidacionesView.vue') },
-      { path: 'tarifas',        name: 'ComTarifas',        component: () => import('@/views/admin/TarifasViaticosView.vue') },
+      { path: 'solicitudes',           name: 'ComSolicitudes',          component: () => import('@/views/comisiones/ComisionesView.vue') },
+      { path: 'liquidaciones',         name: 'ComLiquidaciones',        component: () => import('@/views/comisiones/LiquidacionesView.vue') },
+      { path: 'tarifas',               name: 'ComTarifas',              component: () => import('@/views/admin/TarifasViaticosView.vue') },
+      { path: 'funcionarios-externos', name: 'ComFuncionariosExternos', component: () => import('@/views/comisiones/FuncionariosExternosView.vue') },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: '/' },

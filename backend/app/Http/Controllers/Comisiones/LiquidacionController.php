@@ -26,7 +26,6 @@ class LiquidacionController extends Controller
         }
 
         $request->validate([
-            'valor_por_dia'       => 'required|numeric|min:0',
             'dias_viaticos'       => 'required|integer|min:0',
             'anticipo_viatico'    => 'nullable|numeric|min:0',
             'anticipo_combustible'=> 'nullable|numeric|min:0',
@@ -36,13 +35,21 @@ class LiquidacionController extends Controller
             'peajes_parqueaderos' => 'nullable|numeric|min:0',
             'combustibles'        => 'nullable|numeric|min:0',
             'otros_gastos'        => 'nullable|numeric|min:0',
+            // Exterior
+            'pais_destino'        => 'nullable|string|max:100',
+            'coeficiente_pais'    => 'nullable|numeric|min:0',
         ]);
 
-        $fichaData = $this->calcular($request->all(), $solicitud->tipo);
+        // Auto-calcular valor_por_dia según tipo y grupo ocupacional
+        $valorDia = $this->calcularValorDia($solicitud, $request->all());
+
+        $fichaData = $this->calcular(array_merge($request->all(), ['valor_por_dia' => $valorDia]), $solicitud->tipo);
 
         $ficha = ComFichaLiquidacion::create([
             'solicitud_id'           => $solicitudId,
             ...$fichaData,
+            'pais_destino'           => $request->pais_destino,
+            'coeficiente_pais'       => $request->coeficiente_pais,
             'estado'                 => 'BORRADOR',
             'created_by'             => $request->user()->id_emp,
             'updated_by'             => $request->user()->id_emp,
@@ -161,6 +168,38 @@ class LiquidacionController extends Controller
 
         $numero = $solicitud->numero_solicitud ?? ('COM-' . $solicitudId);
         return $pdf->download("ficha-liquidacion-{$numero}.pdf");
+    }
+
+    public function coeficientes(): \Illuminate\Http\JsonResponse
+    {
+        $paises = DB::table('dbo.com_coeficiente_pais')
+            ->where('activo', true)
+            ->orderBy('region')
+            ->orderBy('pais')
+            ->get();
+        return response()->json($paises);
+    }
+
+    private function calcularValorDia(ComSolicitud $solicitud, array $data): float
+    {
+        if ($solicitud->tipo === 'EXTERIOR') {
+            // Exterior: base * coeficiente
+            $base        = (float)(DB::table('dbo.d2_configuracion')->whereRaw("LOWER(concepto) = 'valor_base_exterior'")->value('valor') ?? 185.00);
+            $coeficiente = (float)($data['coeficiente_pais'] ?? 1.0);
+            return round($base * $coeficiente, 2);
+        }
+
+        // Interior: tarifa según grupo ocupacional
+        $grupo = strtoupper(DB::table('dbo.ad_empleado')->where('id_emp', $solicitud->id_emp)->value('grupo_ocupacional') ?? '');
+        $esJerarquico = str_contains($grupo, 'JERARQUICO') || str_contains($grupo, 'JERÁRQUICO');
+
+        $tarifa = DB::table('dbo.com_tarifa_viatico')
+            ->where('activo', true)
+            ->where('tipo', 'INTERIOR')
+            ->where('aplica_jerarquico', $esJerarquico)
+            ->value('valor_dia');
+
+        return (float)($tarifa ?? ($esJerarquico ? 130.00 : 80.00));
     }
 
     private function calcular(array $data, string $tipo): array

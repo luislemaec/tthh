@@ -33,6 +33,8 @@ use App\Http\Controllers\Comisiones\InformeComisionController;
 use App\Http\Controllers\Comisiones\AnticipController;
 use App\Http\Controllers\Comisiones\LiquidacionController;
 use App\Http\Controllers\Comisiones\TarifaViaticosController;
+use App\Http\Controllers\Comisiones\FuncionarioExternoController;
+use App\Http\Controllers\Comisiones\CoeficientePaisController;
 use Illuminate\Support\Facades\Route;
 
 // Rutas PÚBLICAS
@@ -550,5 +552,19 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post('admin/tarifas-viaticos',                     [TarifaViaticosController::class, 'store']);
         Route::put('admin/tarifas-viaticos/{id}',                 [TarifaViaticosController::class, 'update']);
         Route::delete('admin/tarifas-viaticos/{id}',              [TarifaViaticosController::class, 'destroy']);
+
+        // Coeficientes por país (exterior)
+        Route::get('coeficientes-pais',                           [LiquidacionController::class, 'coeficientes']);
+        Route::post('admin/coeficientes-pais',                    [CoeficientePaisController::class, 'store']);
+        Route::put('admin/coeficientes-pais/{id}',                [CoeficientePaisController::class, 'update']);
+
+        // Funcionarios externos (admin)
+        Route::get('admin/funcionarios-externos',                 [FuncionarioExternoController::class, 'index']);
+        Route::post('admin/funcionarios-externos',                [FuncionarioExternoController::class, 'store']);
+        Route::put('admin/funcionarios-externos/{id}',            [FuncionarioExternoController::class, 'update']);
+        Route::delete('admin/funcionarios-externos/{id}',         [FuncionarioExternoController::class, 'destroy']);
+
+        // Búsqueda de servidores (empleados + externos)
+        Route::get('buscar-servidor',                             [ComisionController::class, 'buscarServidor']);
     });
 });

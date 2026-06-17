@@ -323,7 +323,7 @@ class ComisionController extends Controller
         // Si es AUTORIZADO, generar número de solicitud
         $data = ['estado' => $nuevoEstado, 'updated_by' => $request->user()->id_emp];
         if ($nuevoEstado === 'AUTORIZADO') {
-            $data['numero_solicitud'] = $this->generarNumero();
+            $data['numero_solicitud'] = $this->generarNumero($solicitud->id_depto);
         }
 
         $anterior = $solicitud->estado;
@@ -369,7 +369,7 @@ class ComisionController extends Controller
 
         $request->validate(['num_sistema_exterior' => 'required|string|max:100']);
 
-        $numero = $this->generarNumero();
+        $numero = $this->generarNumero($solicitud->id_depto);
         $solicitud->update([
             'estado'               => 'AUTORIZADO',
             'num_sistema_exterior' => $request->num_sistema_exterior,
@@ -425,16 +425,62 @@ class ComisionController extends Controller
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
-    private function generarNumero(): string
+    private function generarNumero(int $idDepto): string
     {
+        $centroCosto = DB::table('dbo.ad_departamento')
+            ->where('id_depto', $idDepto)
+            ->value('centro_de_costo') ?? $idDepto;
+
         $anio = now()->year;
         $max  = DB::table('dbo.com_solicitud')
             ->whereNotNull('numero_solicitud')
             ->whereYear('created_at', $anio)
-            ->selectRaw("MAX(CAST(SPLIT_PART(numero_solicitud, '-', 3) AS INTEGER)) AS max_num")
+            ->selectRaw("MAX(CAST(SPLIT_PART(numero_solicitud, '-', 4) AS INTEGER)) AS max_num")
             ->value('max_num') ?? 0;
         $seq  = str_pad($max + 1, 3, '0', STR_PAD_LEFT);
-        return "CSI-{$seq}-{$anio}";
+        return "CS-{$centroCosto}-{$anio}-{$seq}";
+    }
+
+    public function buscarServidor(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $q = trim($request->get('q', ''));
+        if (strlen($q) < 2) {
+            return response()->json([]);
+        }
+
+        $like = '%' . strtoupper($q) . '%';
+
+        // Buscar en empleados activos
+        $empleados = DB::table('dbo.ad_empleado as e')
+            ->join('dbo.ad_departamento as d', 'e.id_depto', '=', 'd.id_depto')
+            ->where('e.estado', 'ACTIVO')
+            ->where(function ($query) use ($like, $q) {
+                $query->whereRaw("e.identificacion ILIKE ?", [$like])
+                      ->orWhereRaw("UPPER(TRIM(e.apellido_emp) || ' ' || TRIM(e.nombre_emp)) ILIKE ?", [$like]);
+            })
+            ->select(
+                'e.identificacion as cedula',
+                DB::raw("TRIM(e.apellido_emp) || ' ' || TRIM(e.nombre_emp) AS nombres"),
+                'e.cargo_empleado as cargo',
+                'd.nombre_depto as unidad'
+            )
+            ->limit(6)
+            ->get()
+            ->map(fn($r) => [...(array)$r, 'tipo' => 'EMPLEADO']);
+
+        // Buscar en funcionarios externos activos
+        $externos = DB::table('dbo.com_funcionario_externo')
+            ->where('activo', true)
+            ->where(function ($query) use ($like) {
+                $query->whereRaw("cedula ILIKE ?", [$like])
+                      ->orWhereRaw("UPPER(nombres) ILIKE ?", [$like]);
+            })
+            ->select('cedula', 'nombres', 'cargo', DB::raw("'Funcionario Externo' as unidad"))
+            ->limit(4)
+            ->get()
+            ->map(fn($r) => [...(array)$r, 'tipo' => 'EXTERNO']);
+
+        return response()->json($empleados->concat($externos)->values());
     }
 
     private function detalle(int $id): array
@@ -485,12 +531,24 @@ class ComisionController extends Controller
         DB::table('dbo.com_solicitud_servidor')->where('solicitud_id', $solicitudId)->delete();
         foreach ($servidores as $i => $srv) {
             if (empty($srv['id_emp'])) continue;
-            $emp = DB::table('dbo.ad_empleado')->where('id_emp', $srv['id_emp'])->first();
+
+            // Buscar primero en empleados, luego en externos
+            $emp     = DB::table('dbo.ad_empleado')->where('id_emp', $srv['id_emp'])->first();
+            $externo = !$emp ? DB::table('dbo.com_funcionario_externo')->where('cedula', $srv['id_emp'])->first() : null;
+
+            $unidad = $srv['unidad']
+                ?? ($emp ? DB::table('dbo.ad_departamento')->where('id_depto', $emp->id_depto)->value('nombre_depto') : null)
+                ?? ($externo ? 'Funcionario Externo' : null);
+
+            $puesto = $srv['puesto']
+                ?? ($emp->cargo_empleado ?? null)
+                ?? ($externo->cargo ?? null);
+
             ComSolicitudServidor::create([
                 'solicitud_id' => $solicitudId,
                 'id_emp'       => $srv['id_emp'],
-                'unidad'       => $srv['unidad'] ?? ($emp ? DB::table('dbo.ad_departamento')->where('id_depto', $emp->id_depto)->value('nombre_depto') : null),
-                'puesto'       => $srv['puesto'] ?? ($emp->cargo_empleado ?? null),
+                'unidad'       => $unidad,
+                'puesto'       => $puesto,
                 'orden'        => $i + 1,
             ]);
         }
