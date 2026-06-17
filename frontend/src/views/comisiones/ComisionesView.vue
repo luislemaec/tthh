@@ -387,13 +387,27 @@
               </div>
             </div>
             <!-- Datos auto-llenados -->
-            <div v-if="srv.id_emp" class="grid grid-cols-3 gap-2">
-              <input v-model="srv.id_emp" type="text" placeholder="Cédula" readonly
-                class="text-sm border border-gray-200 rounded px-2 py-1.5 bg-gray-50 text-gray-600"/>
-              <input v-model="srv.unidad" type="text" placeholder="Unidad"
-                class="text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none"/>
-              <input v-model="srv.puesto" type="text" placeholder="Cargo"
-                class="text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none"/>
+            <div v-if="srv.id_emp" class="space-y-2">
+              <div class="grid grid-cols-3 gap-2">
+                <input v-model="srv.id_emp" type="text" placeholder="Cédula" readonly
+                  class="text-sm border border-gray-200 rounded px-2 py-1.5 bg-gray-50 text-gray-600"/>
+                <input v-model="srv.unidad" type="text" placeholder="Unidad"
+                  class="text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none"/>
+                <input v-model="srv.puesto" type="text" placeholder="Cargo"
+                  class="text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none"/>
+              </div>
+              <!-- Datos bancarios por servidor -->
+              <div class="grid grid-cols-3 gap-2 pt-1 border-t border-gray-100">
+                <input v-model="srv.banco" type="text" placeholder="Banco"
+                  class="text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]"/>
+                <select v-model="srv.tipo_cuenta" class="text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none">
+                  <option value="">Tipo cuenta...</option>
+                  <option value="AHORROS">Ahorros</option>
+                  <option value="CORRIENTE">Corriente</option>
+                </select>
+                <input v-model="srv.numero_cuenta" type="text" placeholder="N° cuenta"
+                  class="text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]"/>
+              </div>
             </div>
             <div class="flex justify-end">
               <button @click="quitarServidor(i)" class="text-xs text-red-400 hover:text-red-600">
@@ -441,30 +455,6 @@
           </button>
         </div>
 
-        <!-- Tab: Datos Bancarios -->
-        <div v-if="formTab === 'Datos Bancarios'" class="space-y-3">
-          <p class="text-xs text-gray-500">Cuenta para el pago de viáticos (si aplica)</p>
-          <div>
-            <label class="text-xs font-semibold text-gray-600 mb-1 block">Banco</label>
-            <input v-model="form.banco" type="text" placeholder="Nombre del banco"
-              class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]"/>
-          </div>
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="text-xs font-semibold text-gray-600 mb-1 block">Tipo de Cuenta</label>
-              <select v-model="form.tipo_cuenta" class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none">
-                <option value="">Seleccionar...</option>
-                <option value="AHORROS">Ahorros</option>
-                <option value="CORRIENTE">Corriente</option>
-              </select>
-            </div>
-            <div>
-              <label class="text-xs font-semibold text-gray-600 mb-1 block">Número de Cuenta</label>
-              <input v-model="form.numero_cuenta" type="text" placeholder="Número de cuenta"
-                class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]"/>
-            </div>
-          </div>
-        </div>
 
         <p v-if="errorForm" class="text-red-600 text-xs">{{ errorForm }}</p>
       </div>
@@ -710,7 +700,7 @@ const modoEdicion     = ref(false)
 const guardando       = ref(false)
 const errorForm       = ref('')
 const formTab         = ref('Datos Generales')
-const formTabs        = ['Datos Generales', 'Servidores', 'Transporte', 'Datos Bancarios']
+const formTabs        = ['Datos Generales', 'Servidores', 'Transporte']
 
 const modalNegar      = ref(false)
 const negarAccion     = ref('')
@@ -747,9 +737,6 @@ const formVacio = () => ({
   tiene_viaticos: true,
   tiene_movilizaciones: false,
   tiene_anticipo: false,
-  banco: '',
-  tipo_cuenta: '',
-  numero_cuenta: '',
   servidores: [],
   transportes: [],
 })
@@ -942,9 +929,6 @@ function editarSolicitud(sol) {
     tiene_viaticos: sol.tiene_viaticos,
     tiene_movilizaciones: sol.tiene_movilizaciones,
     tiene_anticipo: sol.tiene_anticipo,
-    banco: sol.banco || '',
-    tipo_cuenta: sol.tipo_cuenta || '',
-    numero_cuenta: sol.numero_cuenta || '',
     servidores: (sol.servidores || []).map(s => ({ ...s, _busqueda: s.nombre || s.id_emp, _resultados: [] })),
     transportes: sol.transportes || [],
   }
@@ -965,7 +949,7 @@ function cerrarModalSolicitud() {
 let _buscarTimer = null
 
 function agregarServidor() {
-  form.value.servidores.push({ id_emp: '', unidad: '', puesto: '', _busqueda: '', _resultados: [] })
+  form.value.servidores.push({ id_emp: '', unidad: '', puesto: '', banco: '', tipo_cuenta: '', numero_cuenta: '', _busqueda: '', _resultados: [] })
 }
 
 function quitarServidor(i) {

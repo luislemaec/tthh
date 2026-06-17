@@ -9,7 +9,7 @@ class ComSolicitudServidor extends Model
     protected $table = 'dbo.com_solicitud_servidor';
     public $timestamps = false;
 
-    protected $fillable = ['solicitud_id', 'id_emp', 'unidad', 'puesto', 'orden'];
+    protected $fillable = ['solicitud_id', 'id_emp', 'unidad', 'puesto', 'orden', 'banco', 'tipo_cuenta', 'numero_cuenta'];
 
     public function empleado()
     {

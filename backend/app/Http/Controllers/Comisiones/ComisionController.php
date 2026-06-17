@@ -545,11 +545,14 @@ class ComisionController extends Controller
                 ?? ($externo->cargo ?? null);
 
             ComSolicitudServidor::create([
-                'solicitud_id' => $solicitudId,
-                'id_emp'       => $srv['id_emp'],
-                'unidad'       => $unidad,
-                'puesto'       => $puesto,
-                'orden'        => $i + 1,
+                'solicitud_id'  => $solicitudId,
+                'id_emp'        => $srv['id_emp'],
+                'unidad'        => $unidad,
+                'puesto'        => $puesto,
+                'orden'         => $i + 1,
+                'banco'         => $srv['banco'] ?? null,
+                'tipo_cuenta'   => $srv['tipo_cuenta'] ?? null,
+                'numero_cuenta' => $srv['numero_cuenta'] ?? null,
             ]);
         }
     }
