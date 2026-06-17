@@ -44,12 +44,12 @@
 
       <!-- Navegación de pestañas -->
       <div class="bg-white rounded-2xl shadow-sm border border-gray-100">
-        <div class="flex gap-1 border-b border-gray-200 px-2">
+        <div class="flex gap-0 border-b border-gray-200">
           <button v-for="tab in tabs" :key="tab.id" type="button"
             @click="tabActivo = tab.id"
-            :class="['px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px',
-              tabActivo !== tab.id && 'border-transparent text-gray-500 hover:text-gray-700']"
-            :style="tabActivo === tab.id ? 'border-color:#0b5447; color:#0b5447' : ''">
+            :class="['flex-1 py-3 text-sm font-semibold transition',
+              tabActivo === tab.id ? 'text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100']"
+            :style="tabActivo === tab.id ? 'background-color:#0b5447' : ''">
             {{ tab.label }}
           </button>
         </div>
