@@ -44,7 +44,7 @@ class SolicitudMaterialController extends Controller
         $esAdq         = $this->esRol($emp->id_emp, 'ADQUISICIONES');
         $esSupervisor  = $this->esSupervisor($emp->id_emp);
 
-        $query = SolicitudMaterial::with(['empleado', 'detalles.articulo'])
+        $query = SolicitudMaterial::with(['empleado', 'aprobador', 'detalles.articulo'])
             ->orderByDesc('created_at');
 
         if ($esBienes || $esAdq) {

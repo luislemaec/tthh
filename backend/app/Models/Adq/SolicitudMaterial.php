@@ -19,6 +19,11 @@ class SolicitudMaterial extends Model
         return $this->belongsTo(Empleado::class, 'id_emp', 'id_emp');
     }
 
+    public function aprobador()
+    {
+        return $this->belongsTo(Empleado::class, 'usuario_aprobacion', 'id_emp');
+    }
+
     public function detalles()
     {
         return $this->hasMany(SolicitudMaterialDet::class, 'solicitud_id');

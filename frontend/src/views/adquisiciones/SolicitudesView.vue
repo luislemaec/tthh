@@ -98,7 +98,12 @@
         <div class="p-5 overflow-y-auto">
           <div class="mb-3 text-sm text-gray-600 space-y-0.5">
             <p><b>Solicitante:</b> {{ modalVer.solicitud?.empleado?.apellido_emp }} {{ modalVer.solicitud?.empleado?.nombre_emp }}</p>
-            <p><b>Fecha:</b> {{ modalVer.solicitud?.fecha }} · Depto. {{ modalVer.solicitud?.id_depto }}</p>
+            <p><b>Fecha solicitud:</b> {{ modalVer.solicitud?.fecha }} · Depto. {{ modalVer.solicitud?.id_depto }}</p>
+            <p v-if="modalVer.solicitud?.aprobador">
+              <b>Aprobado por:</b>
+              {{ modalVer.solicitud.aprobador.apellido_emp }} {{ modalVer.solicitud.aprobador.nombre_emp }}
+              <span v-if="modalVer.solicitud.fecha_aprobacion" class="text-gray-400 text-xs ml-1">· {{ modalVer.solicitud.fecha_aprobacion }}</span>
+            </p>
             <p v-if="modalVer.solicitud?.justificacion"><b>Justificación:</b> {{ modalVer.solicitud?.justificacion }}</p>
             <p v-if="modalVer.solicitud?.observacion_despacho" class="italic text-gray-500">
               <b>Obs. despacho:</b> {{ modalVer.solicitud.observacion_despacho }}
