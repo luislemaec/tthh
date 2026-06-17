@@ -47,12 +47,9 @@
         <div class="flex gap-1 border-b border-gray-200 px-2">
           <button v-for="tab in tabs" :key="tab.id" type="button"
             @click="tabActivo = tab.id"
-            :class="[
-              'px-4 py-2.5 text-sm font-medium transition border-b-2 -mb-px',
-              tabActivo === tab.id
-                ? 'border-[#0b5447] text-[#0b5447]'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            ]">
+            :class="['px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px',
+              tabActivo !== tab.id && 'border-transparent text-gray-500 hover:text-gray-700']"
+            :style="tabActivo === tab.id ? 'border-color:#0b5447; color:#0b5447' : ''">
             {{ tab.label }}
           </button>
         </div>
