@@ -219,6 +219,11 @@
 
         <!-- Tab: Datos Generales -->
         <div v-if="formTab === 'Datos Generales'" class="space-y-3">
+          <!-- Fecha de solicitud (solo lectura, visible en modo edición) -->
+          <div v-if="modoEdicionId" class="bg-gray-50 border border-gray-200 rounded-md px-3 py-2 flex items-center gap-2">
+            <span class="text-xs font-semibold text-gray-500">Fecha de Solicitud:</span>
+            <span class="text-sm text-gray-700">{{ form.fecha_solicitud || '—' }}</span>
+          </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="text-xs font-semibold text-gray-600 mb-1 block">Tipo *</label>
@@ -303,11 +308,13 @@
             <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Servidor Comisionado</p>
             <div class="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
               <span class="text-gray-500">Nombres:</span>
-              <span class="font-medium text-gray-800">{{ auth.empleado?.apellido_emp }} {{ auth.empleado?.nombre_emp }}</span>
+              <span class="font-medium text-gray-800">{{ auth.empleado?.apellido }} {{ auth.empleado?.nombre }}</span>
               <span class="text-gray-500">Cédula:</span>
               <span class="font-mono text-gray-700">{{ auth.empleado?.identificacion }}</span>
               <span class="text-gray-500">Cargo:</span>
-              <span class="text-gray-700">{{ auth.empleado?.cargo_empleado }}</span>
+              <span class="text-gray-700">{{ auth.empleado?.cargo || '—' }}</span>
+              <span class="text-gray-500">Unidad:</span>
+              <span class="text-gray-700">{{ auth.empleado?.departamento || '—' }}</span>
               <span class="text-gray-500">Banco:</span>
               <span class="text-gray-700">{{ auth.empleado?.banco || '—' }}</span>
               <span class="text-gray-500">Tipo / N° Cuenta:</span>
@@ -861,6 +868,7 @@ function editarSolicitud(sol) {
   form.value = {
     tipo:                   sol.tipo,
     destino:                sol.destino,
+    fecha_solicitud:        sol.fecha_solicitud,
     fecha_salida:           sol.fecha_salida,
     hora_salida:            sol.hora_salida,
     fecha_llegada:          sol.fecha_llegada,

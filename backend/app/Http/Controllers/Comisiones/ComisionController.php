@@ -117,7 +117,6 @@ class ComisionController extends Controller
     {
         $request->validate([
             'tipo'                   => 'required|in:INTERIOR,EXTERIOR',
-            'fecha_solicitud'        => 'required|date',
             'destino'                => 'required|string|max:200',
             'fecha_salida'           => 'required|date',
             'hora_salida'            => 'required',
@@ -137,7 +136,7 @@ class ComisionController extends Controller
                 'tipo'                   => $request->tipo,
                 'id_emp'                 => $idEmp,
                 'id_depto'               => $emp->id_depto,
-                'fecha_solicitud'        => $request->fecha_solicitud,
+                'fecha_solicitud'        => now()->toDateString(),
                 'tiene_viaticos'         => $request->boolean('tiene_viaticos', true),
                 'tiene_movilizaciones'   => $request->boolean('tiene_movilizaciones', false),
                 'tiene_anticipo'         => $request->boolean('tiene_anticipo', false),
@@ -195,7 +194,6 @@ class ComisionController extends Controller
 
         $request->validate([
             'tipo'                   => 'required|in:INTERIOR,EXTERIOR',
-            'fecha_solicitud'        => 'required|date',
             'destino'                => 'required|string|max:200',
             'fecha_salida'           => 'required|date',
             'hora_salida'            => 'required',
@@ -212,7 +210,6 @@ class ComisionController extends Controller
         try {
             $solicitud->update([
                 'tipo'                   => $request->tipo,
-                'fecha_solicitud'        => $request->fecha_solicitud,
                 'tiene_viaticos'         => $request->boolean('tiene_viaticos', true),
                 'tiene_movilizaciones'   => $request->boolean('tiene_movilizaciones', false),
                 'tiene_anticipo'         => $request->boolean('tiene_anticipo', false),
