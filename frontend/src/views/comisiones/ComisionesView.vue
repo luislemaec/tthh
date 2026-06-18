@@ -351,8 +351,15 @@
           </button>
         </div>
 
-        <!-- Tab: Documentos (solo en edición BORRADOR) -->
+        <!-- Tab: Documentos -->
         <div v-if="formTab === 'Documentos'" class="space-y-3">
+          <!-- Spinner mientras se auto-guarda -->
+          <div v-if="guardando" class="flex flex-col items-center py-8 gap-3 text-gray-500">
+            <div class="w-7 h-7 border-2 border-[#5c4a6e] border-t-transparent rounded-full animate-spin"></div>
+            <p class="text-sm">Guardando formulario...</p>
+          </div>
+
+          <template v-else-if="modoEdicionId">
           <p class="text-xs text-gray-600 font-medium">Adjunte los 3 documentos requeridos, luego genere y firme el PDF para aprobar la solicitud.</p>
 
           <div v-for="slot in slotsDocumento" :key="slot.tipo"
@@ -403,21 +410,44 @@
               Solicitud APROBADA — PDF firmado archivado correctamente
             </div>
           </div>
+          </template>
+
+          <!-- Error si auto-guardado falló -->
+          <p v-if="errorForm && !modoEdicionId" class="text-red-600 text-xs font-medium p-3 bg-red-50 rounded-lg border border-red-200">
+            {{ errorForm }}
+          </p>
         </div>
 
-        <p v-if="errorForm" class="text-red-600 text-xs">{{ errorForm }}</p>
+        <p v-if="errorForm && formTab !== 'Documentos'" class="text-red-600 text-xs">{{ errorForm }}</p>
       </div>
 
-      <div v-if="formTab !== 'Documentos'" class="p-5 border-t border-gray-100 flex justify-end gap-3">
-        <button @click="cerrarModalSolicitud" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition">Cancelar</button>
-        <button @click="guardarSolicitud" :disabled="guardando"
-          class="px-5 py-2 text-sm font-semibold text-white rounded-lg transition hover:opacity-90 disabled:opacity-50"
-          style="background-color:#5c4a6e;">
-          {{ guardando ? 'Guardando...' : (modoEdicion ? 'Actualizar' : 'Guardar y agregar documentos') }}
+      <!-- Footer -->
+      <div class="p-5 border-t border-gray-100 flex justify-between items-center">
+        <button @click="cerrarModalSolicitud" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition">
+          Cerrar
         </button>
-      </div>
-      <div v-else class="p-5 border-t border-gray-100 flex justify-end">
-        <button @click="cerrarModalSolicitud" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition">Cerrar</button>
+        <div class="flex gap-3">
+          <!-- En Documentos: mostrar progreso y sólo "Guardar" si todavía no hay docs -->
+          <template v-if="formTab === 'Documentos'">
+            <span v-if="!modoEdicionId || guardando" class="text-xs text-gray-400 self-center italic">
+              {{ guardando ? 'Guardando...' : 'Complete el formulario para habilitar documentos' }}
+            </span>
+            <span v-else-if="!todosDocSubidos" class="text-xs text-orange-600 font-medium self-center">
+              {{ docsSubidos }}/3 documentos subidos
+            </span>
+            <span v-else-if="!docFirmadoSubido" class="text-xs text-blue-600 font-medium self-center">
+              ✓ Documentos completos — suba el PDF firmado para aprobar
+            </span>
+          </template>
+          <!-- En otras pestañas: Guardar / Actualizar -->
+          <template v-else>
+            <button @click="guardarSolicitud" :disabled="guardando"
+              class="px-5 py-2 text-sm font-semibold text-white rounded-lg transition hover:opacity-90 disabled:opacity-50"
+              style="background-color:#5c4a6e;">
+              {{ guardando ? 'Guardando...' : (modoEdicion ? 'Actualizar' : 'Guardar') }}
+            </button>
+          </template>
+        </div>
       </div>
     </div>
   </div>
@@ -741,11 +771,7 @@ const estadoOpciones = [
   { value: 'NEGADO',           label: 'Negado' },
 ]
 
-const formTabs = computed(() => {
-  const tabs = ['Datos Generales', 'Servidores', 'Transporte']
-  if (modoEdicion.value && modoEdicionEstado.value === 'BORRADOR') tabs.push('Documentos')
-  return tabs
-})
+const formTabs = ['Datos Generales', 'Servidores', 'Transporte', 'Documentos']
 
 const ciudadesDisponibles = computed(() =>
   provincias.value.find(p => p.id === form_provinciaId.value)?.ciudades ?? []
@@ -755,9 +781,11 @@ function docPorTipo(tipo) {
   return documentos.value.find(d => d.tipo_doc === tipo)
 }
 
-const todosDocSubidos = computed(() =>
-  slotsDocumento.every(s => documentos.value.some(d => d.tipo_doc === s.tipo))
+const docsSubidos = computed(() =>
+  slotsDocumento.filter(s => documentos.value.some(d => d.tipo_doc === s.tipo)).length
 )
+
+const todosDocSubidos = computed(() => docsSubidos.value === slotsDocumento.length)
 
 const docFirmadoSubido = computed(() =>
   documentos.value.some(d => d.tipo_doc === 'FIRMADO')
@@ -868,10 +896,14 @@ function cerrarModalSolicitud() {
   modalSolicitud.value = false
 }
 
-// Cargar docs al cambiar al tab Documentos
-watch(formTab, (tab) => {
-  if (tab === 'Documentos' && modoEdicionId.value) {
+// Al llegar al tab Documentos: si ya tiene ID carga los docs; si es nuevo, auto-guarda primero
+watch(formTab, async (tab) => {
+  if (tab !== 'Documentos') return
+  if (modoEdicionId.value) {
     cargarDocumentos(modoEdicionId.value)
+  } else {
+    // Auto-guardar silenciosamente para obtener el ID
+    await guardarSolicitudSilencioso()
   }
 })
 
@@ -894,12 +926,18 @@ function onCiudadChange() {
 }
 
 // ── Save Solicitud ─────────────────────────────────────────
+function validarFormulario() {
+  if (!form.value.destino) return 'Seleccione el destino.'
+  if (!form.value.fecha_salida) return 'Ingrese la fecha de salida.'
+  if (!form.value.fecha_llegada) return 'Ingrese la fecha de llegada.'
+  if (!form.value.descripcion_actividades?.trim()) return 'Describa las actividades.'
+  return null
+}
+
 async function guardarSolicitud() {
   errorForm.value = ''
-  if (!form.value.destino || !form.value.fecha_salida || !form.value.fecha_llegada || !form.value.descripcion_actividades) {
-    errorForm.value = 'Complete los campos obligatorios (Destino, Fechas, Actividades).'
-    return
-  }
+  const error = validarFormulario()
+  if (error) { errorForm.value = error; return }
   guardando.value = true
   try {
     if (modoEdicion.value) {
@@ -910,11 +948,34 @@ async function guardarSolicitud() {
       modoEdicion.value       = true
       modoEdicionId.value     = data.id
       modoEdicionEstado.value = 'BORRADOR'
-      formTab.value           = 'Documentos'
       await cargar()
     }
   } catch (e) {
     errorForm.value = e.response?.data?.message || 'Error al guardar.'
+  } finally {
+    guardando.value = false
+  }
+}
+
+async function guardarSolicitudSilencioso() {
+  errorForm.value = ''
+  const error = validarFormulario()
+  if (error) {
+    errorForm.value = error
+    formTab.value = 'Datos Generales'
+    return
+  }
+  guardando.value = true
+  try {
+    const { data } = await api.post('/comisiones/solicitudes', form.value)
+    modoEdicion.value       = true
+    modoEdicionId.value     = data.id
+    modoEdicionEstado.value = 'BORRADOR'
+    await cargar()
+    await cargarDocumentos(data.id)
+  } catch (e) {
+    errorForm.value = e.response?.data?.message || 'Error al guardar.'
+    formTab.value = 'Datos Generales'
   } finally {
     guardando.value = false
   }
@@ -990,7 +1051,7 @@ async function subirPdfFirmado(event) {
     })
     await cargarDocumentos(modoEdicionId.value)
     await cargar()
-    cerrarModalSolicitud()
+    // No cerrar — mostrar el banner verde de APROBADO
   } catch (e) {
     alert(e.response?.data?.message || 'Error al subir PDF firmado.')
   } finally {
