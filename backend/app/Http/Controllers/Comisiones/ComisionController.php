@@ -447,20 +447,20 @@ class ComisionController extends Controller
 
     public function provincias(): \Illuminate\Http\JsonResponse
     {
-        $rows = DB::table('dbo.com_provincia as p')
-            ->join('dbo.com_ciudad as c', 'c.provincia_id', '=', 'p.id')
-            ->orderBy('p.nombre')
-            ->orderBy('c.nombre')
-            ->select('p.id as prov_id', 'p.nombre as prov', 'c.id as ciu_id', 'c.nombre as ciu')
-            ->get();
+        $provincias = DB::table('dbo.com_provincia')->orderBy('nombre')->get();
 
-        $agrupado = $rows->groupBy('prov')->map(fn($cities, $prov) => [
-            'id'       => $cities->first()->prov_id,
-            'nombre'   => $prov,
-            'ciudades' => $cities->map(fn($c) => ['id' => $c->ciu_id, 'nombre' => $c->ciu])->values(),
-        ])->values();
+        $ciudades = DB::table('dbo.com_ciudad')->orderBy('nombre')->get()->groupBy('provincia_id');
 
-        return response()->json($agrupado);
+        $resultado = $provincias->map(fn($p) => [
+            'id'       => $p->id,
+            'nombre'   => $p->nombre,
+            'ciudades' => ($ciudades[$p->id] ?? collect())->map(fn($c) => [
+                'id'     => $c->id,
+                'nombre' => $c->nombre,
+            ])->values(),
+        ]);
+
+        return response()->json($resultado);
     }
 
     // ─── Búsqueda de servidores ───────────────────────────────────────────────

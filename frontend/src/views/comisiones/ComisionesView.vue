@@ -412,10 +412,15 @@
           </div>
           </template>
 
-          <!-- Error si auto-guardado falló -->
-          <p v-if="errorForm && !modoEdicionId" class="text-red-600 text-xs font-medium p-3 bg-red-50 rounded-lg border border-red-200">
-            {{ errorForm }}
-          </p>
+          <!-- Error si el formulario está incompleto o el auto-guardado falló -->
+          <div v-if="errorForm && !modoEdicionId"
+            class="p-4 bg-red-50 rounded-lg border border-red-200 text-center space-y-2">
+            <p class="text-red-700 text-sm font-medium">{{ errorForm }}</p>
+            <button @click="formTab = 'Datos Generales'"
+              class="text-sm text-red-600 underline hover:text-red-800">
+              Volver a Datos Generales →
+            </button>
+          </div>
         </div>
 
         <p v-if="errorForm && formTab !== 'Documentos'" class="text-red-600 text-xs">{{ errorForm }}</p>
@@ -816,18 +821,23 @@ function formatFecha(f) {
 async function cargar() {
   cargando.value = true
   try {
-    const [rolResp, solResp, provResp] = await Promise.all([
+    const [rolResp, solResp] = await Promise.all([
       api.get('/comisiones/mi-rol'),
       api.get('/comisiones/solicitudes'),
-      api.get('/comisiones/provincias'),
     ])
-    miRol.value      = rolResp.data
+    miRol.value       = rolResp.data
     solicitudes.value = solResp.data.data || solResp.data
-    provincias.value  = provResp.data
   } catch (e) {
-    console.error(e)
+    console.error('Error cargando solicitudes:', e)
   } finally {
     cargando.value = false
+  }
+  // Provincias se carga por separado para que un error en solicitudes no la bloquee
+  try {
+    const { data } = await api.get('/comisiones/provincias')
+    provincias.value = data
+  } catch (e) {
+    console.error('Error cargando provincias:', e)
   }
 }
 
@@ -961,8 +971,8 @@ async function guardarSolicitudSilencioso() {
   errorForm.value = ''
   const error = validarFormulario()
   if (error) {
+    // Mostrar error en el tab Documentos, no redirigir
     errorForm.value = error
-    formTab.value = 'Datos Generales'
     return
   }
   guardando.value = true
@@ -975,7 +985,6 @@ async function guardarSolicitudSilencioso() {
     await cargarDocumentos(data.id)
   } catch (e) {
     errorForm.value = e.response?.data?.message || 'Error al guardar.'
-    formTab.value = 'Datos Generales'
   } finally {
     guardando.value = false
   }
