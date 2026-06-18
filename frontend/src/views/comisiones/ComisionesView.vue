@@ -424,13 +424,17 @@
           </div>
           </template>
 
-          <!-- Error si el formulario está incompleto o el auto-guardado falló -->
-          <div v-if="errorForm && !modoEdicionId"
-            class="p-4 bg-red-50 rounded-lg border border-red-200 text-center space-y-2">
-            <p class="text-red-700 text-sm font-medium">{{ errorForm }}</p>
+          <!-- Mensaje cuando aún no se ha guardado el formulario -->
+          <div v-if="!modoEdicionId && !guardando"
+            class="p-6 bg-gray-50 rounded-lg border border-gray-200 text-center space-y-3">
+            <svg class="w-10 h-10 mx-auto text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            <p class="text-sm text-gray-500">Complete el formulario en <strong>Datos Generales</strong> y presione <strong>Guardar</strong> para habilitar la carga de documentos.</p>
             <button @click="formTab = 'Datos Generales'"
-              class="text-sm text-red-600 underline hover:text-red-800">
-              Volver a Datos Generales →
+              class="text-sm font-semibold underline" style="color:#5c4a6e;">
+              Ir a Datos Generales →
             </button>
           </div>
         </div>
@@ -919,8 +923,9 @@ function cerrarModalSolicitud() {
   cargar()
 }
 
-// Al llegar al tab Documentos: solo carga docs si ya existe el ID
+// Al cambiar de tab: limpiar error; si llega a Documentos y ya hay ID, cargar docs
 watch(formTab, (tab) => {
+  errorForm.value = ''
   if (tab !== 'Documentos') return
   if (modoEdicionId.value) {
     cargarDocumentos(modoEdicionId.value)
