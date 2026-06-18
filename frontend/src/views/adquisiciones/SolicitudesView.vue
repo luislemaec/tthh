@@ -138,8 +138,9 @@
     <!-- Modal crear solicitud -->
     <div v-if="modalCrear.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-xl w-full max-w-3xl h-[90vh] overflow-hidden flex flex-col">
-        <div class="px-6 py-4 flex-shrink-0" style="background-color:#4a5e3a;">
+        <div class="px-6 py-4 flex-shrink-0 flex items-center justify-between" style="background-color:#4a5e3a;">
           <h2 class="text-lg font-bold text-white">Nueva Solicitud de Materiales</h2>
+          <button @click="modalCrear.show = false" class="text-white/70 hover:text-white text-xl leading-none">&times;</button>
         </div>
         <div class="p-6 overflow-y-auto flex-1">
         <div class="mb-4">
@@ -267,8 +268,9 @@
     <!-- Modal despachar -->
     <div v-if="modalDespacho.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-xl w-full max-w-xl max-h-[90vh] overflow-hidden flex flex-col">
-        <div class="px-6 py-4 flex-shrink-0" style="background-color:#4a5e3a;">
+        <div class="px-6 py-4 flex-shrink-0 flex items-center justify-between" style="background-color:#4a5e3a;">
           <h2 class="text-lg font-bold text-white">Autorizar Cantidades — Despacho</h2>
+          <button @click="modalDespacho.show = false" class="text-white/70 hover:text-white text-xl leading-none">&times;</button>
         </div>
         <div class="p-6 overflow-y-auto">
         <p class="text-sm text-gray-500 mb-4">

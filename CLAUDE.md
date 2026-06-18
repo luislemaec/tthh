@@ -44,7 +44,7 @@ Después de cualquier cambio: Push → Pull en servidor → `npm run build` (sol
 
 ## Roles
 
-Roles: `ADMINISTRADOR`, `TALENTO HUMANO`, `TH ACCIONES PERSONAL`, `TH NOMINA`,`SUPERVISOR`, `ADQUISICIONES`, `TRANSPORTE`, `CONDUCTOR`. Empleados sin rol = acceso básico.
+Roles: `ADMINISTRADOR`, `TALENTO HUMANO`, `TH ACCIONES PERSONAL`, `TH NOMINA`, `SUPERVISOR`, `ADQUISICIONES`, `TRANSPORTE`, `CONDUCTOR`, `MAXIMA AUTORIDAD`, `CONTABILIDAD`, `PRESUPUESTO`, `DIRECTOR FINANCIERO`, `TESORERIA`, `COMISIONADO EXTERNO`. Empleados sin rol = acceso básico.
 - Backend: `DB::table('dbo.admin_usuario_rol')` — sin Laravel policies/gates
 - Frontend: `auth.tieneRol('NOMBRE')` desde Pinia store
 - Menú filtrado por rol desde `dbo.admin_opcion`
@@ -219,6 +219,7 @@ Campos relevantes:
 - `motivo_reactivacion`: por qué volvió a ACTIVO — valor actual: `RETORNO DE COMISIÓN DE SERVICIOS` — migración `000073`
 - `institucion_comision`: nombre de la institución destino (si `motivo_salida = COMISIÓN DE SERVICIOS`) o institución de origen (si `modalidad_laboral = Comisión de Servicios` en empleado entrante) — migración `000073`
 - `banco` / `tipo_cuenta` / `numero_cuenta`: datos bancarios del empleado para transferencias (migración `000081`); se auto-rellenan en el formulario de comisión al buscar un servidor
+- `es_externo BOOLEAN DEFAULT false`: empleados creados automáticamente desde "Dar acceso" en Funcionarios Externos (migración `000082`). Cuando `es_externo = true`: EmpleadoForm muestra banner amarillo de advertencia y EmpleadoController bloquea la edición (solo editable desde FuncionariosExternosView). `id_depto = 999` — excluidos de todas las queries de RRHH (nómina, asistencia, distributivo, vacaciones).
 
 **Partidas disponibles** (`GET /api/empleados/partidas-vacantes`): devuelve empleados con `estado=INACTIVO` + `estado_puesto=DISPONIBLE`. En `EmpleadoForm.vue`, el campo Partida Individual tiene input libre + botón "Seleccionar libre" que abre un modal con la lista — al seleccionar una fila se auto-llenan `partida_individual` y `partida_presupuestaria`.
 
@@ -541,8 +542,9 @@ views/horasextras/
                         #   REGISTROS DEL EQUIPO: revisar/confirmar/negar + desglose monetario (TH NOMINA)
                         #   Badge naranja "Dev. Xv" en registros devueltos al empleado (campo devuelto_count en nom_he_registro)
 views/asistencia/
-  ReporteSinAtrasosView.vue  # Vista standalone (ruta asistencia/sin-atrasos) — INTEGRADA también como tercer tab
+  ReporteSinAtrasosView.vue  # Vista standalone (ruta asistencia/sin-atrasos) — INTEGRADA como tercer tab
                              # en views/reportes/ReportesView.vue (tab "Sin Atrasos")
+                             # NO debe tener entrada de menú propia (sería duplicado) — eliminar si existe
 views/reportes/
   ReportesView.vue           # 4 tabs: Atrasos | Marcaciones No Realizadas | Sin Atrasos | Movimientos de Personal
                              # Filtros comunes: fecha_desde, fecha_hasta, departamento, empleado
@@ -600,6 +602,9 @@ views/certificados/
                           # Ruta Vue: certificados-laborales → CertificadosLaborales
 views/admin/            # Roles, departamentos, turnos, configuración, IESS, avisos ticker
                         # ZktecoView.vue: tabla de dispositivos, toggle activo/inactivo, editar nombre, eliminar
+                        # OpcionesView.vue (admin/opciones): tiene filtro de búsqueda en tiempo real
+                        #   — input por descripción/URL/categoría, select por categoría, select activos/inactivos
+                        #   — computed opcionesFiltradas; contador de resultados visibles
 layouts/MainLayout.vue  # Layout del módulo RRHH (menú colapsado, se abre el grupo activo)
                         # Modo mantenimiento: lee GET /api/modo-mantenimiento?modulo=TH
                         #   Variable en d2_configuracion: MODO_MANTENIMIENTO_TH = 1 (activo) / 0
@@ -935,6 +940,8 @@ views/adquisiciones/
   UnidadesMedidaView.vue      # Unidades de medida configurables
   CatalogoInventarioView.vue  # Catálogo MEF nivel1/nivel2
   SolicitudesView.vue         # Solicitudes internas: crear, aprobar (supervisor — sin stock visible), despachar (bienes)
+                              # Modales "Nueva Solicitud" y "Despachar": botón X (✕) en el header para cerrar
+                              #   sin necesidad de desplazarse al botón Cancelar al final de la lista de artículos
   AjusteInventarioView.vue    # Toma física: buscar artículo, ingresar cant. física, registra ajuste
   ReporteKardexView.vue            # Kardex NIC 2 — filtros: artículo individual, Nivel 1 MEF, Nivel 2 MEF (combinables)
                                    # Resultado: una sección por artículo; PDF itera todos los artículos encontrados
@@ -1095,35 +1102,41 @@ layouts/TransporteLayout.vue  # Menú dinámico desde auth.menuAgrupado filtrado
 
 Cuarto módulo del sistema. Color institucional: `#5c4a6e` (malva apagado). Digitaliza el proceso PRO.GF-CS.001 v5 (24/03/2026).
 
-### Roles requeridos (crear en Admin → Roles)
+### Roles requeridos
 
-`MAXIMA AUTORIDAD`, `DIRECCION ADMINISTRATIVA`, `ASESORIA JURIDICA`, `CONTABILIDAD`, `PRESUPUESTO`, `DIRECTOR FINANCIERO`, `TESORERIA`
+`MAXIMA AUTORIDAD`, `CONTABILIDAD`, `PRESUPUESTO`, `DIRECTOR FINANCIERO`, `TESORERIA`, `COMISIONADO EXTERNO`
 
 Estos roles se suman a los existentes — un empleado puede tener SUPERVISOR + DIRECTOR FINANCIERO simultáneamente.
+
+> **Roles eliminados del flujo original:** `DIRECCION ADMINISTRATIVA` y `ASESORIA JURIDICA` — el flujo multi-nivel fue simplificado (ver Flujo abajo). Pueden eliminarse de `dbo.admin_rol` si no se usan en otro módulo.
 
 ### Opciones de menú
 
 | URL | Descripción | Roles |
 |---|---|---|
-| `comisiones/solicitudes` | Comisiones de Servicio | Los 7 roles + ADMINISTRADOR |
+| `comisiones/solicitudes` | Comisiones de Servicio | Todos los roles de Comisiones + ADMINISTRADOR + COMISIONADO EXTERNO |
 | `comisiones/liquidaciones` | Liquidaciones de Viáticos | CONTABILIDAD + PRESUPUESTO + DIRECTOR FINANCIERO + TESORERIA + ADMINISTRADOR |
 | `comisiones/tarifas` | Tarifas de Viáticos | ADMINISTRADOR |
-| `admin/funcionarios-externos` | Funcionarios Externos | ADMINISTRADOR (en menú de TH Admin, no en Comisiones) |
+| `admin/funcionarios-externos` | Funcionarios Externos | ADMINISTRADOR (menú TH Admin) |
+| `admin/provincias-ciudades` | Provincias y Ciudades | ADMINISTRADOR (menú Admin Comisiones) |
 
 ### Tablas (`dbo.*`)
 
 | Tabla | Descripción |
 |---|---|
-| `com_solicitud` | Cabecera de la solicitud; campos: tipo (INTERIOR/EXTERIOR), id_emp, id_depto, fechas, destino, tiene_viaticos, tiene_movilizaciones, tiene_anticipo, estado, numero_solicitud, resolucion_juridica, num_sistema_exterior |
-| `com_solicitud_servidor` | Servidores que integran la comisión; campos: solicitud_id, id_emp, unidad, puesto, orden, **banco, tipo_cuenta, numero_cuenta** (datos bancarios por servidor — migración 000080) |
+| `com_solicitud` | Cabecera de la solicitud; campos: tipo (INTERIOR/EXTERIOR), id_emp, id_depto, fechas, destino (string "PROVINCIA - CIUDAD" para INTERIOR, texto libre para EXTERIOR), tiene_viaticos, tiene_movilizaciones, tiene_anticipo, estado, numero_solicitud |
+| `com_solicitud_servidor` | Servidor comisionado; campos: solicitud_id, id_emp, unidad, puesto, orden, banco, tipo_cuenta, numero_cuenta (migración `000080`). En el flujo actual solo hay 1 servidor = el empleado logueado (auto-insertado al crear solicitud) |
 | `com_solicitud_transporte` | Transportes de la solicitud (tipo, nombre, ruta, salida/llegada) |
+| `com_solicitud_documento` | Documentos adjuntos por solicitud (migración `000082`); campos: solicitud_id, tipo_doc (AUTORIZACION\|PASAJES\|CERTIFICACION\|FIRMADO), alfresco_id, nombre_archivo, created_by, created_at. Carpeta Alfresco: `comisiones/{año}/{cedula_APELLIDO}/` |
 | `com_anticipo` | Anticipo de viáticos; campos: solicitud_id, monto, cur_compromiso, cur_devengado, estado |
-| `com_informe` | Informe de actividades post-comisión; campos: solicitud_id, actividades, productos, estado |
+| `com_informe` | Informe de actividades post-comisión; campos: solicitud_id, actividades, productos, estado, pdf_firmado_id, pdf_firmado_nombre (migración `000082`) |
 | `com_informe_transporte` | Transportes del informe (real vs planificado) |
 | `com_ficha_liquidacion` | Ficha financiera; campos: solicitud_id, valor_por_dia, dias, total, cur_compromiso, cur_devengado, comprobante_pago, comprobante_devolucion, pais_destino, coeficiente_pais, estado |
 | `com_tarifa_viatico` | Tarifas diarias; campos: descripcion, valor_dia, tipo (INTERIOR/EXTERIOR), aplica_jerarquico BOOLEAN, activo |
 | `com_coeficiente_pais` | 40 países MEF con coeficiente DECIMAL(6,4) y región; CRUD editable desde Admin → Tarifas (tab Exterior) |
-| `com_funcionario_externo` | Personal temporal (seguridad presidencial) sin acceso al sistema; campos: cedula UNIQUE, nombres, cargo, banco, tipo_cuenta, numero_cuenta, activo — migración `000081` agrega campos bancarios |
+| `com_funcionario_externo` | Personal temporal (ej. seguridad presidencial); campos: cedula UNIQUE, nombres, cargo, banco, tipo_cuenta, numero_cuenta, programa (4 chars), actividad (6 chars), activo — migración `000082` agrega programa/actividad |
+| `com_provincia` | 24 provincias de Ecuador (migración `000082`); seed precargado |
+| `com_ciudad` | Ciudades por provincia (migración `000082`); seed con ~4-6 ciudades por provincia |
 
 ### Migraciones
 
@@ -1133,8 +1146,9 @@ Estos roles se suman a los existentes — un empleado puede tener SUPERVISOR + D
 - `000077` — com_ficha_liquidacion
 - `000078` — amplía admin_rol.descripcion a VARCHAR(50) (drop/recreate view_usuario_opciones)
 - `000079` — aplica_jerarquico en tarifa_viatico; seed 2 tarifas INTERIOR ($130/$80); com_coeficiente_pais + seed 40 países; com_funcionario_externo; VALOR_BASE_EXTERIOR=185 en d2_configuracion; pais_destino/coeficiente_pais en com_ficha_liquidacion
-- `000080` — banco/tipo_cuenta/numero_cuenta en com_solicitud_servidor (datos bancarios por servidor)
-- `000081` — banco/tipo_cuenta/numero_cuenta en ad_empleado y com_funcionario_externo; EmpleadoController.store()/update() actualizado para persistir estos campos
+- `000080` — banco/tipo_cuenta/numero_cuenta en com_solicitud_servidor
+- `000081` — banco/tipo_cuenta/numero_cuenta en ad_empleado y com_funcionario_externo
+- `000082` — es_externo en ad_empleado; programa/actividad en com_funcionario_externo; com_provincia + seed 24 provincias; com_ciudad + seed ciudades; com_solicitud_documento; pdf_firmado_id/pdf_firmado_nombre en com_informe
 
 ### Tarifas de viáticos
 
@@ -1154,57 +1168,63 @@ Formato: `CS-{centro_de_costo}-{año}-{NNN}`
 - `centro_de_costo` viene de `dbo.ad_departamento.centro_de_costo` del departamento del solicitante
 - NNN: secuencial anual de 3 dígitos, institución-wide (no por área)
 - Ejemplo: `CS-100-2026-001`
-- Se genera al momento de AUTORIZAR (Máxima Autoridad para INTERIOR; registrar en sistema exterior para EXTERIOR)
+- **Se genera al momento de subir el PDF firmado** (acción `subirFirmado()` en ComisionController) → cambia estado a APROBADO
 
-### Funcionarios externos
+### Funcionarios externos con acceso al sistema
 
-`com_funcionario_externo` — personal temporal (ej. seguridad presidencial) que cobra viáticos pero no tiene acceso al sistema, roles, ni marcaciones. Gestionados desde TH Admin (`admin/funcionarios-externos`). Al buscar servidores en el formulario de solicitud, aparecen con badge naranja "Externo" en el dropdown.
+`com_funcionario_externo` — personal temporal (ej. seguridad presidencial). Pueden tener acceso al sistema:
+- HR crea el externo en `com_funcionario_externo`
+- HR hace clic en "Dar acceso" → modal con contraseña temporal
+- Backend crea/actualiza registro en `dbo.ad_empleado` con `id_emp = cedula`, `id_depto = 999`, `es_externo = true`, asigna rol `COMISIONADO EXTERNO`
+- El externo se loguea y solo ve el módulo de Comisiones (launcher filtra por rol)
+- Desactivar externo (`destroy()`) pone `activo = false` en com_funcionario_externo Y `estado = INACTIVO` en ad_empleado
 
-### Datos bancarios por servidor
+### Destino de comisión
 
-Cada servidor de la comisión tiene su propia cuenta bancaria (banco, tipo_cuenta, numero_cuenta) en `com_solicitud_servidor`. Los campos se muestran siempre al seleccionar un servidor (no solo cuando tiene_viaticos=true) porque Tesorería puede hacer transferencias por viáticos, movilización o combustible.
+- **INTERIOR**: selects en cascada Provincia → Ciudad. Destino se guarda como `"PROVINCIA - CIUDAD"` en `com_solicitud.destino`. Provincias y ciudades gestionadas desde `admin/provincias-ciudades` (ProvinciaCiudadView.vue). Backend: `GET /comisiones/provincias` retorna provincias con ciudades anidadas (dos queries separadas para evitar excluir provincias sin ciudades).
+- **EXTERIOR**: campo de texto libre.
 
-Los datos bancarios se guardan también en `ad_empleado` y `com_funcionario_externo` (migración `000081`). El endpoint `buscarServidor` los retorna y `seleccionarServidor()` en el frontend los auto-rellena al escoger un servidor — editables si cambian por esa comisión.
-
-### Flujo INTERIOR — estados y actores
-
-```
-BORRADOR          → Empleado crea (tab Datos Generales + Servidores con cuenta bancaria + Transporte)
-PENDIENTE_DIR_ADM → Empleado envía → DIRECCION ADMINISTRATIVA aprueba/niega
-PENDIENTE_JEFE    → Supervisor del depto aprueba/niega
-PENDIENTE_AUTORIDAD → MAXIMA AUTORIDAD autoriza → genera número CS-xxx-año-NNN → AUTORIZADO
-AUTORIZADO        → (opcional) Anticipo: PRESUPUESTO CUR compromiso → CONTABILIDAD CUR devengado → TESORERIA paga
-                  → Empleado regresa y crea Informe → INFORME_PRESENTADO
-INFORME_PRESENTADO → Supervisor revisa → INFORME_REVISADO
-INFORME_REVISADO  → MAXIMA AUTORIDAD aprueba informe → INFORME_APROBADO
-INFORME_APROBADO  → Empleado solicita pago → EN_PAGO
-EN_PAGO           → CONTABILIDAD/PRESUPUESTO crea ficha liquidación (valor_por_dia auto-calculado) → EN_LIQUIDACION
-                  → PRESUPUESTO CUR compromiso → CONTABILIDAD CUR devengado
-                  → TESORERIA confirma pago → CERRADO (o POR_COBRAR si hay devolución)
-POR_COBRAR        → TESORERIA registra devolución → CERRADO
-NEGADO            → cualquier nivel puede negar (con observación)
-```
-
-### Flujo EXTERIOR — diferencias vs INTERIOR
+### Flujo simplificado (único para INTERIOR y EXTERIOR)
 
 ```
-PENDIENTE_AUTORIDAD → MAXIMA AUTORIDAD autoriza → PENDIENTE_JURIDICA (no AUTORIZADO directamente)
-PENDIENTE_JURIDICA  → ASESORIA JURIDICA emite resolución → PENDIENTE_SISTEMA_EXT
-PENDIENTE_SISTEMA_EXT → DIRECCION ADMINISTRATIVA registra en sistema exterior → AUTORIZADO + número
+BORRADOR
+  → Empleado llena form (Tab 1 Datos + Tab 3 Transporte)
+  → Tab 4 Documentos: sube 3 PDFs externos
+      AUTORIZACION — Solicitud de Autorización y Aprobación
+      PASAJES      — Pasajes Aéreos
+      CERTIFICACION — Certificación Presupuestaria
+  → Genera PDF de la solicitud (descarga para imprimir y firmar)
+  → Sube PDF Firmado → estado cambia a APROBADO + se asigna número CS-xxx-año-NNN
+APROBADO
+  → (opcional) Anticipo: PRESUPUESTO CUR compromiso → CONTABILIDAD CUR devengado → TESORERIA paga
+  → Empleado crea Informe → genera PDF → sube PDF Firmado → INFORME_APROBADO (directo, sin revisión)
+INFORME_APROBADO
+  → Empleado solicita pago → EN_PAGO
+EN_PAGO
+  → CONTABILIDAD/PRESUPUESTO crea ficha liquidación → EN_LIQUIDACION
+  → PRESUPUESTO CUR compromiso → CONTABILIDAD CUR devengado
+  → TESORERIA confirma pago → CERRADO (o POR_COBRAR si hay devolución)
+POR_COBRAR → TESORERIA registra devolución → CERRADO
 ```
-Resto del flujo igual que INTERIOR. En ficha de liquidación se selecciona país destino → auto-calcula `$185 × coeficiente`.
+
+> **Estados eliminados vs flujo anterior:** PENDIENTE_DIR_ADM, PENDIENTE_JEFE, PENDIENTE_AUTORIDAD, PENDIENTE_JURIDICA, PENDIENTE_SISTEMA_EXT, AUTORIZADO, NEGADO, INFORME_PRESENTADO, INFORME_REVISADO
+
+### Tab Servidores (read-only)
+
+Tab 2 del modal de solicitud muestra solo el empleado logueado (datos del auth store) en modo lectura. Al crear la solicitud, el backend auto-inserta en `com_solicitud_servidor` con los datos del `$request->user()`. No hay búsqueda ni múltiples servidores.
 
 ### Controladores (`app/Http/Controllers/Comisiones/`)
 
 | Controlador | Métodos clave |
 |---|---|
-| `ComisionController` | index, store, update, enviar, aprobarDirAdm, negarDirAdm, aprobarJefe, negarJefe, aprobarAutoridad, emitirResolucion, registrarSistemaExt, solicitarPago, buscarServidor |
-| `InformeComisionController` | store, update, revisar, aprobar, pdf |
+| `ComisionController` | index, store, update, provincias, uploadDocumento, deleteDocumento, descargarDocumento, subirFirmado, solicitarPago |
+| `InformeComisionController` | store, update, subirFirmado, descargarFirmado, pdf |
 | `AnticipController` | store, curCompromiso, curDevengado, pagar |
 | `LiquidacionController` | store, update, curCompromiso, curDevengado, confirmarPago, registrarDevolucion, coeficientes, calcularValorDia |
 | `TarifaViaticosController` | index, store, update, destroy |
 | `CoeficientePaisController` | index, store, update |
-| `FuncionarioExternoController` | index, store, update, destroy |
+| `FuncionarioExternoController` | index, store, update, destroy, darAcceso |
+| `ProvinciaCiudadController` | index, storeProvincia, updateProvincia, destroyProvincia, storeCiudad, updateCiudad, destroyCiudad |
 
 ### PDFs
 
@@ -1216,32 +1236,36 @@ Resto del flujo igual que INTERIOR. En ficha de liquidación se selecciona país
 
 ```
 views/comisiones/
-  ComisionesView.vue          # Lista + modal creación/edición (tabs: Datos Generales, Servidores, Transporte)
-                              # Tab Servidores: autocomplete debounce 300ms, busca en ad_empleado + com_funcionario_externo
-                              #   buscarServidor retorna banco/tipo_cuenta/numero_cuenta; seleccionarServidor() auto-rellena
-                              # Datos bancarios (banco/tipo_cuenta/numero_cuenta) por servidor — siempre visibles al seleccionar
-                              # Tabs de revisión según rol: Mis Comisiones, Pendientes Dir.Adm, Pendientes Jefe,
-                              #   Pendientes Autoridad, Pendientes Jurídica, Pendientes Sistema Ext
-                              # CONVENCIÓN MAYÚSCULAS: todos los inputs/textareas de texto libre tienen
-                              #   style="text-transform:uppercase" — aplica a toda la vista y a todos los modales
-                              #   (negar, resolución jurídica, sistema exterior, informe). El backend también hace
-                              #   strtoupper() en los campos relevantes. Esta convención aplica a todas las vistas
-                              #   del módulo de Comisiones (LiquidacionesView, FuncionariosExternosView)
-  LiquidacionesView.vue       # Tabs sólidos con #5c4a6e (igual que resto del módulo)
-                              # Lista fichas por estado; crear ficha (valor_por_dia auto), CURs, confirmar pago
+  ComisionesView.vue          # Modal con 4 tabs siempre visibles: Datos Generales, Servidores, Transporte, Documentos
+                              # Tab 1 Destino INTERIOR: selects cascada Provincia → Ciudad (carga separada del resto)
+                              #   form_provinciaId/form_ciudadId = solo frontend; form.destino = "PROV - CIUDAD"
+                              #   cargar() separa carga de provincias en try/catch independiente para evitar
+                              #   que un error en solicitudes/miRol deje los selects vacíos
+                              # Tab 2 Servidores: read-only — muestra datos del auth store sin inputs
+                              # Tab 4 Documentos: auto-guarda solicitud silenciosamente al entrar (get ID)
+                              #   3 slots obligatorios (AUTORIZACION/PASAJES/CERTIFICACION) + botón Generar PDF
+                              #   + slot PDF Firmado (aparece cuando 3 docs subidos) → sube y cambia a APROBADO
+                              #   guardarSolicitudSilencioso(): errores se muestran DENTRO del tab Documentos,
+                              #   NO redirige a Tab 1 — botón "Volver a Datos Generales →" para navegar
+                              # Tabs de listado: "Mis Comisiones" (cards) + "Todas las Comisiones" (tabla)
+                              # CONVENCIÓN MAYÚSCULAS: todos los inputs/textareas con style="text-transform:uppercase"
+                              #   aplica a toda la vista y modales. Backend hace strtoupper() en campos relevantes.
+  LiquidacionesView.vue       # Tabs sólidos con #5c4a6e; lista fichas por estado; CURs, confirmar pago
                               # Modales con cabecera coloreada #5c4a6e: Ficha Liquidación, CUR, Devolución
-                              # Campos CUR y comprobante con text-transform:uppercase
-  FuncionariosExternosView.vue # CRUD funcionarios externos (ruta: comisiones/funcionarios-externos)
-                               # También accesible desde TH Admin con ruta admin/funcionarios-externos
-                               # Incluye campos bancarios: banco, tipo_cuenta, numero_cuenta (migración 000081)
-                               # Modal con cabecera coloreada #5c4a6e; todos los campos text-transform:uppercase
+  FuncionariosExternosView.vue # CRUD funcionarios externos (ruta: admin/funcionarios-externos y comisiones/funcionarios-externos)
+                               # Campos: cedula, nombres, cargo, banco, tipo_cuenta, numero_cuenta,
+                               #   programa (4 chars), actividad (6 chars), activo
+                               # Botón "Dar acceso": modal con contraseña → POST /admin/funcionarios-externos/{id}/dar-acceso
+                               #   Badge "Con acceso" (verde) / "Sin acceso" (gris) por fila
 views/admin/
   TarifasViaticosView.vue     # Tab INTERIOR: 2 filas con badge Jerárquico/Otros
-                              # Tab EXTERIOR: acordeón colapsable por región — por defecto todos cerrados;
-                              #   clic en cabecera de región abre/cierra; muestra rango de $/día de la región
-                              #   Estado reactivo: regionesAbiertas = ref({}) + toggleRegion(region)
-                              #   CRUD coeficientes con preview $185 × coef = $/día en modal
+                              # Tab EXTERIOR: acordeón colapsable por región
+  ProvinciaCiudadView.vue     # CRUD provincias y ciudades para destinos INTERIOR
+                              # Acordeón por provincia; chips de ciudades con editar/eliminar
+                              # Input inline "Nueva ciudad..." con Enter; modal para crear/editar provincia
+                              # Ruta: admin/provincias-ciudades
 layouts/ComisionesLayout.vue  # Color #5c4a6e; menú dinámico; modo mantenimiento MODO_MANTENIMIENTO_COM
+                              # Tarjeta en LauncherView: visible para todos los roles de Comisiones + COMISIONADO EXTERNO
                               # Incluye <ChatbotFAB />
 ```
 
@@ -1249,24 +1273,20 @@ layouts/ComisionesLayout.vue  # Color #5c4a6e; menú dinámico; modo mantenimien
 
 | Método | Ruta | Función |
 |---|---|---|
-| GET/POST | `/solicitudes` | Listar / crear |
+| GET | `/provincias` | Lista provincias con ciudades anidadas (sin auth de rol) |
+| GET/POST | `/solicitudes` | Listar / crear (auto-inserta servidor = empleado logueado) |
 | GET/PUT | `/solicitudes/{id}` | Ver / editar (solo BORRADOR) |
 | GET | `/solicitudes/{id}/pdf` | PDF solicitud |
-| PATCH | `/solicitudes/{id}/enviar` | BORRADOR → PENDIENTE_DIR_ADM |
-| PATCH | `/solicitudes/{id}/aprobar-dir-adm` | Dir. Adm. aprueba |
-| PATCH | `/solicitudes/{id}/negar-dir-adm` | Dir. Adm. niega |
-| PATCH | `/solicitudes/{id}/aprobar-jefe` | Jefe aprueba |
-| PATCH | `/solicitudes/{id}/negar-jefe` | Jefe niega |
-| PATCH | `/solicitudes/{id}/aprobar-autoridad` | Máxima Autoridad autoriza |
-| PATCH | `/solicitudes/{id}/emitir-resolucion` | Asesoría Jurídica (EXTERIOR) |
-| PATCH | `/solicitudes/{id}/registrar-sistema-ext` | Dir. Adm. registra exterior |
+| POST | `/solicitudes/{id}/documentos` | Subir documento (tipo_doc: AUTORIZACION\|PASAJES\|CERTIFICACION) |
+| DELETE | `/solicitudes/{id}/documentos/{docId}` | Eliminar documento |
+| GET | `/solicitudes/{id}/documentos/{docId}/descargar` | Descargar documento desde Alfresco |
+| POST | `/solicitudes/{id}/subir-firmado` | Sube PDF firmado → APROBADO + número CS-xxx |
 | PATCH | `/solicitudes/{id}/solicitar-pago` | Empleado solicita pago |
-| GET | `/buscar-servidor` | Autocomplete empleados + externos |
-| GET/POST | `/informe/{solicitudId}` | Ver / crear informe |
-| PUT | `/informe/{id}` | Editar informe |
-| PATCH | `/informe/{id}/revisar` | Supervisor revisa |
-| PATCH | `/informe/{id}/aprobar` | Máxima Autoridad aprueba informe |
-| GET | `/informe/{solicitudId}/pdf` | PDF informe |
+| GET/POST | `/informes/{solicitudId}` | Ver / crear informe |
+| PUT | `/informes/{id}` | Editar informe |
+| POST | `/solicitudes/{id}/informe/subir-firmado` | Sube PDF firmado del informe → INFORME_APROBADO |
+| GET | `/solicitudes/{id}/informe/descargar-firmado` | Descarga informe firmado desde Alfresco |
+| GET | `/informes/{solicitudId}/pdf` | PDF informe |
 | POST | `/anticipo/{solicitudId}` | Crear anticipo |
 | PATCH | `/anticipo/{id}/cur-compromiso` | PRESUPUESTO registra CUR |
 | PATCH | `/anticipo/{id}/cur-devengado` | CONTABILIDAD registra CUR |
@@ -1284,7 +1304,13 @@ layouts/ComisionesLayout.vue  # Color #5c4a6e; menú dinámico; modo mantenimien
 | GET/POST | `/admin/coeficientes-pais` | CRUD países |
 | PUT | `/admin/coeficientes-pais/{id}` | Editar coeficiente |
 | GET/POST | `/admin/funcionarios-externos` | CRUD externos |
-| PUT/DELETE | `/admin/funcionarios-externos/{id}` | Editar / desactivar |
+| PUT | `/admin/funcionarios-externos/{id}` | Editar externo |
+| DELETE | `/admin/funcionarios-externos/{id}` | Desactivar externo (también pone INACTIVO en ad_empleado) |
+| POST | `/admin/funcionarios-externos/{id}/dar-acceso` | Crea/actualiza empleado con es_externo=true + rol COMISIONADO EXTERNO |
+| GET/POST | `/admin/provincias` | CRUD provincias |
+| PUT/DELETE | `/admin/provincias/{id}` | Editar / eliminar provincia |
+| POST | `/admin/provincias/{id}/ciudades` | Agregar ciudad |
+| PUT/DELETE | `/admin/ciudades/{id}` | Editar / eliminar ciudad |
 
 ---
 
