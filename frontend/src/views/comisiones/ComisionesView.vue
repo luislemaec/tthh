@@ -206,6 +206,11 @@
       </div>
 
       <div class="overflow-y-auto flex-1 p-5 space-y-4">
+        <!-- Error visible al tope -->
+        <div v-if="errorForm && formTab !== 'Documentos'"
+          class="px-3 py-2 bg-red-50 border border-red-200 rounded-md text-red-700 text-xs font-medium">
+          {{ errorForm }}
+        </div>
         <!-- Tabs -->
         <div class="flex gap-0 border rounded-lg overflow-hidden mb-4">
           <button v-for="t in formTabs" :key="t"
@@ -430,7 +435,6 @@
           </div>
         </div>
 
-        <p v-if="errorForm && formTab !== 'Documentos'" class="text-red-600 text-xs">{{ errorForm }}</p>
       </div>
 
       <!-- Footer -->
@@ -915,14 +919,11 @@ function cerrarModalSolicitud() {
   cargar()
 }
 
-// Al llegar al tab Documentos: si ya tiene ID carga los docs; si es nuevo, auto-guarda primero
-watch(formTab, async (tab) => {
+// Al llegar al tab Documentos: solo carga docs si ya existe el ID
+watch(formTab, (tab) => {
   if (tab !== 'Documentos') return
   if (modoEdicionId.value) {
     cargarDocumentos(modoEdicionId.value)
-  } else {
-    // Auto-guardar silenciosamente para obtener el ID
-    await guardarSolicitudSilencioso()
   }
 })
 
@@ -964,12 +965,16 @@ async function guardarSolicitud() {
     if (modoEdicion.value) {
       await api.put(`/comisiones/solicitudes/${modoEdicionId.value}`, form.value)
       await cargar()
+      formTab.value = 'Documentos'
+      await cargarDocumentos(modoEdicionId.value)
     } else {
       const { data } = await api.post('/comisiones/solicitudes', form.value)
       modoEdicion.value       = true
       modoEdicionId.value     = data.id
       modoEdicionEstado.value = 'BORRADOR'
       await cargar()
+      formTab.value = 'Documentos'
+      await cargarDocumentos(data.id)
     }
   } catch (e) {
     errorForm.value = e.response?.data?.message || 'Error al guardar.'
