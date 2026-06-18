@@ -75,16 +75,18 @@ class ComisionController extends Controller
 
         $query = DB::table('dbo.com_solicitud as s')
             ->join('dbo.ad_empleado as e', 's.id_emp', '=', 'e.id_emp')
-            ->join('dbo.ad_departamento as d', 's.id_depto', '=', 'd.id_depto')
+            ->leftJoin('dbo.ad_departamento as d', 's.id_depto', '=', 'd.id_depto')
             ->select(
                 's.id', 's.numero_solicitud', 's.tipo', 's.id_emp',
                 DB::raw("TRIM(e.apellido_emp) || ' ' || TRIM(e.nombre_emp) AS nombre_empleado"),
                 's.destino', 's.fecha_solicitud', 's.fecha_salida', 's.fecha_llegada',
                 's.tiene_viaticos', 's.tiene_movilizaciones', 's.tiene_anticipo',
                 's.estado', 's.created_at',
-                'd.nombre_depto'
+                DB::raw("COALESCE(d.nombre_depto, '') AS nombre_depto")
             )
-            ->where('d.id_depto', '!=', 999);
+            ->where(function ($q) {
+                $q->whereNull('d.id_depto')->orWhere('d.id_depto', '!=', 999);
+            });
 
         if ($esAdmin || $esFinanciero) {
             // Ven todas las solicitudes

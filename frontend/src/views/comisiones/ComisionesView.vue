@@ -366,7 +366,7 @@
             <p class="text-sm">Guardando formulario...</p>
           </div>
 
-          <template v-else-if="modoEdicionId">
+          <template v-if="!guardando && modoEdicionId">
           <p class="text-xs text-gray-600 font-medium">Adjunte los 3 documentos requeridos, luego genere y firme el PDF para aprobar la solicitud.</p>
 
           <div v-for="slot in slotsDocumento" :key="slot.tipo"
@@ -746,7 +746,7 @@ const informeForm = ref({
 const idEmp = computed(() => auth.empleado?.id_emp)
 
 const solicitudesMias = computed(() =>
-  solicitudes.value.filter(s => s.id_emp === idEmp.value)
+  solicitudes.value.filter(s => s.id_emp?.trim() === idEmp.value?.trim())
 )
 
 const solicitudesFiltradas = computed(() => {
@@ -912,6 +912,7 @@ function abrirDocumentos(sol) {
 
 function cerrarModalSolicitud() {
   modalSolicitud.value = false
+  cargar()
 }
 
 // Al llegar al tab Documentos: si ya tiene ID carga los docs; si es nuevo, auto-guarda primero
@@ -947,7 +948,9 @@ function onCiudadChange() {
 function validarFormulario() {
   if (!form.value.destino) return 'Seleccione el destino.'
   if (!form.value.fecha_salida) return 'Ingrese la fecha de salida.'
+  if (!form.value.hora_salida) return 'Ingrese la hora de salida.'
   if (!form.value.fecha_llegada) return 'Ingrese la fecha de llegada.'
+  if (!form.value.hora_llegada) return 'Ingrese la hora de llegada.'
   if (!form.value.descripcion_actividades?.trim()) return 'Describa las actividades.'
   return null
 }
