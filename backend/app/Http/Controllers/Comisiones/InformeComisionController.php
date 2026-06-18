@@ -9,15 +9,29 @@ use App\Models\ComSolicitud;
 use App\Services\AuditoriaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 
 class InformeComisionController extends Controller
 {
+    private string $alfrescoBase = 'http://192.168.26.38:8080/alfresco/api/-default-/public/alfresco/versions/1';
+    private string $alfrescoUser = 'admin';
+    private string $alfrescoPass = 'admin';
+    private string $alfrescoSite = 'talentohumano';
+
+    private function getDocLibNodeId(): string
+    {
+        $resp = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+            ->get("{$this->alfrescoBase}/sites/{$this->alfrescoSite}/containers/documentLibrary");
+        if (!$resp->successful()) abort(502, 'No se pudo conectar con Alfresco');
+        return $resp->json('entry.id');
+    }
+
     public function store(Request $request, int $solicitudId): \Illuminate\Http\JsonResponse
     {
         $solicitud = ComSolicitud::findOrFail($solicitudId);
 
-        if (!in_array($solicitud->estado, ['AUTORIZADO', 'INFORME_PENDIENTE'])) {
-            return response()->json(['message' => 'La comisión debe estar AUTORIZADA para crear el informe'], 422);
+        if ($solicitud->estado !== 'APROBADO') {
+            return response()->json(['message' => 'La comisión debe estar APROBADA para crear el informe'], 422);
         }
 
         if ($solicitud->id_emp !== $request->user()->id_emp) {
@@ -69,8 +83,7 @@ class InformeComisionController extends Controller
                 ]);
             }
 
-            $solicitud->update(['estado' => 'INFORME_PRESENTADO', 'updated_by' => $request->user()->id_emp]);
-
+            // No cambia el estado de la solicitud al crear el informe
             AuditoriaService::log('dbo.com_informe', $informe->id, 'CREAR', null, ['solicitud_id' => $solicitudId], $request, 'Informe de cumplimiento creado');
 
             DB::commit();
@@ -135,49 +148,76 @@ class InformeComisionController extends Controller
         }
     }
 
-    public function revisar(Request $request, int $id): \Illuminate\Http\JsonResponse
+    public function subirFirmado(Request $request, int $solicitudId): \Illuminate\Http\JsonResponse
     {
-        $informe   = ComInforme::findOrFail($id);
-        $solicitud = ComSolicitud::findOrFail($informe->solicitud_id);
+        $request->validate(['archivo' => 'required|file|mimes:pdf|max:20480']);
 
-        $idEmp = $request->user()->id_emp;
-        $esSupervisorDepto = DB::table('dbo.supervisor_area')
-            ->where('id_emp', $idEmp)
-            ->where('id_depto', $solicitud->id_depto)
-            ->exists();
+        $solicitud = ComSolicitud::findOrFail($solicitudId);
 
-        if (!$esSupervisorDepto && !$this->esAdmin($request)) {
+        if ($solicitud->id_emp !== $request->user()->id_emp) {
             return response()->json(['message' => 'No autorizado'], 403);
         }
 
-        $informe->update(['estado' => 'REVISADO', 'updated_by' => $idEmp]);
-        $solicitud->update(['estado' => 'INFORME_REVISADO', 'updated_by' => $idEmp]);
+        $informe = DB::table('dbo.com_informe')
+            ->where('solicitud_id', $solicitudId)
+            ->first();
 
-        AuditoriaService::log('dbo.com_informe', $id, 'REVISAR', ['estado' => 'PRESENTADO'], ['estado' => 'REVISADO'], $request, 'Informe revisado por supervisor');
+        if (!$informe) abort(404, 'No existe informe para esta solicitud.');
 
-        return response()->json(['estado' => $informe->estado]);
+        $emp      = $request->user();
+        $anio     = now()->year;
+        $apellido = strtoupper(trim($emp->apellido_emp ?? ''));
+        $cedula   = $emp->identificacion ?? $emp->id_emp;
+        $carpeta  = "comisiones/{$anio}/{$cedula}_{$apellido}";
+        $nombre   = 'INFORME_FIRMADO_' . $solicitudId . '_' . now()->format('YmdHis') . '.pdf';
+
+        $docLibId = $this->getDocLibNodeId();
+        $upload = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+            ->attach('filedata', file_get_contents($request->file('archivo')->getRealPath()), $nombre)
+            ->post("{$this->alfrescoBase}/nodes/{$docLibId}/children", [
+                'name'         => $nombre,
+                'nodeType'     => 'cm:content',
+                'relativePath' => $carpeta,
+                'autoRename'   => true,
+            ]);
+
+        if (!$upload->successful()) abort(502, 'No se pudo subir el informe a Alfresco.');
+
+        DB::table('dbo.com_informe')->where('id', $informe->id)->update([
+            'pdf_firmado_id'     => $upload->json('entry.id'),
+            'pdf_firmado_nombre' => $nombre,
+            'estado'             => 'APROBADO',
+            'updated_at'         => now(),
+        ]);
+
+        DB::table('dbo.com_solicitud')->where('id', $solicitudId)->update([
+            'estado'     => 'INFORME_APROBADO',
+            'updated_by' => $emp->id_emp,
+            'updated_at' => now(),
+        ]);
+
+        AuditoriaService::log('dbo.com_informe', $informe->id, 'APROBAR', ['estado' => 'PRESENTADO'], ['estado' => 'APROBADO'], $request, 'Informe aprobado con PDF firmado');
+
+        return response()->json(['message' => 'Informe aprobado.']);
     }
 
-    public function aprobar(Request $request, int $id): \Illuminate\Http\JsonResponse
+    public function descargarFirmado(Request $request, int $solicitudId)
     {
-        $informe   = ComInforme::findOrFail($id);
-        $solicitud = ComSolicitud::findOrFail($informe->solicitud_id);
+        $informe = DB::table('dbo.com_informe')
+            ->where('solicitud_id', $solicitudId)
+            ->first();
 
-        if ($informe->estado !== 'REVISADO') {
-            return response()->json(['message' => 'El informe debe estar REVISADO primero'], 422);
-        }
+        if (!$informe || !$informe->pdf_firmado_id) abort(404, 'No hay informe firmado.');
 
-        // El jefe del supervisor (máxima autoridad del área o admin)
-        if (!$this->esAdmin($request) && !$this->tieneRol($request, 'MAXIMA AUTORIDAD')) {
-            return response()->json(['message' => 'No autorizado'], 403);
-        }
+        $resp = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+            ->get("{$this->alfrescoBase}/nodes/{$informe->pdf_firmado_id}/content");
 
-        $informe->update(['estado' => 'APROBADO', 'updated_by' => $request->user()->id_emp]);
-        $solicitud->update(['estado' => 'INFORME_APROBADO', 'updated_by' => $request->user()->id_emp]);
+        if (!$resp->successful()) abort(502, 'No se pudo descargar el informe.');
 
-        AuditoriaService::log('dbo.com_informe', $id, 'APROBAR', ['estado' => 'REVISADO'], ['estado' => 'APROBADO'], $request, 'Informe aprobado');
-
-        return response()->json(['estado' => $informe->estado]);
+        return response($resp->body(), 200, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . ($informe->pdf_firmado_nombre ?? 'informe.pdf') . '"',
+        ]);
     }
 
     public function pdf(int $solicitudId)
@@ -203,25 +243,5 @@ class InformeComisionController extends Controller
 
         $numero = $solicitud->numero_solicitud ?? ('COM-' . $solicitudId);
         return $pdf->download("informe-{$numero}.pdf");
-    }
-
-    private function esAdmin(Request $request): bool
-    {
-        $idEmp = $request->user()->id_emp;
-        return DB::table('dbo.admin_usuario_rol')
-            ->join('dbo.admin_rol', 'admin_usuario_rol.rol_id', '=', 'admin_rol.id')
-            ->where('admin_usuario_rol.id_emp', $idEmp)
-            ->where('admin_rol.nombre', 'ADMINISTRADOR')
-            ->exists();
-    }
-
-    private function tieneRol(Request $request, string $rol): bool
-    {
-        $idEmp = $request->user()->id_emp;
-        return DB::table('dbo.admin_usuario_rol')
-            ->join('dbo.admin_rol', 'admin_usuario_rol.rol_id', '=', 'admin_rol.id')
-            ->where('admin_usuario_rol.id_emp', $idEmp)
-            ->where('admin_rol.nombre', $rol)
-            ->exists();
     }
 }

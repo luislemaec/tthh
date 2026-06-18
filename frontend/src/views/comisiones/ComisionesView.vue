@@ -6,7 +6,7 @@
         <h1 class="text-2xl font-bold text-gray-800">Comisiones de Servicio</h1>
         <p class="text-sm text-gray-500 mt-0.5">Gestión de viajes al interior y exterior</p>
       </div>
-      <button v-if="puedeCrear" @click="abrirNueva"
+      <button @click="abrirNueva"
         class="flex items-center gap-2 px-4 py-2 text-white text-sm font-semibold rounded-lg shadow transition hover:opacity-90"
         style="background-color:#5c4a6e;">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -24,17 +24,14 @@
           ? 'border-[#5c4a6e] text-[#5c4a6e]'
           : 'border-transparent text-gray-500 hover:text-gray-700']">
         {{ tab.label }}
-        <span v-if="tab.badge" class="ml-1.5 bg-amber-400 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">{{ tab.badge }}</span>
       </button>
     </div>
 
-    <!-- Loading -->
     <div v-if="cargando" class="flex items-center justify-center py-16">
       <div class="w-8 h-8 border-2 border-[#5c4a6e] border-t-transparent rounded-full animate-spin"></div>
     </div>
 
     <template v-else>
-
       <!-- ═══ TAB: Mis Comisiones ═══ -->
       <div v-if="tabActivo === 'mis'">
         <div v-if="solicitudesMias.length === 0" class="text-center py-16 text-gray-400">
@@ -51,9 +48,7 @@
             <div class="flex items-start justify-between gap-3">
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2 flex-wrap">
-                  <span class="font-semibold text-gray-800 text-sm">
-                    {{ sol.numero_solicitud || 'Sin número' }}
-                  </span>
+                  <span class="font-semibold text-gray-800 text-sm">{{ sol.numero_solicitud || 'Sin número' }}</span>
                   <span :class="['text-xs font-semibold px-2 py-0.5 rounded-full', badgeEstado(sol.estado).class]">
                     {{ badgeEstado(sol.estado).label }}
                   </span>
@@ -63,12 +58,7 @@
                   </span>
                 </div>
                 <p class="text-sm text-gray-600 mt-1 truncate">{{ sol.destino }}</p>
-                <p class="text-xs text-gray-400 mt-0.5">
-                  {{ formatFecha(sol.fecha_salida) }} → {{ formatFecha(sol.fecha_llegada) }}
-                </p>
-                <p v-if="sol.observacion && ['NEGADO'].includes(sol.estado)" class="text-xs text-red-600 mt-1">
-                  <span class="font-semibold">Motivo:</span> {{ sol.observacion }}
-                </p>
+                <p class="text-xs text-gray-400 mt-0.5">{{ formatFecha(sol.fecha_salida) }} → {{ formatFecha(sol.fecha_llegada) }}</p>
               </div>
               <div class="flex items-center gap-2 flex-shrink-0">
                 <button @click="verDetalle(sol)" title="Ver detalle"
@@ -78,132 +68,63 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                   </svg>
                 </button>
-                <button v-if="sol.estado === 'BORRADOR'" @click="editarSolicitud(sol)" title="Editar"
-                  class="p-1.5 rounded-md text-gray-400 hover:text-[#5c4a6e] hover:bg-purple-50 transition">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                  </svg>
-                </button>
-                <button v-if="sol.estado === 'BORRADOR'" @click="enviarSolicitud(sol)" title="Enviar"
-                  class="px-3 py-1.5 text-xs font-semibold text-white rounded-md transition hover:opacity-90"
-                  style="background-color:#5c4a6e;">
-                  Enviar
-                </button>
-                <button v-if="puedeCrearInforme(sol)" @click="abrirInforme(sol)"
-                  class="px-3 py-1.5 text-xs font-semibold bg-green-600 text-white rounded-md transition hover:bg-green-700">
-                  Crear Informe
-                </button>
-                <button v-if="puedeSolicitarPago(sol)" @click="solicitarPago(sol)"
-                  class="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-md transition hover:bg-blue-700">
-                  Solicitar Pago
-                </button>
-                <button v-if="sol.numero_solicitud" @click="descargarPdf(sol)"
-                  title="Descargar PDF"
-                  class="p-1.5 rounded-md text-red-400 hover:text-red-600 hover:bg-red-50 transition">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
-                  </svg>
-                </button>
+                <!-- BORRADOR -->
+                <template v-if="sol.estado === 'BORRADOR'">
+                  <button @click="editarSolicitud(sol)" title="Editar"
+                    class="p-1.5 rounded-md text-gray-400 hover:text-[#5c4a6e] hover:bg-purple-50 transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                    </svg>
+                  </button>
+                  <button @click="abrirDocumentos(sol)"
+                    class="px-3 py-1.5 text-xs font-semibold text-white rounded-md transition hover:opacity-90"
+                    style="background-color:#5c4a6e;">
+                    Documentos
+                  </button>
+                </template>
+                <!-- APROBADO -->
+                <template v-if="sol.estado === 'APROBADO'">
+                  <button @click="descargarPdf(sol)" title="PDF solicitud"
+                    class="p-1.5 rounded-md text-red-400 hover:text-red-600 hover:bg-red-50 transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                    </svg>
+                  </button>
+                  <button @click="abrirInforme(sol)"
+                    class="px-3 py-1.5 text-xs font-semibold bg-green-600 text-white rounded-md transition hover:bg-green-700">
+                    Informe
+                  </button>
+                </template>
+                <!-- INFORME_APROBADO -->
+                <template v-if="sol.estado === 'INFORME_APROBADO'">
+                  <button @click="descargarPdf(sol)" title="PDF solicitud"
+                    class="p-1.5 rounded-md text-red-400 hover:text-red-600 hover:bg-red-50 transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                    </svg>
+                  </button>
+                  <button @click="solicitarPago(sol)"
+                    class="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-md transition hover:bg-blue-700">
+                    Solicitar Pago
+                  </button>
+                </template>
+                <!-- Otros estados con número -->
+                <template v-if="sol.numero_solicitud && !['BORRADOR','APROBADO','INFORME_APROBADO'].includes(sol.estado)">
+                  <button @click="descargarPdf(sol)" title="PDF solicitud"
+                    class="p-1.5 rounded-md text-red-400 hover:text-red-600 hover:bg-red-50 transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                    </svg>
+                  </button>
+                </template>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- ═══ TAB: Pendientes de Aprobación ═══ -->
-      <div v-if="tabActivo === 'revision'">
-        <div v-if="solicitudesRevision.length === 0" class="text-center py-16 text-gray-400">
-          <p class="text-sm">No hay solicitudes pendientes de revisión.</p>
-        </div>
-        <div v-else class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="text-xs text-gray-500 uppercase border-b border-gray-100" style="background-color:#f9f7fb;">
-                <th class="px-4 py-3 text-left font-semibold">Empleado</th>
-                <th class="px-4 py-3 text-left font-semibold">Tipo</th>
-                <th class="px-4 py-3 text-left font-semibold">Destino</th>
-                <th class="px-4 py-3 text-left font-semibold">Fechas</th>
-                <th class="px-4 py-3 text-left font-semibold">Estado</th>
-                <th class="px-4 py-3 text-left font-semibold">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="sol in solicitudesRevision" :key="sol.id"
-                class="border-b border-gray-50 hover:bg-purple-50/30 transition">
-                <td class="px-4 py-3">
-                  <p class="font-medium text-gray-800">{{ sol.empleado?.apellido_emp }} {{ sol.empleado?.nombre_emp }}</p>
-                  <p class="text-xs text-gray-400">{{ sol.empleado?.cargo_empleado }}</p>
-                </td>
-                <td class="px-4 py-3">
-                  <span class="text-xs px-2 py-0.5 rounded-full font-medium"
-                    :class="sol.tipo === 'EXTERIOR' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'">
-                    {{ sol.tipo }}
-                  </span>
-                </td>
-                <td class="px-4 py-3 text-gray-600 max-w-[180px] truncate">{{ sol.destino }}</td>
-                <td class="px-4 py-3 text-gray-500 text-xs">
-                  {{ formatFecha(sol.fecha_salida) }} → {{ formatFecha(sol.fecha_llegada) }}
-                </td>
-                <td class="px-4 py-3">
-                  <span :class="['text-xs font-semibold px-2 py-0.5 rounded-full', badgeEstado(sol.estado).class]">
-                    {{ badgeEstado(sol.estado).label }}
-                  </span>
-                </td>
-                <td class="px-4 py-3">
-                  <div class="flex items-center gap-1.5">
-                    <button @click="verDetalle(sol)" title="Ver detalle"
-                      class="p-1.5 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition">
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                      </svg>
-                    </button>
-                    <template v-if="accionDisponible(sol) === 'dir_adm'">
-                      <button @click="confirmarAccion(sol, 'aprobar-dir-adm', 'Aprobar (Dir. Administrativa)')"
-                        class="px-2.5 py-1 text-xs font-semibold bg-green-600 text-white rounded transition hover:bg-green-700">Aprobar</button>
-                      <button @click="abrirNegar(sol, 'negar-dir-adm')"
-                        class="px-2.5 py-1 text-xs font-semibold bg-red-500 text-white rounded transition hover:bg-red-600">Negar</button>
-                    </template>
-                    <template v-else-if="accionDisponible(sol) === 'jefe'">
-                      <button @click="confirmarAccion(sol, 'aprobar-jefe', 'Aprobar solicitud')"
-                        class="px-2.5 py-1 text-xs font-semibold bg-green-600 text-white rounded transition hover:bg-green-700">Aprobar</button>
-                      <button @click="abrirNegar(sol, 'negar-jefe')"
-                        class="px-2.5 py-1 text-xs font-semibold bg-red-500 text-white rounded transition hover:bg-red-600">Negar</button>
-                    </template>
-                    <template v-else-if="accionDisponible(sol) === 'autoridad'">
-                      <button @click="confirmarAccion(sol, 'aprobar-autoridad', 'Autorizar comisión')"
-                        class="px-2.5 py-1 text-xs font-semibold bg-green-600 text-white rounded transition hover:bg-green-700">Autorizar</button>
-                      <button @click="abrirNegar(sol, 'negar-autoridad')"
-                        class="px-2.5 py-1 text-xs font-semibold bg-red-500 text-white rounded transition hover:bg-red-600">Negar</button>
-                    </template>
-                    <template v-else-if="accionDisponible(sol) === 'juridica'">
-                      <button @click="abrirResolucion(sol)"
-                        class="px-2.5 py-1 text-xs font-semibold bg-[#5c4a6e] text-white rounded transition hover:opacity-90">Emitir Resolución</button>
-                    </template>
-                    <template v-else-if="accionDisponible(sol) === 'registro_ext'">
-                      <button @click="abrirRegistroExt(sol)"
-                        class="px-2.5 py-1 text-xs font-semibold bg-[#5c4a6e] text-white rounded transition hover:opacity-90">Registrar Código Ext.</button>
-                    </template>
-                    <!-- Revisión de informe -->
-                    <template v-if="puedeRevisarInforme(sol)">
-                      <button @click="revisarInforme(sol)"
-                        class="px-2.5 py-1 text-xs font-semibold bg-indigo-600 text-white rounded transition hover:bg-indigo-700">Revisar Informe</button>
-                    </template>
-                    <template v-if="puedeAprobarInforme(sol)">
-                      <button @click="aprobarInforme(sol)"
-                        class="px-2.5 py-1 text-xs font-semibold bg-green-600 text-white rounded transition hover:bg-green-700">Aprobar Informe</button>
-                    </template>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- ═══ TAB: Todas las Comisiones (admin/autoridad) ═══ -->
+      <!-- ═══ TAB: Todas las Comisiones ═══ -->
       <div v-if="tabActivo === 'todas'">
-        <!-- Filtros -->
         <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-4 mb-4 flex gap-3 flex-wrap">
           <select v-model="filtroEstado" class="text-sm border border-gray-300 rounded-md px-3 py-1.5 focus:outline-none">
             <option value="">Todos los estados</option>
@@ -217,7 +138,6 @@
           <input v-model="filtroBusqueda" type="text" placeholder="Buscar empleado o destino..."
             class="flex-1 min-w-[180px] text-sm border border-gray-300 rounded-md px-3 py-1.5 focus:outline-none"/>
         </div>
-
         <div v-if="solicitudesFiltradas.length === 0" class="text-center py-12 text-gray-400 text-sm">
           No hay comisiones que coincidan con los filtros.
         </div>
@@ -256,7 +176,7 @@
                   </span>
                 </td>
                 <td class="px-4 py-3">
-                  <button @click="verDetalle(sol)" title="Ver"
+                  <button @click="verDetalle(sol)"
                     class="p-1.5 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -269,7 +189,6 @@
           </table>
         </div>
       </div>
-
     </template>
   </div>
 
@@ -287,7 +206,7 @@
       </div>
 
       <div class="overflow-y-auto flex-1 p-5 space-y-4">
-        <!-- Tabs del formulario -->
+        <!-- Tabs -->
         <div class="flex gap-0 border rounded-lg overflow-hidden mb-4">
           <button v-for="t in formTabs" :key="t"
             @click="formTab = t"
@@ -303,14 +222,33 @@
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="text-xs font-semibold text-gray-600 mb-1 block">Tipo *</label>
-              <select v-model="form.tipo" class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]">
+              <select v-model="form.tipo" @change="onTipoCambio"
+                class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]">
                 <option value="INTERIOR">Interior (Nacional)</option>
                 <option value="EXTERIOR">Exterior (Internacional)</option>
               </select>
             </div>
-            <div>
+            <!-- Destino INTERIOR: selects cascada -->
+            <div v-if="form.tipo === 'INTERIOR'">
               <label class="text-xs font-semibold text-gray-600 mb-1 block">Destino *</label>
-              <input v-model="form.destino" type="text" placeholder="Ciudad - Provincia / País"
+              <div class="grid grid-cols-2 gap-1">
+                <select v-model="form_provinciaId" @change="onProvinciaChange"
+                  class="text-sm border border-gray-300 rounded-md px-2 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]">
+                  <option :value="null">Provincia...</option>
+                  <option v-for="p in provincias" :key="p.id" :value="p.id">{{ p.nombre }}</option>
+                </select>
+                <select v-model="form_ciudadId" :disabled="!form_provinciaId"
+                  @change="onCiudadChange"
+                  class="text-sm border border-gray-300 rounded-md px-2 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e] disabled:bg-gray-50 disabled:text-gray-400">
+                  <option :value="null">Ciudad...</option>
+                  <option v-for="c in ciudadesDisponibles" :key="c.id" :value="c.id">{{ c.nombre }}</option>
+                </select>
+              </div>
+            </div>
+            <!-- Destino EXTERIOR: texto libre -->
+            <div v-else>
+              <label class="text-xs font-semibold text-gray-600 mb-1 block">Destino *</label>
+              <input v-model="form.destino" type="text" placeholder="País / Ciudad"
                 class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]" style="text-transform:uppercase"/>
             </div>
           </div>
@@ -359,66 +297,24 @@
           </div>
         </div>
 
-        <!-- Tab: Servidores -->
+        <!-- Tab: Servidores (lectura) -->
         <div v-if="formTab === 'Servidores'" class="space-y-3">
-          <p class="text-xs text-gray-500">Empleados que integran la comisión (incluido usted). Busque por cédula o nombre.</p>
-          <div v-for="(srv, i) in form.servidores" :key="i"
-            class="border border-gray-100 rounded-lg p-3 space-y-2">
-            <!-- Fila de búsqueda -->
-            <div class="relative">
-              <input
-                v-model="srv._busqueda"
-                @input="onBuscarServidor(i)"
-                type="text"
-                placeholder="Buscar por cédula o nombre..."
-                class="w-full text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]"/>
-              <!-- Dropdown resultados -->
-              <div v-if="srv._resultados && srv._resultados.length"
-                class="absolute z-20 bg-white border border-gray-200 rounded-lg shadow-lg w-full mt-1 max-h-48 overflow-y-auto">
-                <button v-for="r in srv._resultados" :key="r.cedula"
-                  @click="seleccionarServidor(i, r)"
-                  class="w-full text-left px-3 py-2 hover:bg-purple-50 transition text-sm border-b border-gray-50 last:border-0">
-                  <div class="flex items-center gap-2">
-                    <span class="font-medium text-gray-800">{{ r.nombres }}</span>
-                    <span v-if="r.tipo === 'EXTERNO'" class="text-xs bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded">Externo</span>
-                  </div>
-                  <div class="text-xs text-gray-500">{{ r.cargo }} — {{ r.unidad }}</div>
-                </button>
-              </div>
+          <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Servidor Comisionado</p>
+            <div class="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+              <span class="text-gray-500">Nombres:</span>
+              <span class="font-medium text-gray-800">{{ auth.empleado?.apellido_emp }} {{ auth.empleado?.nombre_emp }}</span>
+              <span class="text-gray-500">Cédula:</span>
+              <span class="font-mono text-gray-700">{{ auth.empleado?.identificacion }}</span>
+              <span class="text-gray-500">Cargo:</span>
+              <span class="text-gray-700">{{ auth.empleado?.cargo_empleado }}</span>
+              <span class="text-gray-500">Banco:</span>
+              <span class="text-gray-700">{{ auth.empleado?.banco || '—' }}</span>
+              <span class="text-gray-500">Tipo / N° Cuenta:</span>
+              <span class="text-gray-700">{{ auth.empleado?.tipo_cuenta || '—' }} / {{ auth.empleado?.numero_cuenta || '—' }}</span>
             </div>
-            <!-- Datos auto-llenados -->
-            <div v-if="srv.id_emp" class="space-y-2">
-              <div class="grid grid-cols-3 gap-2">
-                <input v-model="srv.id_emp" type="text" placeholder="Cédula" readonly
-                  class="text-sm border border-gray-200 rounded px-2 py-1.5 bg-gray-50 text-gray-600"/>
-                <input v-model="srv.unidad" type="text" placeholder="Unidad"
-                  class="text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none" style="text-transform:uppercase"/>
-                <input v-model="srv.puesto" type="text" placeholder="Cargo"
-                  class="text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none" style="text-transform:uppercase"/>
-              </div>
-              <!-- Datos bancarios por servidor -->
-              <div class="grid grid-cols-3 gap-2 pt-1 border-t border-gray-100">
-                <input v-model="srv.banco" type="text" placeholder="Banco"
-                  class="text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]" style="text-transform:uppercase"/>
-                <select v-model="srv.tipo_cuenta" class="text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none">
-                  <option value="">Tipo cuenta...</option>
-                  <option value="AHORROS">Ahorros</option>
-                  <option value="CORRIENTE">Corriente</option>
-                </select>
-                <input v-model="srv.numero_cuenta" type="text" placeholder="N° cuenta"
-                  class="text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]" style="text-transform:uppercase"/>
-              </div>
-            </div>
-            <div class="flex justify-end">
-              <button @click="quitarServidor(i)" class="text-xs text-red-400 hover:text-red-600">
-                Quitar
-              </button>
-            </div>
+            <p class="text-xs text-gray-400 mt-3 italic">Para actualizar datos bancarios, edite su ficha de empleado.</p>
           </div>
-          <button @click="agregarServidor"
-            class="text-sm font-medium" style="color:#5c4a6e;">
-            + Agregar servidor
-          </button>
         </div>
 
         <!-- Tab: Transporte -->
@@ -455,82 +351,73 @@
           </button>
         </div>
 
+        <!-- Tab: Documentos (solo en edición BORRADOR) -->
+        <div v-if="formTab === 'Documentos'" class="space-y-3">
+          <p class="text-xs text-gray-600 font-medium">Adjunte los 3 documentos requeridos, luego genere y firme el PDF para aprobar la solicitud.</p>
+
+          <div v-for="slot in slotsDocumento" :key="slot.tipo"
+            class="flex items-center justify-between p-3 rounded-lg border transition"
+            :class="docPorTipo(slot.tipo) ? 'border-green-300 bg-green-50' : 'border-gray-200 bg-white'">
+            <div class="flex items-center gap-2 text-sm">
+              <span v-if="docPorTipo(slot.tipo)" class="text-green-600 text-base font-bold leading-none">✓</span>
+              <span v-else class="w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center text-xs text-gray-400 flex-shrink-0">!</span>
+              <span :class="docPorTipo(slot.tipo) ? 'text-green-800 font-medium' : 'text-gray-700'">{{ slot.label }}</span>
+            </div>
+            <div class="flex gap-2 items-center">
+              <button v-if="docPorTipo(slot.tipo)" @click="descargarDocumento(docPorTipo(slot.tipo))"
+                class="text-xs text-blue-600 hover:underline">Ver</button>
+              <button v-if="docPorTipo(slot.tipo)" @click="eliminarDocumento(docPorTipo(slot.tipo))"
+                class="text-xs text-red-500 hover:underline">Eliminar</button>
+              <label v-if="!docPorTipo(slot.tipo)" class="cursor-pointer">
+                <input type="file" accept=".pdf" class="hidden" @change="subirDocumento($event, slot.tipo)"/>
+                <span class="px-3 py-1 text-xs font-semibold text-white rounded"
+                  :style="subiendoDoc === slot.tipo ? 'background-color:#9d8aae' : 'background-color:#5c4a6e'">
+                  {{ subiendoDoc === slot.tipo ? 'Subiendo...' : 'Subir PDF' }}
+                </span>
+              </label>
+            </div>
+          </div>
+
+          <div class="border-t border-gray-200 pt-3 space-y-3">
+            <button @click="generarPdfSolicitud" :disabled="!todosDocSubidos"
+              class="w-full py-2 text-sm font-semibold rounded border-2 transition"
+              :class="todosDocSubidos ? 'border-[#5c4a6e] text-[#5c4a6e] hover:bg-purple-50' : 'border-gray-200 text-gray-400 cursor-not-allowed'">
+              Generar PDF de Solicitud
+            </button>
+
+            <div v-if="todosDocSubidos && !docFirmadoSubido">
+              <p class="text-xs text-gray-500 mb-2">Una vez obtenidas las firmas, suba el PDF firmado:</p>
+              <label class="cursor-pointer block">
+                <input type="file" accept=".pdf" class="hidden" @change="subirPdfFirmado($event)" :disabled="subiendoFirmado"/>
+                <span class="block w-full py-2 text-center text-sm font-semibold text-white rounded"
+                  :style="subiendoFirmado ? 'background-color:#9d8aae; cursor:not-allowed' : 'background-color:#5c4a6e; cursor:pointer'">
+                  {{ subiendoFirmado ? 'Procesando...' : 'Subir PDF Firmado → APROBAR' }}
+                </span>
+              </label>
+            </div>
+            <div v-if="docFirmadoSubido"
+              class="flex items-center gap-2 text-green-700 text-sm font-medium p-3 bg-green-50 rounded-lg border border-green-200">
+              <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              Solicitud APROBADA — PDF firmado archivado correctamente
+            </div>
+          </div>
+        </div>
 
         <p v-if="errorForm" class="text-red-600 text-xs">{{ errorForm }}</p>
       </div>
 
-      <div class="p-5 border-t border-gray-100 flex justify-end gap-3">
+      <div v-if="formTab !== 'Documentos'" class="p-5 border-t border-gray-100 flex justify-end gap-3">
         <button @click="cerrarModalSolicitud" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition">Cancelar</button>
         <button @click="guardarSolicitud" :disabled="guardando"
           class="px-5 py-2 text-sm font-semibold text-white rounded-lg transition hover:opacity-90 disabled:opacity-50"
           style="background-color:#5c4a6e;">
-          {{ guardando ? 'Guardando...' : (modoEdicion ? 'Actualizar' : 'Guardar') }}
+          {{ guardando ? 'Guardando...' : (modoEdicion ? 'Actualizar' : 'Guardar y agregar documentos') }}
         </button>
       </div>
-    </div>
-  </div>
-
-  <!-- ══════════════════ MODAL NEGAR ══════════════════ -->
-  <div v-if="modalNegar" class="fixed inset-0 z-50 flex items-center justify-center px-4">
-    <div class="fixed inset-0 bg-black/40" @click="modalNegar = false"/>
-    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden z-10">
-      <div class="px-6 py-4 text-white font-bold text-base" style="background-color:#5c4a6e">Negar Comisión</div>
-      <div class="p-6">
-      <label class="text-xs font-semibold text-gray-600 mb-1 block">Motivo / Observación *</label>
-      <textarea v-model="negarObservacion" rows="3" placeholder="Indique el motivo..."
-        class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-red-400 resize-none" style="text-transform:uppercase"/>
-      <p v-if="errorAccion" class="text-red-600 text-xs mt-2">{{ errorAccion }}</p>
-      <div class="flex justify-end gap-3 mt-4">
-        <button @click="modalNegar = false" class="px-4 py-2 text-sm text-gray-600">Cancelar</button>
-        <button @click="ejecutarNegar" :disabled="guardando"
-          class="px-5 py-2 text-sm font-semibold bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50">
-          {{ guardando ? 'Procesando...' : 'Negar' }}
-        </button>
-      </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══════════════════ MODAL RESOLUCIÓN JURÍDICA ══════════════════ -->
-  <div v-if="modalResolucion" class="fixed inset-0 z-50 flex items-center justify-center px-4">
-    <div class="fixed inset-0 bg-black/40" @click="modalResolucion = false"/>
-    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden z-10">
-      <div class="px-6 py-4 text-white font-bold text-base" style="background-color:#5c4a6e">Emitir Resolución Jurídica</div>
-      <div class="p-6">
-      <label class="text-xs font-semibold text-gray-600 mb-1 block">N° Resolución / Referencia *</label>
-      <input v-model="resolucionJuridica" type="text" placeholder="Ej: RES-JUR-2026-001"
-        class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]" style="text-transform:uppercase"/>
-      <p v-if="errorAccion" class="text-red-600 text-xs mt-2">{{ errorAccion }}</p>
-      <div class="flex justify-end gap-3 mt-4">
-        <button @click="modalResolucion = false" class="px-4 py-2 text-sm text-gray-600">Cancelar</button>
-        <button @click="ejecutarResolucion" :disabled="guardando"
-          class="px-5 py-2 text-sm font-semibold text-white rounded-lg hover:opacity-90 transition disabled:opacity-50"
-          style="background-color:#5c4a6e;">
-          {{ guardando ? 'Procesando...' : 'Emitir' }}
-        </button>
-      </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══════════════════ MODAL REGISTRO EXT. ══════════════════ -->
-  <div v-if="modalRegistroExt" class="fixed inset-0 z-50 flex items-center justify-center px-4">
-    <div class="fixed inset-0 bg-black/40" @click="modalRegistroExt = false"/>
-    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden z-10">
-      <div class="px-6 py-4 text-white font-bold text-base" style="background-color:#5c4a6e">Registrar en Sistema Exterior</div>
-      <div class="p-6">
-      <label class="text-xs font-semibold text-gray-600 mb-1 block">Código / Número del Sistema *</label>
-      <input v-model="numSistemaExt" type="text" placeholder="Código asignado en el sistema"
-        class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#5c4a6e]" style="text-transform:uppercase"/>
-      <p v-if="errorAccion" class="text-red-600 text-xs mt-2">{{ errorAccion }}</p>
-      <div class="flex justify-end gap-3 mt-4">
-        <button @click="modalRegistroExt = false" class="px-4 py-2 text-sm text-gray-600">Cancelar</button>
-        <button @click="ejecutarRegistroExt" :disabled="guardando"
-          class="px-5 py-2 text-sm font-semibold text-white rounded-lg hover:opacity-90 transition disabled:opacity-50"
-          style="background-color:#5c4a6e;">
-          {{ guardando ? 'Procesando...' : 'Registrar' }}
-        </button>
-      </div>
+      <div v-else class="p-5 border-t border-gray-100 flex justify-end">
+        <button @click="cerrarModalSolicitud" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition">Cerrar</button>
       </div>
     </div>
   </div>
@@ -548,53 +435,99 @@
         </button>
       </div>
       <div class="overflow-y-auto flex-1 p-5 space-y-4">
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="text-xs font-semibold text-gray-600 mb-1 block">Fecha del Informe *</label>
-            <input v-model="informeForm.fecha_informe" type="date"
-              class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none"/>
-          </div>
-          <div></div>
-          <div>
-            <label class="text-xs font-semibold text-gray-600 mb-1 block">Fecha Real de Salida *</label>
-            <input v-model="informeForm.fecha_salida" type="date"
-              class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none"/>
+
+        <!-- Informe APROBADO: solo descarga -->
+        <div v-if="informeActual?.estado === 'APROBADO'"
+          class="flex flex-col items-center py-8 text-center gap-4">
+          <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+            <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
           </div>
           <div>
-            <label class="text-xs font-semibold text-gray-600 mb-1 block">Hora de Salida *</label>
-            <input v-model="informeForm.hora_salida" type="time"
-              class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none"/>
+            <p class="font-semibold text-gray-800 text-lg">Informe Aprobado</p>
+            <p class="text-sm text-gray-500 mt-1">El PDF firmado fue archivado correctamente.</p>
           </div>
-          <div>
-            <label class="text-xs font-semibold text-gray-600 mb-1 block">Fecha Real de Llegada *</label>
-            <input v-model="informeForm.fecha_llegada" type="date"
-              class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none"/>
-          </div>
-          <div>
-            <label class="text-xs font-semibold text-gray-600 mb-1 block">Hora de Llegada *</label>
-            <input v-model="informeForm.hora_llegada" type="time"
-              class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none"/>
-          </div>
+          <button @click="descargarInformeFirmado"
+            class="px-5 py-2 text-sm font-semibold text-white rounded-lg hover:opacity-90"
+            style="background-color:#5c4a6e;">
+            Descargar PDF Firmado
+          </button>
         </div>
-        <div>
-          <label class="text-xs font-semibold text-gray-600 mb-1 block">Actividades Realizadas *</label>
-          <textarea v-model="informeForm.actividades" rows="4" placeholder="Describa las actividades realizadas..."
-            class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none resize-none" style="text-transform:uppercase"/>
-        </div>
-        <div>
-          <label class="text-xs font-semibold text-gray-600 mb-1 block">Productos / Resultados</label>
-          <textarea v-model="informeForm.productos" rows="2" placeholder="Resultados obtenidos..."
-            class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none resize-none" style="text-transform:uppercase"/>
-        </div>
+
+        <!-- Formulario del informe -->
+        <template v-else>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs font-semibold text-gray-600 mb-1 block">Fecha del Informe *</label>
+              <input v-model="informeForm.fecha_informe" type="date"
+                class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none"/>
+            </div>
+            <div></div>
+            <div>
+              <label class="text-xs font-semibold text-gray-600 mb-1 block">Fecha Real de Salida *</label>
+              <input v-model="informeForm.fecha_salida" type="date"
+                class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none"/>
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-gray-600 mb-1 block">Hora de Salida *</label>
+              <input v-model="informeForm.hora_salida" type="time"
+                class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none"/>
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-gray-600 mb-1 block">Fecha Real de Llegada *</label>
+              <input v-model="informeForm.fecha_llegada" type="date"
+                class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none"/>
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-gray-600 mb-1 block">Hora de Llegada *</label>
+              <input v-model="informeForm.hora_llegada" type="time"
+                class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none"/>
+            </div>
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-gray-600 mb-1 block">Actividades Realizadas *</label>
+            <textarea v-model="informeForm.actividades" rows="4" placeholder="Describa las actividades realizadas..."
+              class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none resize-none" style="text-transform:uppercase"/>
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-gray-600 mb-1 block">Productos / Resultados</label>
+            <textarea v-model="informeForm.productos" rows="2" placeholder="Resultados obtenidos..."
+              class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none resize-none" style="text-transform:uppercase"/>
+          </div>
+
+          <!-- Acciones post-guardado (cuando el informe existe en estado PRESENTADO) -->
+          <div v-if="informeActual?.estado === 'PRESENTADO'" class="border-t border-gray-200 pt-3 space-y-2">
+            <p class="text-xs text-gray-500 font-medium">Genere el PDF, obtenga las firmas y suba el PDF firmado:</p>
+            <div class="flex gap-3">
+              <button @click="descargarPdfInforme"
+                class="flex-1 py-2 text-sm font-semibold rounded border-2 border-[#5c4a6e] text-[#5c4a6e] hover:bg-purple-50 transition">
+                Generar PDF Informe
+              </button>
+              <label class="flex-1 cursor-pointer">
+                <input type="file" accept=".pdf" class="hidden" @change="subirInformeFirmado($event)" :disabled="subiendoInformeFirmado"/>
+                <span class="block w-full py-2 text-center text-sm font-semibold text-white rounded"
+                  :style="subiendoInformeFirmado ? 'background-color:#9d8aae; cursor:not-allowed' : 'background-color:#5c4a6e; cursor:pointer'">
+                  {{ subiendoInformeFirmado ? 'Procesando...' : 'Subir PDF Firmado → APROBADO' }}
+                </span>
+              </label>
+            </div>
+          </div>
+        </template>
+
         <p v-if="errorAccion" class="text-red-600 text-xs">{{ errorAccion }}</p>
       </div>
-      <div class="p-5 border-t border-gray-100 flex justify-end gap-3">
+
+      <div v-if="informeActual?.estado !== 'APROBADO'" class="p-5 border-t border-gray-100 flex justify-end gap-3">
         <button @click="modalInforme = false" class="px-4 py-2 text-sm text-gray-600">Cancelar</button>
         <button @click="guardarInforme" :disabled="guardando"
           class="px-5 py-2 text-sm font-semibold text-white rounded-lg hover:opacity-90 disabled:opacity-50"
           style="background-color:#5c4a6e;">
-          {{ guardando ? 'Guardando...' : 'Presentar Informe' }}
+          {{ guardando ? 'Guardando...' : (informeActual ? 'Actualizar Informe' : 'Guardar Informe') }}
         </button>
+      </div>
+      <div v-else class="p-5 border-t border-gray-100 flex justify-end">
+        <button @click="modalInforme = false" class="px-4 py-2 text-sm text-gray-600">Cerrar</button>
       </div>
     </div>
   </div>
@@ -668,9 +601,13 @@
             <span class="text-gray-400 ml-2">{{ trn.salida_fecha }} {{ trn.salida_hora }} → {{ trn.llegada_fecha }} {{ trn.llegada_hora }}</span>
           </div>
         </div>
-        <div v-if="detalleActual.observacion" class="bg-red-50 border border-red-100 rounded-md p-3">
-          <p class="text-xs font-semibold text-red-600 mb-0.5">OBSERVACIÓN</p>
-          <p class="text-xs text-red-700">{{ detalleActual.observacion }}</p>
+        <div v-if="detalleActual.documentos?.length">
+          <p class="text-xs text-gray-400 font-semibold mb-1">DOCUMENTOS ADJUNTOS</p>
+          <div v-for="doc in detalleActual.documentos" :key="doc.id"
+            class="flex items-center gap-2 text-xs text-gray-600 py-1 border-b border-gray-50">
+            <span class="font-medium w-28 flex-shrink-0" style="color:#5c4a6e">{{ doc.tipo_doc }}</span>
+            <span class="flex-1 truncate text-gray-500">{{ doc.nombre_archivo }}</span>
+          </div>
         </div>
       </div>
       <div class="p-5 border-t border-gray-100 flex justify-between items-center">
@@ -689,7 +626,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/services/api'
 
@@ -701,36 +638,42 @@ const solicitudes = ref([])
 const miRol     = ref({})
 const tabActivo = ref('mis')
 
-const modalSolicitud  = ref(false)
-const modoEdicion     = ref(false)
-const guardando       = ref(false)
-const errorForm       = ref('')
-const formTab         = ref('Datos Generales')
-const formTabs        = ['Datos Generales', 'Servidores', 'Transporte']
+const modalSolicitud    = ref(false)
+const modoEdicion       = ref(false)
+const modoEdicionId     = ref(null)
+const modoEdicionEstado = ref('')
+const guardando         = ref(false)
+const errorForm         = ref('')
+const formTab           = ref('Datos Generales')
 
-const modalNegar      = ref(false)
-const negarAccion     = ref('')
-const negarTarget     = ref(null)
-const negarObservacion = ref('')
-const errorAccion     = ref('')
+const modalInforme           = ref(false)
+const informeTarget          = ref(null)
+const informeActual          = ref(null)
+const subiendoInformeFirmado = ref(false)
 
-const modalResolucion  = ref(false)
-const resolucionJuridica = ref('')
+const modalDetalle  = ref(false)
+const detalleActual = ref(null)
 
-const modalRegistroExt = ref(false)
-const numSistemaExt    = ref('')
+const filtroEstado   = ref('')
+const filtroTipo     = ref('')
+const filtroBusqueda = ref('')
+const errorAccion    = ref('')
 
-const modalInforme    = ref(false)
-const informeTarget   = ref(null)
+// Province/city
+const provincias      = ref([])
+const form_provinciaId = ref(null)
+const form_ciudadId    = ref(null)
 
-const modalDetalle    = ref(false)
-const detalleActual   = ref(null)
+// Documents
+const documentos      = ref([])
+const subiendoDoc     = ref('')
+const subiendoFirmado = ref(false)
 
-const filtroEstado    = ref('')
-const filtroTipo      = ref('')
-const filtroBusqueda  = ref('')
-
-const accionTarget    = ref(null)
+const slotsDocumento = [
+  { tipo: 'AUTORIZACION',  label: 'Solicitud de Autorización y Aprobación' },
+  { tipo: 'PASAJES',       label: 'Pasajes Aéreos / Terrestres' },
+  { tipo: 'CERTIFICACION', label: 'Certificación Presupuestaria' },
+]
 
 const formVacio = () => ({
   tipo: 'INTERIOR',
@@ -743,7 +686,6 @@ const formVacio = () => ({
   tiene_viaticos: true,
   tiene_movilizaciones: false,
   tiene_anticipo: false,
-  servidores: [],
   transportes: [],
 })
 const form = ref(formVacio())
@@ -761,31 +703,9 @@ const informeForm = ref({
 // ── Computed ───────────────────────────────────────────────
 const idEmp = computed(() => auth.empleado?.id_emp)
 
-const puedeCrear = computed(() => true) // todos los empleados pueden solicitar
-
 const solicitudesMias = computed(() =>
   solicitudes.value.filter(s => s.id_emp === idEmp.value)
 )
-
-const pendientesRevision = computed(() =>
-  solicitudes.value.filter(s =>
-    ['PENDIENTE_DIR_ADM','PENDIENTE_JEFE','PENDIENTE_AUTORIDAD','PENDIENTE_JURIDICA','PENDIENTE_SISTEMA_EXT',
-     'INFORME_PRESENTADO','INFORME_REVISADO'].includes(s.estado)
-  )
-)
-
-const solicitudesRevision = computed(() => {
-  if (miRol.value.es_admin) return pendientesRevision.value
-  return pendientesRevision.value.filter(s => {
-    if (miRol.value.es_dir_adm && s.estado === 'PENDIENTE_DIR_ADM') return true
-    if (miRol.value.es_supervisor && s.estado === 'PENDIENTE_JEFE') return true
-    if (miRol.value.es_maxima_autoridad && ['PENDIENTE_AUTORIDAD','INFORME_REVISADO'].includes(s.estado)) return true
-    if (miRol.value.es_juridica && s.estado === 'PENDIENTE_JURIDICA') return true
-    if (miRol.value.es_admin && s.estado === 'PENDIENTE_SISTEMA_EXT') return true
-    if (miRol.value.es_supervisor && s.estado === 'INFORME_PRESENTADO') return true
-    return false
-  })
-})
 
 const solicitudesFiltradas = computed(() => {
   let res = solicitudes.value
@@ -803,55 +723,57 @@ const solicitudesFiltradas = computed(() => {
 })
 
 const tabsVisibles = computed(() => {
-  const tabs = [{ key: 'mis', label: 'Mis Comisiones', badge: null }]
-  const pend = solicitudesRevision.value.length
-  if (miRol.value.es_supervisor || miRol.value.es_dir_adm || miRol.value.es_maxima_autoridad ||
-      miRol.value.es_juridica || miRol.value.es_admin) {
-    tabs.push({ key: 'revision', label: 'Pendientes de Revisión', badge: pend > 0 ? pend : null })
-  }
+  const tabs = [{ key: 'mis', label: 'Mis Comisiones' }]
   if (miRol.value.es_admin || miRol.value.es_maxima_autoridad) {
-    tabs.push({ key: 'todas', label: 'Todas las Comisiones', badge: null })
+    tabs.push({ key: 'todas', label: 'Todas las Comisiones' })
   }
   return tabs
 })
 
 const estadoOpciones = [
-  { value: 'BORRADOR', label: 'Borrador' },
-  { value: 'PENDIENTE_DIR_ADM', label: 'Pend. Dir. Adm.' },
-  { value: 'PENDIENTE_JEFE', label: 'Pend. Jefe' },
-  { value: 'PENDIENTE_AUTORIDAD', label: 'Pend. Autoridad' },
-  { value: 'PENDIENTE_JURIDICA', label: 'Pend. Jurídica' },
-  { value: 'PENDIENTE_SISTEMA_EXT', label: 'Pend. Sistema Ext.' },
-  { value: 'AUTORIZADO', label: 'Autorizado' },
-  { value: 'INFORME_PRESENTADO', label: 'Informe Presentado' },
-  { value: 'INFORME_REVISADO', label: 'Informe Revisado' },
+  { value: 'BORRADOR',         label: 'Borrador' },
+  { value: 'APROBADO',         label: 'Aprobado' },
   { value: 'INFORME_APROBADO', label: 'Informe Aprobado' },
-  { value: 'EN_PAGO', label: 'En Pago' },
-  { value: 'EN_LIQUIDACION', label: 'En Liquidación' },
-  { value: 'CERRADO', label: 'Cerrado' },
-  { value: 'NEGADO', label: 'Negado' },
-  { value: 'POR_COBRAR', label: 'Por Cobrar' },
+  { value: 'EN_PAGO',          label: 'En Pago' },
+  { value: 'EN_LIQUIDACION',   label: 'En Liquidación' },
+  { value: 'CERRADO',          label: 'Cerrado' },
+  { value: 'POR_COBRAR',       label: 'Por Cobrar' },
+  { value: 'NEGADO',           label: 'Negado' },
 ]
+
+const formTabs = computed(() => {
+  const tabs = ['Datos Generales', 'Servidores', 'Transporte']
+  if (modoEdicion.value && modoEdicionEstado.value === 'BORRADOR') tabs.push('Documentos')
+  return tabs
+})
+
+const ciudadesDisponibles = computed(() =>
+  provincias.value.find(p => p.id === form_provinciaId.value)?.ciudades ?? []
+)
+
+function docPorTipo(tipo) {
+  return documentos.value.find(d => d.tipo_doc === tipo)
+}
+
+const todosDocSubidos = computed(() =>
+  slotsDocumento.every(s => documentos.value.some(d => d.tipo_doc === s.tipo))
+)
+
+const docFirmadoSubido = computed(() =>
+  documentos.value.some(d => d.tipo_doc === 'FIRMADO')
+)
 
 // ── Helpers ────────────────────────────────────────────────
 function badgeEstado(estado) {
   const mapa = {
-    BORRADOR: { class: 'bg-gray-100 text-gray-600', label: 'Borrador' },
-    PENDIENTE_DIR_ADM: { class: 'bg-amber-100 text-amber-700', label: 'Pend. Dir. Adm.' },
-    PENDIENTE_JEFE: { class: 'bg-amber-100 text-amber-700', label: 'Pend. Jefe' },
-    PENDIENTE_AUTORIDAD: { class: 'bg-amber-100 text-amber-700', label: 'Pend. Autoridad' },
-    PENDIENTE_JURIDICA: { class: 'bg-amber-100 text-amber-700', label: 'Pend. Jurídica' },
-    PENDIENTE_SISTEMA_EXT: { class: 'bg-amber-100 text-amber-700', label: 'Pend. Sistema Ext.' },
-    AUTORIZADO: { class: 'bg-green-100 text-green-700', label: 'Autorizado' },
-    INFORME_PENDIENTE: { class: 'bg-blue-100 text-blue-700', label: 'Informe Pendiente' },
-    INFORME_PRESENTADO: { class: 'bg-indigo-100 text-indigo-700', label: 'Informe Presentado' },
-    INFORME_REVISADO: { class: 'bg-violet-100 text-violet-700', label: 'Informe Revisado' },
-    INFORME_APROBADO: { class: 'bg-green-100 text-green-700', label: 'Informe Aprobado' },
-    EN_PAGO: { class: 'bg-blue-100 text-blue-700', label: 'En Pago' },
-    EN_LIQUIDACION: { class: 'bg-cyan-100 text-cyan-700', label: 'En Liquidación' },
-    POR_COBRAR: { class: 'bg-orange-100 text-orange-700', label: 'Por Cobrar' },
-    CERRADO: { class: 'bg-emerald-100 text-emerald-800', label: 'Cerrado' },
-    NEGADO: { class: 'bg-red-100 text-red-700', label: 'Negado' },
+    BORRADOR:         { class: 'bg-gray-100 text-gray-600',    label: 'Borrador' },
+    APROBADO:         { class: 'bg-green-100 text-green-700',   label: 'Aprobado' },
+    INFORME_APROBADO: { class: 'bg-green-100 text-green-700',   label: 'Informe Aprobado' },
+    EN_PAGO:          { class: 'bg-blue-100 text-blue-700',     label: 'En Pago' },
+    EN_LIQUIDACION:   { class: 'bg-cyan-100 text-cyan-700',     label: 'En Liquidación' },
+    POR_COBRAR:       { class: 'bg-orange-100 text-orange-700', label: 'Por Cobrar' },
+    CERRADO:          { class: 'bg-emerald-100 text-emerald-800', label: 'Cerrado' },
+    NEGADO:           { class: 'bg-red-100 text-red-700',       label: 'Negado' },
   }
   return mapa[estado] || { class: 'bg-gray-100 text-gray-600', label: estado }
 }
@@ -862,49 +784,18 @@ function formatFecha(f) {
   return `${d}/${m}/${y}`
 }
 
-function accionDisponible(sol) {
-  if (miRol.value.es_dir_adm && sol.estado === 'PENDIENTE_DIR_ADM') return 'dir_adm'
-  if (miRol.value.es_supervisor && sol.estado === 'PENDIENTE_JEFE') return 'jefe'
-  if (miRol.value.es_maxima_autoridad && sol.estado === 'PENDIENTE_AUTORIDAD') return 'autoridad'
-  if (miRol.value.es_juridica && sol.estado === 'PENDIENTE_JURIDICA') return 'juridica'
-  if (miRol.value.es_admin && sol.estado === 'PENDIENTE_SISTEMA_EXT') return 'registro_ext'
-  if (miRol.value.es_admin) {
-    if (sol.estado === 'PENDIENTE_DIR_ADM') return 'dir_adm'
-    if (sol.estado === 'PENDIENTE_JEFE') return 'jefe'
-  }
-  return null
-}
-
-function puedeCrearInforme(sol) {
-  return sol.id_emp === idEmp.value &&
-    ['AUTORIZADO', 'INFORME_PENDIENTE'].includes(sol.estado) &&
-    !sol.informe
-}
-
-function puedeSolicitarPago(sol) {
-  return sol.id_emp === idEmp.value && sol.estado === 'INFORME_APROBADO'
-}
-
-function puedeRevisarInforme(sol) {
-  return (miRol.value.es_supervisor || miRol.value.es_admin) &&
-    sol.estado === 'INFORME_PRESENTADO'
-}
-
-function puedeAprobarInforme(sol) {
-  return (miRol.value.es_maxima_autoridad || miRol.value.es_admin) &&
-    sol.estado === 'INFORME_REVISADO'
-}
-
 // ── Load ───────────────────────────────────────────────────
 async function cargar() {
   cargando.value = true
   try {
-    const [rolResp, solResp] = await Promise.all([
+    const [rolResp, solResp, provResp] = await Promise.all([
       api.get('/comisiones/mi-rol'),
       api.get('/comisiones/solicitudes'),
+      api.get('/comisiones/provincias'),
     ])
-    miRol.value = rolResp.data
+    miRol.value      = rolResp.data
     solicitudes.value = solResp.data.data || solResp.data
+    provincias.value  = provResp.data
   } catch (e) {
     console.error(e)
   } finally {
@@ -914,82 +805,95 @@ async function cargar() {
 
 onMounted(cargar)
 
-// ── Acciones Modal Solicitud ───────────────────────────────
+// ── Modal Solicitud ────────────────────────────────────────
 function abrirNueva() {
-  form.value = formVacio()
-  modoEdicion.value = false
-  formTab.value = 'Datos Generales'
-  errorForm.value = ''
+  form.value           = formVacio()
+  modoEdicion.value    = false
+  modoEdicionId.value  = null
+  modoEdicionEstado.value = ''
+  formTab.value        = 'Datos Generales'
+  form_provinciaId.value = null
+  form_ciudadId.value    = null
+  documentos.value     = []
+  errorForm.value      = ''
   modalSolicitud.value = true
 }
 
 function editarSolicitud(sol) {
   form.value = {
-    tipo: sol.tipo,
-    destino: sol.destino,
-    fecha_salida: sol.fecha_salida,
-    hora_salida: sol.hora_salida,
-    fecha_llegada: sol.fecha_llegada,
-    hora_llegada: sol.hora_llegada,
+    tipo:                   sol.tipo,
+    destino:                sol.destino,
+    fecha_salida:           sol.fecha_salida,
+    hora_salida:            sol.hora_salida,
+    fecha_llegada:          sol.fecha_llegada,
+    hora_llegada:           sol.hora_llegada,
     descripcion_actividades: sol.descripcion_actividades,
-    tiene_viaticos: sol.tiene_viaticos,
-    tiene_movilizaciones: sol.tiene_movilizaciones,
-    tiene_anticipo: sol.tiene_anticipo,
-    servidores: (sol.servidores || []).map(s => ({ ...s, _busqueda: s.nombre || s.id_emp, _resultados: [] })),
-    transportes: sol.transportes || [],
+    tiene_viaticos:         sol.tiene_viaticos,
+    tiene_movilizaciones:   sol.tiene_movilizaciones,
+    tiene_anticipo:         sol.tiene_anticipo,
+    transportes:            sol.transportes || [],
   }
-  modoEdicion.value = true
-  modoEdicionId.value = sol.id
-  formTab.value = 'Datos Generales'
-  errorForm.value = ''
+  modoEdicion.value       = true
+  modoEdicionId.value     = sol.id
+  modoEdicionEstado.value = sol.estado
+  formTab.value           = 'Datos Generales'
+  errorForm.value         = ''
+  documentos.value        = []
+  form_provinciaId.value  = null
+  form_ciudadId.value     = null
+
+  // Pre-seleccionar provincia/ciudad si INTERIOR
+  if (sol.tipo === 'INTERIOR' && sol.destino && provincias.value.length) {
+    const parts = sol.destino.split(' - ')
+    if (parts.length >= 2) {
+      const prov = provincias.value.find(p => p.nombre === parts[0])
+      if (prov) {
+        form_provinciaId.value = prov.id
+        const ciu = prov.ciudades?.find(c => c.nombre === parts[1])
+        if (ciu) form_ciudadId.value = ciu.id
+      }
+    }
+  }
+
   modalSolicitud.value = true
 }
 
-const modoEdicionId = ref(null)
+function abrirDocumentos(sol) {
+  editarSolicitud(sol)
+  formTab.value = 'Documentos'
+  cargarDocumentos(sol.id)
+}
 
 function cerrarModalSolicitud() {
   modalSolicitud.value = false
 }
 
-// ── Autocomplete servidores ───────────────────────────────────────────────────
-let _buscarTimer = null
+// Cargar docs al cambiar al tab Documentos
+watch(formTab, (tab) => {
+  if (tab === 'Documentos' && modoEdicionId.value) {
+    cargarDocumentos(modoEdicionId.value)
+  }
+})
 
-function agregarServidor() {
-  form.value.servidores.push({ id_emp: '', unidad: '', puesto: '', banco: '', tipo_cuenta: '', numero_cuenta: '', _busqueda: '', _resultados: [] })
+// ── Province/City ──────────────────────────────────────────
+function onTipoCambio() {
+  form.value.destino   = ''
+  form_provinciaId.value = null
+  form_ciudadId.value    = null
 }
 
-function quitarServidor(i) {
-  form.value.servidores.splice(i, 1)
+function onProvinciaChange() {
+  form_ciudadId.value = null
+  form.value.destino  = ''
 }
 
-function onBuscarServidor(i) {
-  clearTimeout(_buscarTimer)
-  const srv = form.value.servidores[i]
-  if (!srv._busqueda || srv._busqueda.length < 2) { srv._resultados = []; return }
-  _buscarTimer = setTimeout(() => ejecutarBusqueda(i), 300)
+function onCiudadChange() {
+  const prov = provincias.value.find(p => p.id === form_provinciaId.value)
+  const ciu  = prov?.ciudades?.find(c => c.id === form_ciudadId.value)
+  if (prov && ciu) form.value.destino = `${prov.nombre} - ${ciu.nombre}`
 }
 
-async function ejecutarBusqueda(i) {
-  const srv = form.value.servidores[i]
-  try {
-    const { data } = await api.get('/comisiones/buscar-servidor', { params: { q: srv._busqueda } })
-    srv._resultados = data
-  } catch { srv._resultados = [] }
-}
-
-function seleccionarServidor(i, r) {
-  const srv = form.value.servidores[i]
-  srv.id_emp        = r.cedula
-  srv.unidad        = r.unidad
-  srv.puesto        = r.cargo
-  srv._busqueda     = r.nombres
-  srv._resultados   = []
-  // Auto-llenar datos bancarios guardados (editables si el servidor quiere cambiarlos)
-  srv.banco         = r.banco        || ''
-  srv.tipo_cuenta   = r.tipo_cuenta  || ''
-  srv.numero_cuenta = r.numero_cuenta || ''
-}
-
+// ── Save Solicitud ─────────────────────────────────────────
 async function guardarSolicitud() {
   errorForm.value = ''
   if (!form.value.destino || !form.value.fecha_salida || !form.value.fecha_llegada || !form.value.descripcion_actividades) {
@@ -1000,11 +904,15 @@ async function guardarSolicitud() {
   try {
     if (modoEdicion.value) {
       await api.put(`/comisiones/solicitudes/${modoEdicionId.value}`, form.value)
+      await cargar()
     } else {
-      await api.post('/comisiones/solicitudes', form.value)
+      const { data } = await api.post('/comisiones/solicitudes', form.value)
+      modoEdicion.value       = true
+      modoEdicionId.value     = data.id
+      modoEdicionEstado.value = 'BORRADOR'
+      formTab.value           = 'Documentos'
+      await cargar()
     }
-    modalSolicitud.value = false
-    await cargar()
   } catch (e) {
     errorForm.value = e.response?.data?.message || 'Error al guardar.'
   } finally {
@@ -1012,16 +920,86 @@ async function guardarSolicitud() {
   }
 }
 
-async function enviarSolicitud(sol) {
-  if (!confirm('¿Enviar esta solicitud para revisión de la Dirección Administrativa?')) return
+// ── Documents ──────────────────────────────────────────────
+async function cargarDocumentos(solicitudId) {
   try {
-    await api.patch(`/comisiones/solicitudes/${sol.id}/enviar`)
-    await cargar()
-  } catch (e) {
-    alert(e.response?.data?.message || 'Error al enviar.')
+    const { data } = await api.get(`/comisiones/solicitudes/${solicitudId}`)
+    documentos.value = data.documentos ?? []
+  } catch {
+    documentos.value = []
   }
 }
 
+async function subirDocumento(event, tipo) {
+  const archivo = event.target.files?.[0]
+  if (!archivo) return
+  subiendoDoc.value = tipo
+  const fd = new FormData()
+  fd.append('archivo', archivo)
+  fd.append('tipo_doc', tipo)
+  try {
+    await api.post(`/comisiones/solicitudes/${modoEdicionId.value}/documentos`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    await cargarDocumentos(modoEdicionId.value)
+  } catch (e) {
+    alert(e.response?.data?.message || 'Error al subir documento.')
+  } finally {
+    subiendoDoc.value  = ''
+    event.target.value = ''
+  }
+}
+
+async function eliminarDocumento(doc) {
+  if (!confirm(`¿Eliminar documento ${doc.tipo_doc}?`)) return
+  try {
+    await api.delete(`/comisiones/solicitudes/${modoEdicionId.value}/documentos/${doc.id}`)
+    await cargarDocumentos(modoEdicionId.value)
+  } catch (e) {
+    alert(e.response?.data?.message || 'Error al eliminar.')
+  }
+}
+
+async function descargarDocumento(doc) {
+  try {
+    const resp = await api.get(`/comisiones/solicitudes/${modoEdicionId.value}/documentos/${doc.id}/descargar`, { responseType: 'blob' })
+    const url = URL.createObjectURL(new Blob([resp.data], { type: 'application/pdf' }))
+    window.open(url, '_blank')
+    setTimeout(() => URL.revokeObjectURL(url), 60000)
+  } catch { alert('Error al descargar.') }
+}
+
+async function generarPdfSolicitud() {
+  try {
+    const resp = await api.get(`/comisiones/solicitudes/${modoEdicionId.value}/pdf`, { responseType: 'blob' })
+    const url = URL.createObjectURL(new Blob([resp.data], { type: 'application/pdf' }))
+    window.open(url, '_blank')
+    setTimeout(() => URL.revokeObjectURL(url), 60000)
+  } catch { alert('Error al generar PDF.') }
+}
+
+async function subirPdfFirmado(event) {
+  const archivo = event.target.files?.[0]
+  if (!archivo) return
+  subiendoFirmado.value = true
+  const fd = new FormData()
+  fd.append('archivo', archivo)
+  try {
+    await api.post(`/comisiones/solicitudes/${modoEdicionId.value}/subir-firmado`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    await cargarDocumentos(modoEdicionId.value)
+    await cargar()
+    cerrarModalSolicitud()
+  } catch (e) {
+    alert(e.response?.data?.message || 'Error al subir PDF firmado.')
+  } finally {
+    subiendoFirmado.value = false
+    event.target.value    = ''
+  }
+}
+
+// ── PDF solicitud ──────────────────────────────────────────
 async function descargarPdf(sol) {
   try {
     const resp = await api.get(`/comisiones/solicitudes/${sol.id}/pdf`, { responseType: 'blob' })
@@ -1031,121 +1009,58 @@ async function descargarPdf(sol) {
   } catch { alert('Error al generar PDF.') }
 }
 
+// ── Detalle ────────────────────────────────────────────────
 async function verDetalle(sol) {
   try {
     const { data } = await api.get(`/comisiones/solicitudes/${sol.id}`)
     detalleActual.value = data
-    modalDetalle.value = true
+    modalDetalle.value  = true
   } catch { alert('Error al cargar detalle.') }
 }
 
-// ── Acciones de Revisión ───────────────────────────────────
-async function confirmarAccion(sol, endpoint, titulo) {
-  if (!confirm(`¿${titulo}?`)) return
-  guardando.value = true
-  errorAccion.value = ''
+// ── Informe ────────────────────────────────────────────────
+async function abrirInforme(sol) {
+  informeTarget.value          = sol
+  informeActual.value          = null
+  errorAccion.value            = ''
+  subiendoInformeFirmado.value = false
+
   try {
-    await api.patch(`/comisiones/solicitudes/${sol.id}/${endpoint}`)
-    await cargar()
-  } catch (e) {
-    alert(e.response?.data?.message || 'Error al procesar.')
-  } finally {
-    guardando.value = false
+    const { data } = await api.get(`/comisiones/solicitudes/${sol.id}`)
+    if (data.informe) {
+      informeActual.value = data.informe
+      informeForm.value = {
+        fecha_informe: data.informe.fecha_informe || new Date().toISOString().slice(0,10),
+        actividades:   data.informe.actividades   || '',
+        productos:     data.informe.productos      || '',
+        fecha_salida:  data.informe.fecha_salida   || sol.fecha_salida,
+        hora_salida:   data.informe.hora_salida    || sol.hora_salida,
+        fecha_llegada: data.informe.fecha_llegada  || sol.fecha_llegada,
+        hora_llegada:  data.informe.hora_llegada   || sol.hora_llegada,
+      }
+    } else {
+      informeForm.value = {
+        fecha_informe: new Date().toISOString().slice(0,10),
+        actividades:   '',
+        productos:     '',
+        fecha_salida:  sol.fecha_salida,
+        hora_salida:   sol.hora_salida,
+        fecha_llegada: sol.fecha_llegada,
+        hora_llegada:  sol.hora_llegada,
+      }
+    }
+  } catch {
+    informeForm.value = {
+      fecha_informe: new Date().toISOString().slice(0,10),
+      actividades:   '',
+      productos:     '',
+      fecha_salida:  sol.fecha_salida,
+      hora_salida:   sol.hora_salida,
+      fecha_llegada: sol.fecha_llegada,
+      hora_llegada:  sol.hora_llegada,
+    }
   }
-}
 
-function abrirNegar(sol, accion) {
-  negarTarget.value = sol
-  negarAccion.value = accion
-  negarObservacion.value = ''
-  errorAccion.value = ''
-  modalNegar.value = true
-}
-
-async function ejecutarNegar() {
-  if (!negarObservacion.value.trim()) {
-    errorAccion.value = 'Indique el motivo.'
-    return
-  }
-  guardando.value = true
-  try {
-    await api.patch(`/comisiones/solicitudes/${negarTarget.value.id}/${negarAccion.value}`, {
-      observacion: negarObservacion.value,
-    })
-    modalNegar.value = false
-    await cargar()
-  } catch (e) {
-    errorAccion.value = e.response?.data?.message || 'Error al negar.'
-  } finally {
-    guardando.value = false
-  }
-}
-
-function abrirResolucion(sol) {
-  accionTarget.value = sol
-  resolucionJuridica.value = ''
-  errorAccion.value = ''
-  modalResolucion.value = true
-}
-
-async function ejecutarResolucion() {
-  if (!resolucionJuridica.value.trim()) {
-    errorAccion.value = 'Ingrese el número de resolución.'
-    return
-  }
-  guardando.value = true
-  try {
-    await api.patch(`/comisiones/solicitudes/${accionTarget.value.id}/emitir-resolucion`, {
-      resolucion_juridica: resolucionJuridica.value,
-    })
-    modalResolucion.value = false
-    await cargar()
-  } catch (e) {
-    errorAccion.value = e.response?.data?.message || 'Error.'
-  } finally {
-    guardando.value = false
-  }
-}
-
-function abrirRegistroExt(sol) {
-  accionTarget.value = sol
-  numSistemaExt.value = ''
-  errorAccion.value = ''
-  modalRegistroExt.value = true
-}
-
-async function ejecutarRegistroExt() {
-  if (!numSistemaExt.value.trim()) {
-    errorAccion.value = 'Ingrese el código del sistema.'
-    return
-  }
-  guardando.value = true
-  try {
-    await api.patch(`/comisiones/solicitudes/${accionTarget.value.id}/registrar-ext`, {
-      num_sistema_exterior: numSistemaExt.value,
-    })
-    modalRegistroExt.value = false
-    await cargar()
-  } catch (e) {
-    errorAccion.value = e.response?.data?.message || 'Error.'
-  } finally {
-    guardando.value = false
-  }
-}
-
-// ── Informe ───────────────────────────────────────────────
-function abrirInforme(sol) {
-  informeTarget.value = sol
-  informeForm.value = {
-    fecha_informe: new Date().toISOString().slice(0,10),
-    actividades: '',
-    productos: '',
-    fecha_salida: sol.fecha_salida,
-    hora_salida: sol.hora_salida,
-    fecha_llegada: sol.fecha_llegada,
-    hora_llegada: sol.hora_llegada,
-  }
-  errorAccion.value = ''
   modalInforme.value = true
 }
 
@@ -1154,10 +1069,16 @@ async function guardarInforme() {
     errorAccion.value = 'Las actividades son obligatorias.'
     return
   }
-  guardando.value = true
+  guardando.value   = true
+  errorAccion.value = ''
   try {
-    await api.post(`/comisiones/solicitudes/${informeTarget.value.id}/informe`, informeForm.value)
-    modalInforme.value = false
+    let resp
+    if (informeActual.value) {
+      resp = await api.put(`/comisiones/informes/${informeActual.value.id}`, informeForm.value)
+    } else {
+      resp = await api.post(`/comisiones/solicitudes/${informeTarget.value.id}/informe`, informeForm.value)
+    }
+    informeActual.value = resp.data
     await cargar()
   } catch (e) {
     errorAccion.value = e.response?.data?.message || 'Error al guardar informe.'
@@ -1166,28 +1087,46 @@ async function guardarInforme() {
   }
 }
 
-async function revisarInforme(sol) {
-  if (!confirm('¿Marcar el informe como revisado?')) return
+async function descargarPdfInforme() {
   try {
-    const { data } = await api.get(`/comisiones/solicitudes/${sol.id}`)
-    await api.patch(`/comisiones/informes/${data.informe.id}/revisar`)
+    const resp = await api.get(`/comisiones/solicitudes/${informeTarget.value.id}/informe/pdf`, { responseType: 'blob' })
+    const url = URL.createObjectURL(new Blob([resp.data], { type: 'application/pdf' }))
+    window.open(url, '_blank')
+    setTimeout(() => URL.revokeObjectURL(url), 60000)
+  } catch { alert('Error al generar PDF del informe.') }
+}
+
+async function subirInformeFirmado(event) {
+  const archivo = event.target.files?.[0]
+  if (!archivo) return
+  subiendoInformeFirmado.value = true
+  errorAccion.value            = ''
+  const fd = new FormData()
+  fd.append('archivo', archivo)
+  try {
+    await api.post(`/comisiones/solicitudes/${informeTarget.value.id}/informe/subir-firmado`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    informeActual.value = { ...informeActual.value, estado: 'APROBADO' }
     await cargar()
   } catch (e) {
-    alert(e.response?.data?.message || 'Error.')
+    errorAccion.value = e.response?.data?.message || 'Error al subir informe firmado.'
+  } finally {
+    subiendoInformeFirmado.value = false
+    event.target.value           = ''
   }
 }
 
-async function aprobarInforme(sol) {
-  if (!confirm('¿Aprobar el informe de cumplimiento?')) return
+async function descargarInformeFirmado() {
   try {
-    const { data } = await api.get(`/comisiones/solicitudes/${sol.id}`)
-    await api.patch(`/comisiones/informes/${data.informe.id}/aprobar`)
-    await cargar()
-  } catch (e) {
-    alert(e.response?.data?.message || 'Error.')
-  }
+    const resp = await api.get(`/comisiones/solicitudes/${informeTarget.value.id}/informe/descargar-firmado`, { responseType: 'blob' })
+    const url = URL.createObjectURL(new Blob([resp.data], { type: 'application/pdf' }))
+    window.open(url, '_blank')
+    setTimeout(() => URL.revokeObjectURL(url), 60000)
+  } catch { alert('Error al descargar.') }
 }
 
+// ── Solicitar Pago ─────────────────────────────────────────
 async function solicitarPago(sol) {
   if (!confirm('¿Solicitar el trámite de pago de viáticos?')) return
   try {

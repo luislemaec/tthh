@@ -213,6 +213,10 @@ class EmpleadoController extends Controller
     public function update(Request $request, $id)
     {
         $emp = Empleado::findOrFail($id);
+
+        if ($emp->es_externo) {
+            return response()->json(['message' => 'Los funcionarios externos se gestionan desde el módulo de Comisiones.'], 422);
+        }
         $anterior = [
             'sueldo'               => $emp->sueldo,
             'estado'               => $emp->estado,

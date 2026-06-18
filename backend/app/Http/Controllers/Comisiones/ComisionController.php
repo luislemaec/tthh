@@ -9,48 +9,54 @@ use App\Models\ComSolicitudTransporte;
 use App\Services\AuditoriaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 
 class ComisionController extends Controller
 {
-    // Roles del módulo
-    private const ROL_MAXIMA_AUTORIDAD    = 'MAXIMA AUTORIDAD';
-    private const ROL_DIR_ADM             = 'DIRECCION ADMINISTRATIVA';
-    private const ROL_JURIDICA            = 'ASESORIA JURIDICA';
-    private const ROL_CONTABILIDAD        = 'CONTABILIDAD';
-    private const ROL_PRESUPUESTO         = 'PRESUPUESTO';
-    private const ROL_DIR_FINANCIERO      = 'DIRECTOR FINANCIERO';
-    private const ROL_TESORERIA           = 'TESORERIA';
-    private const ROL_ADMIN               = 'ADMINISTRADOR';
+    private string $alfrescoBase = 'http://192.168.26.38:8080/alfresco/api/-default-/public/alfresco/versions/1';
+    private string $alfrescoUser = 'admin';
+    private string $alfrescoPass = 'admin';
+    private string $alfrescoSite = 'talentohumano';
+
+    private const ROL_ADMIN = 'ADMINISTRADOR';
 
     private function tieneRol(Request $request, string $rol): bool
     {
         $idEmp = $request->user()->id_emp;
-        return DB::table('dbo.admin_usuario_rol')
-            ->join('dbo.admin_rol', 'admin_usuario_rol.rol_id', '=', 'admin_rol.id')
-            ->where('admin_usuario_rol.id_emp', $idEmp)
-            ->where('admin_rol.nombre', $rol)
+        return DB::table('dbo.admin_usuario_rol as ur')
+            ->join('dbo.admin_rol as r', 'ur.id_rol', '=', 'r.id')
+            ->where('ur.id_emp', $idEmp)
+            ->where('r.descripcion', $rol)
             ->exists();
+    }
+
+    private function getDocLibNodeId(): string
+    {
+        $resp = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+            ->get("{$this->alfrescoBase}/sites/{$this->alfrescoSite}/containers/documentLibrary");
+        if (!$resp->successful()) abort(502, 'No se pudo conectar con Alfresco');
+        return $resp->json('entry.id');
     }
 
     public function miRol(Request $request): \Illuminate\Http\JsonResponse
     {
         $idEmp = $request->user()->id_emp;
 
-        $roles = DB::table('dbo.admin_usuario_rol')
-            ->join('dbo.admin_rol', 'admin_usuario_rol.rol_id', '=', 'admin_rol.id')
-            ->where('admin_usuario_rol.id_emp', $idEmp)
-            ->pluck('admin_rol.nombre')
+        $roles = DB::table('dbo.admin_usuario_rol as ur')
+            ->join('dbo.admin_rol as r', 'ur.id_rol', '=', 'r.id')
+            ->where('ur.id_emp', $idEmp)
+            ->pluck('r.descripcion')
             ->toArray();
 
         return response()->json([
-            'es_admin'            => in_array(self::ROL_ADMIN, $roles),
-            'es_maxima_autoridad' => in_array(self::ROL_MAXIMA_AUTORIDAD, $roles),
-            'es_dir_adm'          => in_array(self::ROL_DIR_ADM, $roles),
-            'es_juridica'         => in_array(self::ROL_JURIDICA, $roles),
-            'es_contabilidad'     => in_array(self::ROL_CONTABILIDAD, $roles),
-            'es_presupuesto'      => in_array(self::ROL_PRESUPUESTO, $roles),
-            'es_dir_financiero'   => in_array(self::ROL_DIR_FINANCIERO, $roles),
-            'es_tesoreria'        => in_array(self::ROL_TESORERIA, $roles),
+            'es_admin'            => in_array('ADMINISTRADOR', $roles),
+            'es_maxima_autoridad' => in_array('MAXIMA AUTORIDAD', $roles),
+            'es_dir_adm'          => in_array('DIRECCION ADMINISTRATIVA', $roles),
+            'es_juridica'         => in_array('ASESORIA JURIDICA', $roles),
+            'es_contabilidad'     => in_array('CONTABILIDAD', $roles),
+            'es_presupuesto'      => in_array('PRESUPUESTO', $roles),
+            'es_dir_financiero'   => in_array('DIRECTOR FINANCIERO', $roles),
+            'es_tesoreria'        => in_array('TESORERIA', $roles),
             'es_supervisor'       => DB::table('dbo.supervisor_area')->where('id_emp', $idEmp)->exists(),
         ]);
     }
@@ -60,14 +66,11 @@ class ComisionController extends Controller
         $user  = $request->user();
         $idEmp = $user->id_emp;
 
-        $esAdmin     = $this->tieneRol($request, self::ROL_ADMIN);
-        $esDirAdm    = $this->tieneRol($request, self::ROL_DIR_ADM);
-        $esAutoridad = $this->tieneRol($request, self::ROL_MAXIMA_AUTORIDAD);
-        $esFinanciero = $this->tieneRol($request, self::ROL_CONTABILIDAD)
-                     || $this->tieneRol($request, self::ROL_PRESUPUESTO)
-                     || $this->tieneRol($request, self::ROL_DIR_FINANCIERO)
-                     || $this->tieneRol($request, self::ROL_TESORERIA);
-        $esJuridica  = $this->tieneRol($request, self::ROL_JURIDICA);
+        $esAdmin     = $this->tieneRol($request, 'ADMINISTRADOR');
+        $esFinanciero = $this->tieneRol($request, 'CONTABILIDAD')
+                     || $this->tieneRol($request, 'PRESUPUESTO')
+                     || $this->tieneRol($request, 'DIRECTOR FINANCIERO')
+                     || $this->tieneRol($request, 'TESORERIA');
         $esSupervisor = DB::table('dbo.supervisor_area')->where('id_emp', $idEmp)->exists();
 
         $query = DB::table('dbo.com_solicitud as s')
@@ -83,21 +86,18 @@ class ComisionController extends Controller
             )
             ->where('d.id_depto', '!=', 999);
 
-        if ($esAdmin || $esAutoridad || $esDirAdm || $esFinanciero || $esJuridica) {
+        if ($esAdmin || $esFinanciero) {
             // Ven todas las solicitudes
         } elseif ($esSupervisor) {
-            // Ven las de su área + las propias
             $deptos = DB::table('dbo.supervisor_area')->where('id_emp', $idEmp)->pluck('id_depto');
             $query->where(function ($q) use ($idEmp, $deptos) {
                 $q->where('s.id_emp', $idEmp)
                   ->orWhereIn('s.id_depto', $deptos);
             });
         } else {
-            // Solo las propias
             $query->where('s.id_emp', $idEmp);
         }
 
-        // Filtros opcionales
         if ($request->filled('estado')) {
             $query->where('s.estado', $request->estado);
         }
@@ -124,43 +124,50 @@ class ComisionController extends Controller
             'fecha_llegada'          => 'required|date|after_or_equal:fecha_salida',
             'hora_llegada'           => 'required',
             'descripcion_actividades'=> 'required|string',
-            'servidores'             => 'array',
-            'servidores.*.id_emp'    => 'required|string',
             'transportes'            => 'array',
         ]);
 
-        $user  = $request->user();
-        $idEmp = $user->id_emp;
-
-        $depto = DB::table('dbo.ad_empleado')->where('id_emp', $idEmp)->value('id_depto');
-        $unidad = DB::table('dbo.ad_departamento')->where('id_depto', $depto)->value('nombre_depto');
+        $emp   = $request->user();
+        $idEmp = $emp->id_emp;
+        $depto = DB::table('dbo.ad_departamento')->where('id_depto', $emp->id_depto)->first();
 
         DB::beginTransaction();
         try {
             $solicitud = ComSolicitud::create([
                 'tipo'                   => $request->tipo,
                 'id_emp'                 => $idEmp,
-                'id_depto'               => $depto,
+                'id_depto'               => $emp->id_depto,
                 'fecha_solicitud'        => $request->fecha_solicitud,
                 'tiene_viaticos'         => $request->boolean('tiene_viaticos', true),
                 'tiene_movilizaciones'   => $request->boolean('tiene_movilizaciones', false),
                 'tiene_anticipo'         => $request->boolean('tiene_anticipo', false),
                 'destino'                => $request->destino,
-                'unidad_nombre'          => $unidad,
+                'unidad_nombre'          => $depto->nombre_depto ?? '',
                 'fecha_salida'           => $request->fecha_salida,
                 'hora_salida'            => $request->hora_salida,
                 'fecha_llegada'          => $request->fecha_llegada,
                 'hora_llegada'           => $request->hora_llegada,
                 'descripcion_actividades'=> $request->descripcion_actividades,
-                'banco'                  => $request->banco,
-                'tipo_cuenta'            => $request->tipo_cuenta,
-                'numero_cuenta'          => $request->numero_cuenta,
+                'banco'                  => $emp->banco,
+                'tipo_cuenta'            => $emp->tipo_cuenta,
+                'numero_cuenta'          => $emp->numero_cuenta,
                 'estado'                 => 'BORRADOR',
                 'created_by'             => $idEmp,
                 'updated_by'             => $idEmp,
             ]);
 
-            $this->syncServidores($solicitud->id, $request->servidores ?? [], $idEmp);
+            // Auto-insertar el servidor (empleado logueado)
+            DB::table('dbo.com_solicitud_servidor')->insert([
+                'solicitud_id'  => $solicitud->id,
+                'id_emp'        => $idEmp,
+                'unidad'        => $depto->nombre_depto ?? '',
+                'puesto'        => $emp->cargo_empleado ?? '',
+                'banco'         => $emp->banco,
+                'tipo_cuenta'   => $emp->tipo_cuenta,
+                'numero_cuenta' => $emp->numero_cuenta,
+                'orden'         => 1,
+            ]);
+
             $this->syncTransportes('solicitud', $solicitud->id, $request->transportes ?? []);
 
             AuditoriaService::log('dbo.com_solicitud', $solicitud->id, 'CREAR', null, ['tipo' => $solicitud->tipo, 'destino' => $solicitud->destino], $request, 'Solicitud de comisión creada');
@@ -197,7 +204,9 @@ class ComisionController extends Controller
             'descripcion_actividades'=> 'required|string',
         ]);
 
-        $idEmp = $request->user()->id_emp;
+        $emp   = $request->user();
+        $idEmp = $emp->id_emp;
+        $depto = DB::table('dbo.ad_departamento')->where('id_depto', $emp->id_depto)->first();
 
         DB::beginTransaction();
         try {
@@ -213,13 +222,22 @@ class ComisionController extends Controller
                 'fecha_llegada'          => $request->fecha_llegada,
                 'hora_llegada'           => $request->hora_llegada,
                 'descripcion_actividades'=> $request->descripcion_actividades,
-                'banco'                  => $request->banco,
-                'tipo_cuenta'            => $request->tipo_cuenta,
-                'numero_cuenta'          => $request->numero_cuenta,
                 'updated_by'             => $idEmp,
             ]);
 
-            $this->syncServidores($id, $request->servidores ?? [], $idEmp);
+            // Actualizar servidor (datos bancarios pueden haber cambiado)
+            DB::table('dbo.com_solicitud_servidor')->updateOrInsert(
+                ['solicitud_id' => $id, 'id_emp' => $idEmp],
+                [
+                    'unidad'        => $depto->nombre_depto ?? '',
+                    'puesto'        => $emp->cargo_empleado ?? '',
+                    'banco'         => $emp->banco,
+                    'tipo_cuenta'   => $emp->tipo_cuenta,
+                    'numero_cuenta' => $emp->numero_cuenta,
+                    'orden'         => 1,
+                ]
+            );
+
             $this->syncTransportes('solicitud', $id, $request->transportes ?? []);
 
             DB::commit();
@@ -230,155 +248,157 @@ class ComisionController extends Controller
         }
     }
 
-    // ─── Transiciones de estado ────────────────────────────────────────────────
+    // ─── Flujo documentos y aprobación ───────────────────────────────────────
 
-    public function enviar(Request $request, int $id): \Illuminate\Http\JsonResponse
+    public function uploadDocumento(Request $request, int $id): \Illuminate\Http\JsonResponse
     {
-        $solicitud = ComSolicitud::findOrFail($id);
-
-        if ($solicitud->id_emp !== $request->user()->id_emp) {
-            return response()->json(['message' => 'No autorizado'], 403);
-        }
-        if ($solicitud->estado !== 'BORRADOR') {
-            return response()->json(['message' => 'Solo se puede enviar una solicitud en BORRADOR'], 422);
-        }
-
-        $anterior = $solicitud->estado;
-        $solicitud->update(['estado' => 'PENDIENTE_DIR_ADM', 'updated_by' => $request->user()->id_emp]);
-
-        AuditoriaService::log('dbo.com_solicitud', $id, 'ENVIAR', ['estado' => $anterior], ['estado' => 'PENDIENTE_DIR_ADM'], $request, 'Solicitud enviada a Dirección Administrativa');
-
-        return response()->json(['estado' => $solicitud->estado]);
-    }
-
-    public function aprobarDirAdm(Request $request, int $id): \Illuminate\Http\JsonResponse
-    {
-        return $this->transicion($request, $id, self::ROL_DIR_ADM, 'PENDIENTE_DIR_ADM', 'PENDIENTE_JEFE', 'APROBAR_DIR_ADM', 'Aprobado por Dirección Administrativa');
-    }
-
-    public function negarDirAdm(Request $request, int $id): \Illuminate\Http\JsonResponse
-    {
-        return $this->negar($request, $id, self::ROL_DIR_ADM, 'PENDIENTE_DIR_ADM', 'NEGAR_DIR_ADM', 'Negado por Dirección Administrativa');
-    }
-
-    public function aprobarJefe(Request $request, int $id): \Illuminate\Http\JsonResponse
-    {
-        $solicitud = ComSolicitud::findOrFail($id);
-        if ($solicitud->estado !== 'PENDIENTE_JEFE') {
-            return response()->json(['message' => 'Estado incorrecto'], 422);
-        }
-
-        $idEmp = $request->user()->id_emp;
-        $esSupervisorDepto = DB::table('dbo.supervisor_area')
-            ->where('id_emp', $idEmp)
-            ->where('id_depto', $solicitud->id_depto)
-            ->exists();
-
-        if (!$esSupervisorDepto && !$this->tieneRol($request, self::ROL_ADMIN)) {
-            return response()->json(['message' => 'No es supervisor del departamento'], 403);
-        }
-
-        $anterior = $solicitud->estado;
-        $solicitud->update(['estado' => 'PENDIENTE_AUTORIDAD', 'updated_by' => $idEmp]);
-        AuditoriaService::log('dbo.com_solicitud', $id, 'APROBAR_JEFE', ['estado' => $anterior], ['estado' => 'PENDIENTE_AUTORIDAD'], $request, 'Aprobado por jefe inmediato');
-
-        return response()->json(['estado' => $solicitud->estado]);
-    }
-
-    public function negarJefe(Request $request, int $id): \Illuminate\Http\JsonResponse
-    {
-        $solicitud = ComSolicitud::findOrFail($id);
-        if ($solicitud->estado !== 'PENDIENTE_JEFE') {
-            return response()->json(['message' => 'Estado incorrecto'], 422);
-        }
-
-        $idEmp = $request->user()->id_emp;
-        $esSupervisorDepto = DB::table('dbo.supervisor_area')->where('id_emp', $idEmp)->where('id_depto', $solicitud->id_depto)->exists();
-        if (!$esSupervisorDepto && !$this->tieneRol($request, self::ROL_ADMIN)) {
-            return response()->json(['message' => 'No autorizado'], 403);
-        }
-
-        $request->validate(['observacion' => 'required|string']);
-        $anterior = $solicitud->estado;
-        $solicitud->update(['estado' => 'NEGADO', 'observacion' => $request->observacion, 'updated_by' => $idEmp]);
-        AuditoriaService::log('dbo.com_solicitud', $id, 'NEGAR_JEFE', ['estado' => $anterior], ['estado' => 'NEGADO'], $request, 'Negado por jefe inmediato');
-
-        return response()->json(['estado' => $solicitud->estado]);
-    }
-
-    public function aprobarAutoridad(Request $request, int $id): \Illuminate\Http\JsonResponse
-    {
-        $solicitud = ComSolicitud::findOrFail($id);
-        if ($solicitud->estado !== 'PENDIENTE_AUTORIDAD') {
-            return response()->json(['message' => 'Estado incorrecto'], 422);
-        }
-
-        if (!$this->tieneRol($request, self::ROL_MAXIMA_AUTORIDAD) && !$this->tieneRol($request, self::ROL_ADMIN)) {
-            return response()->json(['message' => 'No autorizado'], 403);
-        }
-
-        // Interior → AUTORIZADO | Exterior → PENDIENTE_JURIDICA
-        $nuevoEstado = $solicitud->tipo === 'EXTERIOR' ? 'PENDIENTE_JURIDICA' : 'AUTORIZADO';
-
-        // Si es AUTORIZADO, generar número de solicitud
-        $data = ['estado' => $nuevoEstado, 'updated_by' => $request->user()->id_emp];
-        if ($nuevoEstado === 'AUTORIZADO') {
-            $data['numero_solicitud'] = $this->generarNumero($solicitud->id_depto);
-        }
-
-        $anterior = $solicitud->estado;
-        $solicitud->update($data);
-        AuditoriaService::log('dbo.com_solicitud', $id, 'APROBAR_AUTORIDAD', ['estado' => $anterior], $data, $request, 'Autorizado por Máxima Autoridad');
-
-        return response()->json(['estado' => $solicitud->estado, 'numero_solicitud' => $solicitud->numero_solicitud]);
-    }
-
-    public function negarAutoridad(Request $request, int $id): \Illuminate\Http\JsonResponse
-    {
-        return $this->negar($request, $id, self::ROL_MAXIMA_AUTORIDAD, 'PENDIENTE_AUTORIDAD', 'NEGAR_AUTORIDAD', 'Negado por Máxima Autoridad');
-    }
-
-    public function emitirResolucion(Request $request, int $id): \Illuminate\Http\JsonResponse
-    {
-        $solicitud = ComSolicitud::findOrFail($id);
-        if ($solicitud->estado !== 'PENDIENTE_JURIDICA') {
-            return response()->json(['message' => 'Estado incorrecto'], 422);
-        }
-        if (!$this->tieneRol($request, self::ROL_JURIDICA) && !$this->tieneRol($request, self::ROL_ADMIN)) {
-            return response()->json(['message' => 'No autorizado'], 403);
-        }
-
-        $request->validate(['resolucion_juridica' => 'required|string|max:100']);
-
-        $solicitud->update([
-            'estado'               => 'PENDIENTE_SISTEMA_EXT',
-            'resolucion_juridica'  => $request->resolucion_juridica,
-            'updated_by'           => $request->user()->id_emp,
+        $request->validate([
+            'tipo_doc' => 'required|in:AUTORIZACION,PASAJES,CERTIFICACION',
+            'archivo'  => 'required|file|mimes:pdf|max:10240',
         ]);
-        AuditoriaService::log('dbo.com_solicitud', $id, 'EMITIR_RESOLUCION', ['estado' => 'PENDIENTE_JURIDICA'], ['estado' => 'PENDIENTE_SISTEMA_EXT', 'resolucion' => $request->resolucion_juridica], $request, 'Resolución jurídica emitida');
 
-        return response()->json(['estado' => $solicitud->estado]);
+        $solicitud = DB::table('dbo.com_solicitud')
+            ->where('id', $id)
+            ->where('id_emp', $request->user()->id_emp)
+            ->first();
+
+        if (!$solicitud) abort(403, 'No autorizado');
+        if ($solicitud->estado !== 'BORRADOR') abort(422, 'Solo se pueden subir documentos en BORRADOR.');
+
+        $emp      = $request->user();
+        $anio     = now()->year;
+        $apellido = strtoupper(trim($emp->apellido_emp ?? ''));
+        $cedula   = $emp->identificacion ?? $emp->id_emp;
+        $carpeta  = "comisiones/{$anio}/{$cedula}_{$apellido}";
+        $nombre   = strtoupper($request->tipo_doc) . '_' . $id . '_' . now()->format('YmdHis') . '.pdf';
+
+        $docLibId = $this->getDocLibNodeId();
+        $upload = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+            ->attach('filedata', file_get_contents($request->file('archivo')->getRealPath()), $nombre)
+            ->post("{$this->alfrescoBase}/nodes/{$docLibId}/children", [
+                'name'         => $nombre,
+                'nodeType'     => 'cm:content',
+                'relativePath' => $carpeta,
+                'autoRename'   => true,
+            ]);
+
+        if (!$upload->successful()) abort(502, 'No se pudo subir el documento a Alfresco.');
+
+        // Un solo slot por tipo — reemplazar si ya existía
+        DB::table('dbo.com_solicitud_documento')
+            ->where('solicitud_id', $id)
+            ->where('tipo_doc', $request->tipo_doc)
+            ->delete();
+
+        DB::table('dbo.com_solicitud_documento')->insert([
+            'solicitud_id'   => $id,
+            'tipo_doc'       => $request->tipo_doc,
+            'alfresco_id'    => $upload->json('entry.id'),
+            'nombre_archivo' => $nombre,
+            'created_by'     => $emp->id_emp,
+            'created_at'     => now(),
+        ]);
+
+        return response()->json(['message' => 'Documento subido correctamente.']);
     }
 
-    public function registrarSistemaExt(Request $request, int $id): \Illuminate\Http\JsonResponse
+    public function deleteDocumento(Request $request, int $id, int $docId): \Illuminate\Http\JsonResponse
     {
-        $solicitud = ComSolicitud::findOrFail($id);
-        if ($solicitud->estado !== 'PENDIENTE_SISTEMA_EXT') {
-            return response()->json(['message' => 'Estado incorrecto'], 422);
-        }
+        $solicitud = DB::table('dbo.com_solicitud')
+            ->where('id', $id)
+            ->where('id_emp', $request->user()->id_emp)
+            ->first();
 
-        $request->validate(['num_sistema_exterior' => 'required|string|max:100']);
+        if (!$solicitud) abort(403, 'No autorizado');
+        if ($solicitud->estado !== 'BORRADOR') abort(422, 'No se puede eliminar documentos fuera de BORRADOR.');
+
+        DB::table('dbo.com_solicitud_documento')
+            ->where('id', $docId)
+            ->where('solicitud_id', $id)
+            ->delete();
+
+        return response()->json(['message' => 'Documento eliminado.']);
+    }
+
+    public function descargarDocumento(Request $request, int $id, int $docId)
+    {
+        $doc = DB::table('dbo.com_solicitud_documento')
+            ->where('id', $docId)
+            ->where('solicitud_id', $id)
+            ->first();
+
+        if (!$doc) abort(404, 'Documento no encontrado.');
+
+        $resp = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+            ->get("{$this->alfrescoBase}/nodes/{$doc->alfresco_id}/content");
+
+        if (!$resp->successful()) abort(502, 'No se pudo descargar el documento.');
+
+        return response($resp->body(), 200, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . ($doc->nombre_archivo ?? 'documento.pdf') . '"',
+        ]);
+    }
+
+    public function subirFirmado(Request $request, int $id): \Illuminate\Http\JsonResponse
+    {
+        $request->validate(['archivo' => 'required|file|mimes:pdf|max:20480']);
+
+        $solicitud = DB::table('dbo.com_solicitud')
+            ->where('id', $id)
+            ->where('id_emp', $request->user()->id_emp)
+            ->first();
+
+        if (!$solicitud) abort(403, 'No autorizado');
+        if ($solicitud->estado !== 'BORRADOR') abort(422, 'La solicitud debe estar en BORRADOR.');
+
+        $docsCount = DB::table('dbo.com_solicitud_documento')
+            ->where('solicitud_id', $id)
+            ->whereIn('tipo_doc', ['AUTORIZACION', 'PASAJES', 'CERTIFICACION'])
+            ->count();
+
+        if ($docsCount < 3) abort(422, 'Debe subir los 3 documentos requeridos antes de aprobar.');
+
+        $emp      = $request->user();
+        $anio     = now()->year;
+        $apellido = strtoupper(trim($emp->apellido_emp ?? ''));
+        $cedula   = $emp->identificacion ?? $emp->id_emp;
+        $carpeta  = "comisiones/{$anio}/{$cedula}_{$apellido}";
+        $nombre   = 'SOLICITUD_FIRMADA_' . $id . '_' . now()->format('YmdHis') . '.pdf';
+
+        $docLibId = $this->getDocLibNodeId();
+        $upload = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+            ->attach('filedata', file_get_contents($request->file('archivo')->getRealPath()), $nombre)
+            ->post("{$this->alfrescoBase}/nodes/{$docLibId}/children", [
+                'name'         => $nombre,
+                'nodeType'     => 'cm:content',
+                'relativePath' => $carpeta,
+                'autoRename'   => true,
+            ]);
+
+        if (!$upload->successful()) abort(502, 'No se pudo subir el documento a Alfresco.');
+
+        DB::table('dbo.com_solicitud_documento')->insert([
+            'solicitud_id'   => $id,
+            'tipo_doc'       => 'FIRMADO',
+            'alfresco_id'    => $upload->json('entry.id'),
+            'nombre_archivo' => $nombre,
+            'created_by'     => $emp->id_emp,
+            'created_at'     => now(),
+        ]);
 
         $numero = $this->generarNumero($solicitud->id_depto);
-        $solicitud->update([
-            'estado'               => 'AUTORIZADO',
-            'num_sistema_exterior' => $request->num_sistema_exterior,
-            'numero_solicitud'     => $numero,
-            'updated_by'           => $request->user()->id_emp,
-        ]);
-        AuditoriaService::log('dbo.com_solicitud', $id, 'REGISTRAR_EXTERIOR', ['estado' => 'PENDIENTE_SISTEMA_EXT'], ['estado' => 'AUTORIZADO'], $request, 'Registrado en sistema exterior, comisión AUTORIZADA');
 
-        return response()->json(['estado' => $solicitud->estado, 'numero_solicitud' => $solicitud->numero_solicitud]);
+        DB::table('dbo.com_solicitud')->where('id', $id)->update([
+            'estado'           => 'APROBADO',
+            'numero_solicitud' => $numero,
+            'updated_by'       => $emp->id_emp,
+            'updated_at'       => now(),
+        ]);
+
+        AuditoriaService::log('dbo.com_solicitud', $id, 'APROBAR', ['estado' => 'BORRADOR'], ['estado' => 'APROBADO', 'numero' => $numero], $request, 'Solicitud aprobada con PDF firmado');
+
+        return response()->json(['message' => 'Solicitud aprobada.', 'numero' => $numero]);
     }
 
     public function solicitarPago(Request $request, int $id): \Illuminate\Http\JsonResponse
@@ -423,23 +443,27 @@ class ComisionController extends Controller
         return $pdf->download("solicitud-{$numero}.pdf");
     }
 
-    // ─── Helpers ──────────────────────────────────────────────────────────────
+    // ─── Provincias ───────────────────────────────────────────────────────────
 
-    private function generarNumero(int $idDepto): string
+    public function provincias(): \Illuminate\Http\JsonResponse
     {
-        $centroCosto = DB::table('dbo.ad_departamento')
-            ->where('id_depto', $idDepto)
-            ->value('centro_de_costo') ?? $idDepto;
+        $rows = DB::table('dbo.com_provincia as p')
+            ->join('dbo.com_ciudad as c', 'c.provincia_id', '=', 'p.id')
+            ->orderBy('p.nombre')
+            ->orderBy('c.nombre')
+            ->select('p.id as prov_id', 'p.nombre as prov', 'c.id as ciu_id', 'c.nombre as ciu')
+            ->get();
 
-        $anio = now()->year;
-        $max  = DB::table('dbo.com_solicitud')
-            ->whereNotNull('numero_solicitud')
-            ->whereYear('created_at', $anio)
-            ->selectRaw("MAX(CAST(SPLIT_PART(numero_solicitud, '-', 4) AS INTEGER)) AS max_num")
-            ->value('max_num') ?? 0;
-        $seq  = str_pad($max + 1, 3, '0', STR_PAD_LEFT);
-        return "CS-{$centroCosto}-{$anio}-{$seq}";
+        $agrupado = $rows->groupBy('prov')->map(fn($cities, $prov) => [
+            'id'       => $cities->first()->prov_id,
+            'nombre'   => $prov,
+            'ciudades' => $cities->map(fn($c) => ['id' => $c->ciu_id, 'nombre' => $c->ciu])->values(),
+        ])->values();
+
+        return response()->json($agrupado);
     }
+
+    // ─── Búsqueda de servidores ───────────────────────────────────────────────
 
     public function buscarServidor(Request $request): \Illuminate\Http\JsonResponse
     {
@@ -450,7 +474,6 @@ class ComisionController extends Controller
 
         $like = '%' . strtoupper($q) . '%';
 
-        // Buscar en empleados activos
         $empleados = DB::table('dbo.ad_empleado as e')
             ->join('dbo.ad_departamento as d', 'e.id_depto', '=', 'd.id_depto')
             ->where('e.estado', 'ACTIVO')
@@ -471,7 +494,6 @@ class ComisionController extends Controller
             ->get()
             ->map(fn($r) => [...(array)$r, 'tipo' => 'EMPLEADO']);
 
-        // Buscar en funcionarios externos activos
         $externos = DB::table('dbo.com_funcionario_externo')
             ->where('activo', true)
             ->where(function ($query) use ($like) {
@@ -486,11 +508,41 @@ class ComisionController extends Controller
         return response()->json($empleados->concat($externos)->values());
     }
 
-    private function detalle(int $id): array
+    // ─── Helpers ──────────────────────────────────────────────────────────────
+
+    private function generarNumero(int $idDepto): string
+    {
+        $centroCosto = DB::table('dbo.ad_departamento')
+            ->where('id_depto', $idDepto)
+            ->value('centro_de_costo') ?? $idDepto;
+
+        $anio = now()->year;
+        $max  = DB::table('dbo.com_solicitud')
+            ->whereNotNull('numero_solicitud')
+            ->whereYear('created_at', $anio)
+            ->selectRaw("MAX(CAST(SPLIT_PART(numero_solicitud, '-', 4) AS INTEGER)) AS max_num")
+            ->value('max_num') ?? 0;
+        $seq  = str_pad($max + 1, 3, '0', STR_PAD_LEFT);
+        return "CS-{$centroCosto}-{$anio}-{$seq}";
+    }
+
+    public function detalle(int $id): \Illuminate\Http\JsonResponse
     {
         $s = ComSolicitud::with(['empleado', 'servidores.empleado', 'transportes', 'informe', 'anticipo', 'fichaLiquidacion'])->findOrFail($id);
 
-        return [
+        $documentos = DB::table('dbo.com_solicitud_documento')
+            ->where('solicitud_id', $id)
+            ->orderBy('created_at')
+            ->get()
+            ->map(fn($d) => [
+                'id'             => $d->id,
+                'tipo_doc'       => $d->tipo_doc,
+                'nombre_archivo' => $d->nombre_archivo,
+                'alfresco_id'    => $d->alfresco_id,
+                'created_at'     => $d->created_at,
+            ]);
+
+        return response()->json([
             'id'                     => $s->id,
             'numero_solicitud'       => $s->numero_solicitud,
             'tipo'                   => $s->tipo,
@@ -520,44 +572,17 @@ class ComisionController extends Controller
                 'nombre' => trim($srv->empleado->apellido_emp ?? '') . ' ' . trim($srv->empleado->nombre_emp ?? ''),
                 'unidad' => $srv->unidad,
                 'puesto' => $srv->puesto,
+                'banco'  => $srv->banco,
+                'tipo_cuenta'   => $srv->tipo_cuenta,
+                'numero_cuenta' => $srv->numero_cuenta,
             ]),
             'transportes'            => $s->transportes,
             'informe'                => $s->informe,
             'anticipo'               => $s->anticipo,
             'ficha_liquidacion'      => $s->fichaLiquidacion,
+            'documentos'             => $documentos,
             'created_at'             => $s->created_at,
-        ];
-    }
-
-    private function syncServidores(int $solicitudId, array $servidores, string $idEmpUser): void
-    {
-        DB::table('dbo.com_solicitud_servidor')->where('solicitud_id', $solicitudId)->delete();
-        foreach ($servidores as $i => $srv) {
-            if (empty($srv['id_emp'])) continue;
-
-            // Buscar primero en empleados, luego en externos
-            $emp     = DB::table('dbo.ad_empleado')->where('id_emp', $srv['id_emp'])->first();
-            $externo = !$emp ? DB::table('dbo.com_funcionario_externo')->where('cedula', $srv['id_emp'])->first() : null;
-
-            $unidad = $srv['unidad']
-                ?? ($emp ? DB::table('dbo.ad_departamento')->where('id_depto', $emp->id_depto)->value('nombre_depto') : null)
-                ?? ($externo ? 'Funcionario Externo' : null);
-
-            $puesto = $srv['puesto']
-                ?? ($emp->cargo_empleado ?? null)
-                ?? ($externo->cargo ?? null);
-
-            ComSolicitudServidor::create([
-                'solicitud_id'  => $solicitudId,
-                'id_emp'        => $srv['id_emp'],
-                'unidad'        => $unidad,
-                'puesto'        => $puesto,
-                'orden'         => $i + 1,
-                'banco'         => $srv['banco'] ?? null,
-                'tipo_cuenta'   => $srv['tipo_cuenta'] ?? null,
-                'numero_cuenta' => $srv['numero_cuenta'] ?? null,
-            ]);
-        }
+        ]);
     }
 
     private function syncTransportes(string $tipo, int $parentId, array $transportes): void
@@ -578,36 +603,5 @@ class ComisionController extends Controller
                 ]);
             }
         }
-    }
-
-    private function transicion(Request $request, int $id, string $rol, string $estadoRequerido, string $nuevoEstado, string $accion, string $descripcion): \Illuminate\Http\JsonResponse
-    {
-        $solicitud = ComSolicitud::findOrFail($id);
-        if ($solicitud->estado !== $estadoRequerido) {
-            return response()->json(['message' => 'Estado incorrecto para esta acción'], 422);
-        }
-        if (!$this->tieneRol($request, $rol) && !$this->tieneRol($request, self::ROL_ADMIN)) {
-            return response()->json(['message' => 'No autorizado'], 403);
-        }
-        $anterior = $solicitud->estado;
-        $solicitud->update(['estado' => $nuevoEstado, 'updated_by' => $request->user()->id_emp]);
-        AuditoriaService::log('dbo.com_solicitud', $id, $accion, ['estado' => $anterior], ['estado' => $nuevoEstado], $request, $descripcion);
-        return response()->json(['estado' => $solicitud->estado]);
-    }
-
-    private function negar(Request $request, int $id, string $rol, string $estadoRequerido, string $accion, string $descripcion): \Illuminate\Http\JsonResponse
-    {
-        $solicitud = ComSolicitud::findOrFail($id);
-        if ($solicitud->estado !== $estadoRequerido) {
-            return response()->json(['message' => 'Estado incorrecto'], 422);
-        }
-        if (!$this->tieneRol($request, $rol) && !$this->tieneRol($request, self::ROL_ADMIN)) {
-            return response()->json(['message' => 'No autorizado'], 403);
-        }
-        $request->validate(['observacion' => 'required|string']);
-        $anterior = $solicitud->estado;
-        $solicitud->update(['estado' => 'NEGADO', 'observacion' => $request->observacion, 'updated_by' => $request->user()->id_emp]);
-        AuditoriaService::log('dbo.com_solicitud', $id, $accion, ['estado' => $anterior], ['estado' => 'NEGADO'], $request, $descripcion);
-        return response()->json(['estado' => $solicitud->estado]);
     }
 }

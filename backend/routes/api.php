@@ -507,29 +507,27 @@ Route::middleware("auth:sanctum")->group(function () {
     // Comisiones de Servicios
     Route::prefix('comisiones')->group(function () {
         Route::get('mi-rol',                                      [ComisionController::class, 'miRol']);
+        Route::get('provincias',                                  [ComisionController::class, 'provincias']);
 
         // Solicitudes
         Route::get('solicitudes',                                 [ComisionController::class, 'index']);
         Route::post('solicitudes',                                [ComisionController::class, 'store']);
         Route::get('solicitudes/{id}',                            [ComisionController::class, 'detalle']);
         Route::put('solicitudes/{id}',                            [ComisionController::class, 'update']);
-        Route::patch('solicitudes/{id}/enviar',                   [ComisionController::class, 'enviar']);
-        Route::patch('solicitudes/{id}/aprobar-dir-adm',          [ComisionController::class, 'aprobarDirAdm']);
-        Route::patch('solicitudes/{id}/negar-dir-adm',            [ComisionController::class, 'negarDirAdm']);
-        Route::patch('solicitudes/{id}/aprobar-jefe',             [ComisionController::class, 'aprobarJefe']);
-        Route::patch('solicitudes/{id}/negar-jefe',               [ComisionController::class, 'negarJefe']);
-        Route::patch('solicitudes/{id}/aprobar-autoridad',        [ComisionController::class, 'aprobarAutoridad']);
-        Route::patch('solicitudes/{id}/negar-autoridad',          [ComisionController::class, 'negarAutoridad']);
-        Route::patch('solicitudes/{id}/emitir-resolucion',        [ComisionController::class, 'emitirResolucion']);
-        Route::patch('solicitudes/{id}/registrar-ext',            [ComisionController::class, 'registrarSistemaExt']);
         Route::patch('solicitudes/{id}/solicitar-pago',           [ComisionController::class, 'solicitarPago']);
         Route::get('solicitudes/{id}/pdf',                        [ComisionController::class, 'pdf']);
+
+        // Documentos de solicitud
+        Route::post('solicitudes/{id}/documentos',                [ComisionController::class, 'uploadDocumento']);
+        Route::delete('solicitudes/{id}/documentos/{docId}',      [ComisionController::class, 'deleteDocumento']);
+        Route::get('solicitudes/{id}/documentos/{docId}/descargar', [ComisionController::class, 'descargarDocumento']);
+        Route::post('solicitudes/{id}/subir-firmado',             [ComisionController::class, 'subirFirmado']);
 
         // Informe de cumplimiento
         Route::post('solicitudes/{id}/informe',                   [InformeComisionController::class, 'store']);
         Route::put('informes/{id}',                               [InformeComisionController::class, 'update']);
-        Route::patch('informes/{id}/revisar',                     [InformeComisionController::class, 'revisar']);
-        Route::patch('informes/{id}/aprobar',                     [InformeComisionController::class, 'aprobar']);
+        Route::post('solicitudes/{id}/informe/subir-firmado',     [InformeComisionController::class, 'subirFirmado']);
+        Route::get('solicitudes/{id}/informe/descargar-firmado',  [InformeComisionController::class, 'descargarFirmado']);
         Route::get('solicitudes/{id}/informe/pdf',                [InformeComisionController::class, 'pdf']);
 
         // Anticipo de viáticos
@@ -563,6 +561,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post('admin/funcionarios-externos',                [FuncionarioExternoController::class, 'store']);
         Route::put('admin/funcionarios-externos/{id}',            [FuncionarioExternoController::class, 'update']);
         Route::delete('admin/funcionarios-externos/{id}',         [FuncionarioExternoController::class, 'destroy']);
+        Route::post('admin/funcionarios-externos/{id}/dar-acceso',[FuncionarioExternoController::class, 'darAcceso']);
 
         // Búsqueda de servidores (empleados + externos)
         Route::get('buscar-servidor',                             [ComisionController::class, 'buscarServidor']);
