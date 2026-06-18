@@ -556,6 +556,15 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post('admin/coeficientes-pais',                    [CoeficientePaisController::class, 'store']);
         Route::put('admin/coeficientes-pais/{id}',                [CoeficientePaisController::class, 'update']);
 
+        // Provincias y ciudades (admin)
+        Route::get('admin/provincias',                            [\App\Http\Controllers\Admin\ProvinciaCiudadController::class, 'index']);
+        Route::post('admin/provincias',                           [\App\Http\Controllers\Admin\ProvinciaCiudadController::class, 'storeProvincia']);
+        Route::put('admin/provincias/{id}',                       [\App\Http\Controllers\Admin\ProvinciaCiudadController::class, 'updateProvincia']);
+        Route::delete('admin/provincias/{id}',                    [\App\Http\Controllers\Admin\ProvinciaCiudadController::class, 'destroyProvincia']);
+        Route::post('admin/provincias/{id}/ciudades',             [\App\Http\Controllers\Admin\ProvinciaCiudadController::class, 'storeCiudad']);
+        Route::put('admin/ciudades/{id}',                         [\App\Http\Controllers\Admin\ProvinciaCiudadController::class, 'updateCiudad']);
+        Route::delete('admin/ciudades/{id}',                      [\App\Http\Controllers\Admin\ProvinciaCiudadController::class, 'destroyCiudad']);
+
         // Funcionarios externos (admin)
         Route::get('admin/funcionarios-externos',                 [FuncionarioExternoController::class, 'index']);
         Route::post('admin/funcionarios-externos',                [FuncionarioExternoController::class, 'store']);
