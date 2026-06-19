@@ -82,7 +82,8 @@ class ComisionController extends Controller
                 's.destino', 's.fecha_solicitud', 's.fecha_salida', 's.fecha_llegada',
                 's.tiene_viaticos', 's.tiene_movilizaciones', 's.tiene_anticipo',
                 's.estado', 's.created_at',
-                DB::raw("COALESCE(d.nombre_depto, '') AS nombre_depto")
+                DB::raw("COALESCE(d.nombre_depto, '') AS nombre_depto"),
+                DB::raw("(SELECT COUNT(*) FROM dbo.com_solicitud_documento sd WHERE sd.solicitud_id = s.id AND sd.tipo_doc IN ('AUTORIZACION','PASAJES','CERTIFICACION')) AS docs_count")
             )
             ->where(function ($q) {
                 $q->whereNull('d.id_depto')->orWhere('d.id_depto', '!=', 999);

@@ -70,16 +70,29 @@
                 </button>
                 <!-- BORRADOR -->
                 <template v-if="sol.estado === 'BORRADOR'">
-                  <button @click="editarSolicitud(sol)" title="Editar"
+                  <!-- Progreso de documentos -->
+                  <span class="text-xs font-medium"
+                    :class="sol.docs_count >= 3 ? 'text-green-600' : 'text-orange-500'">
+                    {{ sol.docs_count }}/3 docs
+                  </span>
+                  <!-- Editar datos -->
+                  <button @click="editarSolicitud(sol)" title="Editar datos"
                     class="p-1.5 rounded-md text-gray-400 hover:text-[#5c4a6e] hover:bg-purple-50 transition">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                     </svg>
                   </button>
-                  <button @click="abrirDocumentos(sol)"
-                    class="px-3 py-1.5 text-xs font-semibold text-white rounded-md transition hover:opacity-90"
-                    style="background-color:#5c4a6e;">
+                  <!-- Documentos -->
+                  <button @click="abrirDocumentos(sol)" title="Gestionar documentos"
+                    class="px-2.5 py-1.5 text-xs font-semibold border rounded-md transition"
+                    style="border-color:#5c4a6e; color:#5c4a6e;">
                     Documentos
+                  </button>
+                  <!-- PROCESAR (solo cuando 3 docs listos) -->
+                  <button v-if="sol.docs_count >= 3" @click="procesarDesdeCard(sol)"
+                    class="px-2.5 py-1.5 text-xs font-semibold text-white rounded-md transition hover:opacity-90"
+                    style="background-color:#5c4a6e;">
+                    Procesar
                   </button>
                 </template>
                 <!-- PROCESADO -->
@@ -405,16 +418,10 @@
             </div>
           </div>
 
-          <!-- Botón PROCESAR (estado BORRADOR + 3 docs listos) -->
+          <!-- Info BORRADOR: cerrar modal y usar botón Procesar de la tarjeta -->
           <div v-if="modoEdicionEstado === 'BORRADOR'" class="border-t border-gray-200 pt-3">
-            <button @click="procesarSolicitud" :disabled="!todosDocSubidos || procesando"
-              class="w-full py-2.5 text-sm font-semibold rounded-lg transition"
-              :class="todosDocSubidos ? 'text-white hover:opacity-90' : 'bg-gray-100 text-gray-400 cursor-not-allowed'"
-              :style="todosDocSubidos ? 'background-color:#5c4a6e' : ''">
-              {{ procesando ? 'Procesando...' : 'PROCESAR SOLICITUD' }}
-            </button>
-            <p v-if="!todosDocSubidos" class="text-xs text-center text-gray-400 mt-1">
-              Suba los {{ 3 - docsSubidos }} documento(s) restante(s) para habilitar
+            <p class="text-xs text-center text-gray-400">
+              {{ todosDocSubidos ? '✓ Los 3 documentos están listos. Cierre este panel y presione "Procesar" en la tarjeta.' : `Suba los ${3 - docsSubidos} documento(s) restante(s).` }}
             </p>
           </div>
 
@@ -477,8 +484,8 @@
             class="text-xs text-orange-600 font-medium">
             {{ docsSubidos }}/3 documentos subidos
           </span>
-          <!-- Botón Guardar siempre visible (excepto cuando está PROCESADO/APROBADO) -->
-          <button v-if="modoEdicionEstado !== 'PROCESADO' && modoEdicionEstado !== 'APROBADO'"
+          <!-- Botón Guardar: solo en Tabs 1-3 mientras esté en BORRADOR -->
+          <button v-if="formTab !== 'Documentos' && modoEdicionEstado !== 'PROCESADO' && modoEdicionEstado !== 'APROBADO'"
             @click="guardarSolicitud" :disabled="guardando"
             class="px-5 py-2 text-sm font-semibold text-white rounded-lg transition hover:opacity-90 disabled:opacity-50"
             style="background-color:#5c4a6e;">
@@ -987,41 +994,10 @@ async function guardarSolicitud() {
   try {
     if (modoEdicion.value) {
       await api.put(`/comisiones/solicitudes/${modoEdicionId.value}`, form.value)
-      await cargar()
-      formTab.value = 'Documentos'
-      await cargarDocumentos(modoEdicionId.value)
     } else {
-      const { data } = await api.post('/comisiones/solicitudes', form.value)
-      modoEdicion.value       = true
-      modoEdicionId.value     = data.id
-      modoEdicionEstado.value = 'BORRADOR'
-      await cargar()
-      formTab.value = 'Documentos'
-      await cargarDocumentos(data.id)
+      await api.post('/comisiones/solicitudes', form.value)
     }
-  } catch (e) {
-    errorForm.value = e.response?.data?.message || 'Error al guardar.'
-  } finally {
-    guardando.value = false
-  }
-}
-
-async function guardarSolicitudSilencioso() {
-  errorForm.value = ''
-  const error = validarFormulario()
-  if (error) {
-    // Mostrar error en el tab Documentos, no redirigir
-    errorForm.value = error
-    return
-  }
-  guardando.value = true
-  try {
-    const { data } = await api.post('/comisiones/solicitudes', form.value)
-    modoEdicion.value       = true
-    modoEdicionId.value     = data.id
-    modoEdicionEstado.value = 'BORRADOR'
-    await cargar()
-    await cargarDocumentos(data.id)
+    cerrarModalSolicitud()
   } catch (e) {
     errorForm.value = e.response?.data?.message || 'Error al guardar.'
   } finally {
@@ -1087,13 +1063,12 @@ async function generarPdfSolicitud() {
   } catch { alert('Error al generar PDF.') }
 }
 
-async function procesarSolicitud() {
-  if (!modoEdicionId.value || procesando.value) return
-  if (!confirm('¿Confirma procesar la solicitud? Ya no podrá editar los datos.')) return
+async function procesarDesdeCard(sol) {
+  if (procesando.value) return
+  if (!confirm(`¿Confirma procesar la solicitud "${sol.destino}"?\n\nYa no podrá editar los datos ni reemplazar documentos.`)) return
   procesando.value = true
   try {
-    await api.patch(`/comisiones/solicitudes/${modoEdicionId.value}/procesar`)
-    modoEdicionEstado.value = 'PROCESADO'
+    await api.patch(`/comisiones/solicitudes/${sol.id}/procesar`)
     await cargar()
   } catch (e) {
     alert(e.response?.data?.message || 'Error al procesar la solicitud.')
