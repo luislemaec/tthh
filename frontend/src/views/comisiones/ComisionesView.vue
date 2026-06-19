@@ -34,7 +34,10 @@
     <template v-else>
       <!-- ═══ TAB: Mis Comisiones ═══ -->
       <div v-if="tabActivo === 'mis'">
-        <div v-if="solicitudesMias.length === 0" class="text-center py-16 text-gray-400">
+        <div v-if="errorCarga" class="mx-4 mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+          Error al cargar: {{ errorCarga }}
+        </div>
+        <div v-if="solicitudesMias.length === 0 && !errorCarga" class="text-center py-16 text-gray-400">
           <svg class="w-12 h-12 mx-auto mb-3 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
               d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
@@ -707,7 +710,8 @@ import api from '@/services/api'
 const auth = useAuthStore()
 
 // ── State ──────────────────────────────────────────────────
-const cargando  = ref(true)
+const cargando   = ref(true)
+const errorCarga = ref('')
 const solicitudes = ref([])
 const miRol     = ref({})
 const tabActivo = ref('mis')
@@ -859,7 +863,8 @@ function formatFecha(f) {
 
 // ── Load ───────────────────────────────────────────────────
 async function cargar() {
-  cargando.value = true
+  cargando.value  = true
+  errorCarga.value = ''
   try {
     const [rolResp, solResp] = await Promise.all([
       api.get('/comisiones/mi-rol'),
@@ -869,6 +874,7 @@ async function cargar() {
     solicitudes.value = solResp.data.data || solResp.data
   } catch (e) {
     console.error('Error cargando solicitudes:', e)
+    errorCarga.value = e.response?.data?.message || `Error ${e.response?.status || ''}: no se pudieron cargar las solicitudes.`
   } finally {
     cargando.value = false
   }
