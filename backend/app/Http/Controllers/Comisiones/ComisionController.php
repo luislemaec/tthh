@@ -57,7 +57,7 @@ class ComisionController extends Controller
             'es_presupuesto'      => in_array('PRESUPUESTO', $roles),
             'es_dir_financiero'   => in_array('DIRECTOR FINANCIERO', $roles),
             'es_tesoreria'        => in_array('TESORERIA', $roles),
-            'es_supervisor'       => DB::table('dbo.supervisor_area')->where('id_emp', $idEmp)->exists(),
+            'es_supervisor'       => DB::table('dbo.supervisor_area')->where('id_supervisor', $idEmp)->exists(),
         ]);
     }
 
@@ -71,7 +71,7 @@ class ComisionController extends Controller
                      || $this->tieneRol($request, 'PRESUPUESTO')
                      || $this->tieneRol($request, 'DIRECTOR FINANCIERO')
                      || $this->tieneRol($request, 'TESORERIA');
-        $esSupervisor = DB::table('dbo.supervisor_area')->where('id_emp', $idEmp)->exists();
+        $esSupervisor = DB::table('dbo.supervisor_area')->where('id_supervisor', $idEmp)->exists();
 
         $query = DB::table('dbo.com_solicitud as s')
             ->join('dbo.ad_empleado as e', 's.id_emp', '=', 'e.id_emp')
@@ -83,7 +83,7 @@ class ComisionController extends Controller
                 's.tiene_viaticos', 's.tiene_movilizaciones', 's.tiene_anticipo',
                 's.estado', 's.created_at',
                 DB::raw("COALESCE(d.nombre_depto, '') AS nombre_depto"),
-                DB::raw("(SELECT COALESCE(COUNT(*), 0) FROM dbo.com_solicitud_documento sd WHERE sd.solicitud_id = s.id AND sd.tipo_doc IN ('AUTORIZACION','PASAJES','CERTIFICACION')) AS docs_count")
+                DB::raw("0 AS docs_count")
             )
             ->where(function ($q) {
                 $q->whereNull('d.id_depto')->orWhere('d.id_depto', '!=', 999);
@@ -92,7 +92,7 @@ class ComisionController extends Controller
         if ($esAdmin || $esFinanciero) {
             // Ven todas las solicitudes
         } elseif ($esSupervisor) {
-            $deptos = DB::table('dbo.supervisor_area')->where('id_emp', $idEmp)->pluck('id_depto');
+            $deptos = DB::table('dbo.supervisor_area')->where('id_supervisor', $idEmp)->pluck('id_depto');
             $query->where(function ($q) use ($idEmp, $deptos) {
                 $q->where('s.id_emp', $idEmp)
                   ->orWhereIn('s.id_depto', $deptos);
@@ -112,6 +112,24 @@ class ComisionController extends Controller
         }
 
         $solicitudes = $query->orderByDesc('s.created_at')->paginate(20);
+
+        // Enriquecer con docs_count si la tabla ya existe
+        try {
+            $ids = collect($solicitudes->items())->pluck('id')->toArray();
+            if (!empty($ids)) {
+                $counts = DB::table('dbo.com_solicitud_documento')
+                    ->whereIn('solicitud_id', $ids)
+                    ->whereIn('tipo_doc', ['AUTORIZACION', 'PASAJES', 'CERTIFICACION'])
+                    ->selectRaw('solicitud_id, COUNT(*) as cnt')
+                    ->groupBy('solicitud_id')
+                    ->pluck('cnt', 'solicitud_id');
+                foreach ($solicitudes->items() as $item) {
+                    $item->docs_count = $counts[$item->id] ?? 0;
+                }
+            }
+        } catch (\Exception $e) {
+            // tabla com_solicitud_documento aún no existe — docs_count queda en 0
+        }
 
         return response()->json($solicitudes);
     }
