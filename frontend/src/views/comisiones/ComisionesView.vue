@@ -82,6 +82,14 @@
                     Documentos
                   </button>
                 </template>
+                <!-- PROCESADO -->
+                <template v-if="sol.estado === 'PROCESADO'">
+                  <button @click="abrirDocumentos(sol)"
+                    class="px-3 py-1.5 text-xs font-semibold text-white rounded-md transition hover:opacity-90"
+                    style="background-color:#5c4a6e;">
+                    Subir PDF Firmado
+                  </button>
+                </template>
                 <!-- APROBADO -->
                 <template v-if="sol.estado === 'APROBADO'">
                   <button @click="descargarPdf(sol)" title="PDF solicitud"
@@ -397,30 +405,47 @@
             </div>
           </div>
 
-          <div class="border-t border-gray-200 pt-3 space-y-3">
-            <button @click="generarPdfSolicitud" :disabled="!todosDocSubidos"
-              class="w-full py-2 text-sm font-semibold rounded border-2 transition"
-              :class="todosDocSubidos ? 'border-[#5c4a6e] text-[#5c4a6e] hover:bg-purple-50' : 'border-gray-200 text-gray-400 cursor-not-allowed'">
+          <!-- Botón PROCESAR (estado BORRADOR + 3 docs listos) -->
+          <div v-if="modoEdicionEstado === 'BORRADOR'" class="border-t border-gray-200 pt-3">
+            <button @click="procesarSolicitud" :disabled="!todosDocSubidos || procesando"
+              class="w-full py-2.5 text-sm font-semibold rounded-lg transition"
+              :class="todosDocSubidos ? 'text-white hover:opacity-90' : 'bg-gray-100 text-gray-400 cursor-not-allowed'"
+              :style="todosDocSubidos ? 'background-color:#5c4a6e' : ''">
+              {{ procesando ? 'Procesando...' : 'PROCESAR SOLICITUD' }}
+            </button>
+            <p v-if="!todosDocSubidos" class="text-xs text-center text-gray-400 mt-1">
+              Suba los {{ 3 - docsSubidos }} documento(s) restante(s) para habilitar
+            </p>
+          </div>
+
+          <!-- Estado PROCESADO: generar PDF y subir firmado -->
+          <div v-if="modoEdicionEstado === 'PROCESADO'" class="border-t border-gray-200 pt-3 space-y-3">
+            <div class="p-3 bg-blue-50 rounded-lg border border-blue-200 text-blue-800 text-xs font-medium">
+              ✓ Solicitud procesada — Genere el PDF, obtenga las firmas y suba el documento firmado.
+            </div>
+            <button @click="generarPdfSolicitud"
+              class="w-full py-2 text-sm font-semibold rounded border-2 border-[#5c4a6e] text-[#5c4a6e] hover:bg-purple-50 transition">
               Generar PDF de Solicitud
             </button>
-
-            <div v-if="todosDocSubidos && !docFirmadoSubido">
-              <p class="text-xs text-gray-500 mb-2">Una vez obtenidas las firmas, suba el PDF firmado:</p>
+            <div v-if="!docFirmadoSubido">
+              <p class="text-xs text-gray-500 mb-2">Una vez firmado, suba el PDF:</p>
               <label class="cursor-pointer block">
                 <input type="file" accept=".pdf" class="hidden" @change="subirPdfFirmado($event)" :disabled="subiendoFirmado"/>
                 <span class="block w-full py-2 text-center text-sm font-semibold text-white rounded"
                   :style="subiendoFirmado ? 'background-color:#9d8aae; cursor:not-allowed' : 'background-color:#5c4a6e; cursor:pointer'">
-                  {{ subiendoFirmado ? 'Procesando...' : 'Subir PDF Firmado → APROBAR' }}
+                  {{ subiendoFirmado ? 'Procesando...' : 'Subir PDF Firmado → APROBADO' }}
                 </span>
               </label>
             </div>
-            <div v-if="docFirmadoSubido"
-              class="flex items-center gap-2 text-green-700 text-sm font-medium p-3 bg-green-50 rounded-lg border border-green-200">
-              <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-              </svg>
-              Solicitud APROBADA — PDF firmado archivado correctamente
-            </div>
+          </div>
+
+          <!-- Estado APROBADO -->
+          <div v-if="modoEdicionEstado === 'APROBADO'"
+            class="flex items-center gap-2 text-green-700 text-sm font-medium p-3 bg-green-50 rounded-lg border border-green-200">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            Solicitud APROBADA — en espera del regreso para el informe
           </div>
           </template>
 
@@ -446,27 +471,19 @@
         <button @click="cerrarModalSolicitud" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition">
           Cerrar
         </button>
-        <div class="flex gap-3">
-          <!-- En Documentos: mostrar progreso y sólo "Guardar" si todavía no hay docs -->
-          <template v-if="formTab === 'Documentos'">
-            <span v-if="!modoEdicionId || guardando" class="text-xs text-gray-400 self-center italic">
-              {{ guardando ? 'Guardando...' : 'Complete el formulario para habilitar documentos' }}
-            </span>
-            <span v-else-if="!todosDocSubidos" class="text-xs text-orange-600 font-medium self-center">
-              {{ docsSubidos }}/3 documentos subidos
-            </span>
-            <span v-else-if="!docFirmadoSubido" class="text-xs text-blue-600 font-medium self-center">
-              ✓ Documentos completos — suba el PDF firmado para aprobar
-            </span>
-          </template>
-          <!-- En otras pestañas: Guardar / Actualizar -->
-          <template v-else>
-            <button @click="guardarSolicitud" :disabled="guardando"
-              class="px-5 py-2 text-sm font-semibold text-white rounded-lg transition hover:opacity-90 disabled:opacity-50"
-              style="background-color:#5c4a6e;">
-              {{ guardando ? 'Guardando...' : (modoEdicion ? 'Actualizar' : 'Guardar') }}
-            </button>
-          </template>
+        <div class="flex items-center gap-3">
+          <!-- Progreso de docs en Tab Documentos -->
+          <span v-if="formTab === 'Documentos' && modoEdicionId && !todosDocSubidos"
+            class="text-xs text-orange-600 font-medium">
+            {{ docsSubidos }}/3 documentos subidos
+          </span>
+          <!-- Botón Guardar siempre visible (excepto cuando está PROCESADO/APROBADO) -->
+          <button v-if="modoEdicionEstado !== 'PROCESADO' && modoEdicionEstado !== 'APROBADO'"
+            @click="guardarSolicitud" :disabled="guardando"
+            class="px-5 py-2 text-sm font-semibold text-white rounded-lg transition hover:opacity-90 disabled:opacity-50"
+            style="background-color:#5c4a6e;">
+            {{ guardando ? 'Guardando...' : (modoEdicion ? 'Actualizar' : 'Guardar') }}
+          </button>
         </div>
       </div>
     </div>
@@ -718,6 +735,7 @@ const form_ciudadId    = ref(null)
 const documentos      = ref([])
 const subiendoDoc     = ref('')
 const subiendoFirmado = ref(false)
+const procesando      = ref(false)
 
 const slotsDocumento = [
   { tipo: 'AUTORIZACION',  label: 'Solicitud de Autorización y Aprobación' },
@@ -1067,6 +1085,21 @@ async function generarPdfSolicitud() {
     window.open(url, '_blank')
     setTimeout(() => URL.revokeObjectURL(url), 60000)
   } catch { alert('Error al generar PDF.') }
+}
+
+async function procesarSolicitud() {
+  if (!modoEdicionId.value || procesando.value) return
+  if (!confirm('¿Confirma procesar la solicitud? Ya no podrá editar los datos.')) return
+  procesando.value = true
+  try {
+    await api.patch(`/comisiones/solicitudes/${modoEdicionId.value}/procesar`)
+    modoEdicionEstado.value = 'PROCESADO'
+    await cargar()
+  } catch (e) {
+    alert(e.response?.data?.message || 'Error al procesar la solicitud.')
+  } finally {
+    procesando.value = false
+  }
 }
 
 async function subirPdfFirmado(event) {

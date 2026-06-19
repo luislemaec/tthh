@@ -339,6 +339,37 @@ class ComisionController extends Controller
         ]);
     }
 
+    public function procesar(Request $request, int $id): \Illuminate\Http\JsonResponse
+    {
+        $solicitud = DB::table('dbo.com_solicitud')
+            ->where('id', $id)
+            ->where('id_emp', $request->user()->id_emp)
+            ->first();
+
+        if (!$solicitud) abort(403, 'No autorizado.');
+        if ($solicitud->estado !== 'BORRADOR') abort(422, 'Solo se puede procesar una solicitud en BORRADOR.');
+
+        $docsCount = DB::table('dbo.com_solicitud_documento')
+            ->where('solicitud_id', $id)
+            ->whereIn('tipo_doc', ['AUTORIZACION', 'PASAJES', 'CERTIFICACION'])
+            ->count();
+
+        if ($docsCount < 3) abort(422, 'Debe subir los 3 documentos requeridos antes de procesar.');
+
+        $numero = $this->generarNumero($solicitud->id_depto);
+
+        DB::table('dbo.com_solicitud')->where('id', $id)->update([
+            'estado'           => 'PROCESADO',
+            'numero_solicitud' => $numero,
+            'updated_by'       => $request->user()->id_emp,
+            'updated_at'       => now(),
+        ]);
+
+        AuditoriaService::log('dbo.com_solicitud', $id, 'PROCESAR', ['estado' => 'BORRADOR'], ['estado' => 'PROCESADO', 'numero' => $numero], $request, 'Solicitud procesada');
+
+        return response()->json(['message' => 'Solicitud procesada correctamente.', 'numero' => $numero]);
+    }
+
     public function subirFirmado(Request $request, int $id): \Illuminate\Http\JsonResponse
     {
         $request->validate(['archivo' => 'required|file|mimes:pdf|max:20480']);
@@ -349,14 +380,7 @@ class ComisionController extends Controller
             ->first();
 
         if (!$solicitud) abort(403, 'No autorizado');
-        if ($solicitud->estado !== 'BORRADOR') abort(422, 'La solicitud debe estar en BORRADOR.');
-
-        $docsCount = DB::table('dbo.com_solicitud_documento')
-            ->where('solicitud_id', $id)
-            ->whereIn('tipo_doc', ['AUTORIZACION', 'PASAJES', 'CERTIFICACION'])
-            ->count();
-
-        if ($docsCount < 3) abort(422, 'Debe subir los 3 documentos requeridos antes de aprobar.');
+        if ($solicitud->estado !== 'PROCESADO') abort(422, 'La solicitud debe estar en PROCESADO.');
 
         $emp      = $request->user();
         $anio     = now()->year;
