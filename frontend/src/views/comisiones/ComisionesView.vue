@@ -636,7 +636,7 @@
         <div class="grid grid-cols-2 gap-3">
           <div>
             <p class="text-xs text-gray-400 font-semibold mb-0.5">EMPLEADO</p>
-            <p class="font-medium">{{ detalleActual.empleado?.apellido_emp }} {{ detalleActual.empleado?.nombre_emp }}</p>
+            <p class="font-medium">{{ detalleActual.nombre_empleado }}</p>
             <p class="text-xs text-gray-500">{{ detalleActual.unidad_nombre }}</p>
           </div>
           <div>
@@ -664,10 +664,9 @@
         <div v-if="detalleActual.servidores?.length">
           <p class="text-xs text-gray-400 font-semibold mb-1">SERVIDORES COMISIONADOS</p>
           <div v-for="srv in detalleActual.servidores" :key="srv.id"
-            class="flex gap-3 text-xs text-gray-600 py-1 border-b border-gray-50">
-            <span class="font-mono text-gray-400 w-24">{{ srv.id_emp }}</span>
-            <span class="flex-1">{{ srv.unidad }}</span>
-            <span class="flex-1">{{ srv.puesto }}</span>
+            class="text-xs text-gray-600 py-1.5 border-b border-gray-50">
+            <p class="font-medium text-gray-800">{{ srv.nombre }}</p>
+            <p class="text-gray-400 mt-0.5">{{ srv.puesto }} · {{ srv.unidad }}</p>
           </div>
         </div>
         <div v-if="detalleActual.transportes?.length">
