@@ -515,6 +515,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get('solicitudes/{id}',                            [ComisionController::class, 'detalle']);
         Route::put('solicitudes/{id}',                            [ComisionController::class, 'update']);
         Route::patch('solicitudes/{id}/procesar',                 [ComisionController::class, 'procesar']);
+        Route::patch('solicitudes/{id}/devolver',                 [ComisionController::class, 'devolver']);
         Route::patch('solicitudes/{id}/solicitar-pago',           [ComisionController::class, 'solicitarPago']);
         Route::get('solicitudes/{id}/pdf',                        [ComisionController::class, 'pdf']);
 

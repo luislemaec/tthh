@@ -212,8 +212,8 @@ class ComisionController extends Controller
     {
         $solicitud = ComSolicitud::findOrFail($id);
 
-        if ($solicitud->estado !== 'BORRADOR') {
-            return response()->json(['message' => 'Solo se puede editar una solicitud en BORRADOR'], 422);
+        if (!in_array($solicitud->estado, ['BORRADOR', 'DEVUELTO'])) {
+            return response()->json(['message' => 'Solo se puede editar una solicitud en BORRADOR o DEVUELTO'], 422);
         }
 
         $request->validate([
@@ -284,7 +284,7 @@ class ComisionController extends Controller
             ->first();
 
         if (!$solicitud) abort(403, 'No autorizado');
-        if ($solicitud->estado !== 'BORRADOR') abort(422, 'Solo se pueden subir documentos en BORRADOR.');
+        if (!in_array($solicitud->estado, ['BORRADOR', 'DEVUELTO'])) abort(422, 'Solo se pueden subir documentos en BORRADOR o DEVUELTO.');
 
         $emp      = $request->user();
         $anio     = now()->year;
@@ -369,7 +369,7 @@ class ComisionController extends Controller
             ->first();
 
         if (!$solicitud) abort(403, 'No autorizado.');
-        if ($solicitud->estado !== 'BORRADOR') abort(422, 'Solo se puede procesar una solicitud en BORRADOR.');
+        if (!in_array($solicitud->estado, ['BORRADOR', 'DEVUELTO'])) abort(422, 'Solo se puede procesar una solicitud en BORRADOR o DEVUELTO.');
 
         $docsCount = DB::table('dbo.com_solicitud_documento')
             ->where('solicitud_id', $id)
@@ -402,7 +402,7 @@ class ComisionController extends Controller
             ->first();
 
         if (!$solicitud) abort(403, 'No autorizado');
-        if ($solicitud->estado !== 'PROCESADO') abort(422, 'La solicitud debe estar en PROCESADO.');
+        if ($solicitud->estado !== 'PROCESADO') abort(422, 'Debe procesar la solicitud antes de subir el PDF firmado.');
 
         $emp      = $request->user();
         $anio     = now()->year;
@@ -444,6 +444,38 @@ class ComisionController extends Controller
         AuditoriaService::log('dbo.com_solicitud', $id, 'APROBAR', ['estado' => 'BORRADOR'], ['estado' => 'APROBADO', 'numero' => $numero], $request, 'Solicitud aprobada con PDF firmado');
 
         return response()->json(['message' => 'Solicitud aprobada.', 'numero' => $numero]);
+    }
+
+    public function devolver(Request $request, int $id): \Illuminate\Http\JsonResponse
+    {
+        $request->validate(['observacion' => 'required|string|max:500']);
+
+        $solicitud = DB::table('dbo.com_solicitud')->where('id', $id)->first();
+        if (!$solicitud) abort(404);
+
+        $esFinanciero = $this->tieneRol($request, 'CONTABILIDAD')
+            || $this->tieneRol($request, 'PRESUPUESTO')
+            || $this->tieneRol($request, 'DIRECTOR FINANCIERO')
+            || $this->tieneRol($request, 'TESORERIA')
+            || $this->tieneRol($request, 'ADMINISTRADOR');
+
+        if (!$esFinanciero) abort(403, 'No autorizado para devolver solicitudes.');
+
+        $estadoAnterior = $solicitud->estado;
+
+        DB::table('dbo.com_solicitud')->where('id', $id)->update([
+            'estado'                 => 'DEVUELTO',
+            'observacion_devolucion' => $request->observacion,
+            'updated_by'             => $request->user()->id_emp,
+            'updated_at'             => now(),
+        ]);
+
+        AuditoriaService::log('dbo.com_solicitud', $id, 'DEVOLVER',
+            ['estado' => $estadoAnterior],
+            ['estado' => 'DEVUELTO', 'observacion' => $request->observacion],
+            $request, 'Solicitud devuelta para corrección');
+
+        return response()->json(['message' => 'Solicitud devuelta correctamente.']);
     }
 
     public function solicitarPago(Request $request, int $id): \Illuminate\Http\JsonResponse
@@ -608,6 +640,7 @@ class ComisionController extends Controller
             'tipo_cuenta'            => $s->tipo_cuenta,
             'numero_cuenta'          => $s->numero_cuenta,
             'estado'                 => $s->estado,
+            'observacion_devolucion' => $s->observacion_devolucion,
             'observacion'            => $s->observacion,
             'num_sistema_exterior'   => $s->num_sistema_exterior,
             'resolucion_juridica'    => $s->resolucion_juridica,
