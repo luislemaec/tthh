@@ -922,13 +922,13 @@ async function editarSolicitud(sol, tabInicial = 'Datos Generales') {
       tiene_movilizaciones:    data.tiene_movilizaciones ?? false,
       tiene_anticipo:          data.tiene_anticipo  ?? false,
       transportes:             (data.transportes ?? []).map(t => ({
-        tipo:          t.tipo,
-        nombre:        t.nombre,
-        ruta:          t.ruta,
-        salida_fecha:  t.salida_fecha,
-        salida_hora:   t.salida_hora,
-        llegada_fecha: t.llegada_fecha,
-        llegada_hora:  t.llegada_hora,
+        tipo:          t.tipo          || '',
+        nombre:        t.nombre        || '',
+        ruta:          t.ruta          || '',
+        salida_fecha:  t.salida_fecha  || '',
+        salida_hora:   t.salida_hora   || '',
+        llegada_fecha: t.llegada_fecha || '',
+        llegada_hora:  t.llegada_hora  || '',
       })),
     }
 
