@@ -107,11 +107,29 @@
                 <p class="text-sm font-medium text-gray-800">{{ sol.empleado?.apellido_emp }} {{ sol.empleado?.nombre_emp }}</p>
                 <p class="text-xs text-gray-500">{{ sol.destino }} — {{ formatFecha(sol.fecha_salida) }} al {{ formatFecha(sol.fecha_llegada) }}</p>
               </div>
-              <div class="flex gap-2">
-                <button @click="descargarPdfSolicitud(sol)" class="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded transition">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div class="flex gap-2 items-center flex-wrap">
+                <button @click="abrirDetalle(sol)"
+                  class="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-[#5c4a6e] border border-[#5c4a6e] rounded hover:bg-purple-50 transition">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                  </svg>
+                  Ver todo
+                </button>
+                <button @click="descargarPdfSolicitud(sol)"
+                  class="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-red-500 border border-red-200 rounded hover:bg-red-50 transition">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
                   </svg>
+                  PDF Solicitud
+                </button>
+                <button v-if="miRol.es_contabilidad || miRol.es_presupuesto || miRol.es_dir_financiero || miRol.es_tesoreria || miRol.es_admin"
+                  @click="abrirDevolverSol(sol)"
+                  class="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-orange-600 border border-orange-300 rounded hover:bg-orange-50 transition">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+                  </svg>
+                  Devolver
                 </button>
               </div>
             </div>
@@ -239,6 +257,112 @@
       </div>
 
     </template>
+  </div>
+
+  <!-- ══════════════════ MODAL VER TODO ══════════════════ -->
+  <div v-if="modalDetalle" class="fixed inset-0 z-50 flex items-start justify-center pt-8 pb-4 px-4">
+    <div class="fixed inset-0 bg-black/40" @click="modalDetalle = false"/>
+    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col z-10 overflow-hidden">
+      <div class="flex items-center justify-between px-5 py-4 text-white" style="background-color:#5c4a6e;">
+        <div>
+          <h2 class="text-base font-bold">{{ detalleData?.numero_solicitud }} — Detalle completo</h2>
+          <p class="text-xs opacity-80">{{ detalleData?.nombre_empleado }}</p>
+        </div>
+        <button @click="modalDetalle = false" class="text-white/80 hover:text-white">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div v-if="cargandoDetalle" class="flex items-center justify-center py-16">
+        <div class="w-8 h-8 border-2 border-[#5c4a6e] border-t-transparent rounded-full animate-spin"></div>
+      </div>
+      <div v-else class="overflow-y-auto flex-1 p-5 space-y-4">
+        <!-- Datos generales -->
+        <div>
+          <p class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Datos de la Comisión</p>
+          <div class="grid grid-cols-2 gap-2 text-sm">
+            <div class="bg-gray-50 rounded p-2"><span class="text-xs text-gray-400 block">Tipo</span><span class="font-medium">{{ detalleData?.tipo }}</span></div>
+            <div class="bg-gray-50 rounded p-2"><span class="text-xs text-gray-400 block">Destino</span><span class="font-medium">{{ detalleData?.destino }}</span></div>
+            <div class="bg-gray-50 rounded p-2"><span class="text-xs text-gray-400 block">Fecha Salida</span><span class="font-medium">{{ formatFecha(detalleData?.fecha_salida) }}</span></div>
+            <div class="bg-gray-50 rounded p-2"><span class="text-xs text-gray-400 block">Fecha Regreso</span><span class="font-medium">{{ formatFecha(detalleData?.fecha_llegada) }}</span></div>
+          </div>
+        </div>
+
+        <!-- Documentos -->
+        <div>
+          <p class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Documentos Adjuntos</p>
+          <div class="space-y-2">
+            <div v-for="slot in [{tipo:'AUTORIZACION',label:'Solicitud de Autorización'},{tipo:'PASAJES',label:'Pasajes Aéreos'},{tipo:'CERTIFICACION',label:'Certificación Presupuestaria'},{tipo:'FIRMADO',label:'Solicitud Firmada (PDF Firmado)'}]"
+              :key="slot.tipo"
+              class="flex items-center justify-between p-2.5 rounded border"
+              :class="docDetalle(slot.tipo) ? 'border-green-200 bg-green-50' : 'border-gray-100 bg-gray-50'">
+              <div class="flex items-center gap-2 text-sm">
+                <span v-if="docDetalle(slot.tipo)" class="text-green-600 font-bold text-base">✓</span>
+                <span v-else class="text-gray-300 font-bold text-base">○</span>
+                <span :class="docDetalle(slot.tipo) ? 'text-green-800 font-medium' : 'text-gray-400'">{{ slot.label }}</span>
+              </div>
+              <button v-if="docDetalle(slot.tipo)" @click="descargarDocDetalle(docDetalle(slot.tipo))"
+                class="text-xs text-blue-600 hover:underline font-medium px-2 py-1 rounded hover:bg-blue-50">
+                Descargar
+              </button>
+              <span v-else class="text-xs text-gray-300">No adjunto</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Informe -->
+        <div v-if="detalleData?.informe">
+          <p class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Informe de Cumplimiento</p>
+          <div class="bg-gray-50 rounded-lg p-3 space-y-2 text-sm">
+            <div class="grid grid-cols-2 gap-2">
+              <div><span class="text-xs text-gray-400 block">Fecha del Informe</span>{{ formatFecha(detalleData.informe.fecha_informe) }}</div>
+              <div><span class="text-xs text-gray-400 block">Fecha Salida Real</span>{{ formatFecha(detalleData.informe.fecha_salida) }} {{ detalleData.informe.hora_salida }}</div>
+            </div>
+            <div><span class="text-xs text-gray-400 block mb-1">Actividades Realizadas</span>
+              <p class="whitespace-pre-line text-gray-700 text-xs bg-white rounded p-2 border border-gray-100">{{ detalleData.informe.actividades }}</p>
+            </div>
+            <div v-if="detalleData.informe.productos"><span class="text-xs text-gray-400 block mb-1">Productos / Resultados</span>
+              <p class="whitespace-pre-line text-gray-700 text-xs bg-white rounded p-2 border border-gray-100">{{ detalleData.informe.productos }}</p>
+            </div>
+            <div class="flex gap-2 pt-1">
+              <button @click="descargarPdfInforme(detalleData)"
+                class="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-red-500 border border-red-200 rounded hover:bg-red-50 transition">
+                PDF Informe
+              </button>
+              <button v-if="detalleData.informe.pdf_firmado_id" @click="descargarInformeFirmado(detalleData)"
+                class="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-green-600 border border-green-300 rounded hover:bg-green-50 transition">
+                Informe Firmado
+              </button>
+            </div>
+          </div>
+        </div>
+        <div v-else class="text-sm text-gray-400 italic bg-gray-50 rounded p-3">El empleado aún no ha presentado el informe de cumplimiento.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════ MODAL DEVOLVER SOLICITUD ══════════════════ -->
+  <div v-if="modalDevolverSol" class="fixed inset-0 z-50 flex items-center justify-center px-4">
+    <div class="fixed inset-0 bg-black/40" @click="modalDevolverSol = false"/>
+    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden z-10">
+      <div class="px-6 py-4 text-white font-bold text-base" style="background-color:#5c4a6e">Devolver Solicitud para Corrección</div>
+      <div class="p-6">
+        <p class="text-sm text-gray-600 mb-3">La solicitud <span class="font-mono font-semibold">{{ devolverTarget?.numero_solicitud }}</span> volverá al estado <strong>DEVUELTO</strong> y el empleado podrá reeditarla desde el inicio.</p>
+        <label class="text-xs font-semibold text-gray-600 mb-1 block">Motivo de devolución *</label>
+        <textarea v-model="devolverObs" rows="3" placeholder="Describa el motivo o corrección requerida..."
+          class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-orange-400 resize-none"
+          style="text-transform:uppercase"></textarea>
+        <p v-if="errorDev" class="text-red-600 text-xs mt-2">{{ errorDev }}</p>
+        <div class="flex justify-end gap-3 mt-4">
+          <button @click="modalDevolverSol = false" class="px-4 py-2 text-sm text-gray-600">Cancelar</button>
+          <button @click="confirmarDevolverSol" :disabled="devolviendo"
+            class="px-5 py-2 text-sm font-semibold bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition disabled:opacity-50">
+            {{ devolviendo ? 'Enviando...' : 'Devolver' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- ══════════════════ MODAL FICHA DE LIQUIDACIÓN ══════════════════ -->
@@ -428,6 +552,16 @@ const errorCur   = ref('')
 const modalDevolucion = ref(false)
 const devolucionTarget = ref(null)
 const devolucionForm   = ref({ comprobante: '', fecha: new Date().toISOString().slice(0,10) })
+
+const modalDetalle     = ref(false)
+const detalleData      = ref(null)
+const cargandoDetalle  = ref(false)
+
+const modalDevolverSol = ref(false)
+const devolverTarget   = ref(null)
+const devolverObs      = ref('')
+const errorDev         = ref('')
+const devolviendo      = ref(false)
 
 const fichaFormVacio = () => ({
   valor_por_dia: 0,
@@ -647,6 +781,68 @@ async function guardarDevolucion() {
   } finally {
     guardando.value = false
   }
+}
+
+async function abrirDetalle(sol) {
+  modalDetalle.value   = true
+  detalleData.value    = null
+  cargandoDetalle.value = true
+  try {
+    const { data } = await api.get(`/comisiones/solicitudes/${sol.id}`)
+    detalleData.value = data
+  } catch { alert('Error al cargar detalle.') }
+  finally { cargandoDetalle.value = false }
+}
+
+function docDetalle(tipo) {
+  return detalleData.value?.documentos?.find(d => d.tipo_doc === tipo) ?? null
+}
+
+async function descargarDocDetalle(doc) {
+  try {
+    const resp = await api.get(`/comisiones/solicitudes/${detalleData.value.id}/documentos/${doc.id}/descargar`, { responseType: 'blob' })
+    const url = URL.createObjectURL(new Blob([resp.data], { type: 'application/pdf' }))
+    window.open(url, '_blank')
+    setTimeout(() => URL.revokeObjectURL(url), 60000)
+  } catch { alert('Error al descargar.') }
+}
+
+async function descargarPdfInforme(sol) {
+  try {
+    const resp = await api.get(`/comisiones/solicitudes/${sol.id}/informe/pdf`, { responseType: 'blob' })
+    const url = URL.createObjectURL(new Blob([resp.data], { type: 'application/pdf' }))
+    window.open(url, '_blank')
+    setTimeout(() => URL.revokeObjectURL(url), 60000)
+  } catch { alert('Error al generar PDF del informe.') }
+}
+
+async function descargarInformeFirmado(sol) {
+  try {
+    const resp = await api.get(`/comisiones/solicitudes/${sol.id}/informe/descargar-firmado`, { responseType: 'blob' })
+    const url = URL.createObjectURL(new Blob([resp.data], { type: 'application/pdf' }))
+    window.open(url, '_blank')
+    setTimeout(() => URL.revokeObjectURL(url), 60000)
+  } catch { alert('Error al descargar informe firmado.') }
+}
+
+function abrirDevolverSol(sol) {
+  devolverTarget.value   = sol
+  devolverObs.value      = ''
+  errorDev.value         = ''
+  modalDevolverSol.value = true
+}
+
+async function confirmarDevolverSol() {
+  if (!devolverObs.value.trim()) { errorDev.value = 'Ingrese el motivo de devolución.'; return }
+  devolviendo.value = true
+  errorDev.value    = ''
+  try {
+    await api.patch(`/comisiones/solicitudes/${devolverTarget.value.id}/devolver`, { observacion: devolverObs.value })
+    modalDevolverSol.value = false
+    await cargar()
+  } catch (e) {
+    errorDev.value = e.response?.data?.message || 'Error al devolver.'
+  } finally { devolviendo.value = false }
 }
 
 async function descargarPdfSolicitud(sol) {
