@@ -78,18 +78,11 @@
                     :class="sol.docs_count >= 3 ? 'text-green-600' : 'text-orange-500'">
                     {{ sol.docs_count }}/3 docs
                   </span>
-                  <!-- Editar datos -->
-                  <button @click="editarSolicitud(sol)" title="Editar datos"
-                    class="p-1.5 rounded-md text-gray-400 hover:text-[#5c4a6e] hover:bg-purple-50 transition">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                    </svg>
-                  </button>
-                  <!-- Documentos -->
-                  <button @click="abrirDocumentos(sol)" title="Gestionar documentos"
+                  <!-- Editar datos y documentos -->
+                  <button @click="editarSolicitud(sol)" title="Editar"
                     class="px-2.5 py-1.5 text-xs font-semibold border rounded-md transition"
                     style="border-color:#5c4a6e; color:#5c4a6e;">
-                    Documentos
+                    Editar
                   </button>
                   <!-- PROCESAR (solo cuando 3 docs listos) -->
                   <button v-if="sol.docs_count >= 3" @click="procesarDesdeCard(sol)"
@@ -100,8 +93,8 @@
                 </template>
                 <!-- PROCESADO -->
                 <template v-if="sol.estado === 'PROCESADO'">
-                  <button @click="abrirDocumentos(sol)"
-                    class="px-3 py-1.5 text-xs font-semibold text-white rounded-md transition hover:opacity-90"
+                  <button @click="editarSolicitud(sol, 'Documentos')"
+                    class="px-2.5 py-1.5 text-xs font-semibold text-white rounded-md transition hover:opacity-90"
                     style="background-color:#5c4a6e;">
                     Subir PDF Firmado
                   </button>
@@ -902,51 +895,64 @@ function abrirNueva() {
   modalSolicitud.value = true
 }
 
-function editarSolicitud(sol) {
-  form.value = {
-    tipo:                   sol.tipo,
-    destino:                sol.destino,
-    fecha_solicitud:        sol.fecha_solicitud,
-    fecha_salida:           sol.fecha_salida,
-    hora_salida:            sol.hora_salida,
-    fecha_llegada:          sol.fecha_llegada,
-    hora_llegada:           sol.hora_llegada,
-    descripcion_actividades: sol.descripcion_actividades,
-    tiene_viaticos:         sol.tiene_viaticos,
-    tiene_movilizaciones:   sol.tiene_movilizaciones,
-    tiene_anticipo:         sol.tiene_anticipo,
-    transportes:            sol.transportes || [],
-  }
+async function editarSolicitud(sol, tabInicial = 'Datos Generales') {
   modoEdicion.value       = true
   modoEdicionId.value     = sol.id
   modoEdicionEstado.value = sol.estado
-  formTab.value           = 'Datos Generales'
+  formTab.value           = tabInicial
   errorForm.value         = ''
   documentos.value        = []
   form_provinciaId.value  = null
   form_ciudadId.value     = null
+  modalSolicitud.value    = true
 
-  // Pre-seleccionar provincia/ciudad si INTERIOR
-  if (sol.tipo === 'INTERIOR' && sol.destino && provincias.value.length) {
-    const parts = sol.destino.split(' - ')
-    if (parts.length >= 2) {
-      const prov = provincias.value.find(p => p.nombre === parts[0])
-      if (prov) {
-        form_provinciaId.value = prov.id
-        const ciu = prov.ciudades?.find(c => c.nombre === parts[1])
-        if (ciu) form_ciudadId.value = ciu.id
+  // Cargar datos completos desde el detalle (el listado no incluye horas, actividades, transportes)
+  try {
+    const { data } = await api.get(`/comisiones/solicitudes/${sol.id}`)
+    form.value = {
+      tipo:                    data.tipo,
+      destino:                 data.destino,
+      fecha_solicitud:         data.fecha_solicitud,
+      fecha_salida:            data.fecha_salida,
+      hora_salida:             data.hora_salida,
+      fecha_llegada:           data.fecha_llegada,
+      hora_llegada:            data.hora_llegada,
+      descripcion_actividades: data.descripcion_actividades,
+      tiene_viaticos:          data.tiene_viaticos  ?? true,
+      tiene_movilizaciones:    data.tiene_movilizaciones ?? false,
+      tiene_anticipo:          data.tiene_anticipo  ?? false,
+      transportes:             (data.transportes ?? []).map(t => ({
+        tipo:          t.tipo,
+        nombre:        t.nombre,
+        ruta:          t.ruta,
+        salida_fecha:  t.salida_fecha,
+        salida_hora:   t.salida_hora,
+        llegada_fecha: t.llegada_fecha,
+        llegada_hora:  t.llegada_hora,
+      })),
+    }
+
+    // Pre-seleccionar provincia/ciudad si INTERIOR
+    if (data.tipo === 'INTERIOR' && data.destino && provincias.value.length) {
+      const parts = data.destino.split(' - ')
+      if (parts.length >= 2) {
+        const prov = provincias.value.find(p => p.nombre === parts[0])
+        if (prov) {
+          form_provinciaId.value = prov.id
+          const ciu = prov.ciudades?.find(c => c.nombre === parts[1])
+          if (ciu) form_ciudadId.value = ciu.id
+        }
       }
     }
+
+    if (tabInicial === 'Documentos') {
+      documentos.value = data.documentos ?? []
+    }
+  } catch {
+    errorForm.value = 'Error al cargar los datos de la solicitud.'
   }
-
-  modalSolicitud.value = true
 }
 
-function abrirDocumentos(sol) {
-  editarSolicitud(sol)
-  formTab.value = 'Documentos'
-  cargarDocumentos(sol.id)
-}
 
 function cerrarModalSolicitud() {
   modalSolicitud.value = false
