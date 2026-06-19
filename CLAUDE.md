@@ -848,7 +848,7 @@ Vista admin SBU: `views/admin/SbuView.vue` (ruta `admin/sbu`) — el SBU se gest
 | `ProveedorController` | CRUD proveedores |
 | `IvaController` | CRUD tasas IVA |
 | `AjusteController` | Ajuste de inventario (toma física): store/index — inserta en kardex tipo AJUSTE_POSITIVO/NEGATIVO. También `importarStock`: carga masiva desde CSV |
-| `SolicitudMaterialController` | Solicitudes internas: store/aprobar/negar/despachar — **PENDIENTE: despachar() debe insertar en kardex** |
+| `SolicitudMaterialController` | Solicitudes internas: store/aprobar/negar/despachar — al despachar inserta en kardex tipo `EGRESO` con `referencia_tipo = 'solicitud_material'` |
 | `ReporteAdqController` | Kardex NIC 2, Libro de Compras, Egresos Valorizados, **Inventario Mensual** (JSON + PDF) |
 
 ### Reglas de Precio

@@ -212,12 +212,43 @@ class SolicitudMaterialController extends Controller
                 $det->update(['cantidad_autorizada' => $autorizada]);
 
                 if ($autorizada > 0) {
+                    $articulo    = DB::table('adq.articulo')->where('id', $det->articulo_id)->first();
+                    $stockAntes  = (float) $articulo->stock_actual;
+                    $precioAntes = (float) $articulo->precio_unitario;
+                    $nuevoStock  = max(0, $stockAntes - $autorizada);
+                    $nuevoPrecio = $nuevoStock == 0 ? 0 : $precioAntes;
+
                     DB::table('adq.articulo')
                         ->where('id', $det->articulo_id)
                         ->update([
-                            'stock_actual' => DB::raw('GREATEST(0, stock_actual - ' . $autorizada . ')'),
-                            'updated_at'   => now(),
+                            'stock_actual'    => $nuevoStock,
+                            'precio_unitario' => $nuevoPrecio,
+                            'updated_at'      => now(),
                         ]);
+
+                    DB::table('adq.kardex')->insert([
+                        'articulo_id'       => $det->articulo_id,
+                        'fecha'             => now(),
+                        'tipo_movimiento'   => 'EGRESO',
+                        'referencia_tipo'   => 'solicitud_material',
+                        'referencia_id'     => $solicitud->id,
+                        'referencia_det_id' => $det->id,
+                        'numero_documento'  => null,
+                        'cantidad_entrada'  => 0,
+                        'cantidad_salida'   => $autorizada,
+                        'stock_antes'       => $stockAntes,
+                        'stock_despues'     => $nuevoStock,
+                        'precio_antes'      => $precioAntes,
+                        'precio_despues'    => $nuevoPrecio,
+                        'precio_movimiento' => $precioAntes,
+                        'subtotal'          => round($autorizada * $precioAntes, 2),
+                        'iva_valor'         => 0,
+                        'total_linea'       => round($autorizada * $precioAntes, 2),
+                        'valor_saldo'       => round($nuevoStock * $nuevoPrecio, 2),
+                        'usuario'           => $emp->id_emp,
+                        'observacion'       => 'Solicitud de materiales #' . $solicitud->id,
+                        'created_at'        => now(),
+                    ]);
                 }
 
                 $totalAutorizado += $autorizada;
