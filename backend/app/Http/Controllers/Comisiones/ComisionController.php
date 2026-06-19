@@ -174,7 +174,10 @@ class ComisionController extends Controller
             AuditoriaService::log('dbo.com_solicitud', $solicitud->id, 'CREAR', null, ['tipo' => $solicitud->tipo, 'destino' => $solicitud->destino], $request, 'Solicitud de comisión creada');
 
             DB::commit();
-            return response()->json($this->detalle($solicitud->id), 201);
+            return response()->json([
+                'id'     => $solicitud->id,
+                'estado' => 'BORRADOR',
+            ], 201);
         } catch (\Throwable $e) {
             DB::rollBack();
             return response()->json(['message' => 'Error al crear la solicitud: ' . $e->getMessage()], 500);
@@ -183,7 +186,7 @@ class ComisionController extends Controller
 
     public function show(int $id): \Illuminate\Http\JsonResponse
     {
-        return response()->json($this->detalle($id));
+        return $this->detalle($id);
     }
 
     public function update(Request $request, int $id): \Illuminate\Http\JsonResponse
@@ -240,7 +243,7 @@ class ComisionController extends Controller
             $this->syncTransportes('solicitud', $id, $request->transportes ?? []);
 
             DB::commit();
-            return response()->json($this->detalle($id));
+            return $this->detalle($id);
         } catch (\Throwable $e) {
             DB::rollBack();
             return response()->json(['message' => 'Error al actualizar: ' . $e->getMessage()], 500);
