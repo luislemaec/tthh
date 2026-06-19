@@ -220,18 +220,18 @@ class InformeComisionController extends Controller
         ]);
     }
 
-    public function pdf(int $solicitudId)
+    public function pdf(Request $request, int $id)
     {
-        $solicitud = ComSolicitud::with(['empleado', 'servidores.empleado', 'informe.transportes'])->findOrFail($solicitudId);
+        $solicitud = ComSolicitud::with(['empleado', 'servidores.empleado', 'informe.transportes'])->findOrFail($id);
         $informe   = $solicitud->informe;
 
         if (!$informe) {
             abort(404, 'Informe no encontrado');
         }
 
-        $logo         = file_exists(public_path('logo.png')) ? base64_encode(file_get_contents(public_path('logo.png'))) : null;
-        $generadoPor  = trim($solicitud->empleado->apellido_emp ?? '') . ' ' . trim($solicitud->empleado->nombre_emp ?? '');
-        $nombreInst   = 'CONSEJO DE COMUNICACIÓN';
+        $logo        = file_exists(public_path('logo.png')) ? base64_encode(file_get_contents(public_path('logo.png'))) : null;
+        $generadoPor = trim($solicitud->empleado->apellido_emp ?? '') . ' ' . trim($solicitud->empleado->nombre_emp ?? '');
+        $nombreInst  = 'CONSEJO DE COMUNICACIÓN';
 
         $template = $solicitud->tipo === 'EXTERIOR'
             ? 'reportes.com_informe_exterior'
@@ -241,7 +241,7 @@ class InformeComisionController extends Controller
             'solicitud', 'informe', 'logo', 'nombreInst', 'generadoPor'
         ))->setPaper('a4', 'portrait');
 
-        $numero = $solicitud->numero_solicitud ?? ('COM-' . $solicitudId);
-        return $pdf->download("informe-{$numero}.pdf");
+        $numero = $solicitud->numero_solicitud ?? ('COM-' . $id);
+        return $pdf->stream("informe-{$numero}.pdf");
     }
 }
