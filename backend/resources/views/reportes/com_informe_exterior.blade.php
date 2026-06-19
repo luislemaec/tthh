@@ -24,7 +24,7 @@
 
 @php
   $supervisorDepto = \Illuminate\Support\Facades\DB::table('dbo.supervisor_area as sa')
-    ->join('dbo.ad_empleado as e', 'e.id_emp', '=', 'sa.id_emp')
+    ->join('dbo.ad_empleado as e', 'e.id_emp', '=', 'sa.id_supervisor')
     ->where('sa.id_depto', $solicitud->id_depto)
     ->select('e.apellido_emp', 'e.nombre_emp', 'e.cargo_empleado')
     ->first();

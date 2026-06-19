@@ -27,7 +27,7 @@
   $firmanteAut = \Illuminate\Support\Facades\DB::table('dbo.d2_configuracion')->whereRaw("LOWER(concepto) = 'firmante_autoridad_nombre'")->value('valor') ?? 'MÁXIMA AUTORIDAD';
   $firmanteAutCargo = \Illuminate\Support\Facades\DB::table('dbo.d2_configuracion')->whereRaw("LOWER(concepto) = 'firmante_autoridad_cargo'")->value('valor') ?? 'AUTORIDAD NOMINADORA';
   $supervisorDepto = \Illuminate\Support\Facades\DB::table('dbo.supervisor_area as sa')
-    ->join('dbo.ad_empleado as e', 'e.id_emp', '=', 'sa.id_emp')
+    ->join('dbo.ad_empleado as e', 'e.id_emp', '=', 'sa.id_supervisor')
     ->where('sa.id_depto', $solicitud->id_depto)
     ->select('e.apellido_emp', 'e.nombre_emp', 'e.cargo_empleado')
     ->first();
