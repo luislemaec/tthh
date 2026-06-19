@@ -116,13 +116,7 @@
                   </svg>
                   Ver todo
                 </button>
-                <button @click="descargarPdfSolicitud(sol)"
-                  class="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-red-500 border border-red-200 rounded hover:bg-red-50 transition">
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
-                  </svg>
-                  PDF Solicitud
-                </button>
+
                 <button v-if="miRol.es_contabilidad || miRol.es_presupuesto || miRol.es_dir_financiero || miRol.es_tesoreria || miRol.es_admin"
                   @click="abrirDevolverSol(sol)"
                   class="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-orange-600 border border-orange-300 rounded hover:bg-orange-50 transition">
@@ -312,12 +306,12 @@
         </div>
 
         <!-- Informe -->
-        <div v-if="detalleData?.informe">
+        <div>
           <p class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Informe de Cumplimiento</p>
-          <div class="bg-gray-50 rounded-lg p-3 space-y-2 text-sm">
+          <div v-if="detalleData?.informe" class="bg-gray-50 rounded-lg p-3 space-y-2 text-sm">
             <div class="grid grid-cols-2 gap-2">
               <div><span class="text-xs text-gray-400 block">Fecha del Informe</span>{{ formatFecha(detalleData.informe.fecha_informe) }}</div>
-              <div><span class="text-xs text-gray-400 block">Fecha Salida Real</span>{{ formatFecha(detalleData.informe.fecha_salida) }} {{ detalleData.informe.hora_salida }}</div>
+              <div><span class="text-xs text-gray-400 block">Salida Real</span>{{ formatFecha(detalleData.informe.fecha_salida) }} {{ formatHora(detalleData.informe.hora_salida) }}</div>
             </div>
             <div><span class="text-xs text-gray-400 block mb-1">Actividades Realizadas</span>
               <p class="whitespace-pre-line text-gray-700 text-xs bg-white rounded p-2 border border-gray-100">{{ detalleData.informe.actividades }}</p>
@@ -325,19 +319,25 @@
             <div v-if="detalleData.informe.productos"><span class="text-xs text-gray-400 block mb-1">Productos / Resultados</span>
               <p class="whitespace-pre-line text-gray-700 text-xs bg-white rounded p-2 border border-gray-100">{{ detalleData.informe.productos }}</p>
             </div>
-            <div class="flex gap-2 pt-1">
-              <button @click="descargarPdfInforme(detalleData)"
-                class="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-red-500 border border-red-200 rounded hover:bg-red-50 transition">
-                PDF Informe
-              </button>
-              <button v-if="detalleData.informe.pdf_firmado_id" @click="descargarInformeFirmado(detalleData)"
-                class="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-green-600 border border-green-300 rounded hover:bg-green-50 transition">
-                Informe Firmado
-              </button>
+            <!-- Informe firmado como slot de documento -->
+            <div class="border-t border-gray-200 pt-2">
+              <div class="flex items-center justify-between p-2.5 rounded border"
+                :class="detalleData.informe.pdf_firmado_id ? 'border-green-200 bg-green-50' : 'border-gray-100 bg-white'">
+                <div class="flex items-center gap-2 text-sm">
+                  <span v-if="detalleData.informe.pdf_firmado_id" class="text-green-600 font-bold text-base">✓</span>
+                  <span v-else class="text-gray-300 font-bold text-base">○</span>
+                  <span :class="detalleData.informe.pdf_firmado_id ? 'text-green-800 font-medium' : 'text-gray-400'">Informe Firmado</span>
+                </div>
+                <button v-if="detalleData.informe.pdf_firmado_id" @click="descargarInformeFirmado(detalleData)"
+                  class="text-xs text-blue-600 hover:underline font-medium px-2 py-1 rounded hover:bg-blue-50">
+                  Descargar
+                </button>
+                <span v-else class="text-xs text-gray-300">No adjunto</span>
+              </div>
             </div>
           </div>
+          <div v-else class="text-sm text-gray-400 italic bg-gray-50 rounded p-3">El empleado aún no ha presentado el informe de cumplimiento.</div>
         </div>
-        <div v-else class="text-sm text-gray-400 italic bg-gray-50 rounded p-3">El empleado aún no ha presentado el informe de cumplimiento.</div>
       </div>
     </div>
   </div>
@@ -626,8 +626,14 @@ function formatMonto(v) {
 
 function formatFecha(f) {
   if (!f) return '—'
-  const [y, m, d] = f.split('-')
+  const s = String(f).substring(0, 10)
+  const [y, m, d] = s.split('-')
   return `${d}/${m}/${y}`
+}
+
+function formatHora(h) {
+  if (!h) return ''
+  return String(h).substring(0, 5)
 }
 
 function badgeAnticipo(estado) {
