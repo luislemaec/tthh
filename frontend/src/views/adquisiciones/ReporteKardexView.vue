@@ -311,6 +311,7 @@ async function consultar() {
 
 async function exportarExcel() {
   descargandoExcel.value = true
+  error.value = ''
   try {
     const response = await api.get('/adquisiciones/reportes/kardex', {
       params: { ...buildParams(), formato: 'excel' },
@@ -319,12 +320,17 @@ async function exportarExcel() {
     const filename = filtro.value.nivel2 ? `kardex-${filtro.value.nivel2}.xlsx`
                    : filtro.value.nivel1  ? `kardex-nivel-${filtro.value.nivel1}.xlsx`
                    : `kardex-${articuloSeleccionado.value?.codigo}.xlsx`
-    const url = URL.createObjectURL(new Blob([response.data]))
+    const url = URL.createObjectURL(new Blob([response.data],
+      { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
     const a   = document.createElement('a')
     a.href    = url
     a.download = filename
+    document.body.appendChild(a)
     a.click()
-    URL.revokeObjectURL(url)
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(url), 60000)
+  } catch (e) {
+    error.value = 'Error al generar Excel. Revise los filtros e intente nuevamente.'
   } finally { descargandoExcel.value = false }
 }
 

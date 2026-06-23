@@ -8,7 +8,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class ReporteAdqController extends Controller
 {
@@ -69,14 +68,19 @@ class ReporteAdqController extends Controller
         $tiposEgreso  = ['EGRESO', 'REVERSO_INGRESO', 'AJUSTE_NEGATIVO'];
 
         $spreadsheet = new Spreadsheet();
-        $spreadsheet->removeSheetByIndex(0);
 
         foreach ($resultados as $index => $item) {
             $art   = $item['articulo'];
             $filas = $item['filas'];
             $title = mb_substr('[' . $art->codigo . '] ' . $art->nombre, 0, 31);
-            $sheet = new Worksheet($spreadsheet, $title);
-            $spreadsheet->addSheet($sheet, $index);
+
+            if ($index === 0) {
+                $sheet = $spreadsheet->getActiveSheet();
+                $sheet->setTitle($title);
+            } else {
+                $sheet = $spreadsheet->createSheet();
+                $sheet->setTitle($title);
+            }
 
             // Encabezado
             $sheet->mergeCells('A1:M1'); $sheet->setCellValue('A1', strtoupper($nombreInst));
