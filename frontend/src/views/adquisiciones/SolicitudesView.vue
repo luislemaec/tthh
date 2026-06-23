@@ -59,6 +59,12 @@
             class="text-xs text-amber-700 hover:text-amber-900 font-medium border border-amber-300 px-3 py-1 rounded-lg">
             Despachar
           </button>
+          <button v-if="['DESPACHADO','DESPACHADO PARCIAL'].includes(s.estado)"
+            @click="descargarPdf(s.id)"
+            class="text-xs text-white font-medium px-3 py-1 rounded-lg hover:opacity-90"
+            style="background-color:#4a5e3a;">
+            PDF
+          </button>
           <button v-if="s.estado === 'PENDIENTE' && s.empleado?.id_emp === miId"
             @click="eliminar(s.id)"
             class="text-xs text-red-400 hover:text-red-600">
@@ -473,6 +479,17 @@ function abrirDespacho(s) {
     observacion: '',
   }
   errorModal.value = ''
+}
+
+async function descargarPdf(id) {
+  try {
+    const resp = await api.get(`/adquisiciones/solicitudes/${id}/pdf`, { responseType: 'blob' })
+    const url  = URL.createObjectURL(new Blob([resp.data], { type: 'application/pdf' }))
+    window.open(url, '_blank')
+    setTimeout(() => URL.revokeObjectURL(url), 60000)
+  } catch {
+    alert('Error al generar el PDF')
+  }
 }
 
 async function confirmarDespacho() {

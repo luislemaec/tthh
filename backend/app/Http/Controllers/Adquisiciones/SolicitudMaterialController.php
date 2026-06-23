@@ -7,6 +7,8 @@ use App\Models\Adq\SolicitudMaterial;
 use App\Models\Adq\SolicitudMaterialDet;
 use App\Models\Supervisor;
 use App\Services\AuditoriaService;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -276,6 +278,55 @@ class SolicitudMaterialController extends Controller
             $request, "Despacho de solicitud de material #{$solicitud->id}");
 
         return response()->json($solicitudFresh);
+    }
+
+    // GET /api/adquisiciones/solicitudes/{id}/pdf
+    public function pdf(Request $request, $id)
+    {
+        $solicitud = SolicitudMaterial::with(['empleado', 'detalles.articulo'])->findOrFail($id);
+
+        if (!in_array($solicitud->estado, ['DESPACHADO', 'DESPACHADO PARCIAL'])) {
+            return response()->json(['message' => 'Solo solicitudes despachadas tienen PDF.'], 422);
+        }
+
+        $nombreInst = DB::table('dbo.d2_configuracion')
+            ->whereRaw("LOWER(concepto) = 'nombre_institucion'")
+            ->value('valor') ?? 'CONSEJO DE COMUNICACIÓN';
+
+        $logo = file_exists(public_path('logo.png'))
+            ? 'data:image/png;base64,' . base64_encode(file_get_contents(public_path('logo.png')))
+            : null;
+
+        $despachador = $solicitud->usuario_despacho
+            ? DB::table('dbo.ad_empleado')->where('id_emp', $solicitud->usuario_despacho)->first()
+            : null;
+
+        $nombreDespachador = $despachador
+            ? strtoupper(trim($despachador->apellido_emp . ' ' . $despachador->nombre_emp))
+            : '________________________________';
+        $cargoDespachador  = $despachador?->cargo_empleado ?? '';
+
+        $nombreSolicitante = strtoupper(trim($solicitud->empleado->apellido_emp . ' ' . $solicitud->empleado->nombre_emp));
+        $cargoSolicitante  = $solicitud->empleado->cargo_empleado ?? '';
+
+        $depto = DB::table('dbo.ad_departamento')
+            ->where('id_depto', $solicitud->id_depto)
+            ->value('nombre_depto') ?? $solicitud->id_depto;
+
+        $fechaDespacho = $solicitud->fecha_despacho
+            ? Carbon::parse($solicitud->fecha_despacho)->format('d/m/Y H:i')
+            : '—';
+
+        $generadoPor = trim($request->user()->apellido_emp . ' ' . $request->user()->nombre_emp);
+
+        $pdf = Pdf::loadView('reportes.adq_solicitud_material', compact(
+            'solicitud', 'logo', 'nombreInst',
+            'nombreDespachador', 'cargoDespachador',
+            'nombreSolicitante', 'cargoSolicitante',
+            'depto', 'fechaDespacho', 'generadoPor'
+        ))->setPaper('a4', 'portrait');
+
+        return $pdf->stream("solicitud-materiales-{$solicitud->id}.pdf");
     }
 
     public function show($id)

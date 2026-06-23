@@ -1124,12 +1124,12 @@ Estos roles se suman a los existentes — un empleado puede tener SUPERVISOR + D
 
 | Tabla | Descripción |
 |---|---|
-| `com_solicitud` | Cabecera de la solicitud; campos: tipo (INTERIOR/EXTERIOR), id_emp, id_depto, fechas, destino (string "PROVINCIA - CIUDAD" para INTERIOR, texto libre para EXTERIOR), tiene_viaticos, tiene_movilizaciones, tiene_anticipo, estado, numero_solicitud |
+| `com_solicitud` | Cabecera de la solicitud; campos: tipo (INTERIOR/EXTERIOR), id_emp, id_depto, fechas, destino (string "PROVINCIA - CIUDAD" para INTERIOR, texto libre para EXTERIOR), tiene_viaticos, tiene_movilizaciones, tiene_anticipo, estado, numero_solicitud, `observacion_devolucion VARCHAR(500) NULL` (migración `000083`) |
 | `com_solicitud_servidor` | Servidor comisionado; campos: solicitud_id, id_emp, unidad, puesto, orden, banco, tipo_cuenta, numero_cuenta (migración `000080`). En el flujo actual solo hay 1 servidor = el empleado logueado (auto-insertado al crear solicitud) |
 | `com_solicitud_transporte` | Transportes de la solicitud (tipo, nombre, ruta, salida/llegada) |
 | `com_solicitud_documento` | Documentos adjuntos por solicitud (migración `000082`); campos: solicitud_id, tipo_doc (AUTORIZACION\|PASAJES\|CERTIFICACION\|FIRMADO), alfresco_id, nombre_archivo, created_by, created_at. Carpeta Alfresco: `comisiones/{año}/{cedula_APELLIDO}/` |
 | `com_anticipo` | Anticipo de viáticos; campos: solicitud_id, monto, cur_compromiso, cur_devengado, estado |
-| `com_informe` | Informe de actividades post-comisión; campos: solicitud_id, actividades, productos, estado, pdf_firmado_id, pdf_firmado_nombre (migración `000082`) |
+| `com_informe` | Informe de actividades post-comisión; campos: solicitud_id, actividades, productos, estado, pdf_firmado_id, pdf_firmado_nombre (migración `000082`). Fechas (`fecha_informe`, `fecha_salida`, `fecha_llegada`) se castean a Carbon — al devolverlas como Eloquent model vienen como ISO timestamp completo; el frontend usa `String(f).substring(0,10)` para formatear |
 | `com_informe_transporte` | Transportes del informe (real vs planificado) |
 | `com_ficha_liquidacion` | Ficha financiera; campos: solicitud_id, valor_por_dia, dias, total, cur_compromiso, cur_devengado, comprobante_pago, comprobante_devolucion, pais_destino, coeficiente_pais, estado |
 | `com_tarifa_viatico` | Tarifas diarias; campos: descripcion, valor_dia, tipo (INTERIOR/EXTERIOR), aplica_jerarquico BOOLEAN, activo |
@@ -1149,6 +1149,7 @@ Estos roles se suman a los existentes — un empleado puede tener SUPERVISOR + D
 - `000080` — banco/tipo_cuenta/numero_cuenta en com_solicitud_servidor
 - `000081` — banco/tipo_cuenta/numero_cuenta en ad_empleado y com_funcionario_externo
 - `000082` — es_externo en ad_empleado; programa/actividad en com_funcionario_externo; com_provincia + seed 24 provincias; com_ciudad + seed ciudades; com_solicitud_documento; pdf_firmado_id/pdf_firmado_nombre en com_informe
+- `000083` — `observacion_devolucion VARCHAR(500) NULL` en com_solicitud (estado DEVUELTO)
 
 ### Tarifas de viáticos
 
@@ -1187,7 +1188,7 @@ Formato: `CS-{centro_de_costo}-{año}-{NNN}`
 ### Flujo simplificado (único para INTERIOR y EXTERIOR)
 
 ```
-BORRADOR
+BORRADOR / DEVUELTO
   → Empleado llena form (Tab 1 Datos + Tab 3 Transporte)
   → Tab 4 Documentos: sube 3 PDFs externos
       AUTORIZACION — Solicitud de Autorización y Aprobación
@@ -1200,12 +1201,20 @@ APROBADO
   → Empleado crea Informe → genera PDF → sube PDF Firmado → INFORME_APROBADO (directo, sin revisión)
 INFORME_APROBADO
   → Empleado solicita pago → EN_PAGO
-EN_PAGO
-  → CONTABILIDAD/PRESUPUESTO crea ficha liquidación → EN_LIQUIDACION
+EN_PAGO / EN_LIQUIDACION / POR_COBRAR
+  → Roles financieros pueden devolver → DEVUELTO (empleado corrige todo desde cero)
+  → CONTABILIDAD crea ficha liquidación → EN_LIQUIDACION
   → PRESUPUESTO CUR compromiso → CONTABILIDAD CUR devengado
-  → TESORERIA confirma pago → CERRADO (o POR_COBRAR si hay devolución)
+  → TESORERIA confirma pago → CERRADO (o POR_COBRAR si hay devolución pendiente)
 POR_COBRAR → TESORERIA registra devolución → CERRADO
 ```
+
+**Estado DEVUELTO** (migración `000083`):
+- Cualquier rol financiero (CONTABILIDAD, PRESUPUESTO, DIRECTOR FINANCIERO, TESORERIA, ADMINISTRADOR) puede devolver desde `LiquidacionesView` o desde el stepper
+- Endpoint: `PATCH /comisiones/solicitudes/{id}/devolver` con `observacion` obligatoria
+- DEVUELTO se trata igual que BORRADOR en backend: `update()`, `uploadDocumento()` y `procesar()` aceptan ambos estados
+- El empleado ve un banner rojo con el motivo en el Paso 1 del stepper y puede reeditar todo
+- Se registra en auditoría (`AuditoriaService::log`)
 
 > **Estados eliminados vs flujo anterior:** PENDIENTE_DIR_ADM, PENDIENTE_JEFE, PENDIENTE_AUTORIDAD, PENDIENTE_JURIDICA, PENDIENTE_SISTEMA_EXT, AUTORIZADO, NEGADO, INFORME_PRESENTADO, INFORME_REVISADO
 
@@ -1217,30 +1226,48 @@ Tab 2 del modal de solicitud muestra solo el empleado logueado (datos del auth s
 
 | Controlador | Métodos clave |
 |---|---|
-| `ComisionController` | index, store, update, provincias, uploadDocumento, deleteDocumento, descargarDocumento, subirFirmado, solicitarPago |
+| `ComisionController` | index, store, update, show/detalle, provincias, uploadDocumento, deleteDocumento, descargarDocumento, subirFirmado, solicitarPago, **devolver** |
 | `InformeComisionController` | store, update, subirFirmado, descargarFirmado, pdf |
 | `AnticipController` | store, curCompromiso, curDevengado, pagar |
-| `LiquidacionController` | store, update, curCompromiso, curDevengado, confirmarPago, registrarDevolucion, coeficientes, calcularValorDia |
+| `LiquidacionController` | store, update, registrarCurCompromiso (PRESUPUESTO), registrarCurDevengado (CONTABILIDAD), confirmarPago (TESORERIA), registrarDevolucion (TESORERIA), coeficientes, calcularValorDia |
 | `TarifaViaticosController` | index, store, update, destroy |
 | `CoeficientePaisController` | index, store, update |
 | `FuncionarioExternoController` | index, store, update, destroy, darAcceso |
 | `ProvinciaCiudadController` | index, storeProvincia, updateProvincia, destroyProvincia, storeCiudad, updateCiudad, destroyCiudad |
 
+**Roles por acción en Liquidación:**
+- Crear ficha: solo CONTABILIDAD (y ADMINISTRADOR)
+- CUR compromiso: PRESUPUESTO o DIRECTOR FINANCIERO (y ADMINISTRADOR)
+- CUR devengado: CONTABILIDAD o DIRECTOR FINANCIERO (y ADMINISTRADOR)
+- Confirmar pago / registrar devolución: solo TESORERIA (y ADMINISTRADOR)
+- Devolver solicitud: CONTABILIDAD, PRESUPUESTO, DIRECTOR FINANCIERO, TESORERIA, ADMINISTRADOR
+
 ### PDFs
 
 - `com_solicitud_interior.blade.php` / `com_solicitud_exterior.blade.php`
-- `com_informe_interior.blade.php` / `com_informe_exterior.blade.php`
+- `com_informe_interior.blade.php` / `com_informe_exterior.blade.php` — **JOIN correcto**: `sa.id_supervisor` (no `sa.id_emp`) al buscar supervisor del departamento en `dbo.supervisor_area`
 - `com_ficha_interior.blade.php` / `com_ficha_exterior.blade.php`
+
+**Bug crítico resuelto — firma de `pdf()` en controladores de comisiones:** La ruta define `{id}` pero si el método tiene `pdf(int $otroNombre)` Laravel no inyecta el parámetro (falla con ArgumentCountError → 500). Siempre usar `pdf(Request $request, int $id)` para que el nombre coincida con el parámetro de ruta. Usar `->stream()` (no `->download()`) para compatibilidad con el patrón blob URL del frontend.
 
 ### Vistas Frontend
 
 ```
 views/comisiones/
-  ComisionesView.vue          # Modal con 4 tabs siempre visibles: Datos Generales, Servidores, Transporte, Documentos
+  ComisionesView.vue          # STEPPER UNIFICADO — reemplaza 3 modales separados por un único modal con
+                              # barra de progreso de 4 pasos: Solicitud → Informe → Pago → Liquidación
+                              # El paso activo y el estado de cada paso se derivan de com_solicitud.estado:
+                              #   BORRADOR/PROCESADO/DEVUELTO → paso 1 activo
+                              #   APROBADO → paso 2 activo
+                              #   INFORME_APROBADO → paso 3 activo
+                              #   EN_PAGO/EN_LIQUIDACION/POR_COBRAR/CERRADO → paso 4 activo
+                              # Estado DEVUELTO: paso 1 muestra banner rojo con observacion_devolucion
+                              # Botón "Devolver" en el footer del stepper visible para roles financieros
+                              #   (esFinanciero computed: es_contabilidad|es_presupuesto|es_dir_financiero|es_tesoreria|es_admin)
+                              # Paso 1 (form): 4 tabs internos — Datos Generales, Servidores (read-only), Transporte, Documentos
                               # Tab 1 Destino INTERIOR: selects cascada Provincia → Ciudad (carga separada del resto)
                               #   form_provinciaId/form_ciudadId = solo frontend; form.destino = "PROV - CIUDAD"
-                              #   cargar() separa carga de provincias en try/catch independiente para evitar
-                              #   que un error en solicitudes/miRol deje los selects vacíos
+                              #   cargar() separa carga de provincias en try/catch independiente
                               # Tab 2 Servidores: read-only — muestra datos del auth store sin inputs
                               # Tab 4 Documentos: auto-guarda solicitud silenciosamente al entrar (get ID)
                               #   3 slots obligatorios (AUTORIZACION/PASAJES/CERTIFICACION) + botón Generar PDF
@@ -1252,6 +1279,14 @@ views/comisiones/
                               #   aplica a toda la vista y modales. Backend hace strtoupper() en campos relevantes.
   LiquidacionesView.vue       # Tabs sólidos con #5c4a6e; lista fichas por estado; CURs, confirmar pago
                               # Modales con cabecera coloreada #5c4a6e: Ficha Liquidación, CUR, Devolución
+                              # Botón "Ver todo" por solicitud: abre modal read-only con datos generales,
+                              #   4 slots de documentos (✓/○ + Descargar), informe completo (actividades,
+                              #   productos) y slot "Informe Firmado" con el mismo estilo visual de documentos
+                              # Botón "Devolver": visible para roles financieros, abre modal con textarea
+                              #   obligatoria → PATCH /comisiones/solicitudes/{id}/devolver
+                              # formatFecha(): usa String(f).substring(0,10) para manejar ISO timestamps
+                              #   completos que devuelve Eloquent (ej: "2026-06-19T05:00:00.000000Z")
+                              # formatHora(): usa String(h).substring(0,5) para mostrar solo HH:MM
   FuncionariosExternosView.vue # CRUD funcionarios externos (ruta: admin/funcionarios-externos y comisiones/funcionarios-externos)
                                # Campos: cedula, nombres, cargo, banco, tipo_cuenta, numero_cuenta,
                                #   programa (4 chars), actividad (6 chars), activo
@@ -1281,7 +1316,8 @@ layouts/ComisionesLayout.vue  # Color #5c4a6e; menú dinámico; modo mantenimien
 | DELETE | `/solicitudes/{id}/documentos/{docId}` | Eliminar documento |
 | GET | `/solicitudes/{id}/documentos/{docId}/descargar` | Descargar documento desde Alfresco |
 | POST | `/solicitudes/{id}/subir-firmado` | Sube PDF firmado → APROBADO + número CS-xxx |
-| PATCH | `/solicitudes/{id}/solicitar-pago` | Empleado solicita pago |
+| PATCH | `/solicitudes/{id}/solicitar-pago` | Empleado solicita pago → EN_PAGO |
+| PATCH | `/solicitudes/{id}/devolver` | Roles financieros devuelven → DEVUELTO + observacion_devolucion |
 | GET/POST | `/informes/{solicitudId}` | Ver / crear informe |
 | PUT | `/informes/{id}` | Editar informe |
 | POST | `/solicitudes/{id}/informe/subir-firmado` | Sube PDF firmado del informe → INFORME_APROBADO |

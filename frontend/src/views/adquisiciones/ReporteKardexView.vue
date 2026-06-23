@@ -72,6 +72,10 @@
           class="border border-green-700 text-green-700 px-5 py-2 rounded-lg text-sm hover:bg-green-50 disabled:opacity-50">
           {{ descargandoPdf ? 'Generando PDF...' : 'Descargar PDF' }}
         </button>
+        <button v-if="resultados.length" @click="exportarExcel" :disabled="descargandoExcel"
+          class="border border-blue-700 text-blue-700 px-5 py-2 rounded-lg text-sm hover:bg-blue-50 disabled:opacity-50">
+          {{ descargandoExcel ? 'Generando Excel...' : 'Descargar Excel' }}
+        </button>
       </div>
       <p v-if="error" class="text-red-600 text-sm mt-2">{{ error }}</p>
     </div>
@@ -206,6 +210,7 @@ const nivel1s              = ref([])
 const nivel2s              = ref([])
 const cargando             = ref(false)
 const descargandoPdf       = ref(false)
+const descargandoExcel     = ref(false)
 const consultado           = ref(false)
 const error                = ref('')
 
@@ -302,6 +307,25 @@ async function consultar() {
   } catch (e) {
     error.value = e.response?.data?.message || 'Error al consultar'
   } finally { cargando.value = false }
+}
+
+async function exportarExcel() {
+  descargandoExcel.value = true
+  try {
+    const response = await api.get('/adquisiciones/reportes/kardex', {
+      params: { ...buildParams(), formato: 'excel' },
+      responseType: 'blob',
+    })
+    const filename = filtro.value.nivel2 ? `kardex-${filtro.value.nivel2}.xlsx`
+                   : filtro.value.nivel1  ? `kardex-nivel-${filtro.value.nivel1}.xlsx`
+                   : `kardex-${articuloSeleccionado.value?.codigo}.xlsx`
+    const url = URL.createObjectURL(new Blob([response.data]))
+    const a   = document.createElement('a')
+    a.href    = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
+  } finally { descargandoExcel.value = false }
 }
 
 async function exportarPdf() {

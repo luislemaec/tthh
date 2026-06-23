@@ -3,8 +3,12 @@ namespace App\Http\Controllers\Adquisiciones;
 
 use App\Http\Controllers\Controller;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class ReporteAdqController extends Controller
 {
@@ -48,7 +52,112 @@ class ReporteAdqController extends Controller
             return $pdf->download($filename);
         }
 
+        if ($request->formato === 'excel') {
+            return $this->kardexExcel($resultados, $request, $articulos);
+        }
+
         return response()->json($resultados);
+    }
+
+    private function kardexExcel($resultados, $request, $articulos)
+    {
+        $nombreInst = DB::table('dbo.d2_configuracion')
+            ->whereRaw("LOWER(concepto) = 'nombre_institucion'")
+            ->value('valor') ?? 'CONSEJO DE COMUNICACIÓN';
+
+        $tiposIngreso = ['INGRESO', 'REVERSO_EGRESO', 'AJUSTE_POSITIVO', 'SALDO_INICIAL'];
+        $tiposEgreso  = ['EGRESO', 'REVERSO_INGRESO', 'AJUSTE_NEGATIVO'];
+
+        $spreadsheet = new Spreadsheet();
+        $spreadsheet->removeSheetByIndex(0);
+
+        foreach ($resultados as $index => $item) {
+            $art   = $item['articulo'];
+            $filas = $item['filas'];
+            $title = mb_substr('[' . $art->codigo . '] ' . $art->nombre, 0, 31);
+            $sheet = new Worksheet($spreadsheet, $title);
+            $spreadsheet->addSheet($sheet, $index);
+
+            // Encabezado
+            $sheet->mergeCells('A1:M1'); $sheet->setCellValue('A1', strtoupper($nombreInst));
+            $sheet->mergeCells('A2:M2'); $sheet->setCellValue('A2', 'KARDEX DE INVENTARIO NIC 2');
+            $sheet->mergeCells('A3:M3'); $sheet->setCellValue('A3', 'Período: ' . $request->desde . ' al ' . $request->hasta);
+            $sheet->mergeCells('A4:M4'); $sheet->setCellValue('A4', '[' . $art->codigo . '] ' . $art->nombre);
+
+            foreach (['A1','A2','A3','A4'] as $c) {
+                $sheet->getStyle($c)->getFont()->setBold(true);
+                $sheet->getStyle($c)->getAlignment()->setHorizontal('center');
+            }
+            $sheet->getStyle('A1')->getFont()->setSize(12);
+            $sheet->getStyle('A2')->getFont()->setSize(11);
+
+            // Encabezados de columna (fila 5 = grupo, fila 6 = sub)
+            $headers = [
+                'A5' => 'Fecha',      'B5' => 'N° Doc.',   'C5' => 'Tipo',
+                'D5' => 'ING Cant.',  'E5' => 'ING P.Unit', 'F5' => 'ING Total',
+                'G5' => 'EGR Cant.',  'H5' => 'EGR P.Unit', 'I5' => 'EGR Total',
+                'J5' => 'SALDO Cant.','K5' => 'SALDO P.Unit','L5' => 'SALDO Total',
+                'M5' => 'Usuario',
+            ];
+            foreach ($headers as $cell => $val) {
+                $sheet->setCellValue($cell, $val);
+                $sheet->getStyle($cell)->getFont()->setBold(true);
+                $sheet->getStyle($cell)->getFill()
+                    ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                    ->getStartColor()->setRGB('4a5e3a');
+                $sheet->getStyle($cell)->getFont()->getColor()->setRGB('FFFFFF');
+                $sheet->getStyle($cell)->getAlignment()->setHorizontal('center');
+            }
+
+            // Datos
+            $row = 6;
+            foreach ($filas as $f) {
+                $esIngreso = in_array($f->tipo_movimiento, $tiposIngreso);
+                $esEgreso  = in_array($f->tipo_movimiento, $tiposEgreso);
+                $fecha     = $f->fecha ? Carbon::parse($f->fecha)->format('d/m/Y H:i') : '';
+
+                $sheet->setCellValue("A{$row}", $fecha);
+                $sheet->setCellValue("B{$row}", $f->numero_documento ?? '');
+                $sheet->setCellValue("C{$row}", $f->tipo_movimiento);
+                $sheet->setCellValue("D{$row}", $esIngreso ? (float)$f->cantidad_entrada : '');
+                $sheet->setCellValue("E{$row}", $esIngreso ? (float)$f->precio_movimiento : '');
+                $sheet->setCellValue("F{$row}", $esIngreso ? round((float)$f->cantidad_entrada * (float)$f->precio_movimiento, 2) : '');
+                $sheet->setCellValue("G{$row}", $esEgreso ? (float)$f->cantidad_salida : '');
+                $sheet->setCellValue("H{$row}", $esEgreso ? (float)$f->precio_movimiento : '');
+                $sheet->setCellValue("I{$row}", $esEgreso ? round((float)$f->cantidad_salida * (float)$f->precio_movimiento, 2) : '');
+                $sheet->setCellValue("J{$row}", (float)$f->stock_despues);
+                $sheet->setCellValue("K{$row}", (float)$f->precio_despues);
+                $sheet->setCellValue("L{$row}", (float)$f->valor_saldo);
+                $sheet->setCellValue("M{$row}", $f->usuario ?? '');
+
+                // Fila alterna
+                if ($row % 2 === 0) {
+                    $sheet->getStyle("A{$row}:M{$row}")->getFill()
+                        ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                        ->getStartColor()->setRGB('f5f8f3');
+                }
+                $row++;
+            }
+
+            // Auto-ancho columnas
+            foreach (range('A', 'M') as $col) {
+                $sheet->getColumnDimension($col)->setAutoSize(true);
+            }
+        }
+
+        $filename = $request->nivel2 ? "kardex-{$request->nivel2}.xlsx"
+                  : ($request->nivel1 ? "kardex-nivel-{$request->nivel1}.xlsx"
+                  : 'kardex-' . ($articulos->first()->codigo ?? 'reporte') . '.xlsx');
+
+        $writer = new Xlsx($spreadsheet);
+        ob_start();
+        $writer->save('php://output');
+        $content = ob_get_clean();
+
+        return response($content, 200, [
+            'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ]);
     }
 
     public function libroCompras(Request $request)

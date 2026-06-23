@@ -445,6 +445,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::patch('solicitudes/{id}/aprobar',            [SolicitudMaterialController::class, 'aprobar']);
         Route::patch('solicitudes/{id}/negar',              [SolicitudMaterialController::class, 'negar']);
         Route::patch('solicitudes/{id}/despachar',          [SolicitudMaterialController::class, 'despachar']);
+        Route::get('solicitudes/{id}/pdf',                  [SolicitudMaterialController::class, 'pdf']);
         Route::delete('solicitudes/{id}',                   [SolicitudMaterialController::class, 'destroy']);
     });
 
