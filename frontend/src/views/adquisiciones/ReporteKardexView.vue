@@ -330,7 +330,13 @@ async function exportarExcel() {
     document.body.removeChild(a)
     setTimeout(() => URL.revokeObjectURL(url), 60000)
   } catch (e) {
-    error.value = 'Error al generar Excel. Revise los filtros e intente nuevamente.'
+    try {
+      const text = await e.response?.data?.text()
+      const json = JSON.parse(text)
+      error.value = 'Error Excel: ' + (json.message || text)
+    } catch {
+      error.value = 'Error al generar Excel. Revise los filtros e intente nuevamente.'
+    }
   } finally { descargandoExcel.value = false }
 }
 

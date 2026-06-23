@@ -72,7 +72,9 @@ class ReporteAdqController extends Controller
         foreach ($resultados as $index => $item) {
             $art   = $item['articulo'];
             $filas = $item['filas'];
-            $title = mb_substr('[' . $art->codigo . '] ' . $art->nombre, 0, 31);
+            // Caracteres inválidos para títulos de hoja Excel: \ / ? * [ ] :
+            $title = mb_substr(preg_replace('/[\\/\\\\?*\[\]:]/', '', $art->codigo . ' ' . $art->nombre), 0, 31);
+            if ($title === '') $title = 'Art' . ($index + 1);
 
             if ($index === 0) {
                 $sheet = $spreadsheet->getActiveSheet();
