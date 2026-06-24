@@ -67,6 +67,12 @@ class ZktecoController extends Controller
 
             if (!$pin || !$fechaHora) continue;
 
+            // ZKTeco trata el PIN como número y elimina ceros iniciales
+            // Cédulas ecuatorianas son 10 dígitos — completar si llegan 9
+            if (strlen($pin) === 9 && is_numeric($pin)) {
+                $pin = '0' . $pin;
+            }
+
             // Validar formato de fecha
             if (!preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $fechaHora)) continue;
 
