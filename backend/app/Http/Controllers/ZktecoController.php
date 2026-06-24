@@ -58,6 +58,12 @@ class ZktecoController extends Controller
             ->where('serial', $sn)
             ->update(['ultimo_push' => now(), 'ip' => $request->ip()]);
 
+        // LOG TEMPORAL — ver qué envía el reloj
+        \Log::info('ZKTECO POST', [
+            'table'  => $request->query('table'),
+            'body'   => $request->getContent(),
+        ]);
+
         $secuencia = ['ENTRADA', 'SALIDA AL LUNCH', 'ENTRADA DEL LUNCH', 'SALIDA'];
         $lineas    = array_filter(explode("\n", trim($request->getContent())));
 
