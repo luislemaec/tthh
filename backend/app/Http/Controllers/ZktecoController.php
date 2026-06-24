@@ -85,17 +85,19 @@ class ZktecoController extends Controller
             // Validar formato de fecha
             if (!preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $fechaHora)) continue;
 
-            // Buscar empleado activo con ese PIN (cédula)
+            // Buscar empleado activo por cédula (identificacion), no por id_emp
             $empleado = DB::table('dbo.ad_empleado')
-                ->where('id_emp', $pin)
+                ->where('identificacion', $pin)
                 ->where('estado', 'ACTIVO')
                 ->first(['id_emp', 'nombre_emp', 'apellido_emp']);
 
             if (!$empleado) continue;
 
-            // Ignorar duplicados exactos
+            $idEmp = $empleado->id_emp;
+
+            // Ignorar duplicados exactos (por id_emp + fecha_hora)
             $yaExiste = DB::table('dbo.sg_control_persona')
-                ->where('nro_documento', $pin)
+                ->where('nro_documento', $idEmp)
                 ->where('fecha_hora', $fechaHora)
                 ->exists();
 
@@ -104,7 +106,7 @@ class ZktecoController extends Controller
             // Determinar siguiente concepto en la secuencia del día
             $fecha = substr($fechaHora, 0, 10);
             $marcacionesHoy = DB::table('dbo.sg_control_persona')
-                ->where('nro_documento', $pin)
+                ->where('nro_documento', $idEmp)
                 ->whereRaw("DATE(fecha_hora) = ?", [$fecha])
                 ->orderBy('fecha_hora')
                 ->pluck('concepto')
@@ -124,9 +126,10 @@ class ZktecoController extends Controller
             $clasificacion = in_array($siguiente, ['ENTRADA', 'ENTRADA DEL LUNCH']) ? 'ENTRADA' : 'SALIDA';
 
             DB::table('dbo.sg_control_persona')->insert([
-                'nro_documento'  => $pin,
-                'nombre'         => strtoupper(trim($empleado->apellido_emp)) . ' ' . trim($empleado->nombre_emp),
+                'nro_documento'  => $idEmp,
+                'identificador'  => 0,
                 'clasificacion'  => $clasificacion,
+                'lugar'          => 'BIOMETRICO',
                 'concepto'       => $siguiente,
                 'fecha_hora'     => $fechaHora,
                 'tipo_marcacion' => 'BIOMETRICO',
