@@ -36,6 +36,9 @@ class ZktecoController extends Controller
             $opts  = "GET OPTION FROM: {$sn}\r\n";
             $opts .= "Stamp=0\r\n";
             $opts .= "OpStamp=0\r\n";
+            $opts .= "ATTLOGStamp=0\r\n";
+            $opts .= "OPERLOGStamp=0\r\n";
+            $opts .= "ATTPHOTOStamp=0\r\n";
             $opts .= "ErrorDelay=30\r\n";
             $opts .= "Delay=10\r\n";
             $opts .= "TransTimes=00:00;14:05\r\n";
