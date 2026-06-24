@@ -51,7 +51,7 @@ Route::get("/modo-mantenimiento", function (\Illuminate\Http\Request $request) {
 
 // Endpoints ADMS — reloj biométrico ZKTeco (sin autenticación)
 Route::prefix("iclock")->group(function () {
-    Route::post("cdata",                        [ZktecoController::class, "cdata"]);
+    Route::match(["get", "post"], "cdata",       [ZktecoController::class, "cdata"]);
     Route::get("getrequest",                    [ZktecoController::class, "getrequest"]);
     Route::match(["get", "post"], "registry",   [ZktecoController::class, "registry"]);
     Route::post("devicecmd",                    [ZktecoController::class, "devicecmd"]);

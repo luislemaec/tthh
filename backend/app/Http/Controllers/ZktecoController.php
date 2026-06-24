@@ -17,14 +17,40 @@ class ZktecoController extends Controller
             ->exists();
     }
 
-    // POST /iclock/cdata — recibe marcaciones del reloj
+    // GET|POST /iclock/cdata
     public function cdata(Request $request)
     {
+        $sn = $request->query('SN', '');
+
+        // GET = handshake inicial — el reloj pide opciones del servidor
+        if ($request->isMethod('get')) {
+            if (!$sn) return response('ERROR', 400)->header('Content-Type', 'text/plain');
+
+            // Registrar automáticamente si no existe
+            DB::table('dbo.d2_zkteco_dispositivo')
+                ->updateOrInsert(
+                    ['serial' => $sn],
+                    ['ip' => $request->ip(), 'ultimo_push' => now(), 'activo' => true]
+                );
+
+            $opts  = "GET OPTION FROM: {$sn}\r\n";
+            $opts .= "Stamp=9999\r\n";
+            $opts .= "OpStamp=9999\r\n";
+            $opts .= "ErrorDelay=30\r\n";
+            $opts .= "Delay=10\r\n";
+            $opts .= "TransTimes=00:00;14:05\r\n";
+            $opts .= "TransInterval=1\r\n";
+            $opts .= "TransFlag=TransData AttLog\r\n";
+            $opts .= "Realtime=1\r\n";
+            $opts .= "Encrypt=0\r\n";
+            return response($opts, 200)->header('Content-Type', 'text/plain');
+        }
+
+        // POST = marcaciones reales
         if (!$this->dispositivoAutorizado($request)) {
             return response('ERROR', 403)->header('Content-Type', 'text/plain');
         }
 
-        $sn = $request->query('SN', '');
         DB::table('dbo.d2_zkteco_dispositivo')
             ->where('serial', $sn)
             ->update(['ultimo_push' => now(), 'ip' => $request->ip()]);
