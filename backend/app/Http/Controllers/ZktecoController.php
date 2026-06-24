@@ -145,6 +145,16 @@ class ZktecoController extends Controller
             return response('ERROR', 403)->header('Content-Type', 'text/plain');
         }
 
+        $sn       = $request->query('SN', '');
+        $cacheKey = "zkteco_last_query_{$sn}";
+
+        // Enviar DATA QUERY cada 2 minutos para traer nuevas marcaciones
+        if (!\Cache::has($cacheKey)) {
+            \Cache::put($cacheKey, true, now()->addMinutes(2));
+            $cmd = "C:1:DATA QUERY table=attlog startTime=2000-01-01 00:00:00 endTime=2099-12-31 23:59:59\r\n";
+            return response($cmd, 200)->header('Content-Type', 'text/plain');
+        }
+
         return response('', 200)->header('Content-Type', 'text/plain');
     }
 
