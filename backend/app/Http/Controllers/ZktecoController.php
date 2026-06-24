@@ -34,8 +34,8 @@ class ZktecoController extends Controller
                 );
 
             $opts  = "GET OPTION FROM: {$sn}\r\n";
-            $opts .= "Stamp=9999\r\n";
-            $opts .= "OpStamp=9999\r\n";
+            $opts .= "Stamp=0\r\n";
+            $opts .= "OpStamp=0\r\n";
             $opts .= "ErrorDelay=30\r\n";
             $opts .= "Delay=10\r\n";
             $opts .= "TransTimes=00:00;14:05\r\n";
@@ -149,6 +149,12 @@ class ZktecoController extends Controller
                 ['ip' => $request->ip(), 'ultimo_push' => now(), 'activo' => true]
             );
 
+        return response('OK', 200)->header('Content-Type', 'text/plain');
+    }
+
+    // GET /iclock/ping
+    public function ping(Request $request)
+    {
         return response('OK', 200)->header('Content-Type', 'text/plain');
     }
 

@@ -55,6 +55,7 @@ Route::prefix("iclock")->group(function () {
     Route::get("getrequest",                    [ZktecoController::class, "getrequest"]);
     Route::match(["get", "post"], "registry",   [ZktecoController::class, "registry"]);
     Route::post("devicecmd",                    [ZktecoController::class, "devicecmd"]);
+    Route::get("ping",                          [ZktecoController::class, "ping"]);
 });
 
 // Servir archivos del storage público a través del API (resuelve SPA catch-all)
