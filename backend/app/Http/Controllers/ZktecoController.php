@@ -145,9 +145,7 @@ class ZktecoController extends Controller
             return response('ERROR', 403)->header('Content-Type', 'text/plain');
         }
 
-        // Forzar reenvío de todos los registros de asistencia
-        $cmd  = "C:1:DATA QUERY table=attlog startTime=2000-01-01 00:00:00 endTime=2099-12-31 23:59:59\r\n";
-        return response($cmd, 200)->header('Content-Type', 'text/plain');
+        return response('', 200)->header('Content-Type', 'text/plain');
     }
 
     // GET|POST /iclock/registry — registro inicial del dispositivo al arrancar
