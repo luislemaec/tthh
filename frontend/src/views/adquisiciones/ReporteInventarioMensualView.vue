@@ -21,9 +21,13 @@
           class="px-5 py-2 bg-[#4a5e3a] text-white rounded-lg text-sm font-medium hover:bg-[#3b4a2e] disabled:opacity-50 transition-colors">
           {{ cargando ? 'Cargando...' : 'Generar' }}
         </button>
-        <button v-if="filas.length" @click="descargarPdf" :disabled="descargando"
+        <button v-if="filas.length" @click="descargarPdf" :disabled="descargando || descargandoExcel"
           class="px-5 py-2 border border-[#4a5e3a] text-[#4a5e3a] rounded-lg text-sm font-medium hover:bg-[#4a5e3a] hover:text-white disabled:opacity-50 transition-colors">
           {{ descargando ? 'Generando PDF...' : '↓ Descargar PDF' }}
+        </button>
+        <button v-if="filas.length" @click="descargarExcel" :disabled="descargando || descargandoExcel"
+          class="px-5 py-2 border border-blue-700 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-700 hover:text-white disabled:opacity-50 transition-colors">
+          {{ descargandoExcel ? 'Generando Excel...' : '↓ Descargar Excel' }}
         </button>
         <span v-if="generado" class="ml-auto text-sm text-gray-500">
           {{ filas.length }} grupo(s) con movimiento
@@ -89,10 +93,11 @@ const meses = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
 
 const filtros    = ref({ mes: hoy.getMonth() || 12, anio: hoy.getMonth() ? hoy.getFullYear() : hoy.getFullYear() - 1 })
 const filas      = ref([])
-const cargando   = ref(false)
-const descargando= ref(false)
-const generado   = ref(false)
-const errorMsg   = ref('')
+const cargando        = ref(false)
+const descargando     = ref(false)
+const descargandoExcel= ref(false)
+const generado        = ref(false)
+const errorMsg        = ref('')
 
 const total = computed(() => ({
   saldo_anterior:     filas.value.reduce((s, r) => s + r.saldo_anterior,     0),
@@ -130,6 +135,39 @@ async function generar() {
     errorMsg.value = e.response?.data?.message || 'Error al generar el reporte.'
   } finally {
     cargando.value = false
+  }
+}
+
+async function descargarExcel() {
+  descargandoExcel.value = true
+  errorMsg.value = ''
+  try {
+    const resp = await api.get('/adquisiciones/reportes/inventario-mensual', {
+      params: { ...periodoParams(), formato: 'excel' },
+      responseType: 'blob',
+    })
+    const mes  = filtros.value.mes
+    const anio = filtros.value.anio
+    const mm   = String(mes).padStart(2, '0')
+    const url  = URL.createObjectURL(new Blob([resp.data],
+      { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
+    const a    = document.createElement('a')
+    a.href     = url
+    a.download = `inventario-mensual-${anio}-${mm}.xlsx`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(url), 60000)
+  } catch (e) {
+    try {
+      const text = await e.response?.data?.text()
+      const json = JSON.parse(text)
+      errorMsg.value = 'Error Excel: ' + (json.message || text)
+    } catch {
+      errorMsg.value = 'Error al generar el Excel.'
+    }
+  } finally {
+    descargandoExcel.value = false
   }
 }
 

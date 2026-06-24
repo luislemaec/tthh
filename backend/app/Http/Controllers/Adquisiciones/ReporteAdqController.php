@@ -403,6 +403,96 @@ class ReporteAdqController extends Controller
             return $pdf->download("inventario-mensual.pdf");
         }
 
+        if ($request->formato === 'excel') {
+            $meses      = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+            $nombreInst = DB::table('dbo.d2_configuracion')->whereRaw("LOWER(concepto) = 'nombre_institucion'")->value('valor') ?? 'CONSEJO DE COMUNICACIÓN';
+            $mesNum     = (int) date('n', strtotime($desde));
+            $anio       = date('Y', strtotime($desde));
+            $periodo    = ($meses[$mesNum] ?? $mesNum) . ' ' . $anio;
+
+            $spreadsheet = new Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+            $sheet->setTitle('Inventario Mensual');
+
+            // Encabezado
+            $sheet->mergeCells('A1:G1'); $sheet->setCellValue('A1', strtoupper($nombreInst));
+            $sheet->mergeCells('A2:G2'); $sheet->setCellValue('A2', 'REPORTE DE INVENTARIO MENSUAL');
+            $sheet->mergeCells('A3:G3'); $sheet->setCellValue('A3', 'Período: ' . $periodo);
+            foreach (['A1','A2','A3'] as $c) {
+                $sheet->getStyle($c)->getFont()->setBold(true);
+                $sheet->getStyle($c)->getAlignment()->setHorizontal('center');
+            }
+            $sheet->getStyle('A1')->getFont()->setSize(12);
+            $sheet->getStyle('A2')->getFont()->setSize(11);
+
+            // Cabeceras de columna
+            $cols = ['A4'=>'Cuenta','B4'=>'Descripción Inventarios','C4'=>'Saldo Mes Anterior',
+                     'D4'=>'Ingreso Procesos','E4'=>'Ingreso Caja Chica','F4'=>'Egreso Mes','G4'=>'Saldo Final Mes'];
+            foreach ($cols as $cell => $val) {
+                $sheet->setCellValue($cell, $val);
+                $sheet->getStyle($cell)->getFont()->setBold(true);
+                $sheet->getStyle($cell)->getFill()
+                    ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                    ->getStartColor()->setRGB('4a5e3a');
+                $sheet->getStyle($cell)->getFont()->getColor()->setRGB('FFFFFF');
+                $sheet->getStyle($cell)->getAlignment()->setHorizontal('center');
+            }
+
+            // Datos
+            $row = 5;
+            $totales = ['saldo_anterior'=>0,'ingreso_procesos'=>0,'ingreso_caja_chica'=>0,'egreso_mes'=>0,'saldo_final'=>0];
+            foreach ($resultado as $r) {
+                $sheet->setCellValue("A{$row}", $r['cuenta']);
+                $sheet->setCellValue("B{$row}", $r['descripcion']);
+                $sheet->setCellValue("C{$row}", $r['saldo_anterior']);
+                $sheet->setCellValue("D{$row}", $r['ingreso_procesos']);
+                $sheet->setCellValue("E{$row}", $r['ingreso_caja_chica']);
+                $sheet->setCellValue("F{$row}", $r['egreso_mes']);
+                $sheet->setCellValue("G{$row}", $r['saldo_final']);
+                foreach (['C','D','E','F','G'] as $col) {
+                    $sheet->getStyle("{$col}{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+                }
+                if ($row % 2 !== 0) {
+                    $sheet->getStyle("A{$row}:G{$row}")->getFill()
+                        ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                        ->getStartColor()->setRGB('f7f9f4');
+                }
+                foreach (['saldo_anterior','ingreso_procesos','ingreso_caja_chica','egreso_mes','saldo_final'] as $k) {
+                    $totales[$k] += $r[$k];
+                }
+                $row++;
+            }
+
+            // Fila de totales
+            $sheet->setCellValue("A{$row}", 'TOTAL');
+            $sheet->mergeCells("A{$row}:B{$row}");
+            $sheet->setCellValue("C{$row}", $totales['saldo_anterior']);
+            $sheet->setCellValue("D{$row}", $totales['ingreso_procesos']);
+            $sheet->setCellValue("E{$row}", $totales['ingreso_caja_chica']);
+            $sheet->setCellValue("F{$row}", $totales['egreso_mes']);
+            $sheet->setCellValue("G{$row}", $totales['saldo_final']);
+            $sheet->getStyle("A{$row}:G{$row}")->getFont()->setBold(true);
+            $sheet->getStyle("A{$row}:G{$row}")->getFill()
+                ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                ->getStartColor()->setRGB('e0e8d8');
+            foreach (['C','D','E','F','G'] as $col) {
+                $sheet->getStyle("{$col}{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+            }
+
+            $sheet->getColumnDimension('A')->setWidth(12);
+            $sheet->getColumnDimension('B')->setWidth(50);
+            foreach (['C','D','E','F','G'] as $col) {
+                $sheet->getColumnDimension($col)->setWidth(20);
+            }
+
+            $writer = new Xlsx($spreadsheet);
+            ob_start(); $writer->save('php://output'); $content = ob_get_clean();
+            return response($content, 200, [
+                'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Content-Disposition' => "attachment; filename=\"inventario-mensual-{$periodo}.xlsx\"",
+            ]);
+        }
+
         return response()->json($resultado);
     }
 
