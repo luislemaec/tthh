@@ -179,21 +179,28 @@
               d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
           </svg>
         </button>
-        <span class="text-sm text-gray-600">{{ auth.empleado?.apellido }} {{ auth.empleado?.nombre }}</span>
+        <span class="text-sm text-gray-600 hidden sm:block">{{ auth.empleado?.apellido }} {{ auth.empleado?.nombre }}</span>
         <div class="w-8 h-8 rounded-full overflow-hidden flex-shrink-0" style="background-color:#0b5447;">
           <img v-if="fotoEmpleado" :src="fotoEmpleado" class="w-full h-full object-cover" />
           <span v-else class="w-full h-full flex items-center justify-center text-white text-sm font-bold">{{ iniciales }}</span>
         </div>
+        <button @click="handleLogout" title="Cerrar sesión"
+          class="text-gray-400 hover:text-red-500 transition sm:hidden">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+          </svg>
+        </button>
       </div>
     </header>
 
-    <nav class="flex-shrink-0 flex items-stretch px-2 relative z-50 overflow-x-auto" style="background-color:#0b5447; min-height:42px;">
+    <nav class="flex-shrink-0 flex items-stretch px-2 relative z-50" style="background-color:#0b5447; min-height:42px;">
 
       <div v-for="grupo in menuGruposArray" :key="grupo.label" class="relative">
         <button @click="toggleDropdown(grupo.label)"
           class="flex items-center gap-1 px-3 h-full text-xs font-semibold transition whitespace-nowrap"
-          :class="dropdownAbierto === grupo.label ? 'text-white' : 'hover:text-white'"
-          :style="dropdownAbierto === grupo.label ? 'background:rgba(255,255,255,0.12)' : 'color:#95d0c7'">
+          :class="dropdownAbierto === grupo.label || grupo.items.some(i => isActive(i.url)) ? 'text-white' : 'hover:text-white'"
+          :style="dropdownAbierto === grupo.label || grupo.items.some(i => isActive(i.url)) ? 'background:rgba(255,255,255,0.12)' : 'color:#95d0c7'">
           {{ grupo.label }}
           <svg class="w-3 h-3 transition-transform duration-200"
             :class="dropdownAbierto === grupo.label ? 'rotate-180' : ''"
