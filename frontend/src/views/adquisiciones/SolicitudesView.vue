@@ -32,7 +32,12 @@
             {{ s.empleado?.apellido_emp }} {{ s.empleado?.nombre_emp }}
             <span class="text-gray-400 text-xs ml-2">#{{ s.id }}</span>
           </p>
-          <p class="text-xs text-gray-500">{{ s.fecha }} · Depto. {{ s.id_depto }}</p>
+          <p class="text-xs text-gray-500">
+            {{ s.fecha }} · Depto. {{ s.id_depto }}
+            <span v-if="s.nombre_depto_beneficiario" class="ml-1 font-medium text-amber-700">
+              → {{ s.nombre_depto_beneficiario }}
+            </span>
+          </p>
           <p v-if="s.justificacion" class="text-xs text-gray-500 italic mt-0.5">{{ s.justificacion }}</p>
         </div>
 
@@ -105,6 +110,10 @@
           <div class="mb-3 text-sm text-gray-600 space-y-0.5">
             <p><b>Solicitante:</b> {{ modalVer.solicitud?.empleado?.apellido_emp }} {{ modalVer.solicitud?.empleado?.nombre_emp }}</p>
             <p><b>Fecha solicitud:</b> {{ modalVer.solicitud?.fecha }} · Depto. {{ modalVer.solicitud?.id_depto }}</p>
+            <p v-if="modalVer.solicitud?.nombre_depto_beneficiario">
+              <b>Área beneficiaria:</b>
+              <span class="ml-1 text-amber-700 font-medium">{{ modalVer.solicitud.nombre_depto_beneficiario }}</span>
+            </p>
             <p v-if="modalVer.solicitud?.aprobador">
               <b>Aprobado por:</b>
               {{ modalVer.solicitud.aprobador.apellido_emp }} {{ modalVer.solicitud.aprobador.nombre_emp }}
@@ -149,6 +158,23 @@
           <button @click="modalCrear.show = false" class="text-white/70 hover:text-white text-xl leading-none">&times;</button>
         </div>
         <div class="p-6 overflow-y-auto flex-1">
+        <!-- Pedido a nombre de otro depto (solo ADQUISICIONES/BIENES) -->
+        <div v-if="esBienes" class="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+          <label class="block text-xs font-semibold text-amber-800 mb-1">
+            ¿Pedido a nombre de otro departamento? <span class="font-normal text-amber-600">(opcional)</span>
+          </label>
+          <select v-model="modalCrear.form.id_depto_beneficiario"
+            class="w-full border border-amber-300 rounded px-3 py-2 text-sm focus:ring-2 outline-none bg-white">
+            <option :value="null">— Mi propio departamento —</option>
+            <option v-for="d in departamentos" :key="d.id_depto" :value="d.id_depto">
+              {{ d.nombre_depto }}
+            </option>
+          </select>
+          <p v-if="modalCrear.form.id_depto_beneficiario" class="text-xs text-amber-700 mt-1">
+            La solicitud quedará registrada a nombre de este departamento y se aprobará automáticamente.
+          </p>
+        </div>
+
         <div class="mb-4">
           <label class="block text-xs text-gray-600 mb-1">Justificación</label>
           <textarea v-model="modalCrear.form.justificacion" rows="2" maxlength="500"
@@ -326,12 +352,13 @@ import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/services/api'
 
-const auth         = useAuthStore()
-const solicitudes  = ref([])
-const articulos    = ref([])
-const filtroEstado = ref('')
-const guardando    = ref(false)
-const errorModal   = ref('')
+const auth          = useAuthStore()
+const solicitudes   = ref([])
+const articulos     = ref([])
+const departamentos = ref([])
+const filtroEstado  = ref('')
+const guardando     = ref(false)
+const errorModal    = ref('')
 const busquedaArticulo   = ref('')
 const articulosFiltrados = ref([])
 
@@ -385,13 +412,15 @@ function onFiltroChange() {
 }
 
 onMounted(async () => {
-  const [, a, rol] = await Promise.all([
+  const [, a, rol, deptos] = await Promise.all([
     cargar(),
     api.get('/adquisiciones/articulos'),
     api.get('/horas-extras/mi-rol'),
+    api.get('/departamentos'),
   ])
   articulos.value = a.data
   esSupervisorLocal.value = rol.data.es_supervisor || rol.data.es_admin_th
+  departamentos.value = (deptos.data || []).filter(d => d.id_depto != 999)
 })
 
 function abrirVer(s) {
@@ -399,7 +428,7 @@ function abrirVer(s) {
 }
 
 function abrirCrear() {
-  modalCrear.value = { show: true, form: { justificacion: '', detalles: [] } }
+  modalCrear.value = { show: true, form: { justificacion: '', id_depto_beneficiario: null, detalles: [] } }
   busquedaArticulo.value = ''
   articulosFiltrados.value = []
   errorModal.value = ''

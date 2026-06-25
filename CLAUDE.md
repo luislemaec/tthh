@@ -33,6 +33,22 @@ composer dev
 
 Después de cualquier cambio: Push → Pull en servidor → `npm run build` (solo si hay cambios frontend) → `php artisan migrate` (solo si hay nuevas migraciones).
 
+> **IMPORTANTE — `php artisan migrate` en producción:** Solo ejecuta migraciones NUEVAS (pendientes). NUNCA correr `migrate:rollback`, `migrate:fresh` o `migrate:reset` en producción — borra datos. Si una migración ya ejecutada no aparece en la tabla `public.migrations`, insertarla manualmente antes de correr `migrate`.
+
+## Backups de Base de Datos
+
+- **Servidor BD:** `192.168.26.38:5432`, base de datos `BDD_RRHH`, usuario `postgres`
+- **Script:** `/usr/local/bin/backup_rrhh.sh` en el servidor de aplicaciones (`192.168.26.19`)
+- **Destino:** `/var/backups/rrhh/rrhh_YYYYMMDD_HHMM.sql.gz`
+- **Cron:** diario a las 02:00 (`0 2 * * * /usr/local/bin/backup_rrhh.sh`)
+- **Retención:** 7 días (los más antiguos se eliminan automáticamente)
+- Para backup manual: `sudo /usr/local/bin/backup_rrhh.sh`
+- Para restaurar: `gunzip -c archivo.sql.gz | psql -U postgres -h 192.168.26.38 BDD_RRHH`
+
+### Incidente 2026-06-24 — pérdida de datos adq
+
+Las tablas `adq.orden_compra`, `adq.egreso`, `adq.kardex`, `adq.solicitud_material` quedaron vacías porque las migraciones de adquisiciones no estaban registradas en `public.migrations`. Al correr `php artisan migrate`, Laravel las ejecutó de nuevo borrando los datos. Los 482 artículos (`adq.articulo`) no se vieron afectados. **Solución aplicada:** se insertaron manualmente los registros de las 21 migraciones adq en `public.migrations` con batch=1.
+
 ---
 
 ## Autenticación

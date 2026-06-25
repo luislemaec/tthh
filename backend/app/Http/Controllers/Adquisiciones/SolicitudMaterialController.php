@@ -60,30 +60,47 @@ class SolicitudMaterialController extends Controller
 
         if ($request->estado) $query->where('estado', $request->estado);
 
-        return response()->json($query->get());
+        $solicitudes = $query->get();
+
+        $deptos = DB::table('dbo.ad_departamento')->pluck('nombre_depto', 'id_depto');
+        $solicitudes->each(function ($s) use ($deptos) {
+            $s->nombre_depto_beneficiario = $s->id_depto_beneficiario
+                ? ($deptos[$s->id_depto_beneficiario] ?? 'Depto. ' . $s->id_depto_beneficiario)
+                : null;
+        });
+
+        return response()->json($solicitudes);
     }
 
     // POST /api/adquisiciones/solicitudes
     public function store(Request $request)
     {
         $request->validate([
-            'justificacion' => 'nullable|string|max:500',
-            'detalles'      => 'required|array|min:1',
+            'justificacion'        => 'nullable|string|max:500',
+            'id_depto_beneficiario' => 'nullable|integer',
+            'detalles'             => 'required|array|min:1',
             'detalles.*.articulo_id'         => 'required|exists:pgsql.adq.articulo,id',
             'detalles.*.cantidad_solicitada' => 'required|numeric|min:0.01',
         ]);
 
         $emp = $request->user();
-        $esSupervisor = $this->esSupervisor($emp->id_emp);
+        $esSupervisor  = $this->esSupervisor($emp->id_emp);
+        $esBienes      = $this->esRol($emp->id_emp, 'BIENES');
+        $esAdq         = $this->esRol($emp->id_emp, 'ADQUISICIONES');
+        $deptosBen     = $request->id_depto_beneficiario;
+
+        // Auto-aprobado: supervisor propio, o ADQUISICIONES/BIENES pidiendo por otro depto
+        $autoAprobar = $esSupervisor || (($esBienes || $esAdq) && $deptosBen);
 
         $solicitud = SolicitudMaterial::create([
-            'id_emp'        => $emp->id_emp,
-            'id_depto'      => $emp->id_depto,
-            'fecha'         => now()->toDateString(),
-            'justificacion' => $request->justificacion,
-            'estado'        => $esSupervisor ? 'APROBADO' : 'PENDIENTE',
-            'usuario_aprobacion' => $esSupervisor ? $emp->id_emp : null,
-            'fecha_aprobacion'   => $esSupervisor ? now() : null,
+            'id_emp'                => $emp->id_emp,
+            'id_depto'              => $emp->id_depto,
+            'id_depto_beneficiario' => $deptosBen ?: null,
+            'fecha'                 => now()->toDateString(),
+            'justificacion'         => $request->justificacion,
+            'estado'                => $autoAprobar ? 'APROBADO' : 'PENDIENTE',
+            'usuario_aprobacion'    => $autoAprobar ? $emp->id_emp : null,
+            'fecha_aprobacion'      => $autoAprobar ? now() : null,
         ]);
 
         foreach ($request->detalles as $det) {
