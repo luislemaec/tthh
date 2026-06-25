@@ -187,7 +187,7 @@
       </div>
     </header>
 
-    <nav class="flex-shrink-0 flex items-stretch px-2 relative z-50" style="background-color:#0b5447; min-height:42px;">
+    <nav class="flex-shrink-0 flex items-stretch px-2 relative z-50 overflow-x-auto" style="background-color:#0b5447; min-height:42px;">
 
       <div v-for="grupo in menuGruposArray" :key="grupo.label" class="relative">
         <button @click="toggleDropdown(grupo.label)"
@@ -291,7 +291,7 @@ onMounted(async () => {
   } catch {}
 })
 
-const sidebarOpen     = ref(true)
+const sidebarOpen     = ref(window.innerWidth >= 768)
 const dropdownAbierto = ref(null)
 const menuMode        = ref(localStorage.getItem('th_menu_mode') || 'vertical')
 
