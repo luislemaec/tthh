@@ -35,6 +35,8 @@ Después de cualquier cambio: Push → Pull en servidor → `npm run build` (sol
 
 > **IMPORTANTE — `php artisan migrate` en producción:** Solo ejecuta migraciones NUEVAS (pendientes). NUNCA correr `migrate:rollback`, `migrate:fresh` o `migrate:reset` en producción — borra datos. Si una migración ya ejecutada no aparece en la tabla `public.migrations`, insertarla manualmente antes de correr `migrate`.
 
+> **IMPORTANTE — Quién ejecuta los comandos del servidor:** `php artisan migrate`, `npm run build`, `git pull` y cualquier comando en el servidor de aplicaciones (`192.168.26.19`) los ejecuta **siempre el usuario manualmente**. Claude NUNCA corre comandos en el servidor. Al crear migraciones o cambios de frontend, Claude solo genera el código — el usuario es quien hace el deploy.
+
 ## Backups de Base de Datos
 
 - **Servidor BD:** `192.168.26.38:5432`, base de datos `BDD_RRHH`, usuario `postgres`
@@ -1433,6 +1435,8 @@ PIN\tDateTime\tStatus\tVerify\tWorkcode\tReserved1\tReserved2
 - `PIN` = cédula del empleado (configurada al enrolarlo en el dispositivo)
 - `DateTime` = `YYYY-MM-DD HH:MM:SS`
 - El campo `Status` (0=IN/1=OUT) no se usa — el sistema determina el concepto por secuencia del día
+- **PIN con cero inicial:** ZKTeco trata el PIN como número y puede eliminar el cero inicial de cédulas que empiecen con 0. El controller detecta PINs de 9 dígitos y los completa: `if (strlen($pin) === 9) $pin = '0' . $pin`
+- **Lookup por cédula:** el controller busca al empleado por `identificacion` (cédula 10 dígitos) en `dbo.ad_empleado`, NO por `id_emp`. El `id_emp` (código corto como `00002`) es lo que se guarda en `nro_documento` de `sg_control_persona`
 
 **Lógica de asignación de concepto:** igual que el aplicativo web — cuenta las marcaciones del empleado en el día y asigna la siguiente en la secuencia `ENTRADA → SALIDA AL LUNCH → ENTRADA DEL LUNCH → SALIDA`. Si ya tiene 4, descarta.
 
@@ -1453,7 +1457,7 @@ Al llegar el reloj:
 2. En menú Red / ADMS del dispositivo: **Server Address:** `192.168.26.19` | **Server Port:** `8081` | **Server Path:** `/api/`
 3. El reloj llama a `/api/iclock/registry?SN=SERIAL` al arrancar y queda registrado en BD
 4. **Activarlo desde la UI** (`admin/zkteco`) — por defecto se registra en BD con `activo=true`, pero verificar
-5. Enrolar empleados: PIN = cédula exacta (10 dígitos), igual que `id_emp` en `dbo.ad_empleado`
+5. Enrolar empleados: PIN = cédula exacta (10 dígitos), valor del campo `identificacion` en `dbo.ad_empleado` (NO el `id_emp`)
 6. Empleados inactivos: solo cambiar `estado='INACTIVO'` en la ficha; no es necesario borrarlos del reloj
 
 ---

@@ -496,6 +496,159 @@ class ReporteAdqController extends Controller
         return response()->json($resultado);
     }
 
+    public function inventarioValorizado(Request $request)
+    {
+        $tipo            = $request->get('tipo', 'agrupado');
+        $soloExistencias = $request->get('solo_existencias', '1') === '1';
+
+        $query = DB::table('adq.articulo as a')
+            ->leftJoin('adq.catalogo_nivel1 as cn1', 'cn1.nivel1', '=', 'a.nivel1')
+            ->where('a.estado', 'ACTIVO')
+            ->select([
+                'a.id', 'a.codigo', 'a.nombre', 'a.unidad_medida',
+                'a.stock_actual', 'a.precio_unitario', 'a.nivel1',
+                DB::raw("COALESCE(cn1.descripcion, 'SIN CLASIFICACIÓN') as nivel1_descripcion"),
+                DB::raw('ROUND(CAST(a.stock_actual AS numeric) * CAST(a.precio_unitario AS numeric), 2) as valor_total'),
+            ]);
+
+        if ($soloExistencias) {
+            $query->where('a.stock_actual', '>', 0);
+        }
+
+        $query->orderBy('nivel1_descripcion')->orderBy('a.codigo');
+
+        $articulos    = $query->get();
+        $totalGeneral = round($articulos->sum('valor_total'), 2);
+
+        $grupos = $articulos->groupBy('nivel1_descripcion')->map(function ($items, $desc) {
+            return [
+                'nivel1'      => $items->first()->nivel1 ?? null,
+                'descripcion' => $desc,
+                'articulos'   => $items->values(),
+                'subtotal'    => round($items->sum('valor_total'), 2),
+            ];
+        })->sortKeys()->values();
+
+        $data = [
+            'tipo'             => $tipo,
+            'solo_existencias' => $soloExistencias,
+            'grupos'           => $grupos,
+            'articulos'        => $articulos->values(),
+            'total_general'    => $totalGeneral,
+        ];
+
+        if ($request->formato === 'pdf') {
+            $logoPath   = public_path('logo.png');
+            $logo       = file_exists($logoPath) ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath)) : null;
+            $nombreInst = DB::table('dbo.d2_configuracion')->whereRaw("LOWER(concepto) = 'nombre_institucion'")->value('valor') ?? 'CONSEJO DE COMUNICACIÓN';
+            $generadoPor = trim($request->user()->apellido_emp . ' ' . $request->user()->nombre_emp);
+            $pdf = Pdf::loadView('reportes.adq_inventario_valorizado', array_merge($data, compact('logo', 'nombreInst', 'generadoPor')))
+                ->setPaper('a4', 'landscape');
+            return $pdf->stream('inventario-valorizado.pdf');
+        }
+
+        if ($request->formato === 'excel') {
+            return $this->inventarioValorizadoExcel($data, $request);
+        }
+
+        return response()->json($data);
+    }
+
+    private function inventarioValorizadoExcel(array $data, Request $request)
+    {
+        $nombreInst = DB::table('dbo.d2_configuracion')->whereRaw("LOWER(concepto) = 'nombre_institucion'")->value('valor') ?? 'CONSEJO DE COMUNICACIÓN';
+        $agrupado   = $data['tipo'] === 'agrupado';
+        $titulo     = $data['solo_existencias'] ? 'INVENTARIO VALORIZADO — EXISTENCIAS ACTUALES' : 'INVENTARIO VALORIZADO — TODOS LOS ARTÍCULOS';
+        $fecha      = now()->format('d/m/Y');
+
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Inventario Valorizado');
+
+        $colorVerde   = '4a5e3a';
+        $colorVerdeLt = 'e8f0e3';
+        $colorSubtot  = 'd0e0c8';
+
+        // Encabezado
+        $sheet->mergeCells('A1:F1'); $sheet->setCellValue('A1', strtoupper($nombreInst));
+        $sheet->mergeCells('A2:F2'); $sheet->setCellValue('A2', $titulo);
+        $sheet->mergeCells('A3:F3'); $sheet->setCellValue('A3', 'Generado: ' . $fecha);
+        foreach (['A1','A2','A3'] as $c) {
+            $sheet->getStyle($c)->getFont()->setBold(true);
+            $sheet->getStyle($c)->getAlignment()->setHorizontal('center');
+        }
+        $sheet->getStyle('A1')->getFont()->setSize(12);
+
+        // Cabeceras de columna
+        $cols = ['A4'=>'Código','B4'=>'Descripción','C4'=>'Unidad','D4'=>'Stock','E4'=>'Precio Unit.','F4'=>'Valor Total'];
+        foreach ($cols as $cell => $val) {
+            $sheet->setCellValue($cell, $val);
+            $sheet->getStyle($cell)->getFont()->setBold(true)->getColor()->setRGB('FFFFFF');
+            $sheet->getStyle($cell)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB($colorVerde);
+            $sheet->getStyle($cell)->getAlignment()->setHorizontal('center');
+        }
+
+        $row = 5;
+        $grupos = $agrupado ? $data['grupos'] : [['descripcion'=>null,'articulos'=>$data['articulos'],'subtotal'=>$data['total_general']]];
+
+        foreach ($grupos as $grupo) {
+            if ($agrupado && $grupo['descripcion']) {
+                $sheet->mergeCells("A{$row}:F{$row}");
+                $sheet->setCellValue("A{$row}", strtoupper($grupo['descripcion']));
+                $sheet->getStyle("A{$row}")->getFont()->setBold(true)->getColor()->setRGB('FFFFFF');
+                $sheet->getStyle("A{$row}")->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB($colorVerde);
+                $row++;
+            }
+
+            foreach ($grupo['articulos'] as $i => $a) {
+                $sheet->setCellValue("A{$row}", $a->codigo);
+                $sheet->setCellValue("B{$row}", $a->nombre);
+                $sheet->setCellValue("C{$row}", $a->unidad_medida);
+                $sheet->setCellValue("D{$row}", (float)$a->stock_actual);
+                $sheet->setCellValue("E{$row}", (float)$a->precio_unitario);
+                $sheet->setCellValue("F{$row}", (float)$a->valor_total);
+                $sheet->getStyle("E{$row}:F{$row}")->getNumberFormat()->setFormatCode('#,##0.0000');
+                $sheet->getStyle("F{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+                if ($i % 2 !== 0) {
+                    $sheet->getStyle("A{$row}:F{$row}")->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB($colorVerdeLt);
+                }
+                $row++;
+            }
+
+            if ($agrupado) {
+                $sheet->setCellValue("A{$row}", 'SUBTOTAL');
+                $sheet->mergeCells("A{$row}:E{$row}");
+                $sheet->setCellValue("F{$row}", (float)$grupo['subtotal']);
+                $sheet->getStyle("A{$row}:F{$row}")->getFont()->setBold(true);
+                $sheet->getStyle("A{$row}:F{$row}")->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB($colorSubtot);
+                $sheet->getStyle("F{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+                $row++;
+            }
+        }
+
+        // Total general
+        $sheet->setCellValue("A{$row}", 'TOTAL GENERAL');
+        $sheet->mergeCells("A{$row}:E{$row}");
+        $sheet->setCellValue("F{$row}", (float)$data['total_general']);
+        $sheet->getStyle("A{$row}:F{$row}")->getFont()->setBold(true)->getColor()->setRGB('FFFFFF');
+        $sheet->getStyle("A{$row}:F{$row}")->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB($colorVerde);
+        $sheet->getStyle("F{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+
+        $sheet->getColumnDimension('A')->setWidth(14);
+        $sheet->getColumnDimension('B')->setWidth(48);
+        $sheet->getColumnDimension('C')->setWidth(12);
+        $sheet->getColumnDimension('D')->setWidth(12);
+        $sheet->getColumnDimension('E')->setWidth(16);
+        $sheet->getColumnDimension('F')->setWidth(16);
+
+        $writer = new Xlsx($spreadsheet);
+        ob_start(); $writer->save('php://output'); $content = ob_get_clean();
+        return response($content, 200, [
+            'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="inventario-valorizado.xlsx"',
+        ]);
+    }
+
     public function articulosBuscar(Request $request)
     {
         $q = $request->get('q', '');

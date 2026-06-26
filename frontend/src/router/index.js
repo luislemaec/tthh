@@ -87,7 +87,8 @@ const routes = [
       { path: 'reportes/kardex',         name: 'AdqReporteKardex',      component: () => import('@/views/adquisiciones/ReporteKardexView.vue') },
       { path: 'reportes/libro-compras',  name: 'AdqReporteLibroCompras', component: () => import('@/views/adquisiciones/ReporteLibroComprasView.vue') },
       { path: 'reportes/egresos',           name: 'AdqReporteEgresos',          component: () => import('@/views/adquisiciones/ReporteEgresosView.vue') },
-      { path: 'reportes/inventario-mensual', name: 'AdqReporteInventarioMensual', component: () => import('@/views/adquisiciones/ReporteInventarioMensualView.vue') },
+      { path: 'reportes/inventario-mensual',    name: 'AdqReporteInventarioMensual',    component: () => import('@/views/adquisiciones/ReporteInventarioMensualView.vue') },
+      { path: 'reportes/inventario-valorizado', name: 'AdqReporteInventarioValorizado', component: () => import('@/views/adquisiciones/ReporteInventarioValorizadoView.vue') },
     ],
   },
   // ── Transportes ────────────────────────────────────────────────────────────
