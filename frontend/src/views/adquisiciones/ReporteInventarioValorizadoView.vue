@@ -46,7 +46,7 @@
         <span v-if="tipo === 'agrupado'" class="text-gray-500">
           <b class="text-gray-800">{{ datos.grupos?.length }}</b> categorías
         </span>
-        <span class="font-semibold" style="color:#4a5e3a;">Total: ${{ fmt(datos.total_general) }}</span>
+        <span class="font-semibold" style="color:#4a5e3a;">Total: $ {{ fmt(datos.total_general) }}</span>
         <div v-if="tipo === 'agrupado'" class="ml-auto flex gap-2">
           <button @click="expandirTodo" class="text-xs text-gray-500 hover:text-gray-800 border border-gray-300 rounded px-2 py-1">
             Expandir todo
@@ -67,7 +67,7 @@
               <th class="text-center px-3 py-2 font-medium w-20">Unidad</th>
               <th class="text-right px-3 py-2 font-medium w-24">Stock</th>
               <th class="text-right px-3 py-2 font-medium w-28">Precio Unit.</th>
-              <th class="text-right px-4 py-2 font-medium w-28">Valor Total</th>
+              <th class="text-right px-4 py-2 font-medium w-28">Valor Total ($)</th>
             </tr>
           </thead>
           <tbody>
@@ -85,7 +85,7 @@
                     <span class="ml-2 font-normal opacity-75 text-xs">({{ grupo.articulos.length }} artículos)</span>
                   </td>
                   <td class="px-4 py-2 text-white font-bold text-right font-mono text-xs">
-                    $ {{ fmt(grupo.subtotal) }}
+                    {{ fmt(grupo.subtotal) }}
                   </td>
                 </tr>
                 <!-- Filas de artículos del grupo -->
@@ -99,7 +99,7 @@
                     <td class="px-3 py-1.5 text-right font-mono text-gray-700">{{ fmt(a.stock_actual) }}</td>
                     <td class="px-3 py-1.5 text-right font-mono text-gray-500 text-xs">{{ fmtP(a.precio_unitario) }}</td>
                     <td class="px-4 py-1.5 text-right font-mono font-semibold" style="color:#4a5e3a;">
-                      $ {{ fmt(a.valor_total) }}
+                      {{ fmt(a.valor_total) }}
                     </td>
                   </tr>
                 </template>
@@ -130,7 +130,7 @@
       <div class="px-5 py-3 flex justify-end items-center gap-4 text-sm font-bold text-white border-t-2"
         style="background-color:#4a5e3a; border-color:#2e3d22;">
         <span>TOTAL GENERAL</span>
-        <span class="font-mono text-base">$ {{ fmt(datos.total_general) }}</span>
+        <span class="font-mono text-base">{{ fmt(datos.total_general) }}</span>
       </div>
     </div>
 
