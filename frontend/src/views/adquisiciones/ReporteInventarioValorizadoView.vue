@@ -117,7 +117,7 @@
                 <td class="px-3 py-1.5 text-right font-mono text-gray-700">{{ fmt(a.stock_actual) }}</td>
                 <td class="px-3 py-1.5 text-right font-mono text-gray-500 text-xs">{{ fmtP(a.precio_unitario) }}</td>
                 <td class="px-4 py-1.5 text-right font-mono font-semibold" style="color:#4a5e3a;">
-                  $ {{ fmt(a.valor_total) }}
+                  {{ fmt(a.valor_total) }}
                 </td>
               </tr>
             </template>
