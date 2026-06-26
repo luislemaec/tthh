@@ -142,6 +142,9 @@
       </div>
     </div>
 
+    <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-xl p-5 text-red-700 text-sm">
+      {{ error }}
+    </div>
     <div v-else-if="!cargando" class="bg-white rounded-xl shadow p-10 text-center text-gray-400">
       Selecciona las opciones y presiona Generar
     </div>
@@ -157,6 +160,7 @@ const soloExistencias = ref(true)
 const datos           = ref(null)
 const cargando        = ref(false)
 const exportando      = ref(false)
+const error           = ref('')
 
 const btnActivo  = 'px-4 py-1.5 rounded-lg text-sm font-medium text-white bg-[#4a5e3a]'
 const btnInactivo = 'px-4 py-1.5 rounded-lg text-sm font-medium border border-gray-300 text-gray-600 hover:bg-gray-50'
@@ -173,6 +177,7 @@ const totalArticulos = computed(() => {
 async function generar() {
   cargando.value = true
   datos.value = null
+  error.value = ''
   try {
     const { data } = await api.get('/adquisiciones/reportes/inventario-valorizado', {
       params: {
@@ -181,6 +186,8 @@ async function generar() {
       }
     })
     datos.value = data
+  } catch (e) {
+    error.value = e.response?.data?.message || 'Error al cargar el reporte'
   } finally {
     cargando.value = false
   }

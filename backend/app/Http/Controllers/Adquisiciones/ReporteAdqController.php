@@ -515,7 +515,7 @@ class ReporteAdqController extends Controller
             $query->where('a.stock_actual', '>', 0);
         }
 
-        $query->orderBy('nivel1_descripcion')->orderBy('a.codigo');
+        $query->orderByRaw("COALESCE(cn1.descripcion, 'SIN CLASIFICACIÓN')")->orderBy('a.codigo');
 
         $articulos    = $query->get();
         $totalGeneral = round($articulos->sum('valor_total'), 2);
