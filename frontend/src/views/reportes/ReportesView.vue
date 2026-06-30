@@ -17,16 +17,27 @@
 
     <!-- Filtros comunes -->
     <div class="bg-white rounded-xl shadow p-4 flex flex-wrap gap-3 items-end">
-      <div>
-        <label class="block text-xs text-gray-500 mb-1">Fecha Desde</label>
-        <input v-model="filtros.fecha_desde" type="date"
-          class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
-      </div>
-      <div>
-        <label class="block text-xs text-gray-500 mb-1">Fecha Hasta</label>
-        <input v-model="filtros.fecha_hasta" type="date"
-          class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
-      </div>
+      <!-- Fecha única para marcaciones del día -->
+      <template v-if="tabActivo === 'marcaciones-dia'">
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Fecha</label>
+          <input v-model="filtroFechaMarcaciones" type="date"
+            class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+        </div>
+      </template>
+      <!-- Rango de fechas para los demás tabs -->
+      <template v-else>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Fecha Desde</label>
+          <input v-model="filtros.fecha_desde" type="date"
+            class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Fecha Hasta</label>
+          <input v-model="filtros.fecha_hasta" type="date"
+            class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+        </div>
+      </template>
       <template v-if="tabActivo !== 'sin-atrasos'">
         <div>
           <label class="block text-xs text-gray-500 mb-1">Departamento</label>
@@ -64,8 +75,8 @@
         class="border rounded-lg px-4 py-2 text-sm text-gray-600 hover:bg-gray-50">
         Limpiar
       </button>
-      <!-- Botones exportar (visibles solo si hay datos) -->
-      <template v-if="datos.length > 0 && tabActivo !== 'sin-atrasos'">
+      <!-- Botones exportar (visibles solo si hay datos, no para sin-atrasos ni marcaciones-dia) -->
+      <template v-if="datos.length > 0 && tabActivo !== 'sin-atrasos' && tabActivo !== 'marcaciones-dia'">
         <button @click="exportar('excel')" :disabled="exportando"
           class="flex items-center gap-1.5 border border-green-600 text-green-700 px-4 py-2 rounded-lg text-sm hover:bg-green-50 disabled:opacity-50">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -254,6 +265,58 @@
       </div>
     </div>
 
+    <!-- Marcaciones del Día -->
+    <div v-if="tabActivo === 'marcaciones-dia'" class="bg-white rounded-xl shadow overflow-hidden">
+      <div class="px-6 py-4 border-b flex items-center justify-between">
+        <h2 class="font-semibold text-gray-700">Marcaciones del Día</h2>
+        <span class="text-sm text-gray-400">{{ datos.length }} marcaciones</span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50 border-b">
+            <tr>
+              <th class="text-left px-4 py-3 text-gray-600 font-medium">Empleado</th>
+              <th class="text-left px-4 py-3 text-gray-600 font-medium">Departamento</th>
+              <th class="text-left px-4 py-3 text-gray-600 font-medium">Concepto</th>
+              <th class="text-left px-4 py-3 text-gray-600 font-medium">Hora</th>
+              <th class="text-left px-4 py-3 text-gray-600 font-medium">Tipo</th>
+              <th class="text-left px-4 py-3 text-gray-600 font-medium">IP</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="cargando">
+              <td colspan="6" class="text-center py-10 text-gray-400">Cargando...</td>
+            </tr>
+            <tr v-else-if="datos.length === 0">
+              <td colspan="6" class="text-center py-10 text-gray-400">No hay marcaciones para la fecha seleccionada</td>
+            </tr>
+            <tr v-for="m in datos" :key="m.secuencial" class="border-b hover:bg-gray-50">
+              <td class="px-4 py-3 font-medium">
+                {{ m.empleado?.apellido_emp }} {{ m.empleado?.nombre_emp }}
+              </td>
+              <td class="px-4 py-3 text-gray-500 text-xs">{{ m.empleado?.departamento?.nombre_depto }}</td>
+              <td class="px-4 py-3">
+                <span :class="colorConcepto(m.concepto)"
+                  class="px-2 py-1 rounded-full text-xs font-medium">
+                  {{ m.concepto }}
+                </span>
+              </td>
+              <td class="px-4 py-3 font-mono text-xs">{{ formatHora(m.fecha_hora) }}</td>
+              <td class="px-4 py-3">
+                <span :class="m.tipo_marcacion === 'WEB' ? 'bg-blue-100 text-[#0b5447]' :
+                              m.tipo_marcacion === 'TELETRABAJO' ? 'bg-indigo-100 text-indigo-700' :
+                              'bg-purple-100 text-purple-700'"
+                  class="px-2 py-1 rounded-full text-xs font-medium">
+                  {{ m.tipo_marcacion || 'BIOMETRICO' }}
+                </span>
+              </td>
+              <td class="px-4 py-3 text-gray-400 text-xs">{{ m.ip || '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- Reporte Movimientos de Personal -->
     <div v-if="tabActivo === 'movimientos'" class="bg-white rounded-xl shadow overflow-hidden">
       <div class="px-6 py-4 border-b flex items-center justify-between">
@@ -331,10 +394,11 @@ const errorBuscar  = ref("")
 const departamentos = ref([])
 
 const tabs = [
-  { id: "atrasos",      label: "Atrasos" },
-  { id: "faltantes",    label: "Marcaciones No Realizadas" },
-  { id: "sin-atrasos",  label: "Sin Atrasos" },
-  { id: "movimientos",  label: "Movimientos de Personal" },
+  { id: "atrasos",          label: "Atrasos" },
+  { id: "faltantes",        label: "Marcaciones No Realizadas" },
+  { id: "sin-atrasos",      label: "Sin Atrasos" },
+  { id: "movimientos",      label: "Movimientos de Personal" },
+  { id: "marcaciones-dia",  label: "Marcaciones del Día" },
 ]
 
 const tiposMovimiento = [
@@ -346,6 +410,8 @@ const tiposMovimiento = [
 
 const hoy = new Date().toISOString().substring(0, 10)
 const primerDiaMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().substring(0, 10)
+
+const filtroFechaMarcaciones = ref(hoy)
 
 const filtros = ref({
   fecha_desde: primerDiaMes,
@@ -395,6 +461,12 @@ const badgeMovimiento = (tipo) => {
 const contarTipo = (tipo) => datos.value.filter(r => r.tipo === tipo).length
 
 const buildParams = () => {
+  if (tabActivo.value === 'marcaciones-dia') {
+    const p = { fecha: filtroFechaMarcaciones.value }
+    if (filtros.value.id_depto) p.departamento_id = filtros.value.id_depto
+    if (filtros.value.id_emp)   p.buscar          = filtros.value.id_emp
+    return p
+  }
   const params = {
     fecha_desde: filtros.value.fecha_desde,
     fecha_hasta: filtros.value.fecha_hasta,
@@ -406,14 +478,15 @@ const buildParams = () => {
 }
 
 const endpointActivo = () => {
-  if (tabActivo.value === "atrasos")     return "/reportes/atrasos"
-  if (tabActivo.value === "faltantes")   return "/reportes/marcaciones-faltantes"
-  if (tabActivo.value === "movimientos") return "/reportes/movimientos-personal"
+  if (tabActivo.value === "atrasos")          return "/reportes/atrasos"
+  if (tabActivo.value === "faltantes")        return "/reportes/marcaciones-faltantes"
+  if (tabActivo.value === "movimientos")      return "/reportes/movimientos-personal"
+  if (tabActivo.value === "marcaciones-dia")  return "/asistencia/listado"
   return "/asistencia/reporte-sin-atrasos"
 }
 
 const buscar = async () => {
-  if (!filtros.value.fecha_desde || !filtros.value.fecha_hasta) return
+  if (tabActivo.value !== 'marcaciones-dia' && (!filtros.value.fecha_desde || !filtros.value.fecha_hasta)) return
   cargando.value = true
   errorBuscar.value = ""
   datos.value = []
@@ -454,10 +527,11 @@ const exportar = async (formato) => {
 }
 
 const cambiarTab = (id) => {
-  tabActivo.value   = id
-  datos.value       = []
-  errorBuscar.value = ""
-  filtros.value     = {
+  tabActivo.value           = id
+  datos.value               = []
+  errorBuscar.value         = ""
+  filtroFechaMarcaciones.value = hoy
+  filtros.value             = {
     fecha_desde: primerDiaMes,
     fecha_hasta: hoy,
     id_depto: "",
@@ -467,6 +541,7 @@ const cambiarTab = (id) => {
 }
 
 const limpiar = () => {
+  filtroFechaMarcaciones.value = hoy
   filtros.value = {
     fecha_desde: primerDiaMes,
     fecha_hasta: hoy,
@@ -475,6 +550,21 @@ const limpiar = () => {
     tipos: ["VACACIONES","PERMISO","LICENCIA","COMISION"],
   }
   datos.value = []
+}
+
+const formatHora = (fechaHora) => {
+  if (!fechaHora) return ""
+  return fechaHora.toString().substring(11, 19)
+}
+
+const colorConcepto = (concepto) => {
+  const colores = {
+    "ENTRADA":           "bg-green-100 text-green-700",
+    "SALIDA AL LUNCH":   "bg-yellow-100 text-yellow-700",
+    "ENTRADA DEL LUNCH": "bg-blue-100 text-[#0b5447]",
+    "SALIDA":            "bg-red-100 text-red-700",
+  }
+  return colores[concepto] || "bg-gray-100 text-gray-700"
 }
 
 onMounted(async () => {

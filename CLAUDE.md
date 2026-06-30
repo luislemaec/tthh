@@ -867,7 +867,7 @@ Vista admin SBU: `views/admin/SbuView.vue` (ruta `admin/sbu`) — el SBU se gest
 | `IvaController` | CRUD tasas IVA |
 | `AjusteController` | Ajuste de inventario (toma física): store/index — inserta en kardex tipo AJUSTE_POSITIVO/NEGATIVO. También `importarStock`: carga masiva desde CSV |
 | `SolicitudMaterialController` | Solicitudes internas: store/aprobar/negar/despachar — al despachar inserta en kardex tipo `EGRESO` con `referencia_tipo = 'solicitud_material'` |
-| `ReporteAdqController` | Kardex NIC 2, Libro de Compras, Egresos Valorizados, **Inventario Mensual** (JSON + PDF) |
+| `ReporteAdqController` | Kardex NIC 2, Libro de Compras, Egresos Valorizados, **Inventario Mensual**, **Inventario Valorizado** (JSON + PDF + Excel) |
 
 ### Reglas de Precio
 
@@ -927,6 +927,7 @@ Toma física: el usuario ingresa la cantidad contada físicamente; el sistema ca
 - **Kardex NIC 2**: filtros combinables — artículo individual, Nivel 1 MEF (`nivel1`, 2 chars) y/o Nivel 2 MEF (`nivel2`, 6 chars). Al menos uno requerido. Devuelve siempre un array `[{ articulo, filas }, ...]`; PDF y frontend iteran una sección por artículo. Tabla doble encabezado (INGRESO/EGRESO/SALDO, cada uno con Cant./P.Unit./Total). Clasifica AJUSTE_POSITIVO y REVERSO_EGRESO como INGRESO; AJUSTE_NEGATIVO y REVERSO_INGRESO como EGRESO.
 - **Libro de Compras**: facturas de proveedores por período + filtro proceso + filtro RUC/nombre proveedor (parámetro `proveedor`, busca con `ILIKE` en ambos campos) → Top 5 proveedores por monto (calculado en frontend desde los datos cargados) + PDF SRI
 - **Egresos Valorizados**: salidas despachadas por período + filtro dirección/área → PDF
+- **Inventario Valorizado**: snapshot actual de existencias — `stock_actual × precio_unitario` (sin IVA, NIC 2). Vista agrupada por categoría MEF con acordeón o lista plana por código. Filtro stock > 0 / todos. Export PDF + Excel. Ruta: `GET /api/adquisiciones/reportes/inventario-valorizado`
 
 ### Imágenes de Artículos
 
@@ -975,6 +976,24 @@ views/adquisiciones/
                                    # Ingresos: INGRESO + REVERSO_EGRESO + AJUSTE_POSITIVO (Caja Chica = proceso = CAJA CHICA)
                                    # Egresos:  EGRESO + REVERSO_INGRESO + AJUSTE_NEGATIVO
                                    # PDF landscape A4 verde institucional
+  ReporteInventarioValorizadoView.vue # Inventario valorizado — snapshot actual de existencias
+                                   # Ruta: adquisiciones/reportes/inventario-valorizado
+                                   # Rol: ADQUISICIONES (agregar en Admin → Opciones de Menú)
+                                   # Controles: Vista (agrupado por categoría MEF / plano por código) +
+                                   #   Filtro (solo existencias > 0 / todos los artículos)
+                                   # Vista agrupada: acordeón por categoría con ▶/▼, expandir/colapsar todo,
+                                   #   subtotal por grupo + total general; header sticky al hacer scroll
+                                   # Vista plana: lista ordenada por código + total general
+                                   # Columnas: Código | Descripción | Unidad | Stock | Precio Unit. | Valor Total ($)
+                                   #   El $ va solo en el encabezado de columna, NO en cada celda (evita desbordamiento)
+                                   # Valor Total = stock_actual × precio_unitario (SIN IVA — precio de costo neto, estándar NIC 2)
+                                   # Export: Excel (PhpSpreadsheet, filas de grupo en verde, subtotales) + PDF landscape A4
+                                   # Backend: ReporteAdqController::inventarioValorizado()
+                                   #   JOIN adq.articulo + adq.catalogo_nivel1 ON nivel1
+                                   #   orderByRaw("COALESCE(cn1.descripcion, 'SIN CLASIFICACIÓN')") — no usar orderBy con alias
+                                   #   Artículos sin nivel1 agrupados en 'SIN CLASIFICACIÓN'
+                                   # Ruta API: GET /api/adquisiciones/reportes/inventario-valorizado
+                                   #   Params: tipo (agrupado|plano), solo_existencias (1|0), formato (pdf|excel)
 layouts/AdqLayout.vue              # Layout verde, roles ADQUISICIONES/BIENES
                                    # Modo mantenimiento: variable MODO_MANTENIMIENTO_ADQ = 1
                                    #   ADMINISTRADOR / ADQUISICIONES → banner naranja, siguen trabajando
@@ -1449,6 +1468,20 @@ PIN\tDateTime\tStatus\tVerify\tWorkcode\tReserved1\tReserved2
 | DELETE | `/api/admin/zkteco/{id}` | Eliminar dispositivo |
 
 Vista: `views/admin/ZktecoView.vue` (ruta `admin/zkteco`) — solo rol ADMINISTRADOR.
+
+### Dispositivo registrado en producción
+
+| Campo | Valor |
+|---|---|
+| Serial | `VDE2261200055` |
+| IP | `192.168.26.9` |
+| Nombre | Reloj Principal |
+
+> **Si se restaura un backup** y el reloj deja de funcionar (403 en los logs), el registro se perdió. Insertarlo manualmente:
+> ```sql
+> INSERT INTO dbo.d2_zkteco_dispositivo (serial, nombre, ip, activo, ultimo_push, created_at, updated_at)
+> VALUES ('VDE2261200055', 'Reloj Principal', '192.168.26.9', true, NOW(), NOW(), NOW());
+> ```
 
 ### Configuración del dispositivo físico
 
