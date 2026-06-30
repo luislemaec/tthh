@@ -150,7 +150,31 @@ class PermisosController extends Controller
             $query->where("descontable", $request->descontable);
         }
 
-        return response()->json($query->paginate($request->get("per_page", 15)));
+        $result = $query->paginate($request->get("per_page", 15));
+
+        // Aviso para el supervisor: permiso ENTRADA/SALIDA descontable de un día
+        // que ya pasó y no tuvo atraso real registrado (posible error del empleado)
+        $hoy = Carbon::today();
+        foreach ($result->items() as $permiso) {
+            $permiso->sin_atraso = false;
+            if (
+                $permiso->descontable === "SI" &&
+                in_array($permiso->tipo_horario, ["ENTRADA", "SALIDA"]) &&
+                $permiso->fecha_desde &&
+                Carbon::parse($permiso->fecha_desde)->lte($hoy)
+            ) {
+                $cuadre = DB::table("dbo.d2_cuadre_marcacion")
+                    ->where("id_emp", $permiso->id_emp)
+                    ->whereDate("fecha", Carbon::parse($permiso->fecha_desde)->toDateString())
+                    ->first();
+                if ($cuadre) {
+                    $atraso = $permiso->tipo_horario === "ENTRADA" ? $cuadre->atraso_entrada : $cuadre->atraso_salida;
+                    $permiso->sin_atraso = (float) $atraso === 0.0;
+                }
+            }
+        }
+
+        return response()->json($result);
     }
 
     // Obtener info del usuario actual para el frontend

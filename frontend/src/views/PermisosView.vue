@@ -112,6 +112,10 @@
                   Ver
                 </button>
                 <template v-if="esSupervisorOAdmin && tabActivo === 'equipo' && p.estado_permiso === 'PENDIENTE'">
+                  <span v-if="p.sin_atraso" title="Este empleado no registra atraso ese día"
+                    class="inline-flex items-center px-2 py-1 rounded-md bg-amber-100 text-amber-700 text-xs font-medium">
+                    ⚠ Sin atraso
+                  </span>
                   <button @click="aprobar(p.secuencial_clave)"
                     class="inline-flex items-center px-2.5 py-1 rounded-md border border-green-300 text-xs text-green-700 hover:bg-green-50 font-medium transition-colors">
                     Aprobar
