@@ -200,7 +200,7 @@
           <div class="flex items-center gap-2">
             <input v-model="formNuevo.todo_dia" type="checkbox" id="todo_dia"
               true-value="SI" false-value="NO" class="rounded"
-              @change="if (formNuevo.todo_dia === 'SI') formNuevo.tipo_horario = ''" />
+              @change="formNuevo.todo_dia === 'SI' && (formNuevo.tipo_horario = '')" />
             <label for="todo_dia" class="text-sm text-gray-600">Todo el dia</label>
           </div>
           <div v-if="formNuevo.todo_dia !== 'SI'">
