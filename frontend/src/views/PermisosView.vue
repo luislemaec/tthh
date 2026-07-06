@@ -57,6 +57,16 @@
         class="border rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-50">
         Limpiar
       </button>
+      <template v-if="permisos.length > 0">
+        <button @click="exportar('excel')" :disabled="exportando"
+          class="border rounded-lg px-3 py-2 text-sm font-medium text-green-700 border-green-300 hover:bg-green-50 disabled:opacity-50">
+          {{ exportando === 'excel' ? 'Generando…' : 'Excel' }}
+        </button>
+        <button @click="exportar('pdf')" :disabled="exportando"
+          class="border rounded-lg px-3 py-2 text-sm font-medium text-red-700 border-red-300 hover:bg-red-50 disabled:opacity-50">
+          {{ exportando === 'pdf' ? 'Generando…' : 'PDF' }}
+        </button>
+      </template>
     </div>
 
     <!-- Tabla -->
@@ -187,20 +197,21 @@
               </option>
             </select>
           </div>
-          <div>
+          <div class="flex items-center gap-2">
+            <input v-model="formNuevo.todo_dia" type="checkbox" id="todo_dia"
+              true-value="SI" false-value="NO" class="rounded"
+              @change="if (formNuevo.todo_dia === 'SI') formNuevo.tipo_horario = ''" />
+            <label for="todo_dia" class="text-sm text-gray-600">Todo el dia</label>
+          </div>
+          <div v-if="formNuevo.todo_dia !== 'SI'">
             <label class="block text-sm font-medium text-gray-600 mb-1">Tipo de permiso *</label>
             <select v-model="formNuevo.tipo_horario"
               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
               <option value="">Seleccionar tipo...</option>
-              <option value="ENTRADA">Entrada — atraso a la entrada</option>
+              <option value="ENTRADA">Entrada — trámite personal</option>
               <option value="ENTRE JORNADA">Entre jornada — lunch, cita médica, etc.</option>
               <option value="SALIDA">Salida — salida anticipada</option>
             </select>
-          </div>
-          <div class="flex items-center gap-2">
-            <input v-model="formNuevo.todo_dia" type="checkbox" id="todo_dia"
-              true-value="SI" false-value="NO" class="rounded" />
-            <label for="todo_dia" class="text-sm text-gray-600">Todo el dia</label>
           </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
@@ -540,6 +551,7 @@ const permisos            = ref([])
 const razones             = ref([])
 const cargando            = ref(false)
 const guardando           = ref(false)
+const exportando          = ref(false)
 const modalNuevo          = ref(false)
 const modalVer            = ref(false)
 const modalNegar          = ref(false)
@@ -781,6 +793,31 @@ const limpiarFiltros = () => {
   filtros.value = { estado: "", fecha_desde: "", fecha_hasta: "", descontable: "" }
   pagina.value  = 1
   cargar()
+}
+
+const exportar = async (formato) => {
+  exportando.value = formato
+  try {
+    const vista  = esSupervisorOAdmin.value ? tabActivo.value : ""
+    const params = { ...filtros.value, formato, ...(vista ? { vista } : {}) }
+    const resp   = await api.get("/permisos", { params, responseType: 'blob' })
+    const ext    = formato === 'excel' ? 'xlsx' : 'pdf'
+    const mime   = formato === 'excel'
+      ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      : 'application/pdf'
+    const blob   = new Blob([resp.data], { type: mime })
+    const url    = URL.createObjectURL(blob)
+    const a      = document.createElement('a')
+    a.href       = url
+    a.download   = `permisos_${new Date().toISOString().slice(0,10)}.${ext}`
+    a.click()
+    setTimeout(() => URL.revokeObjectURL(url), 60000)
+  } catch (e) {
+    console.error(e)
+    alert('Error al generar el archivo')
+  } finally {
+    exportando.value = false
+  }
 }
 
 const modalAnular      = ref(false)

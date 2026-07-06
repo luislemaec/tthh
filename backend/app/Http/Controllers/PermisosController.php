@@ -11,6 +11,11 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class PermisosController extends Controller
 {
@@ -150,6 +155,12 @@ class PermisosController extends Controller
             $query->where("descontable", $request->descontable);
         }
 
+        // Export si se solicita
+        if ($request->filled('formato')) {
+            $items = $query->get();
+            return $this->exportarPermisosArchivo($items, $request->formato, $request);
+        }
+
         $result = $query->paginate($request->get("per_page", 15));
 
         // Aviso para el supervisor: permiso ENTRADA/SALIDA descontable de un día
@@ -199,7 +210,9 @@ class PermisosController extends Controller
             "todo_dia"      => "nullable|string",
             "observaciones" => "nullable|string|max:250",
             "concepto"      => "nullable|string|max:20",
-            "tipo_horario"  => "required|in:ENTRADA,ENTRE JORNADA,SALIDA",
+            "tipo_horario"  => $request->todo_dia === 'SI'
+                ? "nullable"
+                : "required|in:ENTRADA,ENTRE JORNADA,SALIDA",
         ]);
 
         $emp   = $request->user();
@@ -707,5 +720,110 @@ public function estadistica(Request $request)
 
     return response()->json(array_values($resumen));
 }
+
+    // ─── Export helpers ────────────────────────────────────────────────────────
+
+    private function exportarPermisosArchivo($items, string $formato, Request $request)
+    {
+        // Preparar filas
+        $filas = [];
+        foreach ($items as $p) {
+            $nombreEmp = trim(($p->empleado->apellido_emp ?? '') . ' ' . ($p->empleado->nombre_emp ?? ''));
+            $depto     = $p->empleado->departamento->descripcion ?? '';
+            $razon     = $p->razonPermiso->descripcion ?? '';
+            $filas[] = [
+                'empleado'    => $nombreEmp,
+                'depto'       => $depto,
+                'razon'       => $razon,
+                'tipo_horario'=> $p->tipo_horario ?? '',
+                'fecha_desde' => $p->fecha_desde ? Carbon::parse($p->fecha_desde)->format('d/m/Y') : '',
+                'fecha_hasta' => $p->fecha_hasta ? Carbon::parse($p->fecha_hasta)->format('d/m/Y') : '',
+                'todo_dia'    => $p->todo_dia === 'SI' ? 'Sí' : 'No',
+                'descontable' => $p->descontable === 'SI' ? 'Sí' : 'No',
+                'estado'      => $p->estado_permiso ?? '',
+            ];
+        }
+
+        if ($formato === 'excel') {
+            return $this->exportarPermisosExcel($filas);
+        }
+        return $this->exportarPermisosPdf($filas, $request);
+    }
+
+    private function exportarPermisosExcel(array $filas)
+    {
+        $spreadsheet = new Spreadsheet();
+        $sheet       = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Permisos');
+
+        // Encabezado institucional
+        $sheet->setCellValue('A1', 'CONSEJO DE COMUNICACIÓN DEL ECUADOR');
+        $sheet->setCellValue('A2', 'REPORTE DE PERMISOS Y LICENCIAS');
+        $sheet->setCellValue('A3', 'Generado: ' . now()->format('d/m/Y H:i'));
+        foreach (['A1','A2','A3'] as $c) {
+            $sheet->getStyle($c)->getFont()->setBold(true);
+        }
+
+        // Cabeceras
+        $headers = ['Empleado','Departamento','Razón','Tipo Horario','Fecha Desde','Fecha Hasta','Todo el Día','Descontable','Estado'];
+        $cols    = ['A','B','C','D','E','F','G','H','I'];
+        foreach ($headers as $i => $h) {
+            $cell = $cols[$i] . '5';
+            $sheet->setCellValue($cell, $h);
+            $sheet->getStyle($cell)->applyFromArray([
+                'font'      => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF']],
+                'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF0B5447']],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+            ]);
+        }
+
+        // Datos
+        $row = 6;
+        foreach ($filas as $f) {
+            $sheet->setCellValue("A{$row}", $f['empleado']);
+            $sheet->setCellValue("B{$row}", $f['depto']);
+            $sheet->setCellValue("C{$row}", $f['razon']);
+            $sheet->setCellValue("D{$row}", $f['tipo_horario']);
+            $sheet->setCellValue("E{$row}", $f['fecha_desde']);
+            $sheet->setCellValue("F{$row}", $f['fecha_hasta']);
+            $sheet->setCellValue("G{$row}", $f['todo_dia']);
+            $sheet->setCellValue("H{$row}", $f['descontable']);
+            $sheet->setCellValue("I{$row}", $f['estado']);
+            if ($row % 2 === 0) {
+                $sheet->getStyle("A{$row}:I{$row}")->applyFromArray([
+                    'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFF4FBF8']],
+                ]);
+            }
+            $row++;
+        }
+
+        foreach ($cols as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        $writer   = new Xlsx($spreadsheet);
+        $filename = 'permisos_' . now()->format('Ymd_His') . '.xlsx';
+
+        ob_start();
+        $writer->save('php://output');
+        $content = ob_get_clean();
+
+        return response($content, 200, [
+            'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ]);
+    }
+
+    private function exportarPermisosPdf(array $filas, Request $request)
+    {
+        $logo          = base64_encode(file_get_contents(public_path('logo.png')));
+        $nombreInst    = 'CONSEJO DE COMUNICACIÓN DEL ECUADOR';
+        $generadoPor   = trim($request->user()->apellido_emp . ' ' . $request->user()->nombre_emp);
+
+        $pdf = Pdf::loadView('reportes.permisos_lista', compact('filas', 'logo', 'nombreInst', 'generadoPor'))
+            ->setPaper('a4', 'landscape');
+
+        return $pdf->stream('permisos_' . now()->format('Ymd_His') . '.pdf');
+    }
 
 }

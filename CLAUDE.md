@@ -519,6 +519,12 @@ views/permisos/         # Permisos y licencias — fecha_desde/fecha_hasta defau
                         # Estado ANULADO: badge naranja en tabla; botón "Anular" visible para TH/Admin
                         #   en permisos con estado APROBADO; abre modal con campo motivo obligatorio
                         # Filtro de estado incluye opción "ANULADO" en el select de estados
+                        # Aviso "⚠ Sin atraso" (badge ámbar) visible SOLO para el supervisor en tab "equipo",
+                        #   junto al botón Aprobar, cuando el permiso es descontable=SI, tipo ENTRADA/SALIDA,
+                        #   la fecha ya pasó (≤ hoy) Y d2_cuadre_marcacion muestra atraso=0 ese día.
+                        #   Lógica en PermisosController::index() post-pagination — campo `sin_atraso` bool.
+                        #   Si la fecha es futura o el cuadre aún no procesó ese día → sin_atraso=false (sin aviso).
+                        #   No bloquea la aprobación, es informativo. Solo permisos de tipo ENTRADA o SALIDA.
 DashboardView.vue       # Admin/TH: métricas globales (Empleados, Departamentos, Permisos)
                         # Supervisor (no admin): 4 tarjetas pendientes (permisos/vacaciones/HE/materiales)
                         #   + widget "Mi equipo hoy" (presentes/permiso/vacaciones/sin marcar + barra)
@@ -564,10 +570,10 @@ views/asistencia/
                              # en views/reportes/ReportesView.vue (tab "Sin Atrasos")
                              # NO debe tener entrada de menú propia (sería duplicado) — eliminar si existe
 views/reportes/
-  ReportesView.vue           # 4 tabs: Atrasos | Marcaciones No Realizadas | Sin Atrasos | Movimientos de Personal
+  ReportesView.vue           # 5 tabs: Atrasos | Marcaciones No Realizadas | Sin Atrasos | Movimientos de Personal | Marcaciones del Día
                              # Filtros comunes: fecha_desde, fecha_hasta, departamento, empleado
                              # Filtros depto/empleado se ocultan automáticamente en tab "Sin Atrasos"
-                             # Botones Excel + PDF visibles cuando datos.length > 0 (excepto tab Sin Atrasos)
+                             # Botones Excel + PDF visibles cuando datos.length > 0 (excepto Sin Atrasos y Marcaciones del Día)
                              # Export usa blob URL + a.download (no window.open)
                              # IMPORTANTE Vue 3: nunca poner v-for y v-if en el mismo elemento — usar
                              #   <template v-for><span v-if> anidado. Si ambos están en el mismo tag
@@ -599,6 +605,13 @@ views/reportes/
                              #   Columnas: Tipo (badge de color), Empleado, Cargo, Departamento, Fecha Desde, Fecha Hasta, Días, Detalle
                              #   PDF: reporte_movimientos.blade.php (landscape A4)
                              #   Nota: COMISION se usa sin tilde en todo el código (parámetros URL, lógica PHP, template)
+                             #
+                             # Tab "Marcaciones del Día":
+                             #   Filtro: fecha única (default hoy) + departamento + buscar texto — NO rango de fechas
+                             #   API: GET /asistencia/listado?fecha&departamento_id&buscar (sin export)
+                             #   Columnas: Empleado, Departamento, Concepto (badge color), Hora, Tipo (WEB/TELETRABAJO/BIOMETRICO), IP
+                             #   Accesible por roles TH/ADMIN a través del menú "Reportes y Marcaciones"
+                             #   Mismos datos que ve el ADMINISTRADOR en AsistenciaView; cuadre nocturnamente
 VacacionesView.vue      # Solicitudes de vacaciones del empleado y supervisor
                         # Tabla muestra: Empleado, Fecha Inicio, Fecha Fin, Días (calculado), Estado, Acciones
                         #   Columna "Días" = diferencia en días inclusiva (fecha_final - fecha_inicial + 1)
