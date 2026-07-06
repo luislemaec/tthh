@@ -292,55 +292,52 @@ class DashboardController extends Controller
             ->merge($subAreas->pluck('id_depto'))
             ->unique()->values();
 
-        // 5. Query de atrasos NO justificados del año
-        // Un día cuenta solo si tiene atraso en algún campo Y ese atraso no está
-        // cubierto por un permiso APROBADO del tipo correspondiente (o todo_dia=SI)
-        $rawAtrasos = DB::table('dbo.d2_cuadre_marcacion as c')
-            ->join('dbo.ad_empleado as e', 'e.id_emp', '=', 'c.id_emp')
-            ->whereYear('c.fecha', $anio)
-            ->where(function ($q) {
-                $q->where(function ($q2) {
-                    // Atraso entrada no justificado
-                    $q2->where('c.atraso_entrada', '>', 0)
-                       ->whereNotExists(function ($sub) {
-                           $sub->selectRaw('1')
-                               ->from('dbo.d2_permiso as p')
-                               ->whereRaw('p.id_emp = c.id_emp')
-                               ->where('p.estado_permiso', 'APROBADO')
-                               ->whereRaw('p.fecha_desde::date <= c.fecha::date')
-                               ->whereRaw('p.fecha_hasta::date >= c.fecha::date')
-                               ->whereRaw("(p.tipo_horario = 'ENTRADA' OR p.todo_dia = 'SI')");
-                       });
-                })->orWhere(function ($q2) {
-                    // Atraso lunch no justificado
-                    $q2->where('c.atraso_lunch', '>', 0)
-                       ->whereNotExists(function ($sub) {
-                           $sub->selectRaw('1')
-                               ->from('dbo.d2_permiso as p')
-                               ->whereRaw('p.id_emp = c.id_emp')
-                               ->where('p.estado_permiso', 'APROBADO')
-                               ->whereRaw('p.fecha_desde::date <= c.fecha::date')
-                               ->whereRaw('p.fecha_hasta::date >= c.fecha::date')
-                               ->whereRaw("(p.tipo_horario = 'ENTRE JORNADA' OR p.todo_dia = 'SI')");
-                       });
-                })->orWhere(function ($q2) {
-                    // Atraso salida no justificado
-                    $q2->where('c.atraso_salida', '>', 0)
-                       ->whereNotExists(function ($sub) {
-                           $sub->selectRaw('1')
-                               ->from('dbo.d2_permiso as p')
-                               ->whereRaw('p.id_emp = c.id_emp')
-                               ->where('p.estado_permiso', 'APROBADO')
-                               ->whereRaw('p.fecha_desde::date <= c.fecha::date')
-                               ->whereRaw('p.fecha_hasta::date >= c.fecha::date')
-                               ->whereRaw("(p.tipo_horario = 'SALIDA' OR p.todo_dia = 'SI')");
-                       });
-                });
-            })
-            ->whereIn('e.id_depto', $todosIds)
-            ->selectRaw('EXTRACT(MONTH FROM c.fecha)::int as mes, e.id_depto, COUNT(*) as dias')
-            ->groupByRaw('EXTRACT(MONTH FROM c.fecha)::int, e.id_depto')
-            ->get();
+        // 5. Query de atrasos NO justificados del año (SQL puro para correlated subquery)
+        $idsStr    = implode(',', $todosIds->toArray());
+        $rawResult = DB::select("
+            SELECT EXTRACT(MONTH FROM c.fecha)::int AS mes,
+                   e.id_depto,
+                   COUNT(*) AS dias
+            FROM dbo.d2_cuadre_marcacion c
+            JOIN dbo.ad_empleado e ON e.id_emp = c.id_emp
+            WHERE EXTRACT(YEAR FROM c.fecha)::int = ?
+              AND e.id_depto IN ({$idsStr})
+              AND (
+                (   c.atraso_entrada > 0
+                    AND NOT EXISTS (
+                        SELECT 1 FROM dbo.d2_permiso p
+                        WHERE p.id_emp = c.id_emp
+                          AND p.estado_permiso = 'APROBADO'
+                          AND p.fecha_desde::date <= c.fecha::date
+                          AND p.fecha_hasta::date >= c.fecha::date
+                          AND (p.tipo_horario = 'ENTRADA' OR p.todo_dia = 'SI')
+                    )
+                )
+                OR (   c.atraso_lunch > 0
+                    AND NOT EXISTS (
+                        SELECT 1 FROM dbo.d2_permiso p
+                        WHERE p.id_emp = c.id_emp
+                          AND p.estado_permiso = 'APROBADO'
+                          AND p.fecha_desde::date <= c.fecha::date
+                          AND p.fecha_hasta::date >= c.fecha::date
+                          AND (p.tipo_horario = 'ENTRE JORNADA' OR p.todo_dia = 'SI')
+                    )
+                )
+                OR (   c.atraso_salida > 0
+                    AND NOT EXISTS (
+                        SELECT 1 FROM dbo.d2_permiso p
+                        WHERE p.id_emp = c.id_emp
+                          AND p.estado_permiso = 'APROBADO'
+                          AND p.fecha_desde::date <= c.fecha::date
+                          AND p.fecha_hasta::date >= c.fecha::date
+                          AND (p.tipo_horario = 'SALIDA' OR p.todo_dia = 'SI')
+                    )
+                )
+              )
+            GROUP BY EXTRACT(MONTH FROM c.fecha)::int, e.id_depto
+        ", [$anio]);
+
+        $rawAtrasos = collect($rawResult);
 
         $sumarDatos = function (array $ids) use ($rawAtrasos, $nMes) {
             $datos = [];
