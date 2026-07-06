@@ -532,12 +532,14 @@ DashboardView.vue       # Admin/TH: métricas globales (Empleados, Departamentos
                         #   + tarjeta "Vacaciones próximas del equipo" (próximos 60 días o en curso)
                         #     botón "Ver quiénes" expande lista con nombre, fechas y badge En curso/Próximo
                         # Las tarjetas originales se ocultan para supervisores (v-if="!es_supervisor||es_admin_th")
-                        # TH (TALENTO HUMANO / TH NOMINA / TH ACCIONES PERSONAL): gráfico Chart.js de atrasos
-                        #   GET /api/dashboard/atrasos-coordinacion → { meses, unidades[], hijos{} }
-                        #   Barras agrupadas por mes; checkboxes para filtrar unidades; drill-down al hacer clic
-                        #   Unidades = PRESIDENCIA + coordinaciones (50,60,70,80,90); hijos = sub-áreas
-                        #   Drill-down muestra hijos de la unidad clicada; botón "← Volver"
-                        #   La tabla "Empleados por Departamento" fue eliminada (reemplazada por el gráfico)
+                        # Gráfico personal "Mis trámites personales no justificados por mes" (TODOS los roles):
+                        #   GET /api/dashboard/atrasos-coordinacion → { meses, datos[] }
+                        #   Muestra solo los días del empleado logueado con atraso SIN permiso aprobado que lo cubra
+                        #   Colores: verde=#d1fae5 (0), ámbar=#fbbf24 (1-2), rojo=#dc2626 (3+)
+                        #   Backend usa SQL puro (DB::select) con NOT EXISTS correlacionado — NO usar Query Builder
+                        #     para este patrón porque no genera correctamente el alias de la query externa en PostgreSQL
+                        #   Título deliberadamente "trámites personales" (no "atrasos") para no confundir con
+                        #     el término "atraso" del reglamento disciplinario (2 atrasos = amonestación verbal)
                         # Empleado sin rol especial: 3 tarjetas compactas en una sola fila (lg:grid-cols-3)
                         #   1. Permisos pendientes  2. Saldo vacaciones  3. Próximo período de vacaciones
                         #   Tarjeta 3: título cambia automáticamente "VACACIONES EN CURSO" vs "PRÓXIMO PERÍODO"
