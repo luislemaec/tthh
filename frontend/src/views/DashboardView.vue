@@ -258,9 +258,9 @@
 
     </template>
 
-    <!-- Gráfico personal: mis atrasos no justificados -->
+    <!-- Gráfico personal: mis trámites personales no justificados -->
     <div v-if="atrasosPersonales" class="bg-white rounded-xl shadow p-6">
-      <h2 class="text-base font-semibold text-gray-700 mb-1">Mis atrasos no justificados por mes</h2>
+      <h2 class="text-base font-semibold text-gray-700 mb-1">Mis trámites personales no justificados por mes</h2>
       <p class="text-xs text-gray-400 mb-4">Año {{ anioActual }}</p>
       <div class="relative h-64">
         <canvas ref="chartCanvas"></canvas>
