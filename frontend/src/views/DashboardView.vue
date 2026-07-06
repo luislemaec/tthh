@@ -83,7 +83,7 @@
 
       <!-- Gráfico de atrasos por mes -->
       <div class="bg-white rounded-2xl shadow p-6">
-        <h2 class="text-base font-semibold text-gray-700 mb-1">Días de atraso por mes</h2>
+        <h2 class="text-base font-semibold text-gray-700 mb-1">Atrasos no justificados por mes</h2>
         <p class="text-xs text-gray-400 mb-5">Año {{ anioActual }}</p>
         <div class="flex items-end gap-2 h-36">
           <div v-for="(val, i) in atrasosMeses" :key="i"
@@ -290,7 +290,7 @@
       <div class="flex items-center justify-between mb-4">
         <div>
           <h2 class="text-base font-semibold text-gray-700">
-            Atrasos por unidad organizacional — {{ anioActual }}
+            Atrasos no justificados por unidad — {{ anioActual }}
           </h2>
           <p v-if="vistaHijos" class="text-sm text-gray-500 mt-0.5">
             {{ vistaHijos.padre.nombre }} — detalle por área
