@@ -134,4 +134,15 @@ router.beforeEach((to, _from, next) => {
   next()
 })
 
+// Si un chunk JS del build anterior ya no existe, forzar recarga completa
+router.onError((error, to) => {
+  const esChunkFaltante =
+    error.message.includes('Failed to fetch dynamically imported module') ||
+    error.message.includes('Importing a module script failed') ||
+    error.message.includes('Unable to preload CSS for')
+  if (esChunkFaltante) {
+    window.location.href = to.fullPath
+  }
+})
+
 export default router
