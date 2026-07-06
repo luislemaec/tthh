@@ -303,43 +303,37 @@ class DashboardController extends Controller
                     // Atraso entrada no justificado
                     $q2->where('c.atraso_entrada', '>', 0)
                        ->whereNotExists(function ($sub) {
-                           $sub->from('dbo.d2_permiso as p')
-                               ->whereColumn('p.id_emp', 'c.id_emp')
+                           $sub->selectRaw('1')
+                               ->from('dbo.d2_permiso as p')
+                               ->whereRaw('p.id_emp = c.id_emp')
                                ->where('p.estado_permiso', 'APROBADO')
                                ->whereRaw('p.fecha_desde::date <= c.fecha::date')
                                ->whereRaw('p.fecha_hasta::date >= c.fecha::date')
-                               ->where(function ($t) {
-                                   $t->where('p.tipo_horario', 'ENTRADA')
-                                     ->orWhere('p.todo_dia', 'SI');
-                               });
+                               ->whereRaw("(p.tipo_horario = 'ENTRADA' OR p.todo_dia = 'SI')");
                        });
                 })->orWhere(function ($q2) {
                     // Atraso lunch no justificado
                     $q2->where('c.atraso_lunch', '>', 0)
                        ->whereNotExists(function ($sub) {
-                           $sub->from('dbo.d2_permiso as p')
-                               ->whereColumn('p.id_emp', 'c.id_emp')
+                           $sub->selectRaw('1')
+                               ->from('dbo.d2_permiso as p')
+                               ->whereRaw('p.id_emp = c.id_emp')
                                ->where('p.estado_permiso', 'APROBADO')
                                ->whereRaw('p.fecha_desde::date <= c.fecha::date')
                                ->whereRaw('p.fecha_hasta::date >= c.fecha::date')
-                               ->where(function ($t) {
-                                   $t->where('p.tipo_horario', 'ENTRE JORNADA')
-                                     ->orWhere('p.todo_dia', 'SI');
-                               });
+                               ->whereRaw("(p.tipo_horario = 'ENTRE JORNADA' OR p.todo_dia = 'SI')");
                        });
                 })->orWhere(function ($q2) {
                     // Atraso salida no justificado
                     $q2->where('c.atraso_salida', '>', 0)
                        ->whereNotExists(function ($sub) {
-                           $sub->from('dbo.d2_permiso as p')
-                               ->whereColumn('p.id_emp', 'c.id_emp')
+                           $sub->selectRaw('1')
+                               ->from('dbo.d2_permiso as p')
+                               ->whereRaw('p.id_emp = c.id_emp')
                                ->where('p.estado_permiso', 'APROBADO')
                                ->whereRaw('p.fecha_desde::date <= c.fecha::date')
                                ->whereRaw('p.fecha_hasta::date >= c.fecha::date')
-                               ->where(function ($t) {
-                                   $t->where('p.tipo_horario', 'SALIDA')
-                                     ->orWhere('p.todo_dia', 'SI');
-                               });
+                               ->whereRaw("(p.tipo_horario = 'SALIDA' OR p.todo_dia = 'SI')");
                        });
                 });
             })
