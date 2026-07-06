@@ -285,46 +285,12 @@
 
     </template>
 
-    <!-- Gráfico atrasos por unidad (solo roles TH) -->
-    <div v-if="esThRol && atrasosData" class="bg-white rounded-xl shadow p-6">
-      <div class="flex items-center justify-between mb-4">
-        <div>
-          <h2 class="text-base font-semibold text-gray-700">
-            Atrasos no justificados por unidad — {{ anioActual }}
-          </h2>
-          <p v-if="vistaHijos" class="text-sm text-gray-500 mt-0.5">
-            {{ vistaHijos.padre.nombre }} — detalle por área
-          </p>
-          <p v-else class="text-sm text-gray-400 mt-0.5">
-            Haz clic en una coordinación para ver el detalle de sus áreas
-          </p>
-        </div>
-        <button v-if="vistaHijos" @click="volverAPadres"
-          class="text-sm px-3 py-1.5 rounded-lg border border-gray-300 hover:bg-gray-50 transition">
-          ← Volver
-        </button>
-      </div>
-      <div class="flex gap-6">
-        <!-- Canvas -->
-        <div class="flex-1 relative h-72">
-          <canvas ref="chartCanvas"></canvas>
-        </div>
-        <!-- Panel de checkboxes -->
-        <div class="w-52 flex-shrink-0 border-l pl-4 flex flex-col gap-1.5 overflow-y-auto max-h-72">
-          <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">
-            {{ vistaHijos ? 'Áreas' : 'Unidades' }}
-          </p>
-          <label v-for="u in listaCheckboxes" :key="u.id_depto"
-            class="flex items-center gap-2 cursor-pointer group">
-            <input type="checkbox"
-              :checked="seleccionActual.has(u.id_depto)"
-              @change="toggleUnidad(u.id_depto)"
-              class="rounded cursor-pointer accent-[#0b5447]" />
-            <span class="w-3 h-3 rounded-sm flex-shrink-0"
-              :style="{ backgroundColor: colorOriginal(u.id_depto) }"></span>
-            <span class="text-xs text-gray-700 leading-tight group-hover:text-gray-900">{{ u.nombre }}</span>
-          </label>
-        </div>
+    <!-- Gráfico personal: mis atrasos no justificados -->
+    <div v-if="atrasosPersonales" class="bg-white rounded-xl shadow p-6">
+      <h2 class="text-base font-semibold text-gray-700 mb-1">Mis atrasos no justificados por mes</h2>
+      <p class="text-xs text-gray-400 mb-4">Año {{ anioActual }}</p>
+      <div class="relative h-64">
+        <canvas ref="chartCanvas"></canvas>
       </div>
     </div>
   </div>
@@ -340,108 +306,41 @@ Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip, L
 
 const auth           = useAuthStore()
 const esAdmin        = computed(() => auth.tieneRol('ADMINISTRADOR') || auth.tieneRol('TALENTO HUMANO'))
-const esThRol        = computed(() => auth.tieneRol('TALENTO HUMANO') || auth.tieneRol('TH NOMINA') || auth.tieneRol('TH ACCIONES PERSONAL'))
+
 const esEmpleadoSolo = computed(() => !stats.value.es_supervisor && !stats.value.es_admin_th)
 
 // ── Chart.js ─────────────────────────────────────────────────────────────────
-const chartCanvas          = ref(null)
-const chartInstance        = ref(null)
-const atrasosData          = ref(null)
-const vistaHijos           = ref(null)
-const seleccionados        = ref(new Set())
-const seleccionadosHijos   = ref(new Set())
-const unidadesRenderizadas = ref([])
-
-const COLORES = ['#0b5447','#2563eb','#9333ea','#d97706','#dc2626','#059669','#db2777','#0891b2','#65a30d','#7c3aed']
-
-const listaCheckboxes = computed(() =>
-  vistaHijos.value ? vistaHijos.value.hijos : (atrasosData.value?.unidades ?? [])
-)
-const seleccionActual = computed(() =>
-  vistaHijos.value ? seleccionadosHijos.value : seleccionados.value
-)
-
-function colorOriginal(idDepto) {
-  const lista = vistaHijos.value ? vistaHijos.value.hijos : (atrasosData.value?.unidades ?? [])
-  const idx = lista.findIndex(u => u.id_depto === idDepto)
-  return COLORES[idx % COLORES.length]
-}
-
-function toggleUnidad(idDepto) {
-  const enHijos = !!vistaHijos.value
-  const set = enHijos ? seleccionadosHijos.value : seleccionados.value
-  if (set.has(idDepto)) {
-    set.delete(idDepto)
-  } else {
-    set.add(idDepto)
-  }
-  if (enHijos) {
-    seleccionadosHijos.value = new Set(set)
-    mostrarHijos()
-  } else {
-    seleccionados.value = new Set(set)
-    mostrarPadres()
-  }
-}
+const chartCanvas       = ref(null)
+const chartInstance     = ref(null)
+const atrasosPersonales = ref(null)
 
 function destruirChart() {
   if (chartInstance.value) { chartInstance.value.destroy(); chartInstance.value = null }
 }
 
-function renderChart(labels, datasets) {
+function renderChartPersonal(meses, datos) {
   destruirChart()
   chartInstance.value = new Chart(chartCanvas.value, {
     type: 'bar',
-    data: { labels, datasets },
+    data: {
+      labels: meses,
+      datasets: [{
+        label: 'Días sin justificar',
+        data: datos,
+        backgroundColor: datos.map(v => v === 0 ? '#d1fae5' : v <= 2 ? '#fbbf24' : '#dc2626'),
+        borderRadius: 4,
+      }],
+    },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
-        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y} días` } },
+        tooltip: { callbacks: { label: ctx => `${ctx.parsed.y} día(s) sin justificar` } },
       },
       scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
-      onClick: (_, elements) => {
-        if (!elements.length || vistaHijos.value) return
-        const padre = unidadesRenderizadas.value[elements[0].datasetIndex]
-        if (!padre?.tiene_hijos) return
-        const hijos = atrasosData.value.hijos[padre.id_depto]
-        if (!hijos?.length) return
-        seleccionadosHijos.value = new Set(hijos.map(h => h.id_depto))
-        vistaHijos.value = { padre, hijos }
-        mostrarHijos()
-      },
     },
   })
-}
-
-function mostrarPadres() {
-  const { meses, unidades } = atrasosData.value
-  const filtradas = unidades.filter(u => seleccionados.value.has(u.id_depto))
-  unidadesRenderizadas.value = filtradas
-  renderChart(meses, filtradas.map(p => ({
-    label: p.nombre,
-    data: p.datos,
-    backgroundColor: colorOriginal(p.id_depto),
-    borderRadius: 4,
-  })))
-}
-
-function mostrarHijos() {
-  const { meses } = atrasosData.value
-  const filtrados = vistaHijos.value.hijos.filter(h => seleccionadosHijos.value.has(h.id_depto))
-  renderChart(meses, filtrados.map(h => ({
-    label: h.nombre,
-    data: h.datos,
-    backgroundColor: colorOriginal(h.id_depto),
-    borderRadius: 4,
-  })))
-}
-
-function volverAPadres() {
-  vistaHijos.value = null
-  seleccionadosHijos.value = new Set()
-  mostrarPadres()
 }
 
 const anioActual = new Date().getFullYear()
@@ -519,14 +418,11 @@ onMounted(async () => {
   const { data } = await api.get('/dashboard')
   stats.value = data
 
-  if (esThRol.value) {
-    try {
-      const { data: dataAtrasos } = await api.get('/dashboard/atrasos-coordinacion')
-      atrasosData.value = dataAtrasos
-      seleccionados.value = new Set()
-      await nextTick()
-      mostrarPadres()
-    } catch {}
-  }
+  try {
+    const { data: dataAtrasos } = await api.get('/dashboard/atrasos-coordinacion')
+    atrasosPersonales.value = dataAtrasos
+    await nextTick()
+    renderChartPersonal(dataAtrasos.meses, dataAtrasos.datos)
+  } catch {}
 })
 </script>

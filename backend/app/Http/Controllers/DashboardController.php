@@ -253,139 +253,56 @@ class DashboardController extends Controller
 
     public function atrasosCoordinacion(Request $request)
     {
-        $anio        = now()->year;
-        $nMes        = now()->month;
-        $mesesLabels = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+        $emp   = $request->user();
+        $anio  = now()->year;
+        $nMes  = now()->month;
+        $meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
-        // 1. Presidencia = único dept raíz (padre_id IS NULL o 999, ≠ 999)
-        $presidencia = DB::table('dbo.ad_departamento')
-            ->where('id_depto', '!=', 999)
-            ->where('estado', 'ACTIVO')
-            ->where(function ($q) {
-                $q->whereNull('padre_id')->orWhere('padre_id', 999);
-            })
-            ->orderBy('id_depto')
-            ->first(['id_depto', 'nombre_depto']);
-
-        if (!$presidencia) {
-            return response()->json(['meses' => [], 'unidades' => [], 'hijos' => []]);
-        }
-
-        // 2. Coordinaciones = hijos directos de Presidencia
-        $coordinaciones = DB::table('dbo.ad_departamento')
-            ->where('padre_id', $presidencia->id_depto)
-            ->where('estado', 'ACTIVO')
-            ->orderBy('id_depto')
-            ->get(['id_depto', 'nombre_depto']);
-
-        // 3. Sub-áreas = hijos de las coordinaciones (para drill-down)
-        $idsCoords = $coordinaciones->pluck('id_depto');
-        $subAreas  = DB::table('dbo.ad_departamento')
-            ->whereIn('padre_id', $idsCoords)
-            ->where('estado', 'ACTIVO')
-            ->orderBy('id_depto')
-            ->get(['id_depto', 'nombre_depto', 'padre_id']);
-
-        // 4. Todos los id_depto involucrados
-        $todosIds = collect([$presidencia->id_depto])
-            ->merge($idsCoords)
-            ->merge($subAreas->pluck('id_depto'))
-            ->unique()->values();
-
-        // 5. Query de atrasos NO justificados del año (SQL puro para correlated subquery)
-        $idsStr    = implode(',', $todosIds->toArray());
-        $rawResult = DB::select("
+        $resultado = DB::select("
             SELECT EXTRACT(MONTH FROM c.fecha)::int AS mes,
-                   e.id_depto,
                    COUNT(*) AS dias
             FROM dbo.d2_cuadre_marcacion c
-            JOIN dbo.ad_empleado e ON e.id_emp = c.id_emp
-            WHERE EXTRACT(YEAR FROM c.fecha)::int = ?
-              AND e.id_depto IN ({$idsStr})
+            WHERE c.id_emp = ?
+              AND EXTRACT(YEAR FROM c.fecha)::int = ?
               AND (
-                (   c.atraso_entrada > 0
-                    AND NOT EXISTS (
-                        SELECT 1 FROM dbo.d2_permiso p
-                        WHERE p.id_emp = c.id_emp
-                          AND p.estado_permiso = 'APROBADO'
-                          AND p.fecha_desde::date <= c.fecha::date
-                          AND p.fecha_hasta::date >= c.fecha::date
-                          AND (p.tipo_horario = 'ENTRADA' OR p.todo_dia = 'SI')
-                    )
-                )
-                OR (   c.atraso_lunch > 0
-                    AND NOT EXISTS (
-                        SELECT 1 FROM dbo.d2_permiso p
-                        WHERE p.id_emp = c.id_emp
-                          AND p.estado_permiso = 'APROBADO'
-                          AND p.fecha_desde::date <= c.fecha::date
-                          AND p.fecha_hasta::date >= c.fecha::date
-                          AND (p.tipo_horario = 'ENTRE JORNADA' OR p.todo_dia = 'SI')
-                    )
-                )
-                OR (   c.atraso_salida > 0
-                    AND NOT EXISTS (
-                        SELECT 1 FROM dbo.d2_permiso p
-                        WHERE p.id_emp = c.id_emp
-                          AND p.estado_permiso = 'APROBADO'
-                          AND p.fecha_desde::date <= c.fecha::date
-                          AND p.fecha_hasta::date >= c.fecha::date
-                          AND (p.tipo_horario = 'SALIDA' OR p.todo_dia = 'SI')
-                    )
-                )
+                (c.atraso_entrada > 0 AND NOT EXISTS (
+                    SELECT 1 FROM dbo.d2_permiso p
+                    WHERE p.id_emp = c.id_emp
+                      AND p.estado_permiso = 'APROBADO'
+                      AND p.fecha_desde::date <= c.fecha::date
+                      AND p.fecha_hasta::date >= c.fecha::date
+                      AND (p.tipo_horario = 'ENTRADA' OR p.todo_dia = 'SI')
+                ))
+                OR (c.atraso_lunch > 0 AND NOT EXISTS (
+                    SELECT 1 FROM dbo.d2_permiso p
+                    WHERE p.id_emp = c.id_emp
+                      AND p.estado_permiso = 'APROBADO'
+                      AND p.fecha_desde::date <= c.fecha::date
+                      AND p.fecha_hasta::date >= c.fecha::date
+                      AND (p.tipo_horario = 'ENTRE JORNADA' OR p.todo_dia = 'SI')
+                ))
+                OR (c.atraso_salida > 0 AND NOT EXISTS (
+                    SELECT 1 FROM dbo.d2_permiso p
+                    WHERE p.id_emp = c.id_emp
+                      AND p.estado_permiso = 'APROBADO'
+                      AND p.fecha_desde::date <= c.fecha::date
+                      AND p.fecha_hasta::date >= c.fecha::date
+                      AND (p.tipo_horario = 'SALIDA' OR p.todo_dia = 'SI')
+                ))
               )
-            GROUP BY EXTRACT(MONTH FROM c.fecha)::int, e.id_depto
-        ", [$anio]);
+            GROUP BY EXTRACT(MONTH FROM c.fecha)::int
+        ", [$emp->id_emp, $anio]);
 
-        $rawAtrasos = collect($rawResult);
+        $porMes = collect($resultado)->keyBy('mes');
 
-        $sumarDatos = function (array $ids) use ($rawAtrasos, $nMes) {
-            $datos = [];
-            for ($m = 1; $m <= $nMes; $m++) {
-                $datos[] = (int) $rawAtrasos->whereIn('id_depto', $ids)->where('mes', $m)->sum('dias');
-            }
-            return $datos;
-        };
-
-        $subAreasPorCoord = $subAreas->groupBy('padre_id');
-
-        // 6. Vista principal: Presidencia (solo directos) + cada coordinación (suma con sub-áreas)
-        $unidades = collect();
-
-        $unidades->push([
-            'id_depto'    => $presidencia->id_depto,
-            'nombre'      => $presidencia->nombre_depto,
-            'tiene_hijos' => false,
-            'datos'       => $sumarDatos([$presidencia->id_depto]),
-        ]);
-
-        foreach ($coordinaciones as $coord) {
-            $idsGrupo = [$coord->id_depto];
-            if ($subAreasPorCoord->has($coord->id_depto)) {
-                $idsGrupo = array_merge($idsGrupo, $subAreasPorCoord[$coord->id_depto]->pluck('id_depto')->toArray());
-            }
-            $unidades->push([
-                'id_depto'    => $coord->id_depto,
-                'nombre'      => $coord->nombre_depto,
-                'tiene_hijos' => $subAreasPorCoord->has($coord->id_depto),
-                'datos'       => $sumarDatos($idsGrupo),
-            ]);
-        }
-
-        // 7. Detalle de sub-áreas por coordinación (drill-down)
-        $resultHijos = [];
-        foreach ($subAreasPorCoord as $coordId => $grupo) {
-            $resultHijos[$coordId] = $grupo->map(fn($s) => [
-                'id_depto' => $s->id_depto,
-                'nombre'   => $s->nombre_depto,
-                'datos'    => $sumarDatos([$s->id_depto]),
-            ])->values();
+        $datos = [];
+        for ($m = 1; $m <= $nMes; $m++) {
+            $datos[] = (int) ($porMes->get($m)?->dias ?? 0);
         }
 
         return response()->json([
-            'meses'    => array_slice($mesesLabels, 0, $nMes),
-            'unidades' => $unidades->values(),
-            'hijos'    => $resultHijos,
+            'meses' => array_slice($meses, 0, $nMes),
+            'datos' => $datos,
         ]);
     }
 }
