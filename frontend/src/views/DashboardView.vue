@@ -81,33 +81,6 @@
 
       </div>
 
-      <!-- Gráfico de atrasos por mes -->
-      <div class="bg-white rounded-2xl shadow p-6">
-        <h2 class="text-base font-semibold text-gray-700 mb-1">Atrasos no justificados por mes</h2>
-        <p class="text-xs text-gray-400 mb-5">Año {{ anioActual }}</p>
-        <div class="flex items-end gap-2 h-36">
-          <div v-for="(val, i) in atrasosMeses" :key="i"
-            class="flex-1 flex flex-col items-center gap-1">
-            <span class="text-xs font-bold text-gray-700" style="min-height:1rem;">
-              {{ val > 0 ? val : '' }}
-            </span>
-            <div class="w-full rounded-t-lg transition-all"
-              :style="{
-                height: val > 0 ? Math.max(8, Math.round(val / maxAtraso * 100)) + 'px' : '4px',
-                backgroundColor: val > 0 ? (val >= umbralAlto ? '#dc2626' : val >= umbralMedio ? '#f59e0b' : '#3b82f6') : '#e5e7eb'
-              }">
-            </div>
-            <span class="text-xs text-gray-400">{{ MESES_CORTOS[i] }}</span>
-          </div>
-        </div>
-        <!-- Leyenda -->
-        <div class="flex gap-4 mt-4 text-xs text-gray-500">
-          <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm inline-block bg-blue-500"></span>Pocos</span>
-          <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm inline-block bg-amber-400"></span>Moderado</span>
-          <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm inline-block bg-red-600"></span>Alto</span>
-          <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm inline-block bg-gray-200"></span>Sin atrasos</span>
-        </div>
-      </div>
     </template>
 
     <!-- ── ADMIN / TH ──────────────────────────────────────────────────────── -->
@@ -357,10 +330,6 @@ const stats = ref({
   datos_empleado: null,
 })
 
-const atrasosMeses = computed(() => stats.value.datos_empleado?.atrasos_por_mes ?? Array(12).fill(0))
-const maxAtraso    = computed(() => Math.max(1, ...atrasosMeses.value))
-const umbralAlto   = computed(() => Math.ceil(maxAtraso.value * 0.66))
-const umbralMedio  = computed(() => Math.ceil(maxAtraso.value * 0.33))
 
 const ICONO_PERMISO    = 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'
 const ICONO_VACACIONES = 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z'
