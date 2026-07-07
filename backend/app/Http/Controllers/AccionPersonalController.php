@@ -97,7 +97,29 @@ class AccionPersonalController extends Controller
             ->where("fecha_fin", "<", now()->toDateString())
             ->update(["estado" => "FINALIZADO", "updated_at" => now()]);
 
-        return response()->json($this->queryFiltrada($request)->paginate($request->get("per_page", 15)));
+        $paginated = $this->queryFiltrada($request)->paginate($request->get("per_page", 15));
+
+        // Poblar firmantes desde config para acciones BORRADOR que no los tengan
+        $items = $paginated->getCollection();
+        $sinFirmantes = $items->where('estado', 'BORRADOR')
+            ->filter(fn($a) => !$a->firmante_th_nombre && !$a->firmante_th_cargo);
+
+        if ($sinFirmantes->isNotEmpty()) {
+            $cfg = Configuracion::whereIn("concepto", [
+                "FIRMANTE_TH_NOMBRE", "FIRMANTE_TH_CARGO",
+                "FIRMANTE_AUTORIDAD_NOMBRE", "FIRMANTE_AUTORIDAD_CARGO",
+            ])->pluck("valor", "concepto");
+
+            foreach ($sinFirmantes as $accion) {
+                $accion->firmante_th_nombre        = $cfg['FIRMANTE_TH_NOMBRE']        ?? '';
+                $accion->firmante_th_cargo         = $cfg['FIRMANTE_TH_CARGO']         ?? '';
+                $accion->firmante_autoridad_nombre = $cfg['FIRMANTE_AUTORIDAD_NOMBRE'] ?? '';
+                $accion->firmante_autoridad_cargo  = $cfg['FIRMANTE_AUTORIDAD_CARGO']  ?? '';
+            }
+            $paginated->setCollection($items);
+        }
+
+        return response()->json($paginated);
     }
 
     // GET /api/acciones-personal/{id}
