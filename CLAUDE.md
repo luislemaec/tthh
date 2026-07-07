@@ -76,6 +76,7 @@ Roles: `ADMINISTRADOR`, `TALENTO HUMANO`, `TH ACCIONES PERSONAL`, `TH NOMINA`, `
 - `dbo.ad_departamento` → numeración manual recomendada: padres en múltiplos de 10 (10,50,60,70,80,90), hijos en +1 a +9 del padre. Al crear desde la app, el campo ID es opcional; si se omite genera el siguiente correlativo (excluyendo 999). Campos de auditoría implementados (migración `000032`): `created_at`, `created_by`, `updated_at`, `updated_by`.
 - `dbo.ad_empleado` → campos de auditoría implementados (migración `000032`): `created_at`, `created_by`, `updated_at`, `updated_by`. Campos adicionales: `puede_solicitar_vehiculo BOOLEAN DEFAULT false`, `sexo VARCHAR(10) NULL` (MASCULINO/FEMENINO), `tipo_sangre VARCHAR(5) NULL` (A+, A-, B+, B-, AB+, AB-, O+, O-) — migración `000063`. Campos SERCOP: `num_sercop VARCHAR(50) NULL`, `fecha_vence_sercop DATE NULL` — migración `000065`. Campos sociales — migración `000070`: `grupo_vulnerable_id`, `grupo_prioritario_id`, `tiene_discapacidad`, `tipo_discapacidad_id`, `porcentaje_discapacidad`, `tiene_enfermedad_catastrofica`, `enfermedad_catastrofica_id`, `tiene_persona_sustituta`, `sustituta_alfresco_id`, `sustituta_nombre_archivo`, `sustituta_fecha_caducidad`, `num_hijos_mayores`. Campos de baja/comisión — migración `000073`: `motivo_salida VARCHAR(50) NULL`, `motivo_reactivacion VARCHAR(50) NULL`, `institucion_comision VARCHAR(200) NULL`.
 - `dbo.ad_empleado_hijo` — hijos menores de edad: `id_emp`, `nombre NULL`, `fecha_nacimiento` — migración `000071`. Sin límite de registros. El sistema calcula si el hijo es menor de 5 años (derecho a guardería).
+- `dbo.ad_empleado_teletrabajo` — historial de períodos de teletrabajo habilitados: `id_emp`, `fecha_desde`, `fecha_hasta`, `created_by`, timestamps — migración `000086`. El backend valida que hoy esté dentro de un período activo antes de aceptar marcaciones TELETRABAJO. Rutas: `GET|POST /empleados/{id}/teletrabajo`, `DELETE /empleados/{id}/teletrabajo/{periodoId}`. Métodos en `EmpleadoController`: `teletrabajoIndex`, `teletrabajoStore`, `teletrabajoDestroy`.
 - Catálogos sociales precargados (migración `000069`): `dbo.ad_grupo_vulnerable` (8 registros), `dbo.ad_grupo_prioritario` (8), `dbo.ad_tipo_discapacidad` CONADIS (7), `dbo.ad_enfermedad_catastrofica` MSP (15).
 - Stock: siempre usar `DB::table()->update(['stock_actual' => DB::raw('stock_actual + N')])` — nunca Eloquent para tablas con schema prefix en PostgreSQL
 
@@ -248,7 +249,8 @@ Tabla de marcaciones individuales. Flujo diario en orden estricto: `ENTRADA → 
 **modalidad_marcacion** controla cómo puede timbrar el empleado:
 - `PRESENCIAL` (default): la IP del request debe comenzar con algún prefijo de `VLANS_PERMITIDAS` en `dbo.d2_configuracion`. Formato: `10.10.12.,10.10.26.` (prefijos con punto final, separados por coma). Si la lista está vacía se permite todo.
 - `TEMPORAL`: puede marcar desde cualquier IP sin validación. `tipo_marcacion = 'WEB'`. Uso: comisiones, viajes temporales. (**antes se llamaba REMOTO** — migración `000064` actualizó todos los registros existentes)
-- `TELETRABAJO`: puede marcar desde cualquier IP. `tipo_marcacion = 'TELETRABAJO'`. Uso: trabajo desde casa.
+- `TELETRABAJO`: puede marcar desde cualquier IP. `tipo_marcacion = 'TELETRABAJO'`. Uso: trabajo desde casa. **Requiere período activo** en `dbo.ad_empleado_teletrabajo` (migración `000086`); si no hay período vigente el backend rechaza la marcación con 403. TH gestiona los períodos desde la ficha del empleado (Tab 4).
+- `BIOMETRICO`: marcación exclusivamente por reloj ZKTeco — el backend rechaza cualquier intento de marcación web con 403. Los botones de AsistenciaView se deshabilitan y muestran un banner ámbar explicativo. Útil cuando TH exige timbrado físico presencial. (migración `000086`)
 
 **Validación de IP:** El backend corre detrás de Apache (proxy a puerto 9000). `bootstrap/app.php` tiene `trustProxies(at: '127.0.0.1')` para leer `X-Forwarded-For` y obtener la IP real del cliente. La query usa `LOWER(concepto) = 'vlans_permitidas'` porque en la BD el concepto está en mayúsculas (`VLANS_PERMITIDAS`).
 
@@ -467,6 +469,12 @@ views/empleados/        # CRUD empleados, detalle, importación, distributivo
                         # EmpleadoForm: campos con bg-gray-50 + border-gray-300 en reposo, focus:bg-white
                         #   (clase .input-field en <style scoped>) — distingue visualmente los campos en fondo blanco
                         # EmpleadoForm: reorganizado en 4 pestañas con diseño visual atractivo:
+                        #   Tab 4 "Asistencia": modalidad_marcacion (radio cards: PRESENCIAL/TEMPORAL/TELETRABAJO/BIOMETRICO)
+                        #     Cuando modalidad = TELETRABAJO (solo en edición): sección "Períodos de Teletrabajo Habilitados"
+                        #       tabla historial (fecha_desde, fecha_hasta, registrado por, estado: Activo/Futuro/Vencido)
+                        #       botón "Agregar período" → formulario inline con fecha_desde y fecha_hasta
+                        #       badges de estado calculados en frontend con hoy()
+                        #     Cuando modalidad = BIOMETRICO: solo se muestra el radio seleccionado (sin sección adicional)
                         #   Tab 1 "Datos Personales": nombres, apellidos, cédula, teléfono, email, dirección, sexo, tipo_sangre
                         #     + grupo_vulnerable, grupo_prioritario (selects de catálogos sociales)
                         #     + bloque Discapacidad (toggle → tipo CONADIS + porcentaje %)
@@ -556,6 +564,10 @@ views/asistencia/       # Reporte de asistencia personal y admin
                         #     por_activarse (#068174) = aún no le toca
                         #   Tamaño responsivo: w-28 h-28 móvil / md:w-52 md:h-52 PC (íconos)
                         #   Contorno del botón reducido: py-2 md:py-3 (solo padding, íconos sin cambio)
+                        #   Bloqueo por modalidad: `miEstado()` retorna `puede_marcar` (bool) y `mensaje_bloqueo` (string)
+                        #     BIOMETRICO → puede_marcar=false, mensaje "Tu marcación es exclusivamente por reloj biométrico"
+                        #     TELETRABAJO sin período activo → puede_marcar=false, mensaje "Tu período de teletrabajo ha vencido..."
+                        #     Banner ámbar en AsistenciaView cuando puede_marcar=false; botones bloqueados (disponible=false)
                         #   Imágenes precargadas en onMounted con new Image() para evitar flash
                         #   Confirmación al marcar SALIDA antes de las 16:30 con window.confirm()
                         #   ARTICULO_ATRASOS: se muestra con fondo #0b5447 y texto blanco (text-sm)

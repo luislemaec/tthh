@@ -32,6 +32,16 @@
         </button>
       </div>
 
+      <!-- Banner de bloqueo por modalidad BIOMETRICO o TELETRABAJO vencido -->
+      <div v-if="estado.puede_marcar === false"
+        class="flex items-start gap-3 bg-amber-50 border border-amber-300 text-amber-800 px-4 py-3 rounded-lg text-sm mb-4">
+        <svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+        </svg>
+        <span>{{ estado.mensaje_bloqueo }}</span>
+      </div>
+
       <!-- Mensaje de exito -->
       <div v-if="mensajeExito"
         class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm text-center">
@@ -254,9 +264,10 @@ const btnStyle = (estadoBtn) => {
 
 const botones = computed(() => {
   const secuencia = ['ENTRADA', 'SALIDA AL LUNCH', 'ENTRADA DEL LUNCH', 'SALIDA']
+  const bloqueado = estado.value.puede_marcar === false
   return secuencia.map(concepto => {
     const yaMarcado = !!getMarcacion(concepto)
-    const esActivo  = estado.value.siguiente === concepto
+    const esActivo  = !bloqueado && estado.value.siguiente === concepto
     const estadoBtn = yaMarcado ? 'apagado' : esActivo ? 'activo' : 'por_activarse'
     return {
       concepto,

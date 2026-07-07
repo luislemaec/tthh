@@ -172,6 +172,9 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::post("/empleados/{id}/sustituta-doc",           [EmpleadoController::class, "subirDocSustituta"]);
     Route::get("/empleados/{id}/sustituta-doc",            [EmpleadoController::class, "descargarDocSustituta"]);
     Route::delete("/empleados/{id}/sustituta-doc",         [EmpleadoController::class, "eliminarDocSustituta"]);
+    Route::get("/empleados/{id}/teletrabajo",              [EmpleadoController::class, "teletrabajoIndex"]);
+    Route::post("/empleados/{id}/teletrabajo",             [EmpleadoController::class, "teletrabajoStore"]);
+    Route::delete("/empleados/{id}/teletrabajo/{periodoId}", [EmpleadoController::class, "teletrabajoDestroy"]);
 
     // Asignación de roles a empleados
     Route::get("/empleados/{id_emp}/roles",             [RolController::class, "rolesEmpleado"]);

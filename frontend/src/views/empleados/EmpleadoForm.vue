@@ -463,7 +463,7 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div class="sm:col-span-2">
               <label class="label-field">Modalidad de Marcación</label>
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-2">
                 <label v-for="opt in opcionesModalidad" :key="opt.value"
                   :class="[
                     'flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all',
@@ -481,6 +481,74 @@
                 </label>
               </div>
             </div>
+          </div>
+
+          <!-- Historial de períodos de teletrabajo (solo visible si esEdicion y modalidad = TELETRABAJO) -->
+          <div v-if="esEdicion && form.modalidad_marcacion === 'TELETRABAJO'" class="mt-2 border border-dashed border-blue-300 rounded-xl p-4 bg-blue-50">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-sm font-semibold text-blue-800">Períodos de Teletrabajo Habilitados</h3>
+              <button type="button" @click="mostrarFormTeletrabajo = !mostrarFormTeletrabajo"
+                class="text-xs px-3 py-1.5 rounded-lg bg-blue-700 text-white hover:bg-blue-800 transition-colors">
+                + Agregar período
+              </button>
+            </div>
+
+            <!-- Formulario nuevo período -->
+            <div v-if="mostrarFormTeletrabajo" class="flex flex-wrap gap-3 items-end mb-4 p-3 bg-white rounded-lg border border-blue-200">
+              <div>
+                <label class="text-xs text-gray-600 font-medium">Desde</label>
+                <input type="date" v-model="nuevoTeletrabajo.fecha_desde"
+                  class="block mt-1 rounded-lg border border-gray-300 text-sm px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              </div>
+              <div>
+                <label class="text-xs text-gray-600 font-medium">Hasta</label>
+                <input type="date" v-model="nuevoTeletrabajo.fecha_hasta"
+                  class="block mt-1 rounded-lg border border-gray-300 text-sm px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              </div>
+              <button type="button" @click="guardarPeriodoTeletrabajo"
+                :disabled="guardandoTeletrabajo"
+                class="px-4 py-1.5 rounded-lg bg-blue-700 text-white text-sm hover:bg-blue-800 disabled:opacity-50 transition-colors">
+                {{ guardandoTeletrabajo ? 'Guardando...' : 'Guardar' }}
+              </button>
+              <button type="button" @click="mostrarFormTeletrabajo = false"
+                class="px-3 py-1.5 rounded-lg border text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+                Cancelar
+              </button>
+            </div>
+
+            <!-- Tabla historial -->
+            <div v-if="periodosTeletrabajo.length" class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="text-xs text-blue-700 border-b border-blue-200">
+                    <th class="text-left py-1.5 pr-4">Desde</th>
+                    <th class="text-left py-1.5 pr-4">Hasta</th>
+                    <th class="text-left py-1.5 pr-4">Registrado por</th>
+                    <th class="text-left py-1.5 pr-4">Fecha registro</th>
+                    <th class="text-left py-1.5">Estado</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="p in periodosTeletrabajo" :key="p.id" class="border-b border-blue-100 last:border-0">
+                    <td class="py-1.5 pr-4 font-medium">{{ p.fecha_desde }}</td>
+                    <td class="py-1.5 pr-4">{{ p.fecha_hasta }}</td>
+                    <td class="py-1.5 pr-4 text-gray-500">{{ p.created_by ?? '—' }}</td>
+                    <td class="py-1.5 pr-4 text-gray-500">{{ p.created_at ? p.created_at.substring(0, 10) : '—' }}</td>
+                    <td class="py-1.5 pr-4">
+                      <span v-if="esPeriodoActivo(p)" class="px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-700 font-medium">Activo</span>
+                      <span v-else-if="esPeriodoFuturo(p)" class="px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-700 font-medium">Futuro</span>
+                      <span v-else class="px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-500 font-medium">Vencido</span>
+                    </td>
+                    <td class="py-1.5 text-right">
+                      <button type="button" @click="eliminarPeriodoTeletrabajo(p.id)"
+                        class="text-red-400 hover:text-red-600 text-xs transition-colors">Eliminar</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p v-else class="text-xs text-blue-600 text-center py-3">No hay períodos registrados. Agrega uno para que el empleado pueda timbrar.</p>
           </div>
 
           <div class="flex items-center gap-3 pt-2">
@@ -590,7 +658,15 @@ const jornadas             = ref([])
 const partidasVacantes     = ref([])
 const modalidadesLaborales = ref([])
 const modalPartidas        = ref({ show: false })
-const subiendoDocSustituta = ref(false)
+const subiendoDocSustituta   = ref(false)
+const periodosTeletrabajo    = ref([])
+const mostrarFormTeletrabajo = ref(false)
+const guardandoTeletrabajo   = ref(false)
+const nuevoTeletrabajo       = ref({ fecha_desde: '', fecha_hasta: '' })
+
+const hoy = () => new Date().toISOString().slice(0, 10)
+const esPeriodoActivo  = (p) => p.fecha_desde <= hoy() && p.fecha_hasta >= hoy()
+const esPeriodoFuturo  = (p) => p.fecha_desde > hoy()
 const catalogos = ref({
   grupos_vulnerables: [], grupos_prioritarios: [],
   tipos_discapacidad: [], enfermedades_catastroficas: [],
@@ -630,7 +706,8 @@ const tabs = [
 const opcionesModalidad = [
   { value: 'PRESENCIAL',  label: 'Presencial',  desc: 'Solo puede timbrar desde las VLANs internas configuradas.' },
   { value: 'TEMPORAL',    label: 'Temporal',    desc: 'Puede timbrar desde cualquier IP (comisión, viaje temporal).' },
-  { value: 'TELETRABAJO', label: 'Teletrabajo', desc: 'Marca como teletrabajo sin restricción de IP.' },
+  { value: 'TELETRABAJO', label: 'Teletrabajo', desc: 'Marca como teletrabajo sin restricción de IP. Requiere período habilitado.' },
+  { value: 'BIOMETRICO',  label: 'Biométrico',  desc: 'Solo puede timbrar por el reloj biométrico. Web deshabilitado.' },
 ]
 
 function seleccionarPartida(p) {
@@ -923,8 +1000,41 @@ onMounted(async () => {
     form.value.num_hijos_mayores             = data.num_hijos_mayores             ?? 0
     form.value.hijos                         = (data.hijos || []).map(h => ({ ...h }))
     fotoUrl.value = storageUrl(data.foto)
+
+    // Cargar períodos de teletrabajo
+    try {
+      const { data: tel } = await api.get(`/empleados/${id}/teletrabajo`)
+      periodosTeletrabajo.value = tel
+    } catch {}
   }
 })
+
+async function guardarPeriodoTeletrabajo() {
+  if (!nuevoTeletrabajo.value.fecha_desde || !nuevoTeletrabajo.value.fecha_hasta) {
+    alert('Ingresa ambas fechas.'); return
+  }
+  guardandoTeletrabajo.value = true
+  try {
+    const { data } = await api.post(`/empleados/${route.params.id}/teletrabajo`, nuevoTeletrabajo.value)
+    periodosTeletrabajo.value.unshift(data)
+    nuevoTeletrabajo.value = { fecha_desde: '', fecha_hasta: '' }
+    mostrarFormTeletrabajo.value = false
+  } catch (e) {
+    alert(e.response?.data?.message || 'Error al guardar el período.')
+  } finally {
+    guardandoTeletrabajo.value = false
+  }
+}
+
+async function eliminarPeriodoTeletrabajo(periodoId) {
+  if (!confirm('¿Eliminar este período?')) return
+  try {
+    await api.delete(`/empleados/${route.params.id}/teletrabajo/${periodoId}`)
+    periodosTeletrabajo.value = periodosTeletrabajo.value.filter(p => p.id !== periodoId)
+  } catch {
+    alert('Error al eliminar el período.')
+  }
+}
 </script>
 
 <style scoped>

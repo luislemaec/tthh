@@ -37,6 +37,28 @@ class AsistenciaController extends Controller
             ->whereRaw("LOWER(concepto) = 'articulo_atrasos'")
             ->value('valor');
 
+        $modalidad = $emp->modalidad_marcacion ?? 'PRESENCIAL';
+
+        // Determinar si puede marcar desde el web
+        $puedeMarcar = true;
+        $mensajeBloqueo = null;
+
+        if ($modalidad === 'BIOMETRICO') {
+            $puedeMarcar = false;
+            $mensajeBloqueo = 'Tu marcación es exclusivamente por reloj biométrico.';
+        } elseif ($modalidad === 'TELETRABAJO') {
+            $periodoActivo = DB::table('dbo.ad_empleado_teletrabajo')
+                ->where('id_emp', $emp->id_emp)
+                ->where('fecha_desde', '<=', now()->toDateString())
+                ->where('fecha_hasta', '>=', now()->toDateString())
+                ->first();
+
+            if (!$periodoActivo) {
+                $puedeMarcar = false;
+                $mensajeBloqueo = 'Tu período de teletrabajo ha vencido o no está habilitado. Contacta a Talento Humano.';
+            }
+        }
+
         return response()->json([
             "empleado"    => [
                 "id_emp"     => $emp->id_emp,
@@ -44,11 +66,14 @@ class AsistenciaController extends Controller
                 "apellido"   => $emp->apellido_emp,
                 "departamento" => $emp->departamento?->nombre_depto,
             ],
-            "fecha"           => now()->toDateString(),
-            "hora"            => now()->format("H:i:s"),
-            "marcaciones"     => $marcaciones,
-            "siguiente"       => $siguiente,
-            "articulo_atrasos"=> $articuloAtrasos,
+            "fecha"            => now()->toDateString(),
+            "hora"             => now()->format("H:i:s"),
+            "marcaciones"      => $marcaciones,
+            "siguiente"        => $siguiente,
+            "articulo_atrasos" => $articuloAtrasos,
+            "modalidad"        => $modalidad,
+            "puede_marcar"     => $puedeMarcar,
+            "mensaje_bloqueo"  => $mensajeBloqueo,
         ]);
     }
 
@@ -66,6 +91,26 @@ class AsistenciaController extends Controller
 
         // Validar modalidad de marcación
         $modalidad = $emp->modalidad_marcacion ?? 'PRESENCIAL';
+
+        if ($modalidad === 'BIOMETRICO') {
+            return response()->json([
+                'message' => 'Tu marcación es exclusivamente por reloj biométrico. Contacta a Talento Humano si necesitas cambiar tu modalidad.',
+            ], 403);
+        }
+
+        if ($modalidad === 'TELETRABAJO') {
+            $periodoActivo = DB::table('dbo.ad_empleado_teletrabajo')
+                ->where('id_emp', $emp->id_emp)
+                ->where('fecha_desde', '<=', $hoy)
+                ->where('fecha_hasta', '>=', $hoy)
+                ->exists();
+
+            if (!$periodoActivo) {
+                return response()->json([
+                    'message' => 'Tu período de teletrabajo ha vencido o no está habilitado. Contacta a Talento Humano.',
+                ], 403);
+            }
+        }
 
         if ($modalidad === 'PRESENCIAL') {
             $vlansConf = DB::table('dbo.d2_configuracion')

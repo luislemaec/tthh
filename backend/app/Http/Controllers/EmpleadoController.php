@@ -701,4 +701,53 @@ class EmpleadoController extends Controller
         ]);
         return response()->json(['message' => 'Documento eliminado.']);
     }
+
+    // ── Períodos de teletrabajo ─────────────────────────────────────────────
+
+    // GET /api/empleados/{id}/teletrabajo
+    public function teletrabajoIndex($id)
+    {
+        $periodos = DB::table('dbo.ad_empleado_teletrabajo')
+            ->where('id_emp', $id)
+            ->orderByDesc('fecha_desde')
+            ->get();
+        return response()->json($periodos);
+    }
+
+    // POST /api/empleados/{id}/teletrabajo
+    public function teletrabajoStore(Request $request, $id)
+    {
+        Empleado::findOrFail($id);
+
+        $request->validate([
+            'fecha_desde' => 'required|date',
+            'fecha_hasta' => 'required|date|after_or_equal:fecha_desde',
+        ]);
+
+        $periodo = DB::table('dbo.ad_empleado_teletrabajo')->insertGetId([
+            'id_emp'      => $id,
+            'fecha_desde' => $request->fecha_desde,
+            'fecha_hasta' => $request->fecha_hasta,
+            'created_by'  => $request->user()->id_emp,
+            'created_at'  => now(),
+            'updated_at'  => now(),
+        ]);
+
+        return response()->json(
+            DB::table('dbo.ad_empleado_teletrabajo')->find($periodo),
+            201
+        );
+    }
+
+    // DELETE /api/empleados/{id}/teletrabajo/{periodoId}
+    public function teletrabajoDestroy($id, $periodoId)
+    {
+        $deleted = DB::table('dbo.ad_empleado_teletrabajo')
+            ->where('id', $periodoId)
+            ->where('id_emp', $id)
+            ->delete();
+
+        if (!$deleted) abort(404);
+        return response()->json(['message' => 'Período eliminado.']);
+    }
 }
