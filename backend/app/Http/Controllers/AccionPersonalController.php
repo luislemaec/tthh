@@ -135,32 +135,42 @@ class AccionPersonalController extends Controller
         $actualRem    = $esIngreso ? 0.0 : (float) ($emp->sueldo ?? 0);
         $diferencial  = max(0, $propuestoRem - $actualRem);
 
+        // Firmantes: usar los del form o pre-llenar desde configuración
+        $cfgF = Configuracion::whereIn("concepto", [
+            "FIRMANTE_TH_NOMBRE", "FIRMANTE_TH_CARGO",
+            "FIRMANTE_AUTORIDAD_NOMBRE", "FIRMANTE_AUTORIDAD_CARGO",
+        ])->pluck("valor", "concepto");
+
         $accion = AccionPersonal::create([
-            "numero_accion"          => null,           // se asigna al Procesar
-            "tipo_accion"            => $request->tipo_accion,
-            "fecha_elaboracion"      => $request->fecha_elaboracion,
-            "id_emp"                 => $emp->id_emp,
-            "id_emp_titular"         => $request->id_emp_titular ?? null,
-            "fecha_inicio"           => $request->fecha_inicio,
-            "fecha_fin"              => $request->fecha_fin ?? null,
-            "motivacion"             => $request->motivacion,
-            "actual_cargo"           => $esIngreso ? null : $emp->cargo_empleado,
-            "actual_grupo_ocup"      => $esIngreso ? null : $emp->grupo_ocupacional,
-            "actual_grado"           => $esIngreso ? null : $emp->nivel,
-            "actual_remuneracion"    => $actualRem,
-            "actual_partida"         => $esIngreso ? null : ($emp->partida_presupuestaria
+            "numero_accion"             => null,
+            "tipo_accion"               => $request->tipo_accion,
+            "fecha_elaboracion"         => $request->fecha_elaboracion,
+            "id_emp"                    => $emp->id_emp,
+            "id_emp_titular"            => $request->id_emp_titular ?? null,
+            "fecha_inicio"              => $request->fecha_inicio,
+            "fecha_fin"                 => $request->fecha_fin ?? null,
+            "motivacion"                => $request->motivacion,
+            "actual_cargo"              => $esIngreso ? null : $emp->cargo_empleado,
+            "actual_grupo_ocup"         => $esIngreso ? null : $emp->grupo_ocupacional,
+            "actual_grado"              => $esIngreso ? null : $emp->nivel,
+            "actual_remuneracion"       => $actualRem,
+            "actual_partida"            => $esIngreso ? null : ($emp->partida_presupuestaria
                 ? ($emp->partida_presupuestaria . ($emp->partida_individual ? "-{$emp->partida_individual}" : ""))
                 : null),
-            "actual_proceso_inst"    => $esIngreso ? null : $emp->proceso_institucional,
-            "propuesto_cargo"        => $request->propuesto_cargo,
-            "propuesto_grupo_ocup"   => $request->propuesto_grupo_ocup,
-            "propuesto_grado"        => $request->propuesto_grado,
-            "propuesto_remuneracion" => $propuestoRem,
-            "propuesto_partida"      => $request->propuesto_partida,
-            "propuesto_proceso_inst" => $request->propuesto_proceso_inst,
-            "diferencial"            => $diferencial,
-            "estado"                 => "BORRADOR",
-            "creado_por"             => $request->user()->id_emp,
+            "actual_proceso_inst"       => $esIngreso ? null : $emp->proceso_institucional,
+            "propuesto_cargo"           => $request->propuesto_cargo,
+            "propuesto_grupo_ocup"      => $request->propuesto_grupo_ocup,
+            "propuesto_grado"           => $request->propuesto_grado,
+            "propuesto_remuneracion"    => $propuestoRem,
+            "propuesto_partida"         => $request->propuesto_partida,
+            "propuesto_proceso_inst"    => $request->propuesto_proceso_inst,
+            "diferencial"               => $diferencial,
+            "estado"                    => "BORRADOR",
+            "creado_por"                => $request->user()->id_emp,
+            "firmante_th_nombre"        => strtoupper(trim($request->firmante_th_nombre       ?? $cfgF['FIRMANTE_TH_NOMBRE']        ?? '')),
+            "firmante_th_cargo"         => strtoupper(trim($request->firmante_th_cargo        ?? $cfgF['FIRMANTE_TH_CARGO']         ?? '')),
+            "firmante_autoridad_nombre" => strtoupper(trim($request->firmante_autoridad_nombre ?? $cfgF['FIRMANTE_AUTORIDAD_NOMBRE'] ?? '')),
+            "firmante_autoridad_cargo"  => strtoupper(trim($request->firmante_autoridad_cargo  ?? $cfgF['FIRMANTE_AUTORIDAD_CARGO']  ?? '')),
         ]);
 
         return response()->json($accion->load(["empleado", "titular"]), 201);
@@ -195,12 +205,16 @@ class AccionPersonalController extends Controller
         ]);
     }
 
-    // PATCH /api/acciones-personal/{id}/editar-borrador → edita motivación y fecha elaboración
+    // PATCH /api/acciones-personal/{id}/editar-borrador → edita motivación, fecha elaboración y firmantes
     public function editarBorrador(Request $request, $id)
     {
         $request->validate([
-            'motivacion'        => 'nullable|string',
-            'fecha_elaboracion' => 'required|date',
+            'motivacion'               => 'nullable|string',
+            'fecha_elaboracion'        => 'required|date',
+            'firmante_th_nombre'       => 'nullable|string|max:200',
+            'firmante_th_cargo'        => 'nullable|string|max:200',
+            'firmante_autoridad_nombre' => 'nullable|string|max:200',
+            'firmante_autoridad_cargo' => 'nullable|string|max:200',
         ]);
 
         $accion = AccionPersonal::findOrFail($id);
@@ -210,9 +224,13 @@ class AccionPersonalController extends Controller
         }
 
         $accion->update([
-            'motivacion'        => $request->motivacion,
-            'fecha_elaboracion' => $request->fecha_elaboracion,
-            'updated_at'        => now(),
+            'motivacion'               => $request->motivacion,
+            'fecha_elaboracion'        => $request->fecha_elaboracion,
+            'firmante_th_nombre'       => strtoupper(trim($request->firmante_th_nombre       ?? '')),
+            'firmante_th_cargo'        => strtoupper(trim($request->firmante_th_cargo        ?? '')),
+            'firmante_autoridad_nombre' => strtoupper(trim($request->firmante_autoridad_nombre ?? '')),
+            'firmante_autoridad_cargo' => strtoupper(trim($request->firmante_autoridad_cargo  ?? '')),
+            'updated_at'               => now(),
         ]);
 
         return response()->json(['message' => 'Acción actualizada.', 'accion' => $accion]);
@@ -236,19 +254,14 @@ class AccionPersonalController extends Controller
         return response()->json(["message" => "Estado actualizado correctamente."]);
     }
 
-    // GET /api/acciones-personal/{id}/pdf
+    // GET /api/acciones-personal/{id}/pdf  (funciona en BORRADOR y procesadas)
     public function pdf($id)
     {
         $accion = AccionPersonal::with(["empleado.departamento", "titular.departamento"])->findOrFail($id);
 
-        if ($accion->estado === 'BORRADOR') {
-            return response()->json(['message' => 'No se puede generar PDF de una acción en borrador.'], 422);
-        }
-
         $creador = Empleado::find($accion->creado_por);
         $config  = Configuracion::whereIn("concepto", [
             "DIRECTOR_TALENTO_HUMANO",
-            "PRESIDENTE_INSTITUCION",
             "APROBADOR_ACCION_PERSONAL",
             "nombre_institucion",
             "PREFIJO_ACCION_PERSONAL",
@@ -258,19 +271,33 @@ class AccionPersonalController extends Controller
             "FIRMANTE_AUTORIDAD_CARGO",
         ])->pluck("valor", "concepto");
 
+        // Firmantes: primero desde la acción, fallback a configuración global
+        $firmanteThNombre    = $accion->firmante_th_nombre        ?: ($config['FIRMANTE_TH_NOMBRE']        ?? $config['DIRECTOR_TALENTO_HUMANO']   ?? '');
+        $firmanteThCargo     = $accion->firmante_th_cargo         ?: ($config['FIRMANTE_TH_CARGO']         ?? 'DIRECTOR (A) DE ADMINISTRACIÓN DEL TALENTO HUMANO');
+        $firmanteAutNombre   = $accion->firmante_autoridad_nombre ?: ($config['FIRMANTE_AUTORIDAD_NOMBRE'] ?? $config['APROBADOR_ACCION_PERSONAL']  ?? '');
+        $firmanteAutCargo    = $accion->firmante_autoridad_cargo  ?: ($config['FIRMANTE_AUTORIDAD_CARGO']  ?? '');
+
         $logoPath   = public_path("logo.png");
         $logoBase64 = file_exists($logoPath)
             ? "data:image/png;base64," . base64_encode(file_get_contents($logoPath))
             : null;
 
+        $nombreArchivo = $accion->numero_accion
+            ? "accion_personal_{$accion->numero_accion}.pdf"
+            : "accion_personal_borrador.pdf";
+
         $pdf = Pdf::loadView("reportes.accion_personal", [
-            "accion"  => $accion,
-            "config"  => $config,
-            "logo"    => $logoBase64,
-            "creador" => $creador,
+            "accion"              => $accion,
+            "config"              => $config,
+            "logo"                => $logoBase64,
+            "creador"             => $creador,
+            "firmanteThNombre"    => $firmanteThNombre,
+            "firmanteThCargo"     => $firmanteThCargo,
+            "firmanteAutNombre"   => $firmanteAutNombre,
+            "firmanteAutCargo"    => $firmanteAutCargo,
         ])->setPaper("a4", "portrait");
 
-        return $pdf->download("accion_personal_{$accion->numero_accion}.pdf");
+        return $pdf->stream($nombreArchivo);
     }
 
     // GET /api/acciones-personal/reporte/pdf

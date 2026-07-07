@@ -104,6 +104,7 @@ Route::middleware("auth:sanctum")->group(function () {
 
         // Configuración
         Route::post("configuracion/parametros-base",    [\App\Http\Controllers\Admin\ConfiguracionController::class, "cargarParametrosBase"]);
+        Route::get("configuracion/firmantes",           [\App\Http\Controllers\Admin\ConfiguracionController::class, "firmantes"]);
         Route::get("configuracion",                     [\App\Http\Controllers\Admin\ConfiguracionController::class, "index"]);
         Route::post("configuracion",                    [\App\Http\Controllers\Admin\ConfiguracionController::class, "store"]);
         Route::put("configuracion/{concepto}",          [\App\Http\Controllers\Admin\ConfiguracionController::class, "update"]);

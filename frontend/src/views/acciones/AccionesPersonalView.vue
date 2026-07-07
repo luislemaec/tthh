@@ -115,6 +115,10 @@
                     class="inline-flex items-center px-2.5 py-1 rounded-md border border-amber-200 text-xs text-amber-700 hover:bg-amber-50 font-medium transition-colors">
                     Editar
                   </button>
+                  <button @click="verPdfBorrador(a.id_accion)"
+                    class="inline-flex items-center px-2.5 py-1 rounded-md border border-gray-300 text-xs text-gray-600 hover:bg-gray-50 font-medium transition-colors">
+                    Vista previa
+                  </button>
                   <button @click="procesar(a.id_accion)"
                     class="inline-flex items-center px-2.5 py-1 rounded-md border border-[#0b5447] text-xs text-[#0b5447] hover:bg-green-50 font-medium transition-colors">
                     Procesar
@@ -183,10 +187,9 @@
   </div>
 
   <!-- Modal Editar Borrador -->
-  <div v-if="modalEditar.show" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-    <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-md space-y-4">
+  <div v-if="modalEditar.show" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-2xl space-y-4 overflow-y-auto max-h-[90vh]">
       <h3 class="text-lg font-semibold text-gray-800">Editar Borrador</h3>
-      <p class="text-sm text-gray-400">Solo se puede modificar la motivación y la fecha de elaboración.</p>
       <div>
         <label class="block text-sm font-medium text-gray-600 mb-1">Fecha de elaboración *</label>
         <input v-model="modalEditar.fecha_elaboracion" type="date"
@@ -194,8 +197,37 @@
       </div>
       <div>
         <label class="block text-sm font-medium text-gray-600 mb-1">Motivación / Observaciones</label>
-        <textarea v-model="modalEditar.motivacion" rows="4"
-          class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186] resize-none"></textarea>
+        <TipTapEditor v-model="modalEditar.motivacion" minHeight="120px" />
+      </div>
+      <!-- Firmantes -->
+      <div class="border-t pt-4 space-y-3">
+        <p class="text-sm font-medium text-gray-700">Responsables de Aprobación</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Nombre — Talento Humano</label>
+            <input v-model="modalEditar.firmante_th_nombre" type="text"
+              style="text-transform:uppercase"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Cargo — Talento Humano</label>
+            <input v-model="modalEditar.firmante_th_cargo" type="text"
+              style="text-transform:uppercase"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Nombre — Autoridad Nominadora</label>
+            <input v-model="modalEditar.firmante_autoridad_nombre" type="text"
+              style="text-transform:uppercase"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Cargo — Autoridad Nominadora</label>
+            <input v-model="modalEditar.firmante_autoridad_cargo" type="text"
+              style="text-transform:uppercase"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+          </div>
+        </div>
       </div>
       <div class="flex justify-end gap-3 pt-2">
         <button @click="modalEditar.show = false"
@@ -210,6 +242,7 @@
 <script setup>
 import { ref, onMounted } from "vue"
 import api from "@/services/api"
+import TipTapEditor from "@/components/TipTapEditor.vue"
 
 const acciones       = ref([])
 const cargando       = ref(false)
@@ -218,7 +251,12 @@ const pagina         = ref(1)
 const paginacion     = ref({ current_page: 1, last_page: 1 })
 const filtro         = ref({ buscar: "", tipo_accion: "", estado: "" })
 const modalFinalizar = ref({ show: false, id: null, fecha: "" })
-const modalEditar    = ref({ show: false, id: null, fecha_elaboracion: "", motivacion: "" })
+const modalEditar    = ref({
+  show: false, id: null,
+  fecha_elaboracion: "", motivacion: "",
+  firmante_th_nombre: "", firmante_th_cargo: "",
+  firmante_autoridad_nombre: "", firmante_autoridad_cargo: "",
+})
 
 const fmtFecha = (f) => {
   if (!f) return "—"
@@ -307,10 +345,14 @@ const procesar = async (id) => {
 
 const abrirEditarBorrador = (a) => {
   modalEditar.value = {
-    show:              true,
-    id:                a.id_accion,
-    fecha_elaboracion: a.fecha_elaboracion?.substring(0, 10) ?? "",
-    motivacion:        a.motivacion ?? "",
+    show:                      true,
+    id:                        a.id_accion,
+    fecha_elaboracion:         a.fecha_elaboracion?.substring(0, 10) ?? "",
+    motivacion:                a.motivacion ?? "",
+    firmante_th_nombre:        a.firmante_th_nombre        ?? "",
+    firmante_th_cargo:         a.firmante_th_cargo         ?? "",
+    firmante_autoridad_nombre: a.firmante_autoridad_nombre ?? "",
+    firmante_autoridad_cargo:  a.firmante_autoridad_cargo  ?? "",
   }
 }
 
@@ -318,13 +360,28 @@ const guardarBorrador = async () => {
   if (!modalEditar.value.fecha_elaboracion) { alert("La fecha de elaboración es obligatoria."); return }
   try {
     await api.patch(`/acciones-personal/${modalEditar.value.id}/editar-borrador`, {
-      fecha_elaboracion: modalEditar.value.fecha_elaboracion,
-      motivacion:        modalEditar.value.motivacion,
+      fecha_elaboracion:         modalEditar.value.fecha_elaboracion,
+      motivacion:                modalEditar.value.motivacion,
+      firmante_th_nombre:        modalEditar.value.firmante_th_nombre,
+      firmante_th_cargo:         modalEditar.value.firmante_th_cargo,
+      firmante_autoridad_nombre: modalEditar.value.firmante_autoridad_nombre,
+      firmante_autoridad_cargo:  modalEditar.value.firmante_autoridad_cargo,
     })
     modalEditar.value.show = false
     cargar()
   } catch (e) {
     alert(e.response?.data?.message || "Error al guardar")
+  }
+}
+
+const verPdfBorrador = async (id) => {
+  try {
+    const response = await api.get(`/acciones-personal/${id}/pdf`, { responseType: "blob" })
+    const url = URL.createObjectURL(new Blob([response.data], { type: "application/pdf" }))
+    window.open(url, "_blank")
+    setTimeout(() => URL.revokeObjectURL(url), 60000)
+  } catch (e) {
+    alert("Error al generar la vista previa")
   }
 }
 

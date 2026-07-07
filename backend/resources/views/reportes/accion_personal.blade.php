@@ -190,9 +190,17 @@
 </div>
 
 {{-- MOTIVACIÓN --}}
+@php
+  $motivacion = $accion->motivacion ?? '';
+  $esHtml = str_contains($motivacion, '<p>') || str_contains($motivacion, '<strong>') || str_contains($motivacion, '<em>');
+@endphp
 <div style="border:1px solid #000; padding:3px 5px; margin-bottom:3px;">
   <div class="lbl">MOTIVACIÓN: <span style="font-weight:normal;">(adjuntar anexo si lo posee)</span></div>
-  <div style="min-height:52px; font-size:8pt; word-wrap:break-word; overflow:hidden; margin-top:2px; white-space:pre-wrap; text-align:justify;">{{ $accion->motivacion ?? '' }}</div>
+  @if($esHtml)
+    <div style="min-height:52px; font-size:8pt; word-wrap:break-word; overflow:hidden; margin-top:2px; text-align:justify;">{!! $motivacion !!}</div>
+  @else
+    <div style="min-height:52px; font-size:8pt; word-wrap:break-word; overflow:hidden; margin-top:2px; white-space:pre-wrap; text-align:justify;">{{ $motivacion }}</div>
+  @endif
 </div>
 
 {{-- SITUACIÓN ACTUAL vs PROPUESTA --}}
@@ -276,15 +284,15 @@
         <div class="lbl">DIRECTOR (A) O RESPONSABLE DE TALENTO HUMANO</div>
         <div style="min-height:26px;"></div>
         <div style="font-size:7.5pt;">FIRMA: <span style="border-bottom:1px solid #000; display:inline-block; width:68%;">&nbsp;</span></div>
-        <div style="font-size:7.5pt; margin-top:1px;">NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">{{ $config['FIRMANTE_TH_NOMBRE'] ?? $config['DIRECTOR_TALENTO_HUMANO'] ?? '' }}</span></div>
-        <div style="font-size:7.5pt; margin-top:1px;">PUESTO: <span style="border-bottom:1px solid #000; display:inline-block; width:64%;">{{ $config['FIRMANTE_TH_CARGO'] ?? 'DIRECTOR (A) DE ADMINISTRACIÓN DEL TALENTO HUMANO' }}</span></div>
+        <div style="font-size:7.5pt; margin-top:1px;">NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">{{ $firmanteThNombre }}</span></div>
+        <div style="font-size:7.5pt; margin-top:1px;">PUESTO: <span style="border-bottom:1px solid #000; display:inline-block; width:64%;">{{ $firmanteThCargo }}</span></div>
       </td>
       <td style="width:50%; padding:5px 6px; vertical-align:bottom;">
         <div class="lbl">AUTORIDAD NOMINADORA O SU DELEGADO</div>
         <div style="min-height:26px;"></div>
         <div style="font-size:7.5pt;">FIRMA: <span style="border-bottom:1px solid #000; display:inline-block; width:68%;">&nbsp;</span></div>
-        <div style="font-size:7.5pt; margin-top:1px;">NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">{{ $config['FIRMANTE_AUTORIDAD_NOMBRE'] ?? $config['APROBADOR_ACCION_PERSONAL'] ?? '' }}</span></div>
-        <div style="font-size:7.5pt; margin-top:1px;">PUESTO: <span style="border-bottom:1px solid #000; display:inline-block; width:64%;">{{ $config['FIRMANTE_AUTORIDAD_CARGO'] ?? '' }}</span></div>
+        <div style="font-size:7.5pt; margin-top:1px;">NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:62%;">{{ $firmanteAutNombre }}</span></div>
+        <div style="font-size:7.5pt; margin-top:1px;">PUESTO: <span style="border-bottom:1px solid #000; display:inline-block; width:64%;">{{ $firmanteAutCargo }}</span></div>
       </td>
     </tr>
   </table>

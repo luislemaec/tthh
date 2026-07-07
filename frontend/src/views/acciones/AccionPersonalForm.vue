@@ -202,10 +202,40 @@
       <!-- Motivación -->
       <div class="bg-white rounded-xl shadow p-6 space-y-3">
         <h2 class="text-lg font-semibold text-gray-700 border-b pb-2">Motivación / Resolución</h2>
-        <p class="text-xs text-gray-400">Ingrese el texto completo de la resolución tal como debe aparecer en el documento oficial.</p>
-        <textarea v-model="form.motivacion" rows="8"
-          placeholder="Ej: El Presidente del Consejo..., en ejercicio de sus facultades, RESUELVE: Autorizar..."
-          class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186] resize-none"></textarea>
+        <p class="text-xs text-gray-400">Ingrese el texto completo de la resolución. Use el botón <strong>N</strong> para aplicar negrita al texto seleccionado.</p>
+        <TipTapEditor v-model="form.motivacion" minHeight="180px" />
+      </div>
+
+      <!-- Firmantes -->
+      <div class="bg-white rounded-xl shadow p-6 space-y-4">
+        <h2 class="text-lg font-semibold text-gray-700 border-b pb-2">Responsables de Aprobación</h2>
+        <p class="text-xs text-gray-400">Pre-llenado desde la configuración global. Puede modificar para esta acción específica.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Nombre — Responsable de Talento Humano</label>
+            <input v-model="form.firmante_th_nombre" type="text"
+              style="text-transform:uppercase"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Cargo — Responsable de Talento Humano</label>
+            <input v-model="form.firmante_th_cargo" type="text"
+              style="text-transform:uppercase"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Nombre — Autoridad Nominadora</label>
+            <input v-model="form.firmante_autoridad_nombre" type="text"
+              style="text-transform:uppercase"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Cargo — Autoridad Nominadora</label>
+            <input v-model="form.firmante_autoridad_cargo" type="text"
+              style="text-transform:uppercase"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+          </div>
+        </div>
       </div>
 
       <!-- Error -->
@@ -229,9 +259,10 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from "vue"
+import { ref, computed, watch, onMounted } from "vue"
 import { useRouter } from "vue-router"
 import api from "@/services/api"
+import TipTapEditor from "@/components/TipTapEditor.vue"
 
 const router = useRouter()
 
@@ -242,19 +273,23 @@ const TIPOS_CON_FECHA_FIN = ['ENCARGO', 'SUBROGACION', 'VACACIONES']
 const TIPOS_FECHA_FIN_REQ = ['SUBROGACION', 'VACACIONES']
 
 const form = ref({
-  tipo_accion:            "",
-  fecha_elaboracion:      new Date().toISOString().substring(0, 10),
-  id_emp:                 "",
-  id_emp_titular:         "",
-  fecha_inicio:           "",
-  fecha_fin:              "",
-  motivacion:             "",
-  propuesto_cargo:        "",
-  propuesto_grupo_ocup:   "",
-  propuesto_grado:        "",
-  propuesto_remuneracion: "",
-  propuesto_partida:      "",
-  propuesto_proceso_inst: "",
+  tipo_accion:               "",
+  fecha_elaboracion:         new Date().toISOString().substring(0, 10),
+  id_emp:                    "",
+  id_emp_titular:            "",
+  fecha_inicio:              "",
+  fecha_fin:                 "",
+  motivacion:                "",
+  propuesto_cargo:           "",
+  propuesto_grupo_ocup:      "",
+  propuesto_grado:           "",
+  propuesto_remuneracion:    "",
+  propuesto_partida:         "",
+  propuesto_proceso_inst:    "",
+  firmante_th_nombre:        "",
+  firmante_th_cargo:         "",
+  firmante_autoridad_nombre: "",
+  firmante_autoridad_cargo:  "",
 })
 
 const hastaNuevaOrden      = ref(false)
@@ -456,4 +491,14 @@ const guardar = async () => {
     guardando.value = false
   }
 }
+
+onMounted(async () => {
+  try {
+    const { data } = await api.get("/configuracion/firmantes")
+    form.value.firmante_th_nombre        = data.firmante_th_nombre        || ""
+    form.value.firmante_th_cargo         = data.firmante_th_cargo         || ""
+    form.value.firmante_autoridad_nombre = data.firmante_autoridad_nombre || ""
+    form.value.firmante_autoridad_cargo  = data.firmante_autoridad_cargo  || ""
+  } catch (_) { /* si falla, quedan vacíos */ }
+})
 </script>

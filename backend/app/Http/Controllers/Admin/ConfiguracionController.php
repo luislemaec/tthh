@@ -77,6 +77,22 @@ class ConfiguracionController extends Controller
         return response()->json(["message" => "Parámetro eliminado correctamente"]);
     }
 
+    // Firmantes de acciones de personal (para pre-llenar el formulario)
+    public function firmantes()
+    {
+        $cfg = Configuracion::whereIn("concepto", [
+            "FIRMANTE_TH_NOMBRE", "FIRMANTE_TH_CARGO",
+            "FIRMANTE_AUTORIDAD_NOMBRE", "FIRMANTE_AUTORIDAD_CARGO",
+        ])->pluck("valor", "concepto");
+
+        return response()->json([
+            "firmante_th_nombre"        => $cfg["FIRMANTE_TH_NOMBRE"]        ?? "",
+            "firmante_th_cargo"         => $cfg["FIRMANTE_TH_CARGO"]         ?? "",
+            "firmante_autoridad_nombre" => $cfg["FIRMANTE_AUTORIDAD_NOMBRE"] ?? "",
+            "firmante_autoridad_cargo"  => $cfg["FIRMANTE_AUTORIDAD_CARGO"]  ?? "",
+        ]);
+    }
+
     // Cargar parámetros base
     public function cargarParametrosBase()
     {

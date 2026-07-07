@@ -18,6 +18,8 @@ class AccionPersonal extends Model
         "propuesto_cargo", "propuesto_grupo_ocup", "propuesto_grado",
         "propuesto_remuneracion", "propuesto_partida", "propuesto_proceso_inst",
         "diferencial", "estado", "creado_por", "pdf_firmado",
+        "firmante_th_nombre", "firmante_th_cargo",
+        "firmante_autoridad_nombre", "firmante_autoridad_cargo",
     ];
 
     protected $casts = [
