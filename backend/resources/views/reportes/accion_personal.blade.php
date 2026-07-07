@@ -30,6 +30,16 @@
 </head>
 <body>
 
+@if($accion->estado === 'BORRADOR')
+@php
+  $svgMarcaAgua = '<svg xmlns="http://www.w3.org/2000/svg" width="595" height="842" viewBox="0 0 595 842">'
+    . '<text x="297" y="421" font-size="110" fill="#cccccc" fill-opacity="0.45" font-family="Arial" font-weight="bold" text-anchor="middle" dominant-baseline="middle" transform="rotate(-45 297 421)">BORRADOR</text>'
+    . '</svg>';
+  $marcaAguaUrl = 'data:image/svg+xml;base64,' . base64_encode($svgMarcaAgua);
+@endphp
+<div style="position:fixed; top:0; left:0; width:100%; height:100%; background-image:url('{{ $marcaAguaUrl }}'); background-repeat:no-repeat; background-size:100% 100%; z-index:-1;"></div>
+@endif
+
 @php
   $tipo = strtoupper($accion->tipo_accion);
   function cb($t, $v) { return $t === $v ? 'X' : '&nbsp;'; }
