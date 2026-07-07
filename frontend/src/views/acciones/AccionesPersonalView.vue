@@ -343,7 +343,7 @@ const procesar = async (id) => {
   }
 }
 
-const abrirEditarBorrador = (a) => {
+const abrirEditarBorrador = async (a) => {
   modalEditar.value = {
     show:                      true,
     id:                        a.id_accion,
@@ -353,6 +353,18 @@ const abrirEditarBorrador = (a) => {
     firmante_th_cargo:         a.firmante_th_cargo         ?? "",
     firmante_autoridad_nombre: a.firmante_autoridad_nombre ?? "",
     firmante_autoridad_cargo:  a.firmante_autoridad_cargo  ?? "",
+  }
+  // Si la acción no tiene firmantes (registros anteriores a la migración), cargar desde config
+  const sinFirmantes = !a.firmante_th_nombre && !a.firmante_th_cargo &&
+                       !a.firmante_autoridad_nombre && !a.firmante_autoridad_cargo
+  if (sinFirmantes) {
+    try {
+      const { data } = await api.get("/configuracion/firmantes")
+      modalEditar.value.firmante_th_nombre        = data.firmante_th_nombre        || ""
+      modalEditar.value.firmante_th_cargo         = data.firmante_th_cargo         || ""
+      modalEditar.value.firmante_autoridad_nombre = data.firmante_autoridad_nombre || ""
+      modalEditar.value.firmante_autoridad_cargo  = data.firmante_autoridad_cargo  || ""
+    } catch (_) { /* si falla, quedan vacíos */ }
   }
 }
 
