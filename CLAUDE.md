@@ -301,22 +301,31 @@ Calculado en `calcularSaldoDisponible()` — usa helper `tasaVacaciones()` en Va
 
 Auto-cierre corre en cada `index()` para SUBROGACION y VACACIONES con `fecha_fin < hoy`.
 
-**Estados del flujo:** `BORRADOR → PROCESADO` (estado final). TH ACCIONES PERSONAL crea en BORRADOR; `procesar()` pasa a PROCESADO y asigna `numero_accion`. `numero_accion` es nullable — se asigna al procesar, no al crear.
+**Estados del flujo:** `BORRADOR → ACTIVO` (estado final). TH ACCIONES PERSONAL crea en BORRADOR; `procesar()` pasa a ACTIVO y asigna `numero_accion`. `numero_accion` es nullable — se asigna al procesar, no al crear.
 
 **Métodos del controlador:**
-- `procesar($id)` — `PATCH /api/acciones-personal/{id}/procesar` — cambia estado a PROCESADO, asigna número de acción, sube PDF firmado a Alfresco
-- `editarBorrador($id)` — permite modificar una acción en BORRADOR
+- `procesar($id)` — `PATCH /api/acciones-personal/{id}/procesar` — cambia estado a ACTIVO, asigna número de acción, sube PDF firmado a Alfresco
+- `editarBorrador($id)` — `PATCH /api/acciones-personal/{id}/editar-borrador` — permite modificar motivación, fecha de elaboración y firmantes mientras está en BORRADOR
 
 **PDFs y reportes:**
-- `accion_personal.blade.php` — PDF individual; usa `{!! !!}` (no `{{ }}`) para entidades HTML como `&nbsp;` en checkboxes
+- `accion_personal.blade.php` — PDF individual; usa `{!! !!}` (no `{{ }}`) para entidades HTML como `&nbsp;` en checkboxes y para el campo `motivacion` cuando contiene HTML de TipTap
 - `acc_lista.blade.php` — PDF de listado de acciones con filtros
 - Excel export disponible (requiere `phpoffice/phpspreadsheet` instalado en servidor: `composer require phpoffice/phpspreadsheet`)
 - PDF firmado se sube a Alfresco en `acciones-personal/{año}/`
+- **Vista previa en BORRADOR**: el endpoint `GET /api/acciones-personal/{id}/pdf` funciona en cualquier estado. El PDF muestra `— BORRADOR — BORRADOR — BORRADOR —` en gris encima del encabezado cuando `$accion->estado === 'BORRADOR'`; esa línea desaparece al procesar.
 
-**Firmantes dinámicos en PDF:** Los nombres y cargos de los firmantes se leen de `dbo.d2_configuracion` — 4 parámetros editables desde Admin → Configuración:
-- `FIRMANTE_TH_NOMBRE` / `FIRMANTE_TH_CARGO` — Responsable de Talento Humano actual
-- `FIRMANTE_AUTORIDAD_NOMBRE` / `FIRMANTE_AUTORIDAD_CARGO` — Autoridad Nominadora actual
-- Si no están configurados, el PDF usa los valores anteriores (`DIRECTOR_TALENTO_HUMANO` / `APROBADOR_ACCION_PERSONAL`)
+**Campo `motivacion` con HTML (TipTap):** el editor TipTap en el formulario guarda HTML (`<p>`, `<strong>`, etc.). El blade detecta si el contenido es HTML con `str_contains($motivacion, '<p>')` y lo renderiza con `{!! !!}`; si es texto plano (registros anteriores) usa `{{ }}` con `white-space:pre-wrap`.
+
+**Firmantes por acción — migración `000087`:** se agregaron 4 columnas VARCHAR(200) NULL a `dbo.acc_accion_personal`:
+- `firmante_th_nombre`, `firmante_th_cargo` — Responsable de TH para esta acción específica
+- `firmante_autoridad_nombre`, `firmante_autoridad_cargo` — Autoridad Nominadora para esta acción
+
+Flujo de firmantes:
+- Al **crear**: se pre-llenan desde `dbo.d2_configuracion` (`FIRMANTE_TH_NOMBRE`, etc.) pero el usuario puede editarlos antes de guardar
+- Al **editar borrador**: el modal muestra los firmantes guardados en la acción; `index()` los puebla desde config para acciones BORRADOR que tengan los campos vacíos (registros previos a migración `000087`)
+- En el **PDF**: usa los firmantes de la acción con fallback a `d2_configuracion` y luego a los parámetros anteriores (`DIRECTOR_TALENTO_HUMANO` / `APROBADOR_ACCION_PERSONAL`)
+- Todos los valores se guardan en MAYÚSCULAS (`strtoupper`)
+- Endpoint config para pre-llenar formulario nuevo: `GET /api/configuracion/firmantes` → `{ firmante_th_nombre, firmante_th_cargo, firmante_autoridad_nombre, firmante_autoridad_cargo }`
 
 ### Vacaciones — backup al aprobar
 
