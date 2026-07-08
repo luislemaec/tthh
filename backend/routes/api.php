@@ -511,6 +511,40 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get('conductores', [TransporteController::class, 'conductores']);
     });
 
+    // Inventario Tecnológico
+    Route::prefix('tecnologia')->group(function () {
+        // Tipos de equipo
+        Route::get('tipos-equipo',         [\App\Http\Controllers\Tecnologia\TipoEquipoController::class, 'index']);
+        Route::get('tipos-equipo/activos', [\App\Http\Controllers\Tecnologia\TipoEquipoController::class, 'activos']);
+        Route::post('tipos-equipo',        [\App\Http\Controllers\Tecnologia\TipoEquipoController::class, 'store']);
+        Route::put('tipos-equipo/{id}',    [\App\Http\Controllers\Tecnologia\TipoEquipoController::class, 'update']);
+
+        // Equipos
+        Route::get('equipos',                  [\App\Http\Controllers\Tecnologia\EquipoController::class, 'index']);
+        Route::post('equipos',                 [\App\Http\Controllers\Tecnologia\EquipoController::class, 'store']);
+        Route::put('equipos/{id}',             [\App\Http\Controllers\Tecnologia\EquipoController::class, 'update']);
+        Route::post('equipos/importar-csv',    [\App\Http\Controllers\Tecnologia\EquipoController::class, 'importarCsv']);
+        Route::patch('equipos/{id}/asignar',   [\App\Http\Controllers\Tecnologia\EquipoController::class, 'asignar']);
+        Route::patch('equipos/{id}/devolver',  [\App\Http\Controllers\Tecnologia\EquipoController::class, 'devolver']);
+        Route::get('equipos/{id}/historial',   [\App\Http\Controllers\Tecnologia\EquipoController::class, 'historial']);
+        Route::patch('equipos/{id}/baja',       [\App\Http\Controllers\Tecnologia\EquipoController::class, 'marcarBaja']);
+        Route::patch('equipos/{id}/disponible', [\App\Http\Controllers\Tecnologia\EquipoController::class, 'marcarDisponible']);
+
+        // Actividades del checklist de mantenimiento
+        Route::get('actividades-mantenimiento',      [\App\Http\Controllers\Tecnologia\ActividadMantenimientoController::class, 'index']);
+        Route::post('actividades-mantenimiento',     [\App\Http\Controllers\Tecnologia\ActividadMantenimientoController::class, 'store']);
+        Route::put('actividades-mantenimiento/{id}', [\App\Http\Controllers\Tecnologia\ActividadMantenimientoController::class, 'update']);
+
+        // Mantenimiento
+        Route::get('mantenimiento/checklist',           [\App\Http\Controllers\Tecnologia\MantenimientoController::class, 'checklist']);
+        Route::get('mantenimiento/pendientes',          [\App\Http\Controllers\Tecnologia\MantenimientoController::class, 'pendientes']);
+        Route::get('mantenimiento/realizados',          [\App\Http\Controllers\Tecnologia\MantenimientoController::class, 'realizados']);
+        Route::post('mantenimiento',                    [\App\Http\Controllers\Tecnologia\MantenimientoController::class, 'store']);
+        Route::get('mantenimiento/{id}/pdf',            [\App\Http\Controllers\Tecnologia\MantenimientoController::class, 'pdf']);
+        Route::post('mantenimiento/{id}/subir-firmado', [\App\Http\Controllers\Tecnologia\MantenimientoController::class, 'subirFirmado']);
+        Route::get('mantenimiento/{id}/descargar-firmado', [\App\Http\Controllers\Tecnologia\MantenimientoController::class, 'descargarFirmado']);
+    });
+
     // Comisiones de Servicios
     Route::prefix('comisiones')->group(function () {
         Route::get('mi-rol',                                      [ComisionController::class, 'miRol']);

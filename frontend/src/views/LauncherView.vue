@@ -112,6 +112,23 @@
         </div>
       </button>
 
+      <!-- Inventario Tecnológico -->
+      <button v-if="tieneAccesoTecnologia" @click="irA('/tecnologia/equipos')" @animationend="onAnimEnd"
+        :class="cardAnimClass"
+        class="bg-white rounded-xl shadow-lg p-5 w-44 flex flex-col items-center gap-3 hover:scale-105 transition-transform cursor-pointer">
+        <div class="w-12 h-12 rounded-full flex items-center justify-center"
+             style="background-color: #4d7c8a;">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+          </svg>
+        </div>
+        <div class="text-center">
+          <p class="font-bold text-gray-800 text-sm">Tecnología</p>
+          <p class="text-gray-500 text-xs mt-0.5">Inventario y mantenimiento de equipos</p>
+        </div>
+      </button>
+
       <!-- Solicitudes de materiales (todos los empleados) -->
       <button v-if="!tieneAccesoAdquisiciones" @click="irA('/adquisiciones/solicitudes')" @animationend="onAnimEnd"
         :class="cardAnimClass"
@@ -215,6 +232,10 @@ const tieneAccesoComisiones = computed(() =>
   store.tieneRol('ADMINISTRADOR') ||
   store.tieneRol('TALENTO HUMANO') ||
   store.tieneRol('COMISIONADO EXTERNO')
+)
+
+const tieneAccesoTecnologia = computed(() =>
+  store.tieneRol('TECNOLOGIA') || store.tieneRol('ADMINISTRADOR')
 )
 
 const rutaTransportes = computed(() => {

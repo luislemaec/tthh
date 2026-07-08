@@ -107,6 +107,19 @@ const routes = [
       { path: 'vales-combustible',  name: 'TransValesCombustible',   component: () => import('@/views/transporte/ValesCombustibleView.vue') },
     ],
   },
+  // ── Inventario Tecnológico ─────────────────────────────────────────────────
+  {
+    path: '/tecnologia',
+    component: () => import('@/layouts/TecnologiaLayout.vue'),
+    meta: { requiresAuth: true },
+    children: [
+      { path: '', redirect: '/tecnologia/equipos' },
+      { path: 'equipos',                   name: 'TecEquipos',          component: () => import('@/views/tecnologia/EquiposView.vue') },
+      { path: 'mantenimiento',             name: 'TecMantenimiento',    component: () => import('@/views/tecnologia/MantenimientoView.vue') },
+      { path: 'tipos-equipo',              name: 'TecTiposEquipo',      component: () => import('@/views/tecnologia/TiposEquipoView.vue') },
+      { path: 'actividades-mantenimiento', name: 'TecActividadesMtto',  component: () => import('@/views/tecnologia/ActividadesMantenimientoView.vue') },
+    ],
+  },
   {
     path: '/comisiones',
     component: () => import('@/layouts/ComisionesLayout.vue'),
