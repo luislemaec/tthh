@@ -319,39 +319,6 @@ class AccionPersonalController extends Controller
             "firmanteAutCargo"    => $firmanteAutCargo,
         ])->setPaper("a4", "portrait");
 
-        // Marca de agua diagonal "BORRADOR" en TODAS las páginas via canvas API
-        if ($accion->estado === 'BORRADOR') {
-            $dompdf = $pdfInstance->getDomPDF();
-            $dompdf->render();
-            $canvas  = $dompdf->getCanvas();
-            $metrics = $dompdf->getFontMetrics();
-
-            $pageW = $canvas->get_width();
-            $pageH = $canvas->get_height();
-            $font  = $metrics->getFont("helvetica", "bold");
-
-            // open_object() crea un objeto reutilizable y lo agrega a TODAS las páginas automáticamente
-            $canvas->open_object();
-            $canvas->set_opacity(0.12);
-            $canvas->text(
-                $pageW * 0.12,
-                $pageH * 0.52,
-                "BORRADOR",
-                $font,
-                88,
-                [0.55, 0.55, 0.55],
-                0, 0,
-                45
-            );
-            $canvas->set_opacity(1.0);
-            $canvas->close_object();
-
-            return response($dompdf->output(), 200, [
-                "Content-Type"        => "application/pdf",
-                "Content-Disposition" => "inline; filename=\"{$nombreArchivo}\"",
-            ]);
-        }
-
         return $pdfInstance->stream($nombreArchivo);
     }
 

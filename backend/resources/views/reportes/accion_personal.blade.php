@@ -55,6 +55,10 @@
 {{-- ==================== PÁGINA 1 ==================== --}}
 <div class="page">
 
+@if($accion->estado === 'BORRADOR')
+<p style="text-align:center; font-size:9pt; font-weight:bold; color:#b0b0b0; letter-spacing:6px; margin:0 0 4px 0;">— BORRADOR — BORRADOR — BORRADOR —</p>
+@endif
+
 {{-- ENCABEZADO --}}
 <table style="width:100%; border-collapse:collapse; margin-bottom:3px;">
   <tr>
