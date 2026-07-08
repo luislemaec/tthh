@@ -30,16 +30,6 @@
 </head>
 <body>
 
-@if($accion->estado === 'BORRADOR')
-<div style="position:fixed; top:0; left:0; width:100%; height:100%; z-index:-1;">
-  <svg width="100%" height="100%" viewBox="0 0 612 792" xmlns="http://www.w3.org/2000/svg">
-    <text x="306" y="421" font-size="110" fill="#cccccc" fill-opacity="0.40"
-          font-family="Helvetica" font-weight="bold"
-          text-anchor="middle" dominant-baseline="middle"
-          transform="rotate(-45, 306, 421)">BORRADOR</text>
-  </svg>
-</div>
-@endif
 
 @php
   $tipo = strtoupper($accion->tipo_accion);

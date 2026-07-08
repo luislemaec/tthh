@@ -308,7 +308,7 @@ class AccionPersonalController extends Controller
             ? "accion_personal_{$accion->numero_accion}.pdf"
             : "accion_personal_borrador.pdf";
 
-        $pdf = Pdf::loadView("reportes.accion_personal", [
+        $pdfInstance = Pdf::loadView("reportes.accion_personal", [
             "accion"              => $accion,
             "config"              => $config,
             "logo"                => $logoBase64,
@@ -319,7 +319,38 @@ class AccionPersonalController extends Controller
             "firmanteAutCargo"    => $firmanteAutCargo,
         ])->setPaper("a4", "portrait");
 
-        return $pdf->stream($nombreArchivo);
+        // Marca de agua diagonal "BORRADOR" mediante canvas API (más fiable que HTML/CSS en DomPDF)
+        if ($accion->estado === 'BORRADOR') {
+            $dompdf = $pdfInstance->getDomPDF();
+            $dompdf->render();
+            $canvas  = $dompdf->getCanvas();
+            $metrics = $dompdf->getFontMetrics();
+
+            $pageW = $canvas->get_width();   // puntos (letter: 612)
+            $pageH = $canvas->get_height();  // puntos (letter: 792)
+
+            $font = $metrics->getFont("helvetica", "bold");
+            $canvas->set_opacity(0.12);
+            // text(x, y_desde_abajo, texto, fuente, tamaño, color, word_space, char_space, ángulo)
+            $canvas->text(
+                $pageW * 0.12,
+                $pageH * 0.52,
+                "BORRADOR",
+                $font,
+                88,
+                [0.55, 0.55, 0.55],
+                0, 0,
+                45
+            );
+            $canvas->set_opacity(1.0);
+
+            return response($dompdf->output(), 200, [
+                "Content-Type"        => "application/pdf",
+                "Content-Disposition" => "inline; filename=\"{$nombreArchivo}\"",
+            ]);
+        }
+
+        return $pdfInstance->stream($nombreArchivo);
     }
 
     // GET /api/acciones-personal/reporte/pdf
