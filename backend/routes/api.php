@@ -538,12 +538,19 @@ Route::middleware("auth:sanctum")->group(function () {
 
         // Mantenimiento
         Route::get('mantenimiento/checklist',           [\App\Http\Controllers\Tecnologia\MantenimientoController::class, 'checklist']);
+        Route::get('mantenimiento/procesos',            [\App\Http\Controllers\Tecnologia\MantenimientoController::class, 'procesos']);
         Route::get('mantenimiento/pendientes',          [\App\Http\Controllers\Tecnologia\MantenimientoController::class, 'pendientes']);
         Route::get('mantenimiento/realizados',          [\App\Http\Controllers\Tecnologia\MantenimientoController::class, 'realizados']);
         Route::post('mantenimiento',                    [\App\Http\Controllers\Tecnologia\MantenimientoController::class, 'store']);
         Route::get('mantenimiento/{id}/pdf',            [\App\Http\Controllers\Tecnologia\MantenimientoController::class, 'pdf']);
         Route::post('mantenimiento/{id}/subir-firmado', [\App\Http\Controllers\Tecnologia\MantenimientoController::class, 'subirFirmado']);
         Route::get('mantenimiento/{id}/descargar-firmado', [\App\Http\Controllers\Tecnologia\MantenimientoController::class, 'descargarFirmado']);
+
+        // Mantenimiento externo (por proveedor, un lote cubre toda una categoría de equipos)
+        Route::post('mantenimiento/externo',                          [\App\Http\Controllers\Tecnologia\MantenimientoController::class, 'storeExterno']);
+        Route::get('mantenimiento/externo/{lote}/pdf',                [\App\Http\Controllers\Tecnologia\MantenimientoController::class, 'pdfExterno']);
+        Route::post('mantenimiento/externo/{lote}/subir-firmado',     [\App\Http\Controllers\Tecnologia\MantenimientoController::class, 'subirFirmadoExterno']);
+        Route::get('mantenimiento/externo/{lote}/descargar-firmado',  [\App\Http\Controllers\Tecnologia\MantenimientoController::class, 'descargarFirmadoExterno']);
     });
 
     // Comisiones de Servicios

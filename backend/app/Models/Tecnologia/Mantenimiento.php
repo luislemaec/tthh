@@ -13,6 +13,7 @@ class Mantenimiento extends Model
         'equipo_id', 'anio', 'fecha_mantenimiento', 'hora_inicio', 'hora_fin', 'tipo',
         'id_emp_tecnico', 'id_emp_custodio', 'observaciones',
         'acta_alfresco_id', 'acta_nombre_archivo', 'created_by',
+        'origen', 'proveedor', 'proceso_contratacion', 'numero_orden_compra', 'lote_externo',
     ];
 
     public function equipo()

@@ -20,6 +20,10 @@ class MantenimientoController extends Controller
     private string $alfrescoPass = 'admin';
     private string $alfrescoSite = 'talentohumano';
 
+    public const PROCESOS_CONTRATACION = [
+        'ÍNFIMA CUANTÍA', 'SUBASTA INVERSA', 'CATÁLOGO ELECTRÓNICO', 'CONTRATACIÓN DIRECTA', 'OTRO',
+    ];
+
     private function getDocLibNodeId(): string
     {
         $resp = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
@@ -174,6 +178,74 @@ class MantenimientoController extends Controller
         return response()->json($mantenimiento->load(['equipo.tipoEquipo', 'tecnico', 'custodio']), 201);
     }
 
+    public function procesos()
+    {
+        return response()->json(self::PROCESOS_CONTRATACION);
+    }
+
+    public function storeExterno(Request $request)
+    {
+        $request->validate([
+            'tipo_equipo_id'       => 'required|exists:pgsql.dbo.ti_tipo_equipo,id',
+            'fecha_mantenimiento'  => 'required|date',
+            'proveedor'            => 'required|string|max:150',
+            'proceso_contratacion' => 'required|in:' . implode(',', self::PROCESOS_CONTRATACION),
+            'numero_orden_compra'  => 'required|string|max:50',
+            'observaciones'        => 'nullable|string',
+        ]);
+
+        $anio = (int) date('Y', strtotime($request->fecha_mantenimiento));
+
+        $equipos = Equipo::where('tipo_equipo_id', $request->tipo_equipo_id)
+            ->where('estado', '!=', 'DE_BAJA')
+            ->whereNotIn('id', function ($q) use ($anio) {
+                $q->select('equipo_id')->from('dbo.ti_mantenimiento')->where('anio', $anio);
+            })
+            ->get();
+
+        if ($equipos->isEmpty()) {
+            return response()->json(['message' => 'No hay equipos pendientes de mantenimiento en esta categoría para el año seleccionado.'], 422);
+        }
+
+        $lote = (string) \Illuminate\Support\Str::uuid();
+
+        DB::transaction(function () use ($equipos, $request, $anio, $lote) {
+            foreach ($equipos as $equipo) {
+                $idEmpCustodio = Asignacion::where('equipo_id', $equipo->id)
+                    ->whereNull('fecha_devolucion')
+                    ->value('id_emp');
+
+                Mantenimiento::create([
+                    'equipo_id'            => $equipo->id,
+                    'anio'                 => $anio,
+                    'fecha_mantenimiento'  => $request->fecha_mantenimiento,
+                    'tipo'                 => 'PREVENTIVO',
+                    'origen'               => 'EXTERNO',
+                    'proveedor'            => $request->proveedor,
+                    'proceso_contratacion' => $request->proceso_contratacion,
+                    'numero_orden_compra'  => $request->numero_orden_compra,
+                    'lote_externo'         => $lote,
+                    'id_emp_tecnico'       => $request->user()->id_emp,
+                    'id_emp_custodio'      => $idEmpCustodio,
+                    'observaciones'        => $request->observaciones,
+                    'created_by'           => $request->user()->id_emp,
+                ]);
+
+                $equipo->update(['ultimo_mantenimiento' => $request->fecha_mantenimiento]);
+            }
+        });
+
+        AuditoriaService::log('dbo.ti_mantenimiento', 0, 'REGISTRAR_MANTENIMIENTO_EXTERNO',
+            null,
+            ['tipo_equipo_id' => $request->tipo_equipo_id, 'anio' => $anio, 'proveedor' => $request->proveedor, 'numero_orden_compra' => $request->numero_orden_compra, 'equipos' => $equipos->count()],
+            $request, "Mantenimiento externo {$anio} registrado para {$equipos->count()} equipo(s) — {$request->proveedor} / OC {$request->numero_orden_compra}");
+
+        return response()->json([
+            'message'      => "Se registró el mantenimiento externo para {$equipos->count()} equipo(s).",
+            'lote_externo' => $lote,
+        ], 201);
+    }
+
     public function pdf($id)
     {
         $m = Mantenimiento::with(['equipo.tipoEquipo', 'tecnico', 'custodio', 'detalle.actividad'])->findOrFail($id);
@@ -216,6 +288,78 @@ class MantenimientoController extends Controller
     public function descargarFirmado($id)
     {
         $m = Mantenimiento::findOrFail($id);
+
+        if (!$m->acta_alfresco_id) {
+            return response()->json(['message' => 'El acta firmada no ha sido subida aún'], 404);
+        }
+
+        $resp = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+            ->get("{$this->alfrescoBase}/nodes/{$m->acta_alfresco_id}/content");
+
+        if (!$resp->successful()) {
+            return response()->json(['message' => 'No se pudo descargar el acta desde Alfresco'], 502);
+        }
+
+        return response($resp->body(), 200, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => "attachment; filename=\"{$m->acta_nombre_archivo}\"",
+        ]);
+    }
+
+    public function pdfExterno($lote)
+    {
+        $registros = Mantenimiento::with(['equipo.tipoEquipo'])
+            ->where('lote_externo', $lote)
+            ->orderBy('id')
+            ->get();
+
+        if ($registros->isEmpty()) abort(404);
+
+        $primero = $registros->first();
+        $logo    = $this->logoBase64();
+
+        $pdf = Pdf::loadView('reportes.ti_acta_mantenimiento_externo', compact('registros', 'primero', 'logo'))
+            ->setPaper('a4', 'portrait');
+
+        return $pdf->stream('acta_mantenimiento_externo_' . $primero->numero_orden_compra . '.pdf');
+    }
+
+    public function subirFirmadoExterno($lote, Request $request)
+    {
+        $request->validate(['archivo' => 'required|file|mimes:pdf|max:10240']);
+
+        $registros = Mantenimiento::where('lote_externo', $lote)->get();
+        if ($registros->isEmpty()) abort(404);
+
+        $primero    = $registros->first();
+        $nombreArch = 'acta_mantenimiento_externo_' . $primero->numero_orden_compra . '.pdf';
+
+        $docLibId = $this->getDocLibNodeId();
+        $upload   = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+            ->attach('filedata', file_get_contents($request->file('archivo')->getRealPath()), $nombreArch)
+            ->post("{$this->alfrescoBase}/nodes/{$docLibId}/children", [
+                'name'         => $nombreArch,
+                'nodeType'     => 'cm:content',
+                'relativePath' => "mantenimiento-ti/{$primero->anio}",
+                'autoRename'   => true,
+            ]);
+
+        if (!$upload->successful()) {
+            return response()->json(['message' => 'No se pudo subir el archivo a Alfresco'], 502);
+        }
+
+        Mantenimiento::where('lote_externo', $lote)->update([
+            'acta_alfresco_id'    => $upload->json('entry.id'),
+            'acta_nombre_archivo' => $nombreArch,
+        ]);
+
+        return response()->json(['message' => 'Acta firmada subida correctamente', 'acta_alfresco_id' => $upload->json('entry.id')]);
+    }
+
+    public function descargarFirmadoExterno($lote)
+    {
+        $m = Mantenimiento::where('lote_externo', $lote)->first();
+        if (!$m) abort(404);
 
         if (!$m->acta_alfresco_id) {
             return response()->json(['message' => 'El acta firmada no ha sido subida aún'], 404);
