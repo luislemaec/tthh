@@ -207,19 +207,27 @@ class EquipoController extends Controller
     {
         $request->validate(['archivo' => 'required|file|mimes:csv,txt|max:2048']);
 
-        $handle     = fopen($request->file('archivo')->getRealPath(), 'r');
-        $encabezado = fgetcsv($handle); // skip header
+        $path = $request->file('archivo')->getRealPath();
+
+        // Excel en español suele exportar CSV separado por ';' en vez de ','
+        $primeraLinea = file($path, FILE_IGNORE_NEW_LINES)[0] ?? '';
+        $delimitador  = substr_count($primeraLinea, ';') > substr_count($primeraLinea, ',') ? ';' : ',';
+
+        $handle     = fopen($path, 'r');
+        $encabezado = fgetcsv($handle, 0, $delimitador); // skip header
+
+        $normalizarTipo = fn ($n) => strtoupper(trim(preg_replace('/\s+/', ' ', rtrim(trim($n), '.'))));
 
         $tiposPorNombre = [];
         foreach (TipoEquipo::all() as $t) {
-            $tiposPorNombre[strtoupper($t->nombre)] = $t->id;
+            $tiposPorNombre[$normalizarTipo($t->nombre)] = $t->id;
         }
 
         $errores = [];
         $filas   = [];
         $fila    = 1;
 
-        while (($row = fgetcsv($handle)) !== false) {
+        while (($row = fgetcsv($handle, 0, $delimitador)) !== false) {
             $fila++;
             if (count($row) < 8) {
                 $errores[] = "Fila $fila: faltan columnas.";
@@ -236,7 +244,7 @@ class EquipoController extends Controller
 
             $tipoEquipoId = null;
             if ($tipo_equipo !== '') {
-                $clave = strtoupper($tipo_equipo);
+                $clave = $normalizarTipo($tipo_equipo);
                 if (!isset($tiposPorNombre[$clave])) {
                     $errores[] = "Fila $fila: tipo de equipo '$tipo_equipo' no existe en el catálogo.";
                     continue;
