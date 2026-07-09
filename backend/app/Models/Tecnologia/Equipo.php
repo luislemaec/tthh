@@ -1,6 +1,7 @@
 <?php
 namespace App\Models\Tecnologia;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 
 class Equipo extends Model
@@ -13,6 +14,14 @@ class Equipo extends Model
         'estado', 'condicion', 'fecha_ingreso', 'vida_util_anios', 'ubicacion',
         'ultimo_mantenimiento', 'observaciones', 'created_by', 'updated_by',
     ];
+
+    protected $appends = ['vida_util_vencida'];
+
+    public function getVidaUtilVencidaAttribute(): bool
+    {
+        if (!$this->fecha_ingreso || !$this->vida_util_anios) return false;
+        return Carbon::parse($this->fecha_ingreso)->addYears((int) $this->vida_util_anios)->lte(now());
+    }
 
     public function tipoEquipo()
     {

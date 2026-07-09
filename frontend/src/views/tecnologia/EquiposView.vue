@@ -15,11 +15,11 @@
     </div>
 
     <!-- Tarjetas de resumen -->
-    <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-5">
-      <button v-for="c in statCards" :key="c.key" @click="filtrarPorEstado(c.estado)"
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-5">
+      <button v-for="c in statCards" :key="c.key" @click="toggleStatCard(c)"
         class="rounded-xl p-4 text-left border-l-4 bg-white shadow-sm transition hover:shadow-md hover:-translate-y-0.5"
-        :class="[c.borde, filtros.estado === c.estado ? 'ring-2 ring-offset-1' : '']"
-        :style="filtros.estado === c.estado ? `--tw-ring-color:${c.color}` : ''">
+        :class="[c.borde, activoStatCard(c) ? 'ring-2 ring-offset-1' : '']"
+        :style="activoStatCard(c) ? `--tw-ring-color:${c.color}` : ''">
         <p class="text-xs font-semibold uppercase tracking-wide" :style="`color:${c.color}`">{{ c.titulo }}</p>
         <p class="text-2xl font-bold text-gray-800 mt-1">{{ resumen ? resumen[c.key] : '—' }}</p>
       </button>
@@ -77,7 +77,12 @@
             <tr v-for="e in equipos" :key="e.id" class="hover:bg-gray-50 transition">
               <td class="px-4 py-3 font-mono text-xs font-medium text-gray-700">{{ e.codigo_bien }}</td>
               <td class="px-4 py-3">
-                <p class="font-medium text-gray-800">{{ e.marca }} {{ e.modelo }}</p>
+                <p class="font-medium text-gray-800">
+                  {{ e.marca }} {{ e.modelo }}
+                  <span v-if="e.vida_util_vencida" class="ml-1.5 text-[10px] font-semibold text-orange-700 bg-orange-100 px-1.5 py-0.5 rounded">
+                    Vida útil vencida
+                  </span>
+                </p>
                 <p class="text-xs text-gray-400">
                   {{ e.tipo_equipo?.nombre }}<span v-if="e.descripcion"> · {{ e.descripcion }}</span>
                 </p>
@@ -384,7 +389,7 @@ import api from '@/services/api'
 
 const equipos  = ref([])
 const tipos    = ref([])
-const filtros  = ref({ busqueda: '', tipo_equipo_id: '', estado: '' })
+const filtros  = ref({ busqueda: '', tipo_equipo_id: '', estado: '', vida_util_vencida: false })
 
 const pagina      = ref(1)
 const totalPaginas = ref(1)
@@ -392,12 +397,27 @@ const total        = ref(0)
 
 const resumen = ref(null)
 const statCards = [
-  { key: 'total',      titulo: 'Total',       estado: '',          color: '#4d7c8a', borde: 'border-[#4d7c8a]' },
-  { key: 'disponible',  titulo: 'Disponibles', estado: 'DISPONIBLE', color: '#16a34a', borde: 'border-green-500' },
-  { key: 'asignado',    titulo: 'Asignados',   estado: 'ASIGNADO',   color: '#2563eb', borde: 'border-blue-500' },
-  { key: 'danado',      titulo: 'Dañados',     estado: 'DAÑADO',    color: '#dc2626', borde: 'border-red-500' },
-  { key: 'de_baja',     titulo: 'De baja',     estado: 'DE_BAJA',   color: '#6b7280', borde: 'border-gray-400' },
+  { key: 'total',              titulo: 'Total',              tipo: 'estado', estado: '',          color: '#4d7c8a', borde: 'border-[#4d7c8a]' },
+  { key: 'disponible',          titulo: 'Disponibles',        tipo: 'estado', estado: 'DISPONIBLE', color: '#16a34a', borde: 'border-green-500' },
+  { key: 'asignado',            titulo: 'Asignados',          tipo: 'estado', estado: 'ASIGNADO',   color: '#2563eb', borde: 'border-blue-500' },
+  { key: 'danado',              titulo: 'Dañados',            tipo: 'estado', estado: 'DAÑADO',    color: '#dc2626', borde: 'border-red-500' },
+  { key: 'de_baja',             titulo: 'De baja',            tipo: 'estado', estado: 'DE_BAJA',   color: '#6b7280', borde: 'border-gray-400' },
+  { key: 'vida_util_vencida',   titulo: 'Vida útil vencida',  tipo: 'vencida',                     color: '#ea580c', borde: 'border-orange-500' },
 ]
+
+function activoStatCard(c) {
+  return c.tipo === 'estado' ? filtros.value.estado === c.estado : filtros.value.vida_util_vencida
+}
+
+function toggleStatCard(c) {
+  if (c.tipo === 'estado') {
+    filtros.value.estado = filtros.value.estado === c.estado ? '' : c.estado
+  } else {
+    filtros.value.vida_util_vencida = !filtros.value.vida_util_vencida
+  }
+  pagina.value = 1
+  cargar()
+}
 
 const guardando = ref(false)
 const error     = ref('')
@@ -416,6 +436,7 @@ async function cargar() {
       busqueda: filtros.value.busqueda || undefined,
       tipo_equipo_id: filtros.value.tipo_equipo_id || undefined,
       estado: filtros.value.estado || undefined,
+      vida_util_vencida: filtros.value.vida_util_vencida ? 1 : undefined,
       page: pagina.value,
     },
   })
@@ -427,12 +448,6 @@ async function cargar() {
 async function cargarResumen() {
   const { data } = await api.get('/tecnologia/equipos/resumen')
   resumen.value = data
-}
-
-function filtrarPorEstado(estado) {
-  filtros.value.estado = filtros.value.estado === estado ? '' : estado
-  pagina.value = 1
-  cargar()
 }
 
 function cambiarPagina(p) {

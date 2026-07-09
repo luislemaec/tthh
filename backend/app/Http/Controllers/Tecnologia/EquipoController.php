@@ -13,6 +13,12 @@ use Illuminate\Support\Facades\DB;
 
 class EquipoController extends Controller
 {
+    private function vidaUtilVencidaRaw(): string
+    {
+        return "fecha_ingreso IS NOT NULL AND vida_util_anios IS NOT NULL
+                AND (fecha_ingreso + (vida_util_anios || ' years')::interval) <= CURRENT_DATE";
+    }
+
     public function index(Request $request)
     {
         $query = Equipo::with(['tipoEquipo', 'asignacionActiva.empleado'])->orderBy('codigo_bien');
@@ -22,6 +28,9 @@ class EquipoController extends Controller
         }
         if ($request->filled('estado')) {
             $query->where('estado', $request->estado);
+        }
+        if ($request->boolean('vida_util_vencida')) {
+            $query->whereRaw($this->vidaUtilVencidaRaw());
         }
         if ($request->filled('busqueda')) {
             $b = $request->busqueda;
@@ -43,12 +52,17 @@ class EquipoController extends Controller
             ->groupBy('estado')
             ->pluck('total', 'estado');
 
+        $vidaUtilVencida = Equipo::where('estado', '!=', 'DE_BAJA')
+            ->whereRaw($this->vidaUtilVencidaRaw())
+            ->count();
+
         return response()->json([
-            'total'       => (int) $porEstado->sum(),
-            'disponible'  => (int) ($porEstado['DISPONIBLE'] ?? 0),
-            'asignado'    => (int) ($porEstado['ASIGNADO'] ?? 0),
-            'danado'      => (int) ($porEstado['DAÑADO'] ?? 0),
-            'de_baja'     => (int) ($porEstado['DE_BAJA'] ?? 0),
+            'total'             => (int) $porEstado->sum(),
+            'disponible'        => (int) ($porEstado['DISPONIBLE'] ?? 0),
+            'asignado'          => (int) ($porEstado['ASIGNADO'] ?? 0),
+            'danado'            => (int) ($porEstado['DAÑADO'] ?? 0),
+            'de_baja'           => (int) ($porEstado['DE_BAJA'] ?? 0),
+            'vida_util_vencida' => (int) $vidaUtilVencida,
         ]);
     }
 
