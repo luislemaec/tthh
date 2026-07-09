@@ -3,24 +3,35 @@
     <div class="flex flex-wrap justify-between items-center gap-3 mb-6">
       <h1 class="text-2xl font-bold text-gray-800">Inventario de Equipos</h1>
       <div class="flex items-center gap-2">
-        <button @click="abrirImportar" class="text-white px-4 py-2 rounded-lg text-sm hover:opacity-90 border"
-          style="background-color:#fff; color:#4d7c8a; border-color:#4d7c8a;">
+        <button @click="abrirImportar" class="px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#4d7c8a]/5 border"
+          style="color:#4d7c8a; border-color:#4d7c8a;">
           Importar CSV
         </button>
-        <button @click="abrirCrear" class="text-white px-4 py-2 rounded-lg text-sm hover:opacity-90"
+        <button @click="abrirCrear" class="text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 shadow-sm"
           style="background-color:#4d7c8a;">
           + Nuevo equipo
         </button>
       </div>
     </div>
 
+    <!-- Tarjetas de resumen -->
+    <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-5">
+      <button v-for="c in statCards" :key="c.key" @click="filtrarPorEstado(c.estado)"
+        class="rounded-xl p-4 text-left border-l-4 bg-white shadow-sm transition hover:shadow-md hover:-translate-y-0.5"
+        :class="[c.borde, filtros.estado === c.estado ? 'ring-2 ring-offset-1' : '']"
+        :style="filtros.estado === c.estado ? `--tw-ring-color:${c.color}` : ''">
+        <p class="text-xs font-semibold uppercase tracking-wide" :style="`color:${c.color}`">{{ c.titulo }}</p>
+        <p class="text-2xl font-bold text-gray-800 mt-1">{{ resumen ? resumen[c.key] : '—' }}</p>
+      </button>
+    </div>
+
     <!-- Filtros -->
-    <div class="bg-white rounded-xl shadow p-4 flex flex-wrap gap-3 items-end mb-4">
+    <div class="bg-white rounded-xl shadow-sm p-4 flex flex-wrap gap-3 items-end mb-4">
       <div class="flex-1 min-w-56">
         <label class="block text-xs text-gray-500 mb-1">Buscar</label>
         <input v-model="filtros.busqueda" @input="cargarDebounced" type="text"
           placeholder="Código, serie, marca, modelo, descripción..."
-          class="w-full border rounded-lg px-3 py-2 text-sm" />
+          class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2" style="--tw-ring-color:#4d7c8a55;" />
       </div>
       <div>
         <label class="block text-xs text-gray-500 mb-1">Tipo</label>
@@ -39,71 +50,98 @@
           <option value="DE_BAJA">De baja</option>
         </select>
       </div>
-      <p class="text-sm text-gray-500 ml-auto">{{ total }} registro{{ total === 1 ? '' : 's' }} encontrado{{ total === 1 ? '' : 's' }}</p>
+      <span class="ml-auto text-xs font-semibold px-3 py-1.5 rounded-full"
+        style="background-color:#4d7c8a1a; color:#4d7c8a;">
+        {{ total }} registro{{ total === 1 ? '' : 's' }} encontrado{{ total === 1 ? '' : 's' }}
+      </span>
     </div>
 
-    <!-- Lista -->
-    <div class="space-y-2">
-      <div v-if="!equipos.length" class="bg-white rounded-xl shadow p-8 text-center text-gray-400">
+    <!-- Tabla -->
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+      <div v-if="!equipos.length" class="p-10 text-center text-gray-400">
         Sin equipos registrados
       </div>
-
-      <div v-for="e in equipos" :key="e.id"
-           class="bg-white rounded-xl shadow px-5 py-3 flex flex-wrap justify-between items-center gap-3">
-        <div class="min-w-0 flex-1">
-          <p class="font-semibold text-gray-800">
-            {{ e.codigo_bien }}
-            <span class="text-gray-500 font-normal ml-2">{{ e.marca }} {{ e.modelo }}</span>
-            <span v-if="e.tipo_equipo" class="ml-2 text-xs text-gray-400">({{ e.tipo_equipo.nombre }})</span>
-          </p>
-          <p class="text-xs text-gray-500 mt-0.5">
-            {{ e.descripcion }}
-            <span v-if="e.serie"> · Serie: {{ e.serie }}</span>
-            <span v-if="e.condicion"> · Condición: {{ e.condicion }}</span>
-          </p>
-          <p v-if="e.asignacion_activa" class="text-xs mt-1 font-medium" style="color:#4d7c8a;">
-            Custodio: {{ e.asignacion_activa.empleado?.apellido_emp }} {{ e.asignacion_activa.empleado?.nombre_emp }}
-          </p>
-        </div>
-        <div class="flex items-center gap-2 flex-shrink-0 flex-wrap">
-          <span :class="estadoBadge(e.estado)" class="px-2 py-0.5 rounded-full text-xs font-medium">
-            {{ estadoLabel(e.estado) }}
-          </span>
-
-          <button v-if="e.estado === 'DISPONIBLE'" @click="abrirAsignar(e)"
-            class="text-xs text-white font-medium px-3 py-1 rounded-lg" style="background-color:#4d7c8a;">
-            Asignar
-          </button>
-          <button v-if="e.estado === 'ASIGNADO'" @click="abrirDevolver(e)"
-            class="text-xs text-white font-medium px-3 py-1 rounded-lg bg-amber-600 hover:bg-amber-700">
-            Devolver
-          </button>
-          <button v-if="e.estado === 'DAÑADO'" @click="marcarDisponible(e)"
-            class="text-xs text-white font-medium px-3 py-1 rounded-lg bg-green-600 hover:bg-green-700">
-            Marcar disponible
-          </button>
-          <button v-if="e.estado !== 'ASIGNADO' && e.estado !== 'DE_BAJA'" @click="marcarBaja(e)"
-            class="text-xs text-gray-600 hover:text-gray-900 font-medium border border-gray-300 px-3 py-1 rounded-lg">
-            Dar de baja
-          </button>
-          <button @click="abrirHistorial(e)"
-            class="text-xs text-gray-600 hover:text-gray-900 font-medium border border-gray-300 px-3 py-1 rounded-lg">
-            Historial
-          </button>
-          <button @click="abrirEditar(e)"
-            class="text-xs text-gray-600 hover:text-gray-900 font-medium border border-gray-300 px-3 py-1 rounded-lg">
-            Editar
-          </button>
-        </div>
+      <div v-else class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-xs font-semibold uppercase tracking-wide text-white" style="background-color:#4d7c8a;">
+              <th class="px-4 py-3">Código</th>
+              <th class="px-4 py-3">Equipo</th>
+              <th class="px-4 py-3">Serie</th>
+              <th class="px-4 py-3">Condición</th>
+              <th class="px-4 py-3">Estado</th>
+              <th class="px-4 py-3">Custodio</th>
+              <th class="px-4 py-3 text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y">
+            <tr v-for="e in equipos" :key="e.id" class="hover:bg-gray-50 transition">
+              <td class="px-4 py-3 font-mono text-xs font-medium text-gray-700">{{ e.codigo_bien }}</td>
+              <td class="px-4 py-3">
+                <p class="font-medium text-gray-800">{{ e.marca }} {{ e.modelo }}</p>
+                <p class="text-xs text-gray-400">
+                  {{ e.tipo_equipo?.nombre }}<span v-if="e.descripcion"> · {{ e.descripcion }}</span>
+                </p>
+              </td>
+              <td class="px-4 py-3 text-gray-500 text-xs">{{ e.serie || '—' }}</td>
+              <td class="px-4 py-3 text-gray-500 text-xs">{{ e.condicion || '—' }}</td>
+              <td class="px-4 py-3">
+                <span :class="estadoBadge(e.estado)" class="px-2 py-0.5 rounded-full text-xs font-medium">
+                  {{ estadoLabel(e.estado) }}
+                </span>
+              </td>
+              <td class="px-4 py-3 text-xs">
+                <span v-if="e.asignacion_activa" class="font-medium" style="color:#4d7c8a;">
+                  {{ e.asignacion_activa.empleado?.apellido_emp }} {{ e.asignacion_activa.empleado?.nombre_emp }}
+                </span>
+                <span v-else class="text-gray-300">—</span>
+              </td>
+              <td class="px-4 py-3">
+                <div class="flex items-center justify-end gap-1.5 flex-wrap">
+                  <button v-if="e.estado === 'DISPONIBLE'" @click="abrirAsignar(e)"
+                    class="text-xs text-white font-medium px-3 py-1 rounded-lg" style="background-color:#4d7c8a;">
+                    Asignar
+                  </button>
+                  <button v-if="e.estado === 'ASIGNADO'" @click="abrirDevolver(e)"
+                    class="text-xs text-white font-medium px-3 py-1 rounded-lg bg-amber-600 hover:bg-amber-700">
+                    Devolver
+                  </button>
+                  <button v-if="e.estado === 'DAÑADO'" @click="marcarDisponible(e)"
+                    class="text-xs text-white font-medium px-3 py-1 rounded-lg bg-green-600 hover:bg-green-700">
+                    Disponible
+                  </button>
+                  <button @click="abrirHistorial(e)" title="Historial de custodia"
+                    class="text-gray-400 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                  </button>
+                  <button @click="abrirEditar(e)" title="Editar"
+                    class="text-gray-400 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                    </svg>
+                  </button>
+                  <button v-if="e.estado !== 'ASIGNADO' && e.estado !== 'DE_BAJA'" @click="marcarBaja(e)" title="Dar de baja"
+                    class="text-gray-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
       <!-- Paginación -->
-      <div v-if="totalPaginas > 1" class="bg-white rounded-xl shadow px-4 py-3 flex items-center justify-center gap-2 text-sm">
-        <button @click="cambiarPagina(pagina - 1)" :disabled="pagina === 1"
-          class="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-40">‹</button>
-        <span class="text-gray-500">Página {{ pagina }} de {{ totalPaginas }}</span>
-        <button @click="cambiarPagina(pagina + 1)" :disabled="pagina >= totalPaginas"
-          class="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-40">›</button>
+      <div v-if="totalPaginas > 1" class="px-4 py-3 border-t flex items-center justify-center gap-1 text-sm">
+        <button @click="cambiarPagina(1)" :disabled="pagina === 1" class="px-2 py-1 rounded border disabled:opacity-40 hover:bg-gray-50">«</button>
+        <button @click="cambiarPagina(pagina - 1)" :disabled="pagina === 1" class="px-3 py-1 rounded border disabled:opacity-40 hover:bg-gray-50">‹</button>
+        <span class="px-3 font-medium text-gray-600">{{ pagina }} / {{ totalPaginas }}</span>
+        <button @click="cambiarPagina(pagina + 1)" :disabled="pagina >= totalPaginas" class="px-3 py-1 rounded border disabled:opacity-40 hover:bg-gray-50">›</button>
+        <button @click="cambiarPagina(totalPaginas)" :disabled="pagina >= totalPaginas" class="px-2 py-1 rounded border disabled:opacity-40 hover:bg-gray-50">»</button>
       </div>
     </div>
 
@@ -272,7 +310,7 @@
       </div>
     </div>
 
-    <!-- Modal Historial -->
+    <!-- Modal Historial (timeline) -->
     <div v-if="modalHistorial.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
         <div class="px-6 py-4 flex items-center justify-between" style="background-color:#4d7c8a;">
@@ -284,15 +322,23 @@
         </div>
         <div class="p-6 max-h-[60vh] overflow-y-auto">
           <div v-if="!modalHistorial.datos.length" class="text-center text-gray-400 py-6">Sin asignaciones registradas</div>
-          <div v-for="a in modalHistorial.datos" :key="a.id" class="border-b py-3 last:border-0">
-            <p class="font-medium text-gray-800">{{ a.empleado?.apellido_emp }} {{ a.empleado?.nombre_emp }}</p>
-            <p class="text-xs text-gray-500 mt-0.5">
-              Desde {{ a.fecha_asignacion }}
-              <span v-if="a.fecha_devolucion"> hasta {{ a.fecha_devolucion }} · {{ a.motivo_devolucion }}</span>
-              <span v-else class="text-green-600 font-medium"> · Activa</span>
-            </p>
-            <p v-if="a.observacion" class="text-xs text-gray-400 mt-0.5">{{ a.observacion }}</p>
-          </div>
+          <ol v-else class="relative border-l-2 ml-2" style="border-color:#4d7c8a33;">
+            <li v-for="a in modalHistorial.datos" :key="a.id" class="mb-6 ml-5 last:mb-0">
+              <span class="absolute -left-[9px] w-4 h-4 rounded-full border-2 border-white"
+                :style="a.fecha_devolucion ? 'background-color:#9ca3af;' : 'background-color:#22c55e;'"></span>
+              <div class="bg-gray-50 rounded-lg px-4 py-3">
+                <div class="flex items-center justify-between gap-2">
+                  <p class="font-semibold text-gray-800">{{ a.empleado?.apellido_emp }} {{ a.empleado?.nombre_emp }}</p>
+                  <span v-if="!a.fecha_devolucion" class="text-xs font-semibold text-green-600 bg-green-100 px-2 py-0.5 rounded-full">Activa</span>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">
+                  Desde {{ a.fecha_asignacion }}
+                  <span v-if="a.fecha_devolucion"> hasta {{ a.fecha_devolucion }} · {{ a.motivo_devolucion }}</span>
+                </p>
+                <p v-if="a.observacion" class="text-xs text-gray-400 mt-1">{{ a.observacion }}</p>
+              </div>
+            </li>
+          </ol>
         </div>
       </div>
     </div>
@@ -344,6 +390,15 @@ const pagina      = ref(1)
 const totalPaginas = ref(1)
 const total        = ref(0)
 
+const resumen = ref(null)
+const statCards = [
+  { key: 'total',      titulo: 'Total',       estado: '',          color: '#4d7c8a', borde: 'border-[#4d7c8a]' },
+  { key: 'disponible',  titulo: 'Disponibles', estado: 'DISPONIBLE', color: '#16a34a', borde: 'border-green-500' },
+  { key: 'asignado',    titulo: 'Asignados',   estado: 'ASIGNADO',   color: '#2563eb', borde: 'border-blue-500' },
+  { key: 'danado',      titulo: 'Dañados',     estado: 'DAÑADO',    color: '#dc2626', borde: 'border-red-500' },
+  { key: 'de_baja',     titulo: 'De baja',     estado: 'DE_BAJA',   color: '#6b7280', borde: 'border-gray-400' },
+]
+
 const guardando = ref(false)
 const error     = ref('')
 const modal     = ref({ show: false, id: null })
@@ -367,6 +422,17 @@ async function cargar() {
   equipos.value      = data.data ?? data
   total.value         = data.total ?? equipos.value.length
   totalPaginas.value  = data.last_page ?? 1
+}
+
+async function cargarResumen() {
+  const { data } = await api.get('/tecnologia/equipos/resumen')
+  resumen.value = data
+}
+
+function filtrarPorEstado(estado) {
+  filtros.value.estado = filtros.value.estado === estado ? '' : estado
+  pagina.value = 1
+  cargar()
 }
 
 function cambiarPagina(p) {
@@ -414,7 +480,7 @@ async function guardar() {
       await api.post('/tecnologia/equipos', form.value)
     }
     modal.value.show = false
-    await cargar()
+    await Promise.all([cargar(), cargarResumen()])
   } catch (e) {
     error.value = e.response?.data?.message || Object.values(e.response?.data?.errors || {})[0]?.[0] || 'Error al guardar'
   } finally {
@@ -425,12 +491,12 @@ async function guardar() {
 async function marcarBaja(e) {
   if (!confirm(`¿Dar de baja el equipo ${e.codigo_bien}?`)) return
   await api.patch(`/tecnologia/equipos/${e.id}/baja`)
-  await cargar()
+  await Promise.all([cargar(), cargarResumen()])
 }
 
 async function marcarDisponible(e) {
   await api.patch(`/tecnologia/equipos/${e.id}/disponible`)
-  await cargar()
+  await Promise.all([cargar(), cargarResumen()])
 }
 
 // ─── Asignar ──────────────────────────────────────────────────────────────
@@ -477,7 +543,7 @@ async function confirmarAsignar() {
       fecha_asignacion: formAsignar.value.fecha_asignacion,
     })
     modalAsignar.value.show = false
-    await cargar()
+    await Promise.all([cargar(), cargarResumen()])
   } catch (e) {
     error.value = e.response?.data?.message || 'Error al asignar'
   } finally {
@@ -501,7 +567,7 @@ async function confirmarDevolver() {
   try {
     await api.patch(`/tecnologia/equipos/${modalDevolver.value.equipo.id}/devolver`, formDevolver.value)
     modalDevolver.value.show = false
-    await cargar()
+    await Promise.all([cargar(), cargarResumen()])
   } catch (e) {
     error.value = e.response?.data?.message || 'Error al devolver'
   } finally {
@@ -542,7 +608,7 @@ async function importarCsv() {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
     modalImportar.value.mensaje = data.message
-    await cargar()
+    await Promise.all([cargar(), cargarResumen()])
   } catch (e) {
     modalImportar.value.errores = e.response?.data?.errores || [e.response?.data?.message || 'Error al importar']
   } finally {
@@ -552,6 +618,6 @@ async function importarCsv() {
 
 onMounted(async () => {
   await cargarTipos()
-  await cargar()
+  await Promise.all([cargar(), cargarResumen()])
 })
 </script>

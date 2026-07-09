@@ -521,6 +521,7 @@ Route::middleware("auth:sanctum")->group(function () {
 
         // Equipos
         Route::get('equipos',                  [\App\Http\Controllers\Tecnologia\EquipoController::class, 'index']);
+        Route::get('equipos/resumen',          [\App\Http\Controllers\Tecnologia\EquipoController::class, 'resumen']);
         Route::post('equipos',                 [\App\Http\Controllers\Tecnologia\EquipoController::class, 'store']);
         Route::put('equipos/{id}',             [\App\Http\Controllers\Tecnologia\EquipoController::class, 'update']);
         Route::post('equipos/importar-csv',    [\App\Http\Controllers\Tecnologia\EquipoController::class, 'importarCsv']);

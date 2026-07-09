@@ -10,6 +10,27 @@
       </div>
     </div>
 
+    <!-- Resumen visual -->
+    <div class="bg-white rounded-xl shadow-sm p-5 mb-5 flex flex-wrap items-center gap-6">
+      <div class="relative h-36 w-36 flex-shrink-0">
+        <canvas ref="chartAvance"></canvas>
+        <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+          <span class="text-2xl font-bold text-gray-800">{{ porcentajeAvance }}%</span>
+          <span class="text-[10px] text-gray-400 uppercase tracking-wide">Avance</span>
+        </div>
+      </div>
+      <div class="flex-1 min-w-56 grid grid-cols-2 gap-4">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-wide" style="color:#16a34a;">Realizados {{ anio }}</p>
+          <p class="text-2xl font-bold text-gray-800">{{ realizados.length }}</p>
+        </div>
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-wide" style="color:#dc2626;">Pendientes {{ anio }}</p>
+          <p class="text-2xl font-bold text-gray-800">{{ pendientes.length }}</p>
+        </div>
+      </div>
+    </div>
+
     <!-- Tabs -->
     <div class="flex gap-2 mb-4">
       <button @click="tab = 'pendientes'"
@@ -182,10 +203,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import api from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import TimePicker24 from '@/components/TimePicker24.vue'
+import { Chart, DoughnutController, ArcElement, Tooltip, Legend } from 'chart.js'
+
+Chart.register(DoughnutController, ArcElement, Tooltip, Legend)
 
 const auth = useAuthStore()
 
@@ -197,6 +221,39 @@ const tab   = ref('pendientes')
 const pendientes = ref([])
 const realizados = ref([])
 const checklistCatalogo = ref([])
+
+const chartAvance = ref(null)
+let   instAvance   = null
+
+const porcentajeAvance = computed(() => {
+  const totalEquipos = pendientes.value.length + realizados.value.length
+  if (totalEquipos === 0) return 0
+  return Math.round((realizados.value.length / totalEquipos) * 100)
+})
+
+async function renderChart() {
+  await nextTick()
+  if (instAvance) { instAvance.destroy(); instAvance = null }
+  if (!chartAvance.value) return
+  instAvance = new Chart(chartAvance.value, {
+    type: 'doughnut',
+    data: {
+      labels: ['Realizados', 'Pendientes'],
+      datasets: [{
+        data: [realizados.value.length, pendientes.value.length],
+        backgroundColor: ['#16a34a', '#e5e7eb'],
+        borderWidth: 0,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '72%',
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed}` } },
+      },
+    },
+  })
+}
 
 const guardando = ref(false)
 const error     = ref('')
@@ -211,6 +268,7 @@ async function cargar() {
   ])
   pendientes.value = p
   realizados.value = r
+  await renderChart()
 }
 
 async function cargarChecklist() {

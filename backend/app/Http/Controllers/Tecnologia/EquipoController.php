@@ -37,6 +37,21 @@ class EquipoController extends Controller
         return response()->json($query->paginate(20));
     }
 
+    public function resumen()
+    {
+        $porEstado = Equipo::select('estado', DB::raw('COUNT(*) as total'))
+            ->groupBy('estado')
+            ->pluck('total', 'estado');
+
+        return response()->json([
+            'total'       => (int) $porEstado->sum(),
+            'disponible'  => (int) ($porEstado['DISPONIBLE'] ?? 0),
+            'asignado'    => (int) ($porEstado['ASIGNADO'] ?? 0),
+            'danado'      => (int) ($porEstado['DAÑADO'] ?? 0),
+            'de_baja'     => (int) ($porEstado['DE_BAJA'] ?? 0),
+        ]);
+    }
+
     public function store(Request $request)
     {
         $request->validate([
