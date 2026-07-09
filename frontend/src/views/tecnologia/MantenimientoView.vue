@@ -10,6 +10,23 @@
       </div>
     </div>
 
+    <!-- Filtros -->
+    <div class="bg-white rounded-xl shadow-sm p-4 flex flex-wrap gap-3 items-end mb-4">
+      <div class="flex-1 min-w-56">
+        <label class="block text-xs text-gray-500 mb-1">Buscar</label>
+        <input v-model="filtros.busqueda" @input="cargarDebounced" type="text"
+          placeholder="Código, serie, marca, modelo, descripción..."
+          class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2" style="--tw-ring-color:#4d7c8a55;" />
+      </div>
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Tipo</label>
+        <select v-model="filtros.tipo_equipo_id" @change="cargar" class="border rounded-lg px-3 py-2 text-sm">
+          <option value="">Todos</option>
+          <option v-for="t in tipos" :key="t.id" :value="t.id">{{ t.nombre }}</option>
+        </select>
+      </div>
+    </div>
+
     <!-- Resumen visual -->
     <div class="bg-white rounded-xl shadow-sm p-5 mb-5 flex flex-wrap items-center gap-6">
       <div class="relative h-36 w-36 flex-shrink-0">
@@ -221,6 +238,19 @@ const tab   = ref('pendientes')
 const pendientes = ref([])
 const realizados = ref([])
 const checklistCatalogo = ref([])
+const tipos    = ref([])
+const filtros  = ref({ busqueda: '', tipo_equipo_id: '' })
+
+let debounceTimer = null
+function cargarDebounced() {
+  clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(cargar, 300)
+}
+
+async function cargarTipos() {
+  const { data } = await api.get('/tecnologia/tipos-equipo/activos')
+  tipos.value = data
+}
 
 const chartAvance = ref(null)
 let   instAvance   = null
@@ -262,9 +292,14 @@ const form        = ref({})
 const checklistForm = ref([])
 
 async function cargar() {
+  const params = {
+    anio: anio.value,
+    busqueda: filtros.value.busqueda || undefined,
+    tipo_equipo_id: filtros.value.tipo_equipo_id || undefined,
+  }
   const [{ data: p }, { data: r }] = await Promise.all([
-    api.get('/tecnologia/mantenimiento/pendientes', { params: { anio: anio.value } }),
-    api.get('/tecnologia/mantenimiento/realizados', { params: { anio: anio.value } }),
+    api.get('/tecnologia/mantenimiento/pendientes', { params }),
+    api.get('/tecnologia/mantenimiento/realizados', { params }),
   ])
   pendientes.value = p
   realizados.value = r
@@ -344,7 +379,7 @@ async function confirmarSubirFirmado() {
 }
 
 onMounted(async () => {
-  await cargarChecklist()
+  await Promise.all([cargarChecklist(), cargarTipos()])
   await cargar()
 })
 </script>

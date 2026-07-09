@@ -70,27 +70,53 @@ class MantenimientoController extends Controller
     {
         $anio = $request->input('anio', now()->year);
 
-        $equipos = Equipo::with(['tipoEquipo', 'asignacionActiva.empleado'])
+        $query = Equipo::with(['tipoEquipo', 'asignacionActiva.empleado'])
             ->where('estado', '!=', 'DE_BAJA')
             ->whereNotIn('id', function ($q) use ($anio) {
                 $q->select('equipo_id')->from('dbo.ti_mantenimiento')->where('anio', $anio);
             })
-            ->orderBy('codigo_bien')
-            ->get();
+            ->orderBy('codigo_bien');
 
-        return response()->json($equipos);
+        if ($request->filled('tipo_equipo_id')) {
+            $query->where('tipo_equipo_id', $request->tipo_equipo_id);
+        }
+        if ($request->filled('busqueda')) {
+            $b = $request->busqueda;
+            $query->where(function ($q) use ($b) {
+                $q->where('codigo_bien', 'ILIKE', "%$b%")
+                  ->orWhere('serie', 'ILIKE', "%$b%")
+                  ->orWhere('descripcion', 'ILIKE', "%$b%")
+                  ->orWhere('marca', 'ILIKE', "%$b%")
+                  ->orWhere('modelo', 'ILIKE', "%$b%");
+            });
+        }
+
+        return response()->json($query->get());
     }
 
     public function realizados(Request $request)
     {
         $anio = $request->input('anio', now()->year);
 
-        $mantenimientos = Mantenimiento::with(['equipo.tipoEquipo', 'tecnico', 'custodio'])
+        $query = Mantenimiento::with(['equipo.tipoEquipo', 'tecnico', 'custodio'])
             ->where('anio', $anio)
-            ->orderBy('fecha_mantenimiento', 'desc')
-            ->get();
+            ->orderBy('fecha_mantenimiento', 'desc');
 
-        return response()->json($mantenimientos);
+        if ($request->filled('tipo_equipo_id')) {
+            $query->whereHas('equipo', fn ($q) => $q->where('tipo_equipo_id', $request->tipo_equipo_id));
+        }
+        if ($request->filled('busqueda')) {
+            $b = $request->busqueda;
+            $query->whereHas('equipo', function ($q) use ($b) {
+                $q->where('codigo_bien', 'ILIKE', "%$b%")
+                  ->orWhere('serie', 'ILIKE', "%$b%")
+                  ->orWhere('descripcion', 'ILIKE', "%$b%")
+                  ->orWhere('marca', 'ILIKE', "%$b%")
+                  ->orWhere('modelo', 'ILIKE', "%$b%");
+            });
+        }
+
+        return response()->json($query->get());
     }
 
     public function store(Request $request)
