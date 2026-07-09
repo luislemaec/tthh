@@ -7,6 +7,7 @@ use App\Models\Tecnologia\Asignacion;
 use App\Models\Tecnologia\Equipo;
 use App\Models\Tecnologia\TipoEquipo;
 use App\Services\AuditoriaService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -218,6 +219,19 @@ class EquipoController extends Controller
 
         $normalizarTipo = fn ($n) => strtoupper(trim(preg_replace('/\s+/', ' ', rtrim(trim($n), '.'))));
 
+        $parseFecha = function (string $valor): ?string {
+            if ($valor === '') return null;
+            foreach (['d/m/Y', 'Y-m-d', 'd-m-Y', 'd/m/y'] as $formato) {
+                try {
+                    $fecha = Carbon::createFromFormat($formato, $valor);
+                    if ($fecha !== false) return $fecha->format('Y-m-d');
+                } catch (\Exception $e) {
+                    continue;
+                }
+            }
+            return null;
+        };
+
         $tiposPorNombre = [];
         foreach (TipoEquipo::all() as $t) {
             $tiposPorNombre[$normalizarTipo($t->nombre)] = $t->id;
@@ -257,6 +271,12 @@ class EquipoController extends Controller
                 continue;
             }
 
+            $fechaIngresoParsed = $parseFecha($fecha_ingreso);
+            if ($fecha_ingreso !== '' && $fechaIngresoParsed === null) {
+                $errores[] = "Fila $fila: fecha de ingreso '$fecha_ingreso' no es válida (use DD/MM/AAAA).";
+                continue;
+            }
+
             $filas[] = [
                 'codigo_bien'     => strtoupper($codigo_bien),
                 'tipo_equipo_id'  => $tipoEquipoId,
@@ -265,7 +285,7 @@ class EquipoController extends Controller
                 'descripcion'     => $descripcion ?: null,
                 'serie'           => strtoupper($serie) ?: null,
                 'condicion'       => $condicion !== '' ? strtoupper($condicion) : null,
-                'fecha_ingreso'   => $fecha_ingreso !== '' ? $fecha_ingreso : null,
+                'fecha_ingreso'   => $fechaIngresoParsed,
                 'vida_util_anios' => $vida_util_anios !== '' && $vida_util_anios !== null ? (int) $vida_util_anios : null,
                 'estado'          => 'DISPONIBLE',
                 'created_by'      => $request->user()->id_emp,
