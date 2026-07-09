@@ -42,8 +42,8 @@ class EquipoController extends Controller
         $request->validate([
             'codigo_bien'     => 'required|string|max:50|unique:pgsql.dbo.ti_equipo,codigo_bien',
             'tipo_equipo_id'  => 'nullable|exists:pgsql.dbo.ti_tipo_equipo,id',
-            'marca'           => 'nullable|string|max:50',
-            'modelo'          => 'nullable|string|max:50',
+            'marca'           => 'nullable|string|max:150',
+            'modelo'          => 'nullable|string|max:300',
             'descripcion'     => 'nullable|string|max:300',
             'serie'           => 'nullable|string|max:100',
             'condicion'       => 'nullable|in:BUENO,REGULAR,MALO',
@@ -71,8 +71,8 @@ class EquipoController extends Controller
         $request->validate([
             'codigo_bien'     => 'required|string|max:50|unique:pgsql.dbo.ti_equipo,codigo_bien,' . $id,
             'tipo_equipo_id'  => 'nullable|exists:pgsql.dbo.ti_tipo_equipo,id',
-            'marca'           => 'nullable|string|max:50',
-            'modelo'          => 'nullable|string|max:50',
+            'marca'           => 'nullable|string|max:150',
+            'modelo'          => 'nullable|string|max:300',
             'descripcion'     => 'nullable|string|max:300',
             'serie'           => 'nullable|string|max:100',
             'condicion'       => 'nullable|in:BUENO,REGULAR,MALO',
