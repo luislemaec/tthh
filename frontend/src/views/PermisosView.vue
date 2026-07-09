@@ -81,15 +81,16 @@
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Hasta</th>
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Todo el dia</th>
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Estado</th>
+            <th class="text-left px-4 py-3 text-gray-600 font-medium">Aprobado/Negado por</th>
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Acciones</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="cargando">
-            <td colspan="8" class="text-center py-8 text-gray-400">Cargando...</td>
+            <td colspan="9" class="text-center py-8 text-gray-400">Cargando...</td>
           </tr>
           <tr v-else-if="permisos.length === 0">
-            <td colspan="8" class="text-center py-8 text-gray-400">No hay permisos registrados</td>
+            <td colspan="9" class="text-center py-8 text-gray-400">No hay permisos registrados</td>
           </tr>
           <tr v-for="p in permisos" :key="p.secuencial_clave" class="border-b hover:bg-gray-50">
             <td class="px-4 py-3 font-medium">
@@ -114,6 +115,12 @@
                 class="px-2 py-1 rounded-full text-xs font-medium">
                 {{ p.estado_permiso }}
               </span>
+            </td>
+            <td class="px-4 py-3 text-sm text-gray-600">
+              <template v-if="p.aprobador">
+                {{ p.aprobador.apellido_emp }}, {{ p.aprobador.nombre_emp }}
+              </template>
+              <span v-else class="text-gray-300">—</span>
             </td>
             <td class="px-4 py-3">
               <div class="flex gap-1 flex-wrap">

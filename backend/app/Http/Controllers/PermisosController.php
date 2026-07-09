@@ -113,7 +113,7 @@ class PermisosController extends Controller
         $esAdminOTH  = $this->esAdminOTH($emp->id_emp);
         $esSupervisor = $this->esSupervisor($emp->id_emp);
 
-        $query = Permiso::with(["empleado.departamento", "razonPermiso"])
+        $query = Permiso::with(["empleado.departamento", "razonPermiso", "aprobador"])
             ->orderBy("fecha_hora", "desc");
 
         $vista = $request->query("vista", ""); // "mia" | "equipo" | "" (todos)
