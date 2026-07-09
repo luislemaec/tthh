@@ -133,13 +133,14 @@ class EquipoController extends Controller
 
         $request->validate([
             'motivo_devolucion' => 'required|in:REASIGNACION,SALIDA_EMPLEADO,DAÑO,OTRO',
+            'fecha_devolucion'  => 'nullable|date',
             'observacion'       => 'nullable|string',
         ]);
 
         $asignacion = Asignacion::where('equipo_id', $equipo->id)->whereNull('fecha_devolucion')->firstOrFail();
 
         $asignacion->update([
-            'fecha_devolucion'   => now()->toDateString(),
+            'fecha_devolucion'   => $request->fecha_devolucion ?? now()->toDateString(),
             'motivo_devolucion'  => $request->motivo_devolucion,
             'observacion'        => $request->observacion,
             'usuario_devolucion' => $request->user()->id_emp,

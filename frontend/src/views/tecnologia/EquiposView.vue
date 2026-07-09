@@ -236,7 +236,10 @@
           <p class="text-white/80 text-xs mt-0.5">{{ modalDevolver.equipo?.codigo_bien }}</p>
         </div>
         <div class="p-6">
-          <label class="block text-xs font-semibold text-gray-600 mb-1">Motivo *</label>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Fecha de devolución *</label>
+          <input v-model="formDevolver.fecha_devolucion" type="date" class="w-full border rounded-lg px-3 py-2 text-sm" />
+
+          <label class="block text-xs font-semibold text-gray-600 mb-1 mt-3">Motivo *</label>
           <select v-model="formDevolver.motivo_devolucion" class="w-full border rounded-lg px-3 py-2 text-sm">
             <option value="">Seleccione...</option>
             <option value="REASIGNACION">Reasignación</option>
@@ -465,7 +468,7 @@ const formDevolver   = ref({ motivo_devolucion: '', observacion: '' })
 
 function abrirDevolver(e) {
   modalDevolver.value = { show: true, equipo: e }
-  formDevolver.value = { motivo_devolucion: '', observacion: '' }
+  formDevolver.value = { fecha_devolucion: new Date().toISOString().substring(0, 10), motivo_devolucion: '', observacion: '' }
   error.value = ''
 }
 
