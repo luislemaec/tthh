@@ -24,14 +24,14 @@
       </div>
       <div>
         <label class="block text-xs text-gray-500 mb-1">Tipo</label>
-        <select v-model="filtros.tipo_equipo_id" @change="cargar" class="border rounded-lg px-3 py-2 text-sm">
+        <select v-model="filtros.tipo_equipo_id" @change="pagina = 1; cargar()" class="border rounded-lg px-3 py-2 text-sm">
           <option value="">Todos</option>
           <option v-for="t in tipos" :key="t.id" :value="t.id">{{ t.nombre }}</option>
         </select>
       </div>
       <div>
         <label class="block text-xs text-gray-500 mb-1">Estado</label>
-        <select v-model="filtros.estado" @change="cargar" class="border rounded-lg px-3 py-2 text-sm">
+        <select v-model="filtros.estado" @change="pagina = 1; cargar()" class="border rounded-lg px-3 py-2 text-sm">
           <option value="">Todos</option>
           <option value="DISPONIBLE">Disponible</option>
           <option value="ASIGNADO">Asignado</option>
@@ -39,6 +39,7 @@
           <option value="DE_BAJA">De baja</option>
         </select>
       </div>
+      <p class="text-sm text-gray-500 ml-auto">{{ total }} registro{{ total === 1 ? '' : 's' }} encontrado{{ total === 1 ? '' : 's' }}</p>
     </div>
 
     <!-- Lista -->
@@ -94,6 +95,15 @@
             Editar
           </button>
         </div>
+      </div>
+
+      <!-- Paginación -->
+      <div v-if="totalPaginas > 1" class="bg-white rounded-xl shadow px-4 py-3 flex items-center justify-center gap-2 text-sm">
+        <button @click="cambiarPagina(pagina - 1)" :disabled="pagina === 1"
+          class="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-40">‹</button>
+        <span class="text-gray-500">Página {{ pagina }} de {{ totalPaginas }}</span>
+        <button @click="cambiarPagina(pagina + 1)" :disabled="pagina >= totalPaginas"
+          class="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-40">›</button>
       </div>
     </div>
 
@@ -330,6 +340,10 @@ const equipos  = ref([])
 const tipos    = ref([])
 const filtros  = ref({ busqueda: '', tipo_equipo_id: '', estado: '' })
 
+const pagina      = ref(1)
+const totalPaginas = ref(1)
+const total        = ref(0)
+
 const guardando = ref(false)
 const error     = ref('')
 const modal     = ref({ show: false, id: null })
@@ -338,7 +352,7 @@ const form      = ref({})
 let debounceTimer = null
 function cargarDebounced() {
   clearTimeout(debounceTimer)
-  debounceTimer = setTimeout(cargar, 300)
+  debounceTimer = setTimeout(() => { pagina.value = 1; cargar() }, 300)
 }
 
 async function cargar() {
@@ -347,9 +361,18 @@ async function cargar() {
       busqueda: filtros.value.busqueda || undefined,
       tipo_equipo_id: filtros.value.tipo_equipo_id || undefined,
       estado: filtros.value.estado || undefined,
+      page: pagina.value,
     },
   })
-  equipos.value = data
+  equipos.value      = data.data ?? data
+  total.value         = data.total ?? equipos.value.length
+  totalPaginas.value  = data.last_page ?? 1
+}
+
+function cambiarPagina(p) {
+  if (p < 1 || p > totalPaginas.value) return
+  pagina.value = p
+  cargar()
 }
 
 async function cargarTipos() {
