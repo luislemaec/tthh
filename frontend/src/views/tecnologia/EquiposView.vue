@@ -68,7 +68,6 @@
               <th class="px-4 py-3">Código</th>
               <th class="px-4 py-3">Equipo</th>
               <th class="px-4 py-3">Serie</th>
-              <th class="px-4 py-3">Condición</th>
               <th class="px-4 py-3">Estado</th>
               <th class="px-4 py-3">Custodio</th>
               <th class="px-4 py-3 text-right">Acciones</th>
@@ -84,7 +83,6 @@
                 </p>
               </td>
               <td class="px-4 py-3 text-gray-500 text-xs">{{ e.serie || '—' }}</td>
-              <td class="px-4 py-3 text-gray-500 text-xs">{{ e.condicion || '—' }}</td>
               <td class="px-4 py-3">
                 <span :class="estadoBadge(e.estado)" class="px-2 py-0.5 rounded-full text-xs font-medium">
                   {{ estadoLabel(e.estado) }}
@@ -110,23 +108,17 @@
                     class="text-xs text-white font-medium px-3 py-1 rounded-lg bg-green-600 hover:bg-green-700">
                     Disponible
                   </button>
-                  <button @click="abrirHistorial(e)" title="Historial de custodia"
-                    class="text-gray-400 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
+                  <button @click="abrirHistorial(e)"
+                    class="text-xs text-gray-600 hover:text-gray-900 font-medium border border-gray-300 px-3 py-1 rounded-lg hover:bg-gray-50">
+                    Historial
                   </button>
-                  <button @click="abrirEditar(e)" title="Editar"
-                    class="text-gray-400 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                    </svg>
+                  <button @click="abrirEditar(e)"
+                    class="text-xs text-gray-600 hover:text-gray-900 font-medium border border-gray-300 px-3 py-1 rounded-lg hover:bg-gray-50">
+                    Editar
                   </button>
-                  <button v-if="e.estado !== 'ASIGNADO' && e.estado !== 'DE_BAJA'" @click="marcarBaja(e)" title="Dar de baja"
-                    class="text-gray-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                    </svg>
+                  <button v-if="e.estado !== 'ASIGNADO' && e.estado !== 'DE_BAJA'" @click="marcarBaja(e)"
+                    class="text-xs text-red-600 hover:text-red-800 font-medium border border-red-200 px-3 py-1 rounded-lg hover:bg-red-50">
+                    Dar de baja
                   </button>
                 </div>
               </td>
@@ -148,8 +140,9 @@
     <!-- Modal crear/editar -->
     <div v-if="modal.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
-        <div class="px-6 py-4" style="background-color:#4d7c8a;">
+        <div class="px-6 py-4 flex items-center justify-between" style="background-color:#4d7c8a;">
           <h2 class="text-lg font-bold text-white">{{ modal.id ? 'Editar Equipo' : 'Nuevo Equipo' }}</h2>
+          <button @click="modal.show = false" class="text-white/80 hover:text-white text-xl leading-none">&times;</button>
         </div>
         <div class="p-6 max-h-[70vh] overflow-y-auto">
           <div class="space-y-3">
@@ -231,9 +224,12 @@
     <!-- Modal Asignar -->
     <div v-if="modalAsignar.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-        <div class="px-6 py-4" style="background-color:#4d7c8a;">
-          <h2 class="text-lg font-bold text-white">Asignar Equipo</h2>
-          <p class="text-white/80 text-xs mt-0.5">{{ modalAsignar.equipo?.codigo_bien }}</p>
+        <div class="px-6 py-4 flex items-start justify-between" style="background-color:#4d7c8a;">
+          <div>
+            <h2 class="text-lg font-bold text-white">Asignar Equipo</h2>
+            <p class="text-white/80 text-xs mt-0.5">{{ modalAsignar.equipo?.codigo_bien }}</p>
+          </div>
+          <button @click="modalAsignar.show = false" class="text-white/80 hover:text-white text-xl leading-none">&times;</button>
         </div>
         <div class="p-6">
           <label class="block text-xs font-semibold text-gray-600 mb-1">Buscar empleado *</label>
@@ -279,9 +275,12 @@
     <!-- Modal Devolver -->
     <div v-if="modalDevolver.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-        <div class="px-6 py-4" style="background-color:#4d7c8a;">
-          <h2 class="text-lg font-bold text-white">Devolver Equipo</h2>
-          <p class="text-white/80 text-xs mt-0.5">{{ modalDevolver.equipo?.codigo_bien }}</p>
+        <div class="px-6 py-4 flex items-start justify-between" style="background-color:#4d7c8a;">
+          <div>
+            <h2 class="text-lg font-bold text-white">Devolver Equipo</h2>
+            <p class="text-white/80 text-xs mt-0.5">{{ modalDevolver.equipo?.codigo_bien }}</p>
+          </div>
+          <button @click="modalDevolver.show = false" class="text-white/80 hover:text-white text-xl leading-none">&times;</button>
         </div>
         <div class="p-6">
           <label class="block text-xs font-semibold text-gray-600 mb-1">Fecha de devolución *</label>
@@ -346,8 +345,9 @@
     <!-- Modal Importar CSV -->
     <div v-if="modalImportar.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-        <div class="px-6 py-4" style="background-color:#4d7c8a;">
+        <div class="px-6 py-4 flex items-center justify-between" style="background-color:#4d7c8a;">
           <h2 class="text-lg font-bold text-white">Importar Equipos (CSV)</h2>
+          <button @click="modalImportar.show = false" class="text-white/80 hover:text-white text-xl leading-none">&times;</button>
         </div>
         <div class="p-6">
           <p class="text-xs text-gray-500 mb-3">

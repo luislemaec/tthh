@@ -1423,6 +1423,103 @@ layouts/ComisionesLayout.vue  # Color #5c4a6e; menú dinámico; modo mantenimien
 
 ---
 
+## Módulo Inventario Tecnológico
+
+Quinto módulo del sistema, para la Dirección de Tecnología. Color institucional: `#4d7c8a` (azul petróleo/teal apagado). Controla el inventario de equipos tecnológicos (computadoras, laptops, impresoras, etc.), su custodia (quién tiene cada equipo, con trazabilidad histórica) y el mantenimiento preventivo anual con acta digital. Módulo 100% independiente — sin relación funcional con Adquisiciones (`adq.*`) ni Transportes; solo reutiliza el estilo de código de esos módulos por consistencia.
+
+### Rol requerido
+
+`TECNOLOGIA` — acceso completo al módulo (junto con `ADMINISTRADOR`). Sin flujo de aprobación entre roles: a diferencia de Transportes/Movilización, la Dirección de Tecnología gestiona todo directamente (asigna, devuelve, registra mantenimiento) sin que el empleado interactúe con el sistema.
+
+### Opciones de menú
+
+| URL | Descripción | Roles |
+|---|---|---|
+| `tecnologia/equipos` | Inventario de Equipos | TECNOLOGIA, ADMINISTRADOR |
+| `tecnologia/mantenimiento` | Mantenimiento | TECNOLOGIA, ADMINISTRADOR |
+| `tecnologia/tipos-equipo` | Tipos de Equipo | TECNOLOGIA, ADMINISTRADOR |
+| `tecnologia/actividades-mantenimiento` | Actividades del checklist | TECNOLOGIA, ADMINISTRADOR |
+
+### Tablas (`dbo.ti_*`)
+
+| Tabla | Descripción |
+|---|---|
+| `ti_tipo_equipo` | Catálogo editable: Computador de Escritorio, Laptop, Impresora, Monitor, Escáner, Proyector, Otro |
+| `ti_equipo` | Un registro por unidad física. `estado`: `DISPONIBLE`/`ASIGNADO`/`DAÑADO`/`DE_BAJA` (custodia, gestionado por el sistema al asignar/devolver). `condicion`: `BUENO`/`REGULAR`/`MALO` (estado físico, distinto de `estado`). `vida_util_anios`, `ultimo_mantenimiento` (caché). `marca VARCHAR(150)`, `modelo VARCHAR(300)` (ampliados en migración `000089` — el inventario real de TI trae descripciones largas en "modelo") |
+| `ti_asignacion` | Historial de custodia. Solo puede existir **una fila con `fecha_devolucion IS NULL` por `equipo_id`** a la vez (regla aplicada en el controlador, no a nivel de constraint) |
+| `ti_actividad_mantenimiento` | Catálogo maestro del checklist de mantenimiento (10 ítems reales del formulario físico de TI, editable) |
+| `ti_mantenimiento` | Cabecera de cada ejecución de mantenimiento; `UNIQUE(equipo_id, anio)` — refuerza que el mantenimiento preventivo es una vez al año por equipo. Incluye `hora_inicio`/`hora_fin`, `id_emp_tecnico` (usuario que registró) e `id_emp_custodio` (snapshot del custodio en ese momento) |
+| `ti_mantenimiento_detalle` | Snapshot SI/NO del checklist para esa ejecución (una fila por actividad del catálogo activa al momento de registrar) |
+
+Migraciones: `000088` (crea las 6 tablas + rol `TECNOLOGIA` + seeds de tipos de equipo y checklist), `000089` (amplía `ti_equipo.marca`/`modelo`, ver arriba).
+
+Las opciones de menú (`admin_opcion`) y su asignación al rol `TECNOLOGIA` (`admin_rol_opcion`) se crean desde la UI (Admin → Opciones de Menú / Admin → Roles) — no se gestionan por migración.
+
+### Custodia (asignar / devolver)
+
+- **Asignar**: solo si `equipo.estado = DISPONIBLE`. El buscador de empleado consulta el mismo catálogo `dbo.ad_empleado` que usa Talento Humano (no hay lista separada). Crea fila en `ti_asignacion`, pasa el equipo a `ASIGNADO`.
+- **Devolver**: solo si `equipo.estado = ASIGNADO`. Pide fecha de devolución (editable, no forzada a "hoy" — permite registrar devoluciones retroactivas), motivo (`REASIGNACION`/`SALIDA_EMPLEADO`/`DAÑO`/`OTRO`) y observación. Si el motivo es `DAÑO` el equipo pasa a `DAÑADO`; en cualquier otro caso vuelve a `DISPONIBLE`. La asignación anterior no se borra, queda cerrada en el historial.
+- **Historial**: botón por equipo abre un modal con la línea de tiempo (timeline visual) de todas las asignaciones — activa (punto verde) e históricas (punto gris), con motivo de devolución.
+- **Dar de baja / Marcar disponible**: transición manual de estado, solo permitida cuando el equipo no está `ASIGNADO`.
+
+### Mantenimiento preventivo (checklist real)
+
+El mantenimiento se ejecuta **una vez al año por equipo** (constraint `UNIQUE(equipo_id, anio)` en `ti_mantenimiento`). El checklist es fijo (catálogo `ti_actividad_mantenimiento`, editable desde `tecnologia/actividades-mantenimiento`) y reproduce el formulario físico que ya usaba TI:
+
+1. Ingreso al equipo · 2. Limpieza interna del equipo · 3. Limpieza externa del equipo · 4. Borrado archivos temporales · 5. Ingreso al equipo por la IP · 6. Actualización del antivirus · 7. Formateo del equipo · 8. Respaldo carpeta Escritorio · 9. Respaldo carpeta Mis documentos · 10. Respaldo correo electrónico institucional (PST)
+
+Al registrar un mantenimiento se marca SI/NO por cada ítem (hora de inicio/fin con `components/TimePicker24.vue`), y se genera automáticamente el acta en PDF. `MantenimientoView.vue` tiene tabs "Pendientes {año}" (equipos activos sin `ti_mantenimiento` ese año) / "Realizados {año}", más un gráfico donut (Chart.js) con el % de avance del año.
+
+**Acta de mantenimiento** (`resources/views/reportes/ti_acta_mantenimiento.blade.php`, A4 portrait): incluye fecha, hora de inicio y fin, tabla del checklist con columnas SI/NO, y firmas — **"Técnico que realizó"** = usuario logueado que registró (`id_emp_tecnico`, autocapturado de `$request->user()`, no es un campo editable del formulario) y **"Responsable del equipo"** = custodio con asignación activa al momento del registro (`id_emp_custodio`, snapshot — no cambia si luego se reasigna el equipo a otra persona). PDF generado con DomPDF (`->stream()`); opcionalmente se puede subir firmado a Alfresco (carpeta `mantenimiento-ti/{año}/`), mismo patrón de `relativePath` que Certificados Laborales / Horas Extras.
+
+### Importación de inventario (CSV)
+
+`EquipoController::importarCsv` — columnas `codigo_bien, tipo_equipo, marca, modelo, descripcion, serie, estado(condición), fecha_ingreso, vida_util_anios`.
+- **Detecta automáticamente el delimitador** (`,` o `;`) comparando ambos en la primera línea del archivo — Excel en español suele exportar CSV separado por `;`.
+- **Fechas**: acepta `DD/MM/AAAA` (formato típico de Excel/Ecuador), `AAAA-MM-DD` y `DD-MM-AAAA`; se convierten a `AAAA-MM-DD` para Postgres. El campo puede dejarse vacío (opcional).
+- **Tipo de equipo**: se compara contra el catálogo ignorando mayúsculas/minúsculas, punto final y espacios repetidos — evita falsos "no existe en el catálogo" por diferencias de formato (ej. `"INFRAESTRUCTURA DE VIDEOVIGILANCIA."` con punto vs `"INFRAESTRUCTURA DE VIDEOVIGILANCIA"` sin punto en el catálogo).
+- Valida todas las filas antes de insertar y reporta todos los errores encontrados de una vez; si hay algún error no inserta nada (`DB::transaction`).
+
+### Backend
+
+Controladores en `app/Http/Controllers/Tecnologia/`:
+
+| Controlador | Función |
+|---|---|
+| `TipoEquipoController` | CRUD catálogo de tipos de equipo |
+| `EquipoController` | `index` (paginado 20/pág, filtros tipo/estado/búsqueda), `resumen` (conteos por estado para las tarjetas del frontend), `store`/`update`, `importarCsv`, `asignar`/`devolver`/`historial`/`marcarBaja`/`marcarDisponible` |
+| `ActividadMantenimientoController` | CRUD catálogo del checklist |
+| `MantenimientoController` | `checklist`, `pendientes`, `realizados`, `store`, `pdf`, `subirFirmado`, `descargarFirmado` |
+
+Modelos en `app/Models/Tecnologia/`: `TipoEquipo`, `Equipo` (`tipoEquipo()`, `asignaciones()`, `asignacionActiva()` — `hasOne` con `whereNull('fecha_devolucion')`), `Asignacion`, `ActividadMantenimiento`, `Mantenimiento` (`tecnico()`/`custodio()` → `Empleado`, `detalle()` → `MantenimientoDetalle`), `MantenimientoDetalle` (`$timestamps = false`).
+
+Rutas bajo `/api/tecnologia/*`, dentro del grupo `auth:sanctum` existente — sin middleware de rol dedicado, mismo patrón del resto del sistema (autorización real es la visibilidad del menú).
+
+Auditado con `AuditoriaService::log()` en `ASIGNAR`, `DEVOLVER`, `DAR_DE_BAJA`, `MARCAR_DISPONIBLE` y `REGISTRAR_MANTENIMIENTO`.
+
+### Frontend
+
+```
+layouts/TecnologiaLayout.vue         # Layout azul petróleo #4d7c8a; menú desde auth.menuAgrupado (prefijo tecnologia/)
+                                     # Modo mantenimiento: variable MODO_MANTENIMIENTO_TEC; incluye <ChatbotFAB />
+views/tecnologia/
+  EquiposView.vue                    # Tarjetas de resumen (Total/Disponibles/Asignados/Dañados/De baja),
+                                     #   clickeables para filtrar la tabla por estado
+                                     # Tabla paginada 20/pág: código, equipo, serie, condición, estado,
+                                     #   custodio actual, acciones (Asignar/Devolver/Historial/Editar/Baja)
+                                     # Historial de custodia: línea de tiempo visual (timeline)
+                                     # Importar CSV con plantilla de 9 columnas (ver sección arriba)
+  MantenimientoView.vue              # Tabs Pendientes/Realizados por año + gráfico donut de avance (Chart.js)
+                                     # Modal de registro: checklist SI/NO + TimePicker24 (hora inicio/fin)
+                                     # Técnico y custodio se autocompletan en el backend, no se piden en el form
+  TiposEquipoView.vue                # CRUD catálogo de tipos de equipo
+  ActividadesMantenimientoView.vue   # CRUD catálogo del checklist de mantenimiento (nombre + orden + activo)
+```
+
+`LauncherView.vue`: tarjeta "Tecnología" (color `#4d7c8a`) visible para roles `TECNOLOGIA`/`ADMINISTRADOR` (`tieneAccesoTecnologia`).
+
+---
+
 ## Avisos Ticker (Launcher)
 
 Mensajes de publicidad/información que se muestran en `LauncherView.vue` con animación CSS.
