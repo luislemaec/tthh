@@ -1448,10 +1448,12 @@ Quinto módulo del sistema, para la Dirección de Tecnología. Color institucion
 | `ti_equipo` | Un registro por unidad física. `estado`: `DISPONIBLE`/`ASIGNADO`/`DAÑADO`/`DE_BAJA` (custodia, gestionado por el sistema al asignar/devolver). `condicion`: `BUENO`/`REGULAR`/`MALO` (estado físico, distinto de `estado`). `vida_util_anios`, `ultimo_mantenimiento` (caché). `marca VARCHAR(150)`, `modelo VARCHAR(300)` (ampliados en migración `000089` — el inventario real de TI trae descripciones largas en "modelo") |
 | `ti_asignacion` | Historial de custodia. Solo puede existir **una fila con `fecha_devolucion IS NULL` por `equipo_id`** a la vez (regla aplicada en el controlador, no a nivel de constraint) |
 | `ti_actividad_mantenimiento` | Catálogo maestro del checklist de mantenimiento (10 ítems reales del formulario físico de TI, editable) |
-| `ti_mantenimiento` | Cabecera de cada ejecución de mantenimiento; `UNIQUE(equipo_id, anio)` — refuerza que el mantenimiento preventivo es una vez al año por equipo. Incluye `hora_inicio`/`hora_fin`, `id_emp_tecnico` (usuario que registró) e `id_emp_custodio` (snapshot del custodio en ese momento) |
-| `ti_mantenimiento_detalle` | Snapshot SI/NO del checklist para esa ejecución (una fila por actividad del catálogo activa al momento de registrar) |
+| `ti_mantenimiento` | Cabecera de cada ejecución de mantenimiento; `UNIQUE(equipo_id, anio)` — refuerza que el mantenimiento preventivo es una vez al año por equipo. Incluye `hora_inicio`/`hora_fin` (nullable — el mantenimiento externo por lote no siempre registra hora exacta), `id_emp_tecnico` (usuario que registró) e `id_emp_custodio` (snapshot del custodio en ese momento). Campos de mantenimiento externo (migración `000090`): `origen` (`INTERNO`/`EXTERNO`), `proveedor`, `proceso_contratacion`, `numero_orden_compra`, `lote_externo` — ver sección "Mantenimiento externo" abajo |
+| `ti_mantenimiento_detalle` | Snapshot SI/NO del checklist para esa ejecución (una fila por actividad del catálogo activa al momento de registrar). Solo se genera cuando `origen = INTERNO` |
 
-Migraciones: `000088` (crea las 6 tablas + rol `TECNOLOGIA` + seeds de tipos de equipo y checklist), `000089` (amplía `ti_equipo.marca`/`modelo`, ver arriba).
+Migraciones: `000088` (crea las 6 tablas + rol `TECNOLOGIA` + seeds de tipos de equipo y checklist), `000089` (amplía `ti_equipo.marca`/`modelo`, ver arriba), `000090` (agrega columnas de mantenimiento externo a `ti_mantenimiento` y hace `hora_inicio`/`hora_fin` nullable).
+
+`Equipo` (modelo) tiene un accessor `vida_util_vencida` (`$appends`, calculado en PHP con `fecha_ingreso + vida_util_anios <= hoy`, sin necesidad de cast ni columna nueva) — se usa para el badge/filtro/tarjeta "Vida útil vencida" en `EquiposView.vue`. `EquipoController::resumen()` incluye el conteo `vida_util_vencida` (excluye equipos `DE_BAJA`) y `index()` acepta `?vida_util_vencida=1` como filtro.
 
 Las opciones de menú (`admin_opcion`) y su asignación al rol `TECNOLOGIA` (`admin_rol_opcion`) se crean desde la UI (Admin → Opciones de Menú / Admin → Roles) — no se gestionan por migración.
 
@@ -1472,6 +1474,21 @@ Al registrar un mantenimiento se marca SI/NO por cada ítem (hora de inicio/fin 
 
 **Acta de mantenimiento** (`resources/views/reportes/ti_acta_mantenimiento.blade.php`, A4 portrait): incluye fecha, hora de inicio y fin, tabla del checklist con columnas SI/NO, y firmas — **"Técnico que realizó"** = usuario logueado que registró (`id_emp_tecnico`, autocapturado de `$request->user()`, no es un campo editable del formulario) y **"Responsable del equipo"** = custodio con asignación activa al momento del registro (`id_emp_custodio`, snapshot — no cambia si luego se reasigna el equipo a otra persona). PDF generado con DomPDF (`->stream()`); opcionalmente se puede subir firmado a Alfresco (carpeta `mantenimiento-ti/{año}/`), mismo patrón de `relativePath` que Certificados Laborales / Horas Extras.
 
+`MantenimientoView.vue` tiene sus propios filtros (Buscar + Tipo de equipo) sobre `pendientes`/`realizados`, iguales a los de `EquiposView.vue` — útil porque antes había que buscar equipo por equipo en la lista.
+
+### Mantenimiento externo (por proveedor, en lote)
+
+Algunas categorías de equipo (ej. **INFRAESTRUCTURA DATA CENTER**, **INFRAESTRUCTURA EQUIPOS MTTO EXTERNO**) no las mantiene un técnico interno con el checklist de 10 puntos, sino un **proveedor externo** que atiende de una sola vez **todos los equipos de esa categoría** bajo una sola orden de compra. La funcionalidad no está restringida por nombre de categoría — aplica a cualquier `tipo_equipo_id` que se elija al registrar.
+
+Flujo (`MantenimientoController::storeExterno`, botón "Registrar mantenimiento externo" en `MantenimientoView.vue`):
+1. Se elige: categoría (tipo de equipo), fecha, proveedor, proceso de contratación (lista fija: `ÍNFIMA CUANTÍA`, `SUBASTA INVERSA`, `CATÁLOGO ELECTRÓNICO`, `CONTRATACIÓN DIRECTA`, `OTRO` — constante `MantenimientoController::PROCESOS_CONTRATACION`), N° de orden de compra, observaciones.
+2. El backend busca todos los equipos de esa categoría que aún no tengan `ti_mantenimiento` para ese año (misma lógica que "pendientes") y crea **un registro `ti_mantenimiento` por cada uno**, todos con `origen = EXTERNO` y un mismo `lote_externo` (UUID generado por lote) que los agrupa — sin checklist (`ti_mantenimiento_detalle` no se crea para estos).
+3. `id_emp_tecnico` sigue siendo el usuario de TI que **registró** el lote (no quien ejecutó físicamente el mantenimiento); `id_emp_custodio` se snapshotea por equipo igual que en el flujo interno.
+
+**Acta agrupada** (`resources/views/reportes/ti_acta_mantenimiento_externo.blade.php`): una sola acta por lote — datos del proveedor/proceso/N° de orden una sola vez, más una tabla con todos los equipos cubiertos (código, marca/modelo, serie). Firmas: "Responsable Dirección de Tecnología" / "Proveedor". Se genera y descarga automáticamente al guardar. `subirFirmadoExterno`/`descargarFirmadoExterno` operan sobre **todo el lote** (actualizan `acta_alfresco_id`/`acta_nombre_archivo` en todas las filas de ese `lote_externo` a la vez), mismo folder Alfresco `mantenimiento-ti/{año}/`.
+
+En la pestaña "Realizados" de `MantenimientoView.vue`, los registros con `lote_externo` se agrupan visualmente en una sola tarjeta (badge naranja "EXTERNO", proveedor, proceso, N° de orden, cantidad de equipos, botón "Ver equipos" para expandir la lista) en vez de aparecer como N filas sueltas; los de `origen = INTERNO` se siguen mostrando uno por equipo como antes. La lógica de agrupación (`realizadosAgrupados`) es puramente client-side sobre el array plano que ya devuelve `GET /mantenimiento/realizados`.
+
 ### Importación de inventario (CSV)
 
 `EquipoController::importarCsv` — columnas `codigo_bien, tipo_equipo, marca, modelo, descripcion, serie, estado(condición), fecha_ingreso, vida_util_anios`.
@@ -1487,15 +1504,15 @@ Controladores en `app/Http/Controllers/Tecnologia/`:
 | Controlador | Función |
 |---|---|
 | `TipoEquipoController` | CRUD catálogo de tipos de equipo |
-| `EquipoController` | `index` (paginado 20/pág, filtros tipo/estado/búsqueda), `resumen` (conteos por estado para las tarjetas del frontend), `store`/`update`, `importarCsv`, `asignar`/`devolver`/`historial`/`marcarBaja`/`marcarDisponible` |
+| `EquipoController` | `index` (paginado 20/pág, filtros tipo/estado/búsqueda/`vida_util_vencida`), `resumen` (conteos por estado + vida útil vencida para las tarjetas del frontend), `store`/`update`, `importarCsv`, `asignar`/`devolver`/`historial`/`marcarBaja`/`marcarDisponible` |
 | `ActividadMantenimientoController` | CRUD catálogo del checklist |
-| `MantenimientoController` | `checklist`, `pendientes`, `realizados`, `store`, `pdf`, `subirFirmado`, `descargarFirmado` |
+| `MantenimientoController` | `checklist`, `procesos` (lista fija de procesos de contratación), `pendientes`/`realizados` (con filtros tipo/búsqueda), `store`, `pdf`, `subirFirmado`, `descargarFirmado`, `storeExterno`, `pdfExterno`, `subirFirmadoExterno`, `descargarFirmadoExterno` (estos 4 últimos operan por `lote_externo`, no por `id`) |
 
-Modelos en `app/Models/Tecnologia/`: `TipoEquipo`, `Equipo` (`tipoEquipo()`, `asignaciones()`, `asignacionActiva()` — `hasOne` con `whereNull('fecha_devolucion')`), `Asignacion`, `ActividadMantenimiento`, `Mantenimiento` (`tecnico()`/`custodio()` → `Empleado`, `detalle()` → `MantenimientoDetalle`), `MantenimientoDetalle` (`$timestamps = false`).
+Modelos en `app/Models/Tecnologia/`: `TipoEquipo`, `Equipo` (`tipoEquipo()`, `asignaciones()`, `asignacionActiva()` — `hasOne` con `whereNull('fecha_devolucion')`; accessor `vida_util_vencida`), `Asignacion`, `ActividadMantenimiento`, `Mantenimiento` (`tecnico()`/`custodio()` → `Empleado`, `detalle()` → `MantenimientoDetalle`), `MantenimientoDetalle` (`$timestamps = false`).
 
 Rutas bajo `/api/tecnologia/*`, dentro del grupo `auth:sanctum` existente — sin middleware de rol dedicado, mismo patrón del resto del sistema (autorización real es la visibilidad del menú).
 
-Auditado con `AuditoriaService::log()` en `ASIGNAR`, `DEVOLVER`, `DAR_DE_BAJA`, `MARCAR_DISPONIBLE` y `REGISTRAR_MANTENIMIENTO`.
+Auditado con `AuditoriaService::log()` en `ASIGNAR`, `DEVOLVER`, `DAR_DE_BAJA`, `MARCAR_DISPONIBLE`, `REGISTRAR_MANTENIMIENTO` y `REGISTRAR_MANTENIMIENTO_EXTERNO`.
 
 ### Frontend
 
@@ -1503,15 +1520,26 @@ Auditado con `AuditoriaService::log()` en `ASIGNAR`, `DEVOLVER`, `DAR_DE_BAJA`, 
 layouts/TecnologiaLayout.vue         # Layout azul petróleo #4d7c8a; menú desde auth.menuAgrupado (prefijo tecnologia/)
                                      # Modo mantenimiento: variable MODO_MANTENIMIENTO_TEC; incluye <ChatbotFAB />
 views/tecnologia/
-  EquiposView.vue                    # Tarjetas de resumen (Total/Disponibles/Asignados/Dañados/De baja),
-                                     #   clickeables para filtrar la tabla por estado
-                                     # Tabla paginada 20/pág: código, equipo, serie, condición, estado,
-                                     #   custodio actual, acciones (Asignar/Devolver/Historial/Editar/Baja)
+  EquiposView.vue                    # 6 tarjetas de resumen (Total/Disponibles/Asignados/Dañados/De baja/
+                                     #   Vida útil vencida), clickeables para filtrar la tabla (toggleStatCard)
+                                     # Tabla paginada 20/pág: código, equipo (con badge naranja si
+                                     #   vida_util_vencida), serie, estado, custodio actual, acciones
+                                     #   (Asignar/Devolver como botón sólido; Historial/Editar/Dar de baja
+                                     #   como botones de texto con borde — los íconos solos se descartaron
+                                     #   por poco visibles). Columna "Condición" removida de la tabla
+                                     #   (el campo se sigue editando desde el modal)
                                      # Historial de custodia: línea de tiempo visual (timeline)
                                      # Importar CSV con plantilla de 9 columnas (ver sección arriba)
-  MantenimientoView.vue              # Tabs Pendientes/Realizados por año + gráfico donut de avance (Chart.js)
-                                     # Modal de registro: checklist SI/NO + TimePicker24 (hora inicio/fin)
+                                     # Todos los modales (crear/editar, Asignar, Devolver, Importar CSV)
+                                     #   tienen botón "×" de cerrar en la cabecera, no solo "Cancelar" al final
+  MantenimientoView.vue              # Filtros Buscar + Tipo (iguales a EquiposView) sobre pendientes/realizados
+                                     # Tabs Pendientes/Realizados por año + gráfico donut de avance (Chart.js)
+                                     # Botón "Registrar mantenimiento externo" (ver sección arriba) — modal
+                                     #   categoría/fecha/proveedor/proceso/N° orden de compra
+                                     # Modal de registro individual: checklist SI/NO + TimePicker24 (hora inicio/fin)
                                      # Técnico y custodio se autocompletan en el backend, no se piden en el form
+                                     # Pestaña Realizados agrupa visualmente los mantenimientos EXTERNO por
+                                     #   lote_externo (computed realizadosAgrupados, client-side)
   TiposEquipoView.vue                # CRUD catálogo de tipos de equipo
   ActividadesMantenimientoView.vue   # CRUD catálogo del checklist de mantenimiento (nombre + orden + activo)
 ```

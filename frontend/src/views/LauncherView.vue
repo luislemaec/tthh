@@ -223,15 +223,14 @@ const tieneAccesoTransportes = computed(() =>
 
 const tieneAccesoComisiones = computed(() =>
   store.tieneRol('MAXIMA AUTORIDAD') ||
-  store.tieneRol('DIRECCION ADMINISTRATIVA') ||
-  store.tieneRol('ASESORIA JURIDICA') ||
   store.tieneRol('CONTABILIDAD') ||
   store.tieneRol('PRESUPUESTO') ||
   store.tieneRol('DIRECTOR FINANCIERO') ||
   store.tieneRol('TESORERIA') ||
   store.tieneRol('ADMINISTRADOR') ||
   store.tieneRol('TALENTO HUMANO') ||
-  store.tieneRol('COMISIONADO EXTERNO')
+  store.tieneRol('COMISIONADO EXTERNO') ||
+  store.tieneRol('COMISIONADO')
 )
 
 const tieneAccesoTecnologia = computed(() =>
