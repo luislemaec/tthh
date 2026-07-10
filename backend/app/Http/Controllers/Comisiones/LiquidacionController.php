@@ -145,9 +145,9 @@ class LiquidacionController extends Controller
         return response()->json(['estado' => $ficha->estado, 'solicitud_estado' => $solicitud->estado]);
     }
 
-    public function pdf(int $solicitudId)
+    public function pdf(\Illuminate\Http\Request $request, int $id)
     {
-        $solicitud = ComSolicitud::with(['empleado', 'fichaLiquidacion'])->findOrFail($solicitudId);
+        $solicitud = ComSolicitud::with(['empleado', 'fichaLiquidacion'])->findOrFail($id);
         $ficha     = $solicitud->fichaLiquidacion;
 
         if (!$ficha) {
@@ -166,8 +166,8 @@ class LiquidacionController extends Controller
             'solicitud', 'ficha', 'logo', 'nombreInst', 'generadoPor'
         ))->setPaper('a4', 'portrait');
 
-        $numero = $solicitud->numero_solicitud ?? ('COM-' . $solicitudId);
-        return $pdf->download("ficha-liquidacion-{$numero}.pdf");
+        $numero = $solicitud->numero_solicitud ?? ('COM-' . $id);
+        return $pdf->stream("ficha-liquidacion-{$numero}.pdf");
     }
 
     public function coeficientes(): \Illuminate\Http\JsonResponse

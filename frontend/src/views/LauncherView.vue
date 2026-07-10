@@ -42,8 +42,8 @@
       <!-- Talento Humano -->
       <button @click="irA('/dashboard')" @animationend="onAnimEnd"
         :class="cardAnimClass"
-        class="bg-white rounded-xl shadow-lg p-5 w-44 flex flex-col items-center gap-3 hover:scale-105 transition-transform cursor-pointer">
-        <div class="w-12 h-12 rounded-full flex items-center justify-center"
+        class="bg-white rounded-xl shadow-lg p-3 w-36 flex flex-col items-center gap-3 hover:scale-105 transition-transform cursor-pointer">
+        <div class="w-10 h-10 rounded-full flex items-center justify-center"
              style="background-color: #0b5447;">
           <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -61,8 +61,8 @@
       <!-- Adquisiciones -->
       <button v-if="tieneAccesoAdquisiciones" @click="irA('/adquisiciones')" @animationend="onAnimEnd"
         :class="cardAnimClass"
-        class="bg-white rounded-xl shadow-lg p-5 w-44 flex flex-col items-center gap-3 hover:scale-105 transition-transform cursor-pointer">
-        <div class="w-12 h-12 rounded-full flex items-center justify-center bg-amber-600">
+        class="bg-white rounded-xl shadow-lg p-3 w-36 flex flex-col items-center gap-3 hover:scale-105 transition-transform cursor-pointer">
+        <div class="w-10 h-10 rounded-full flex items-center justify-center bg-amber-600">
           <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
@@ -81,8 +81,8 @@
       <!-- Transportes -->
       <button v-if="tieneAccesoTransportes" @click="irA(rutaTransportes)" @animationend="onAnimEnd"
         :class="cardAnimClass"
-        class="bg-white rounded-xl shadow-lg p-5 w-44 flex flex-col items-center gap-3 hover:scale-105 transition-transform cursor-pointer">
-        <div class="w-12 h-12 rounded-full flex items-center justify-center"
+        class="bg-white rounded-xl shadow-lg p-3 w-36 flex flex-col items-center gap-3 hover:scale-105 transition-transform cursor-pointer">
+        <div class="w-10 h-10 rounded-full flex items-center justify-center"
              style="background-color: #1e3a5f;">
           <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -98,8 +98,8 @@
       <!-- Comisiones de Servicio -->
       <button v-if="tieneAccesoComisiones" @click="irA('/comisiones/solicitudes')" @animationend="onAnimEnd"
         :class="cardAnimClass"
-        class="bg-white rounded-xl shadow-lg p-5 w-44 flex flex-col items-center gap-3 hover:scale-105 transition-transform cursor-pointer">
-        <div class="w-12 h-12 rounded-full flex items-center justify-center"
+        class="bg-white rounded-xl shadow-lg p-3 w-36 flex flex-col items-center gap-3 hover:scale-105 transition-transform cursor-pointer">
+        <div class="w-10 h-10 rounded-full flex items-center justify-center"
              style="background-color: #5c4a6e;">
           <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -115,8 +115,8 @@
       <!-- Inventario Tecnológico -->
       <button v-if="tieneAccesoTecnologia" @click="irA('/tecnologia/equipos')" @animationend="onAnimEnd"
         :class="cardAnimClass"
-        class="bg-white rounded-xl shadow-lg p-5 w-44 flex flex-col items-center gap-3 hover:scale-105 transition-transform cursor-pointer">
-        <div class="w-12 h-12 rounded-full flex items-center justify-center"
+        class="bg-white rounded-xl shadow-lg p-3 w-36 flex flex-col items-center gap-3 hover:scale-105 transition-transform cursor-pointer">
+        <div class="w-10 h-10 rounded-full flex items-center justify-center"
              style="background-color: #4d7c8a;">
           <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -132,8 +132,8 @@
       <!-- Solicitudes de materiales (todos los empleados) -->
       <button v-if="!tieneAccesoAdquisiciones" @click="irA('/adquisiciones/solicitudes')" @animationend="onAnimEnd"
         :class="cardAnimClass"
-        class="bg-white rounded-xl shadow-lg p-5 w-44 flex flex-col items-center gap-3 hover:scale-105 transition-transform cursor-pointer">
-        <div class="w-12 h-12 rounded-full flex items-center justify-center bg-amber-600">
+        class="bg-white rounded-xl shadow-lg p-3 w-36 flex flex-col items-center gap-3 hover:scale-105 transition-transform cursor-pointer">
+        <div class="w-10 h-10 rounded-full flex items-center justify-center bg-amber-600">
           <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2
