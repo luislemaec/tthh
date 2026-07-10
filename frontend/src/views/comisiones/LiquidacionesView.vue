@@ -24,6 +24,56 @@
 
     <template v-else>
 
+      <!-- ═══ TAB: En Revisión (APROBADO / INFORME_APROBADO) ═══ -->
+      <div v-if="tabActivo === 'enRevision'">
+        <p class="text-xs text-gray-400 mb-3">Comisiones aprobadas pendientes de presentar o con informe listo. Solo lectura — puede revisar documentos y devolver si hay novedades.</p>
+        <div v-if="solicitudesEnRevision.length === 0" class="text-center py-16 text-gray-400 text-sm">
+          No hay comisiones en revisión.
+        </div>
+        <div v-else class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-xs text-gray-500 uppercase border-b border-gray-100" style="background-color:#f9f7fb;">
+                <th class="px-4 py-3 text-left font-semibold">N°</th>
+                <th class="px-4 py-3 text-left font-semibold">Empleado</th>
+                <th class="px-4 py-3 text-left font-semibold">Destino</th>
+                <th class="px-4 py-3 text-left font-semibold">Fechas</th>
+                <th class="px-4 py-3 text-left font-semibold">Estado</th>
+                <th class="px-4 py-3 text-left font-semibold">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="sol in solicitudesEnRevision" :key="sol.id"
+                class="border-b border-gray-50 hover:bg-purple-50/20 transition">
+                <td class="px-4 py-3 font-mono text-xs text-gray-600">{{ sol.numero_solicitud || '—' }}</td>
+                <td class="px-4 py-3 font-medium text-gray-800">{{ sol.nombre_empleado }}</td>
+                <td class="px-4 py-3 text-gray-600 text-xs">{{ sol.destino }}</td>
+                <td class="px-4 py-3 text-xs text-gray-500">
+                  {{ formatFecha(sol.fecha_salida) }} — {{ formatFecha(sol.fecha_llegada) }}
+                </td>
+                <td class="px-4 py-3">
+                  <span :class="['text-xs font-semibold px-2 py-0.5 rounded-full',
+                    sol.estado === 'INFORME_APROBADO' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700']">
+                    {{ sol.estado === 'INFORME_APROBADO' ? 'Informe listo' : 'Aprobada' }}
+                  </span>
+                </td>
+                <td class="px-4 py-3 flex items-center gap-2">
+                  <button @click="abrirDetalle(sol)"
+                    class="px-2.5 py-1 text-xs font-semibold border border-[#5c4a6e] text-[#5c4a6e] rounded hover:bg-purple-50 transition">
+                    Ver todo
+                  </button>
+                  <button v-if="miRol.es_contabilidad || miRol.es_presupuesto || miRol.es_dir_financiero || miRol.es_tesoreria || miRol.es_admin"
+                    @click="abrirDevolverSol(sol)"
+                    class="px-2.5 py-1 text-xs font-semibold border border-orange-400 text-orange-600 rounded hover:bg-orange-50 transition">
+                    Devolver
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- ═══ TAB: Anticipos ═══ -->
       <div v-if="tabActivo === 'anticipos'">
         <div v-if="solicitudesConAnticipo.length === 0" class="text-center py-16 text-gray-400 text-sm">
@@ -585,6 +635,10 @@ const solicitudesEnPago = computed(() =>
   solicitudes.value.filter(s => ['EN_PAGO', 'EN_LIQUIDACION', 'POR_COBRAR'].includes(s.estado))
 )
 
+const solicitudesEnRevision = computed(() =>
+  solicitudes.value.filter(s => ['APROBADO', 'INFORME_APROBADO'].includes(s.estado))
+)
+
 const solicitudesCerradas = computed(() =>
   solicitudes.value.filter(s => s.estado === 'CERRADO')
 )
@@ -597,10 +651,15 @@ const pendEnPago = computed(() =>
   solicitudesEnPago.value.length
 )
 
+const pendEnRevision = computed(() =>
+  solicitudesEnRevision.value.length
+)
+
 const tabsVisibles = computed(() => [
-  { key: 'enPago',   label: 'En Proceso', badge: pendEnPago.value > 0 ? pendEnPago.value : null },
-  { key: 'anticipos', label: 'Anticipos', badge: pendAnticipo.value > 0 ? pendAnticipo.value : null },
-  { key: 'cerradas', label: 'Cerradas',   badge: null },
+  { key: 'enRevision', label: 'En Revisión', badge: pendEnRevision.value > 0 ? pendEnRevision.value : null },
+  { key: 'enPago',     label: 'En Proceso',  badge: pendEnPago.value > 0 ? pendEnPago.value : null },
+  { key: 'anticipos',  label: 'Anticipos',   badge: pendAnticipo.value > 0 ? pendAnticipo.value : null },
+  { key: 'cerradas',   label: 'Cerradas',    badge: null },
 ])
 
 const calcularPreview = computed(() => {
