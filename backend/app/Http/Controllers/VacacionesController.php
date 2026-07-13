@@ -142,7 +142,7 @@ class VacacionesController extends Controller
         $esAdminOTH   = $this->esAdminOTH($emp->id_emp);
         $esSupervisor = $this->esSupervisor($emp->id_emp);
 
-        $query = Vacacion::with(["empleado.departamento"])
+        $query = Vacacion::with(["empleado.departamento", "aprobador"])
             ->orderBy("fecha_hora", "desc");
 
         $vista = $request->query("vista", ""); // "mia" | "equipo" | ""
