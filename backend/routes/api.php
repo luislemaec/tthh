@@ -189,8 +189,9 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::get("/certificados-laborales/{id}/descargar",     [\App\Http\Controllers\CertificadoLaboralController::class, "descargar"]);
 
     // Acciones de Personal
-    Route::get("/acciones-personal/reporte/pdf",           [\App\Http\Controllers\AccionPersonalController::class, "reportePdf"]);
+    Route::get("/acciones-personal/reporte/pdf",            [\App\Http\Controllers\AccionPersonalController::class, "reportePdf"]);
     Route::get("/acciones-personal/reporte/excel",         [\App\Http\Controllers\AccionPersonalController::class, "reporteExcel"]);
+    Route::get("/acciones-personal/historial-remuneraciones", [\App\Http\Controllers\AccionPersonalController::class, "historialRemuneraciones"]);
     Route::get("/acciones-personal",                       [\App\Http\Controllers\AccionPersonalController::class, "index"]);
     Route::post("/acciones-personal",                      [\App\Http\Controllers\AccionPersonalController::class, "store"]);
     Route::get("/acciones-personal/{id}",                  [\App\Http\Controllers\AccionPersonalController::class, "show"]);

@@ -418,6 +418,164 @@ class AccionPersonalController extends Controller
         ]);
     }
 
+    // GET /api/acciones-personal/historial-remuneraciones
+    public function historialRemuneraciones(Request $request)
+    {
+        $tiposPermitidos = ['INGRESO', 'ENCARGO', 'SUBROGACION', 'CESACION DE FUNCIONES', 'DESTITUCION'];
+
+        $query = AccionPersonal::with(['empleado'])
+            ->whereIn('tipo_accion', $tiposPermitidos)
+            ->whereNotIn('estado', ['BORRADOR'])
+            ->orderBy('fecha_inicio', 'asc');
+
+        if ($request->filled('id_emp')) {
+            $query->where('id_emp', $request->id_emp);
+        } elseif ($request->filled('buscar')) {
+            $b = $request->buscar;
+            $query->whereHas('empleado', function ($q) use ($b) {
+                $q->where('nombre_emp',    'ilike', "%$b%")
+                  ->orWhere('apellido_emp', 'ilike', "%$b%")
+                  ->orWhere('identificacion', 'ilike', "%$b%");
+            });
+        }
+
+        if ($request->filled('fecha_desde')) {
+            $query->where('fecha_inicio', '>=', $request->fecha_desde);
+        }
+        if ($request->filled('fecha_hasta')) {
+            $query->where('fecha_inicio', '<=', $request->fecha_hasta);
+        }
+
+        if ($request->filled('tipos')) {
+            $tipos = is_array($request->tipos) ? $request->tipos : explode(',', $request->tipos);
+            $query->whereIn('tipo_accion', array_intersect($tipos, $tiposPermitidos));
+        }
+
+        $acciones = $query->get();
+
+        // Sueldo actual de cada empleado involucrado
+        $sueldos = Empleado::whereIn('id_emp', $acciones->pluck('id_emp')->unique())
+            ->pluck('sueldo', 'id_emp');
+
+        // Tipos que usan la situación propuesta (lo que ganó en ese rol)
+        $conPropuesta = ['INGRESO', 'ENCARGO', 'SUBROGACION'];
+
+        $resultado = $acciones->map(function ($a) use ($sueldos, $conPropuesta) {
+            $usaPropuesta = in_array($a->tipo_accion, $conPropuesta);
+            $cargo        = $usaPropuesta ? $a->propuesto_cargo       : $a->actual_cargo;
+            $remuneracion = $usaPropuesta ? $a->propuesto_remuneracion : $a->actual_remuneracion;
+            $sueldoActual = (float) ($sueldos->get($a->id_emp) ?? 0);
+            $diferencia   = round($sueldoActual - (float) ($remuneracion ?? 0), 2);
+
+            return [
+                'id_accion'       => $a->id_accion,
+                'numero_accion'   => $a->numero_accion,
+                'tipo_accion'     => $a->tipo_accion,
+                'fecha_inicio'    => substr((string) $a->fecha_inicio, 0, 10),
+                'fecha_fin'       => $a->fecha_fin ? substr((string) $a->fecha_fin, 0, 10) : null,
+                'cargo'           => $cargo,
+                'remuneracion'    => $remuneracion !== null ? (float) $remuneracion : null,
+                'sueldo_actual'   => $sueldoActual,
+                'diferencia'      => $diferencia,
+                'empleado'        => $a->empleado ? [
+                    'id_emp'          => $a->empleado->id_emp,
+                    'nombre_completo' => trim($a->empleado->apellido_emp . ' ' . $a->empleado->nombre_emp),
+                    'identificacion'  => $a->empleado->identificacion,
+                    'estado'          => $a->empleado->estado,
+                ] : null,
+            ];
+        })->values();
+
+        $formato = $request->query('formato');
+        if ($formato === 'pdf')   return $this->historialPdf($request, $resultado);
+        if ($formato === 'excel') return $this->historialExcel($resultado);
+
+        return response()->json($resultado);
+    }
+
+    private function historialPdf(Request $request, $filas)
+    {
+        $logoPath = public_path('logo.png');
+        $logo     = file_exists($logoPath)
+            ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath))
+            : null;
+
+        $nombreInst  = Configuracion::where('concepto', 'nombre_institucion')->value('valor') ?? 'CONSEJO DE COMUNICACIÓN';
+        $generadoPor = trim($request->user()->apellido_emp . ' ' . $request->user()->nombre_emp);
+
+        $filtroEmp    = $request->filled('buscar') ? $request->buscar : null;
+        $filtroDates  = array_filter([$request->fecha_desde, $request->fecha_hasta]);
+        $periodoLabel = count($filtroDates) === 2
+            ? Carbon::parse($request->fecha_desde)->format('d/m/Y') . ' — ' . Carbon::parse($request->fecha_hasta)->format('d/m/Y')
+            : null;
+
+        $pdf = Pdf::loadView('reportes.acc_historial_remuneraciones', compact(
+            'filas', 'logo', 'nombreInst', 'generadoPor', 'filtroEmp', 'periodoLabel'
+        ))->setPaper('a4', 'landscape');
+
+        return $pdf->stream('historial_remuneraciones_' . now()->format('Ymd') . '.pdf');
+    }
+
+    private function historialExcel($filas)
+    {
+        $spreadsheet = new Spreadsheet();
+        $sheet       = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Historial Remuneraciones');
+
+        $headers = ['N° Acción', 'Empleado', 'Tipo', 'Fecha Inicio', 'Fecha Fin', 'Cargo', 'Remuneración acción', 'Sueldo actual', 'Diferencia'];
+        foreach ($headers as $col => $h) {
+            $cell = chr(65 + $col) . '1';
+            $sheet->setCellValue($cell, $h);
+            $sheet->getStyle($cell)->getFont()->setBold(true);
+            $sheet->getStyle($cell)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('1a4731');
+            $sheet->getStyle($cell)->getFont()->getColor()->setRGB('FFFFFF');
+            $sheet->getStyle($cell)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        }
+
+        foreach ($filas as $i => $f) {
+            $row = $i + 2;
+            $dif = $f['diferencia'];
+            $sheet->setCellValue("A{$row}", $f['numero_accion'] ?? '—');
+            $sheet->setCellValue("B{$row}", $f['empleado']['nombre_completo'] ?? '');
+            $sheet->setCellValue("C{$row}", $f['tipo_accion']);
+            $sheet->setCellValue("D{$row}", $f['fecha_inicio'] ?? '');
+            $sheet->setCellValue("E{$row}", $f['fecha_fin'] ?? 'Vigente');
+            $sheet->setCellValue("F{$row}", $f['cargo'] ?? '');
+            $sheet->setCellValue("G{$row}", $f['remuneracion'] !== null ? number_format($f['remuneracion'], 2) : '');
+            $sheet->setCellValue("H{$row}", number_format($f['sueldo_actual'], 2));
+            $sheet->setCellValue("I{$row}", ($dif >= 0 ? '+' : '') . number_format($dif, 2));
+
+            if ($dif > 0) {
+                $sheet->getStyle("I{$row}")->getFont()->getColor()->setRGB('166534');
+            } elseif ($dif < 0) {
+                $sheet->getStyle("I{$row}")->getFont()->getColor()->setRGB('991b1b');
+            }
+
+            if ($i % 2 === 0) {
+                $sheet->getStyle("A{$row}:I{$row}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('f0fdf4');
+            }
+        }
+
+        foreach (range('A', 'H') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+        $sheet->getColumnDimension('F')->setWidth(40);
+        $sheet->getColumnDimension('I')->setAutoSize(true);
+
+        $writer   = new Xlsx($spreadsheet);
+        $filename = 'historial_remuneraciones_' . now()->format('Ymd') . '.xlsx';
+
+        return response()->stream(
+            fn() => $writer->save('php://output'),
+            200,
+            [
+                'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+                'Cache-Control'       => 'max-age=0',
+            ]
+        );
+    }
+
     // POST /api/acciones-personal/{id}/subir-firmado
     public function subirFirmado(Request $request, $id)
     {

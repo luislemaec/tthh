@@ -51,6 +51,7 @@ const routes = [
       { path: 'admin/modalidades-laborales', name: 'AdminModalidadesLaborales', component: () => import('@/views/admin/ModalidadLaboralView.vue') },
       { path: 'acciones-personal', name: 'AccionesPersonal', component: () => import('@/views/acciones/AccionesPersonalView.vue') },
       { path: 'acciones-personal/nueva', name: 'AccionPersonalNueva', component: () => import('@/views/acciones/AccionPersonalForm.vue') },
+      { path: 'acciones-personal/historial-remuneraciones', name: 'HistorialRemuneraciones', component: () => import('@/views/acciones/HistorialRemuneracionesView.vue') },
       { path: 'admin/cuadre', name: 'AdminCuadre', component: () => import('@/views/admin/cuadre/CuadreView.vue') },
       { path: 'admin/periodos-planificacion', name: 'AdminPeriodosPlanificacion', component: () => import('@/views/admin/periodos/PeriodosView.vue') },
       { path: 'supervisores', name: 'Supervisores', component: () => import('@/views/supervisores/SupervisoresView.vue') },
