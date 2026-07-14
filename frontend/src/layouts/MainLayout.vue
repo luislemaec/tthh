@@ -330,7 +330,8 @@ const menuFiltrado = computed(() => {
   const result = {}
   for (const [cat, items] of Object.entries(auth.menuAgrupado || {})) {
     const filtered = items.filter(item =>
-      !item.url.startsWith('adquisiciones/') && !item.url.startsWith('transporte/')
+      !item.url.startsWith('adquisiciones/') && !item.url.startsWith('transporte/') &&
+      !item.url.startsWith('tecnologia/') && !item.url.startsWith('comisiones/')
     )
     if (filtered.length > 0) result[cat] = filtered
   }
