@@ -270,6 +270,29 @@ class ReporteVacacionesController extends Controller
         ]);
     }
 
+    // ── Editar saldo de un empleado específico ──────────────────────────────
+    public function actualizarSaldo(Request $request, string $id_emp)
+    {
+        if (!$this->esAdminOTH($request)) {
+            return response()->json(['message' => 'Acceso no autorizado'], 403);
+        }
+
+        $request->validate([
+            'dias_adicionales' => 'required|numeric|min:0',
+        ]);
+
+        $emp = Empleado::where('id_emp', $id_emp)
+            ->where('id_depto', '!=', 999)
+            ->firstOrFail();
+
+        CabeceraVacacion::updateOrCreate(
+            ['id_emp' => $emp->id_emp],
+            ['dias_adicionales' => round((float) $request->dias_adicionales, 2)]
+        );
+
+        return response()->json(['message' => 'Saldo actualizado correctamente']);
+    }
+
     // ── Carga masiva de saldos de vacaciones ────────────────────────────────
     public function cargarSaldos(Request $request)
     {

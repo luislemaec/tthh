@@ -268,6 +268,7 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::get("/reporte-vacaciones/pdf",               [\App\Http\Controllers\ReporteVacacionesController::class, "pdf"]);
     Route::post("/reporte-vacaciones/cargar-saldos",    [\App\Http\Controllers\ReporteVacacionesController::class, "cargarSaldos"]);
     Route::get("/reporte-vacaciones/{id_emp}",          [\App\Http\Controllers\ReporteVacacionesController::class, "detalle"]);
+    Route::patch("/reporte-vacaciones/{id_emp}/saldo",  [\App\Http\Controllers\ReporteVacacionesController::class, "actualizarSaldo"]);
 
     // Reporte planificación de vacaciones (TH)
     Route::get("/reporte-planificacion/{anio}/estado",            [ReportePlanificacionController::class, "estado"]);

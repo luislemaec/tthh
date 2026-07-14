@@ -29,6 +29,10 @@
         class="border border-[#0b5447] text-[#0b5447] px-5 py-2 rounded-lg text-sm hover:bg-[#f0f9f7]">
         Cargar Saldos
       </button>
+      <button @click="abrirEditarSaldo"
+        class="border border-amber-600 text-amber-700 px-5 py-2 rounded-lg text-sm hover:bg-amber-50">
+        Editar saldo individual
+      </button>
       <!-- Toggle vista -->
       <div class="ml-auto flex items-center gap-2">
         <label class="text-xs text-gray-500">Vista:</label>
@@ -149,6 +153,82 @@
       Sin resultados para los filtros aplicados.
     </div>
 
+    <!-- Modal Editar saldo individual -->
+    <div v-if="modalEditar" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-lg">
+        <div class="flex items-center justify-between px-6 py-4 border-b">
+          <h2 class="text-lg font-bold text-gray-800">Editar saldo individual</h2>
+          <button @click="modalEditar = false" class="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+        </div>
+
+        <div class="p-6 space-y-4">
+          <!-- Aviso -->
+          <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
+            <strong>Nota:</strong> Solo actualiza el saldo base (días iniciales). No modifica la fecha de corte global
+            ni los días tomados. Para que el saldo no siga acumulando, el empleado debe estar <strong>INACTIVO</strong>
+            con <strong>fecha de salida</strong> registrada en su ficha.
+          </div>
+
+          <!-- Búsqueda de empleado -->
+          <div class="relative">
+            <label class="block text-xs text-gray-500 mb-1">Buscar empleado (activo o inactivo)</label>
+            <input v-model="editBuscar" @input="buscarEmpleadoEdit" placeholder="Nombre o cédula..."
+              class="border rounded-lg px-3 py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-amber-400" />
+            <!-- Dropdown resultados -->
+            <div v-if="editResultados.length"
+              class="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-52 overflow-y-auto">
+              <button v-for="emp in editResultados" :key="emp.id_emp"
+                @click="seleccionarEmpleadoEdit(emp)"
+                class="w-full text-left px-4 py-2 hover:bg-gray-50 border-b last:border-0 text-sm">
+                <div class="font-medium">{{ emp.apellido_emp }}, {{ emp.nombre_emp }}</div>
+                <div class="text-xs text-gray-400 flex gap-2">
+                  <span>{{ emp.identificacion }}</span>
+                  <span :class="emp.estado === 'INACTIVO' ? 'text-red-500 font-semibold' : 'text-green-600'">
+                    {{ emp.estado }}
+                  </span>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <!-- Datos del empleado seleccionado -->
+          <template v-if="editEmpleado">
+            <div class="bg-gray-50 rounded-lg p-3 text-sm space-y-1 border">
+              <p><span class="text-gray-500 text-xs">Empleado:</span> <strong>{{ editEmpleado.apellido_emp }}, {{ editEmpleado.nombre_emp }}</strong></p>
+              <p class="flex items-center gap-2">
+                <span class="text-gray-500 text-xs">Estado:</span>
+                <span :class="editEmpleado.estado === 'INACTIVO' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'"
+                  class="px-2 py-0.5 rounded-full text-xs font-medium">{{ editEmpleado.estado }}</span>
+                <span v-if="editEmpleado.estado === 'INACTIVO' && !editEmpleado.fecha_salida"
+                  class="text-amber-600 text-xs">⚠ Sin fecha de salida — el saldo seguirá acumulando</span>
+              </p>
+              <p v-if="editSaldoActual !== null">
+                <span class="text-gray-500 text-xs">Saldo base actual:</span>
+                <strong class="text-[#0b5447] ml-1">{{ editSaldoActual }} días</strong>
+              </p>
+            </div>
+
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">Nuevo saldo base (días) <span class="text-red-500">*</span></label>
+              <input type="number" v-model="editNuevoSaldo" min="0" step="0.01"
+                class="border rounded-lg px-3 py-2 text-sm w-40 focus:outline-none focus:ring-2 focus:ring-amber-400" />
+            </div>
+          </template>
+        </div>
+
+        <div class="px-6 py-4 border-t flex justify-end gap-3">
+          <button @click="modalEditar = false" class="border px-4 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
+            Cancelar
+          </button>
+          <button @click="guardarSaldoEdit"
+            :disabled="!editEmpleado || editNuevoSaldo === '' || editGuardando"
+            class="bg-amber-600 text-white px-5 py-2 rounded-lg text-sm hover:bg-amber-700 disabled:opacity-50">
+            {{ editGuardando ? 'Guardando...' : 'Guardar saldo' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Modal Cargar Saldos -->
     <div v-if="modalCarga" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
@@ -243,6 +323,77 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import api from '@/services/api'
+
+// Editar saldo individual
+const modalEditar      = ref(false)
+const editBuscar       = ref('')
+const editResultados   = ref([])
+const editEmpleado     = ref(null)
+const editSaldoActual  = ref(null)
+const editNuevoSaldo   = ref('')
+const editGuardando    = ref(false)
+
+let editTimer = null
+
+function abrirEditarSaldo() {
+  editBuscar.value      = ''
+  editResultados.value  = []
+  editEmpleado.value    = null
+  editSaldoActual.value = null
+  editNuevoSaldo.value  = ''
+  modalEditar.value     = true
+}
+
+function buscarEmpleadoEdit() {
+  clearTimeout(editTimer)
+  editResultados.value = []
+  editEmpleado.value   = null
+  const q = editBuscar.value.trim()
+  if (q.length < 2) return
+  editTimer = setTimeout(async () => {
+    try {
+      const { data } = await api.get('/empleados', { params: { buscar: q, per_page: 8 } })
+      editResultados.value = (data.data ?? []).filter(e => parseInt(e.id_depto) !== 999)
+    } catch {}
+  }, 300)
+}
+
+async function seleccionarEmpleadoEdit(emp) {
+  editEmpleado.value    = emp
+  editResultados.value  = []
+  editBuscar.value      = `${emp.apellido_emp}, ${emp.nombre_emp}`
+  editSaldoActual.value = null
+  editNuevoSaldo.value  = ''
+  try {
+    const { data } = await api.get(`/reporte-vacaciones/${emp.id_emp}`)
+    const inicial = (data.movimientos ?? []).find(m => m.tipo === 'INICIAL')
+    editSaldoActual.value = inicial?.entrada ?? 0
+    editNuevoSaldo.value  = String(editSaldoActual.value)
+  } catch {
+    editSaldoActual.value = 0
+    editNuevoSaldo.value  = '0'
+  }
+}
+
+async function guardarSaldoEdit() {
+  if (!editEmpleado.value || editNuevoSaldo.value === '') return
+  editGuardando.value = true
+  try {
+    await api.patch(`/reporte-vacaciones/${editEmpleado.value.id_emp}/saldo`, {
+      dias_adicionales: parseFloat(editNuevoSaldo.value),
+    })
+    modalEditar.value = false
+    // Refrescar kardex si estaba expandido
+    if (kardex.value[editEmpleado.value.id_emp]) {
+      delete kardex.value[editEmpleado.value.id_emp]
+    }
+    if (lista.value.length) cargar()
+  } catch (err) {
+    alert(err.response?.data?.message ?? 'Error al guardar el saldo')
+  } finally {
+    editGuardando.value = false
+  }
+}
 
 const departamentos  = ref([])
 const lista          = ref([])
