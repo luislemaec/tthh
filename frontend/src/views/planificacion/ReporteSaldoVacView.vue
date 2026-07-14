@@ -4,37 +4,41 @@
 
     <!-- Filtros -->
     <div class="bg-white rounded-xl shadow p-4 flex flex-wrap gap-3 items-end">
-      <div>
-        <label class="block text-xs text-gray-500 mb-1">Departamento</label>
-        <select v-model="filtroDep" @change="pagina = 1"
-          class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186] w-52">
-          <option value="">Todos</option>
-          <option v-for="d in departamentos" :key="d.id_depto" :value="d.id_depto">{{ d.nombre_depto }}</option>
-        </select>
-      </div>
-      <div>
-        <label class="block text-xs text-gray-500 mb-1">Buscar empleado</label>
-        <input v-model="buscar" @input="pagina = 1" placeholder="Nombre o cédula"
-          class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186] w-52" />
-      </div>
+      <template v-if="esAdminOTH">
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Departamento</label>
+          <select v-model="filtroDep" @change="pagina = 1"
+            class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186] w-52">
+            <option value="">Todos</option>
+            <option v-for="d in departamentos" :key="d.id_depto" :value="d.id_depto">{{ d.nombre_depto }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Buscar empleado</label>
+          <input v-model="buscar" @input="pagina = 1" placeholder="Nombre o cédula"
+            class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186] w-52" />
+        </div>
+      </template>
       <button @click="cargar" :disabled="cargando"
         class="bg-[#0b5447] text-white px-5 py-2 rounded-lg text-sm hover:bg-[#00372e] disabled:opacity-50">
         {{ cargando ? 'Cargando...' : 'Consultar' }}
       </button>
-      <button v-if="lista.length" @click="descargarPdf" :disabled="generandoPdf"
+      <button v-if="lista.length && esAdminOTH" @click="descargarPdf" :disabled="generandoPdf"
         class="border border-red-600 text-red-600 px-5 py-2 rounded-lg text-sm hover:bg-red-50 disabled:opacity-50">
         {{ generandoPdf ? 'Generando...' : 'Descargar PDF' }}
       </button>
-      <button @click="abrirCargaSaldos"
-        class="border border-[#0b5447] text-[#0b5447] px-5 py-2 rounded-lg text-sm hover:bg-[#f0f9f7]">
-        Cargar Saldos
-      </button>
-      <button @click="abrirEditarSaldo"
-        class="border border-amber-600 text-amber-700 px-5 py-2 rounded-lg text-sm hover:bg-amber-50">
-        Editar saldo individual
-      </button>
-      <!-- Toggle vista -->
-      <div class="ml-auto flex items-center gap-2">
+      <template v-if="esAdminOTH">
+        <button @click="abrirCargaSaldos"
+          class="border border-[#0b5447] text-[#0b5447] px-5 py-2 rounded-lg text-sm hover:bg-[#f0f9f7]">
+          Cargar Saldos
+        </button>
+        <button @click="abrirEditarSaldo"
+          class="border border-amber-600 text-amber-700 px-5 py-2 rounded-lg text-sm hover:bg-amber-50">
+          Editar saldo individual
+        </button>
+      </template>
+      <!-- Toggle vista (solo TH/Admin) -->
+      <div v-if="esAdminOTH" class="ml-auto flex items-center gap-2">
         <label class="text-xs text-gray-500">Vista:</label>
         <label class="flex items-center gap-1 cursor-pointer">
           <input type="radio" v-model="vista" value="resumido" class="accent-[#0b5447]" />
@@ -355,6 +359,12 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import api from '@/services/api'
+import { useAuthStore } from '@/stores/auth'
+
+const auth       = useAuthStore()
+const esAdminOTH = computed(() =>
+  auth.tieneRol('ADMINISTRADOR') || auth.tieneRol('TALENTO HUMANO')
+)
 
 // Editar saldo individual
 const modalEditar         = ref(false)
@@ -478,6 +488,11 @@ const cargaFilasValidas = computed(() => cargaFilas.value.filter(f => !f.error))
 onMounted(async () => {
   const { data } = await api.get('/departamentos')
   departamentos.value = data
+  // Empleado sin rol TH: arranca en vista detallada y carga automáticamente
+  if (!esAdminOTH.value) {
+    vista.value = 'detallado'
+    cargar()
+  }
 })
 
 const listaFiltrada = computed(() => {

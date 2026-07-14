@@ -208,8 +208,20 @@ class ReporteVacacionesController extends Controller
     // ── Listado resumido ─────────────────────────────────────────────────────
     public function index(Request $request)
     {
-        if (!$this->esAdminOTH($request)) {
-            return response()->json(['message' => 'Acceso no autorizado'], 403);
+        $esAdmin = $this->esAdminOTH($request);
+
+        // Empleado sin rol TH/ADMIN: solo ve su propio saldo
+        if (!$esAdmin) {
+            $emp      = $request->user();
+            $cabecera = CabeceraVacacion::where('id_emp', $emp->id_emp)->first();
+            return response()->json([[
+                'id_emp'          => $emp->id_emp,
+                'nombre_completo' => trim($emp->apellido_emp . ' ' . $emp->nombre_emp),
+                'departamento'    => '',
+                'tipo_contrato'   => trim($emp->tipo_contrato ?? ''),
+                'tomados'         => (float)($cabecera?->total_dias_tomados ?? 0),
+                'saldo_actual'    => $this->calcularSaldoActual($emp),
+            ]]);
         }
 
         $query = Empleado::with('departamento')
