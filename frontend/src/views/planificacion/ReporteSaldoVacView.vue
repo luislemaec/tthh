@@ -37,8 +37,8 @@
           Editar saldo individual
         </button>
       </template>
-      <!-- Toggle vista (solo TH/Admin) -->
-      <div v-if="esAdminOTH" class="ml-auto flex items-center gap-2">
+      <!-- Toggle vista (disponible para todos) -->
+      <div class="ml-auto flex items-center gap-2">
         <label class="text-xs text-gray-500">Vista:</label>
         <label class="flex items-center gap-1 cursor-pointer">
           <input type="radio" v-model="vista" value="resumido" class="accent-[#0b5447]" />
@@ -488,10 +488,11 @@ const cargaFilasValidas = computed(() => cargaFilas.value.filter(f => !f.error))
 onMounted(async () => {
   const { data } = await api.get('/departamentos')
   departamentos.value = data
-  // Empleado sin rol TH: arranca en vista detallada y carga automáticamente
+  // Empleado sin rol TH: carga y expande el kardex automáticamente
   if (!esAdminOTH.value) {
     vista.value = 'detallado'
-    cargar()
+    await cargar()
+    if (lista.value.length) toggleDetalle(lista.value[0].id_emp)
   }
 })
 

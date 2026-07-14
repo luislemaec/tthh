@@ -262,7 +262,8 @@ class ReporteVacacionesController extends Controller
     // ── Kardex de un empleado ────────────────────────────────────────────────
     public function detalle(Request $request, string $id_emp)
     {
-        if (!$this->esAdminOTH($request)) {
+        // Empleado normal solo puede ver su propio kardex
+        if (!$this->esAdminOTH($request) && $request->user()->id_emp !== $id_emp) {
             return response()->json(['message' => 'Acceso no autorizado'], 403);
         }
 
