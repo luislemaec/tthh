@@ -117,7 +117,13 @@ class ReporteVacacionesController extends Controller
             $fechaCorte = Carbon::parse($emp->fecha_ingreso);
         }
 
-        $diasCalendario  = max(0, $fechaCorte->diffInDays(Carbon::today()));
+        // Para inactivos con fecha_salida, acumular solo hasta esa fecha
+        $fechaHastaKardex = Carbon::today();
+        if ($emp->estado === 'INACTIVO' && !empty($emp->fecha_salida)) {
+            $fechaHastaKardex = Carbon::parse($emp->fecha_salida);
+        }
+
+        $diasCalendario  = max(0, $fechaCorte->diffInDays($fechaHastaKardex));
         $acumulado       = round($diasCalendario / 360 * ($tasa * 12), 2);
         $diasAdicionales = (float)($cabecera?->dias_adicionales ?? 0);
         $totalTomados    = (float)($cabecera?->total_dias_tomados ?? 0);
