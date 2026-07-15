@@ -509,21 +509,45 @@ views/empleados/        # CRUD empleados, detalle, importación, distributivo
                         # Endpoints sustituta: POST|GET|DELETE /empleados/{id}/sustituta-doc (Alfresco, carpeta empleados/{cedula_APELLIDO}/)
                         # GET /empleados/catalogos-sociales → { grupos_vulnerables, grupos_prioritarios, tipos_discapacidad, enfermedades_catastroficas }
 views/acciones/         # Acciones de personal (lista + formulario + PDF)
+                        # HistorialRemuneracionesView.vue — ruta: acciones-personal/historial-remuneraciones
+                        #   Reporte de cargos y remuneraciones por empleado: todas las acciones de personal
+                        #   con el cargo y sueldo que tenía en cada rol, el sueldo actual y la diferencia
+                        #   Tipos incluidos: INGRESO, ENCARGO, SUBROGACION, CESACION DE FUNCIONES, DESTITUCION
+                        #   INGRESO/ENCARGO/SUBROGACION → usa propuesto_cargo + propuesto_remuneracion
+                        #   CESACION/DESTITUCION → usa actual_cargo + actual_remuneracion
+                        #   Filtros: empleado (autocomplete debounced), fecha_desde, fecha_hasta, tipos (checkboxes)
+                        #   Export PDF (landscape A4, acc_historial_remuneraciones.blade.php) + Excel (PhpSpreadsheet)
+                        #   Diferencia en verde (+) o rojo (-); solo incluye acciones en estado ACTIVO (excluye BORRADOR)
+                        #   Ruta API: GET /api/acciones-personal/historial-remuneraciones [?formato=pdf|excel]
+                        #   Método: AccionPersonalController::historialRemuneraciones()
 views/planificacion/    # Planificación anual de vacaciones, liquidación, reporte
-                        # ReporteSaldoVacView.vue — reporte de saldo de vacaciones (TH/ADMIN)
-                        #   Vista resumida: tabla paginada por empleado con saldo actual
-                        #   Vista detallada: kardex expandible inline por empleado (INICIAL→VACACIONES→DEVENGADO→TOMADOS)
+                        # ReporteSaldoVacView.vue — reporte de saldo de vacaciones
+                        #   Acceso: TH/ADMIN ven todos los empleados; empleado normal ve solo su propio saldo
+                        #   Toggle "Resumido / Detallado" visible para todos los roles
+                        #     — empleado normal: carga automáticamente su registro y expande el kardex al entrar
+                        #     — TH/ADMIN: pueden buscar por empleado/departamento y paginar
+                        #   Botón "Cargar Saldos" y "Editar saldo individual": solo visible para TH/ADMIN
                         #   Botón "Cargar Saldos": modal para subir CSV (cedula,saldo) + nueva fecha de corte
                         #     → actualiza dias_adicionales + total_dias_tomados=0 en d2_cabecera_vacacion
                         #     → actualiza FECHA_CORTE_VACACIONES en d2_configuracion
-                        #   PDF descargable (resumido): GET /api/reporte-vacaciones/pdf
+                        #   Botón "Editar saldo individual": modal para ajustar el saldo de UN empleado
+                        #     → pide el saldo disponible total DESEADO (no dias_adicionales directamente)
+                        #     → back-calcula: dias_adicionales = saldo_deseado + tomados - acumulado
+                        #     → NO toca FECHA_CORTE_VACACIONES ni datos de otros empleados
+                        #     → Ruta: PATCH /api/reporte-vacaciones/{id_emp}/saldo
+                        #   PDF descargable (resumido): GET /api/reporte-vacaciones/pdf — solo TH/ADMIN
                         #   Rutas: GET /api/reporte-vacaciones, GET /api/reporte-vacaciones/{id_emp},
-                        #          GET /api/reporte-vacaciones/pdf, POST /api/reporte-vacaciones/cargar-saldos
+                        #          GET /api/reporte-vacaciones/pdf, POST /api/reporte-vacaciones/cargar-saldos,
+                        #          PATCH /api/reporte-vacaciones/{id_emp}/saldo
                         #   Controlador: ReporteVacacionesController.php
+                        #     — index(): TH/ADMIN → todos los empleados; empleado → solo su propio registro
+                        #     — detalle(): TH/ADMIN → cualquier empleado; empleado → solo su propio id_emp (403 si otro)
                         #     — tiene su propio helper `tasaVacaciones()` (igual que VacacionesController)
                         #       que calcula la tasa correcta incluyendo días adicionales por antigüedad (CT)
                         #     — NO usar tasa fija 1.25 para CÓDIGO DEL TRABAJO: siempre llamar tasaVacaciones()
                         #   Kardex: dias legados (sin registro en d2_vacacion) aparecen como fila "registros anteriores"
+                        #     "registros anteriores" = total_dias_tomados − suma de registros individuales d2_vacacion
+                        #     el CSV resetea total_dias_tomados=0; el saldo del CSV ya incluye días tomados descontados
                         #   Kardex fila DEVENGADO: descripción incluye "X días/año (15 base + Y por antigüedad)"
                         #     cuando el empleado CT tiene 6+ años de servicio
 views/permisos/         # Permisos y licencias — fecha_desde/fecha_hasta default = hoy al abrir modal
@@ -636,13 +660,16 @@ views/reportes/
                              #   Accesible por roles TH/ADMIN a través del menú "Reportes y Marcaciones"
                              #   Mismos datos que ve el ADMINISTRADOR en AsistenciaView; cuadre nocturnamente
 VacacionesView.vue      # Solicitudes de vacaciones del empleado y supervisor
-                        # Tabla muestra: Empleado, Fecha Inicio, Fecha Fin, Días (calculado), Estado, Acciones
+                        # Tabla muestra: Empleado, Fecha Inicio, Fecha Fin, Días (calculado), Estado, Aprobado por, Acciones
+                        #   Columna "Aprobado por": apellido+nombre del supervisor que aprobó (campo aprobado_por en d2_vacacion)
                         #   Columna "Días" = diferencia en días inclusiva (fecha_final - fecha_inicial + 1)
                         #   "Todo el día" eliminado de tabla y modal — vacaciones siempre son día completo
                         # Modal "Solicitar Vacaciones": solo fechas + observaciones (sin checkbox todo_dia ni horas)
                         #   Bloque recordatorio: si el empleado tiene planificación APROBADO/REPLANIFICADO del año
                         #   actual, muestra sus períodos planificados como referencia (GET /planificacion/mi-planificacion)
                         # "Ver detalle por período" eliminado — tabla d2_detalle_vacacion vacía (sin migración)
+                        # Modelo Vacacion.php: relación aprobador() → belongsTo(Empleado, 'aprobado_por', 'id_emp')
+                        # VacacionesController::index() eager-load aprobador junto con empleado.departamento
 views/certificados/
   CertificadosView.vue    # Certificados laborales — solo TH / ADMINISTRADOR
                           # Panel superior: buscador de empleado con debounce 300ms + dropdown de resultados
@@ -1154,7 +1181,7 @@ layouts/TransporteLayout.vue  # Menú dinámico desde auth.menuAgrupado filtrado
                               # Incluye <ChatbotFAB /> como elemento raíz adicional (Vue 3 fragment)
 ```
 
-`MainLayout.vue` excluye `transporte/` y `adquisiciones/` de su menú. `LauncherView.vue` muestra tarjeta Transportes si tiene rol TRANSPORTE, CONDUCTOR, o `puede_solicitar_vehiculo`. Tarjetas del launcher: `w-44 p-5` con íconos `w-12 h-12`.
+`MainLayout.vue` excluye `transporte/`, `adquisiciones/`, `tecnologia/` y `comisiones/` de su menú. `LauncherView.vue` muestra tarjeta Transportes si tiene rol TRANSPORTE, CONDUCTOR, o `puede_solicitar_vehiculo`. Tarjetas del launcher: `w-44 p-5` con íconos `w-12 h-12`.
 
 ### Opciones de menú a configurar en Admin
 
