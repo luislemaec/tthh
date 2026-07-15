@@ -58,7 +58,7 @@ class ReporteVacacionesController extends Controller
             $fechaCorte = Carbon::parse($emp->fecha_ingreso);
         }
 
-        // Para inactivos con fecha_salida, acumular solo hasta esa fecha (no hasta hoy)
+        // INACTIVO con fecha_salida: acumular solo hasta esa fecha (no hasta hoy)
         $fechaHasta = Carbon::today();
         if ($emp->estado === 'INACTIVO' && !empty($emp->fecha_salida)) {
             $fechaHasta = Carbon::parse($emp->fecha_salida);
@@ -117,7 +117,7 @@ class ReporteVacacionesController extends Controller
             $fechaCorte = Carbon::parse($emp->fecha_ingreso);
         }
 
-        // Para inactivos con fecha_salida, acumular solo hasta esa fecha
+        // INACTIVO con fecha_salida: acumular solo hasta esa fecha
         $fechaHastaKardex = Carbon::today();
         if ($emp->estado === 'INACTIVO' && !empty($emp->fecha_salida)) {
             $fechaHastaKardex = Carbon::parse($emp->fecha_salida);
