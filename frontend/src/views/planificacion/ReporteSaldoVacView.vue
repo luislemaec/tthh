@@ -27,7 +27,7 @@
         class="border border-red-600 text-red-600 px-5 py-2 rounded-lg text-sm hover:bg-red-50 disabled:opacity-50">
         {{ generandoPdf ? 'Generando...' : 'Descargar PDF' }}
       </button>
-      <template v-if="esAdminOTH">
+      <template v-if="esAdmin">
         <button @click="abrirCargaSaldos"
           class="border border-[#0b5447] text-[#0b5447] px-5 py-2 rounded-lg text-sm hover:bg-[#f0f9f7]">
           Cargar Saldos
@@ -365,6 +365,7 @@ const auth       = useAuthStore()
 const esAdminOTH = computed(() =>
   auth.tieneRol('ADMINISTRADOR') || auth.tieneRol('TALENTO HUMANO')
 )
+const esAdmin = computed(() => auth.tieneRol('ADMINISTRADOR'))
 
 // Editar saldo individual
 const modalEditar         = ref(false)

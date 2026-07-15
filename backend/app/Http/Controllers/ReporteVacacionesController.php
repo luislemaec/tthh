@@ -32,6 +32,15 @@ class ReporteVacacionesController extends Controller
             ->exists();
     }
 
+    private function esAdministrador(Request $request): bool
+    {
+        return DB::table('dbo.admin_usuario_rol as ur')
+            ->join('dbo.admin_rol as r', 'ur.id_rol', '=', 'r.id')
+            ->where('ur.id_emp', $request->user()->id_emp)
+            ->where('r.descripcion', 'ADMINISTRADOR')
+            ->exists();
+    }
+
     private function tasaVacaciones(Empleado $emp): array
     {
         $contrato = trim($emp->tipo_contrato ?? '');
@@ -298,7 +307,7 @@ class ReporteVacacionesController extends Controller
     // ── Editar saldo de un empleado específico ──────────────────────────────
     public function actualizarSaldo(Request $request, string $id_emp)
     {
-        if (!$this->esAdminOTH($request)) {
+        if (!$this->esAdministrador($request)) {
             return response()->json(['message' => 'Acceso no autorizado'], 403);
         }
 
@@ -321,7 +330,7 @@ class ReporteVacacionesController extends Controller
     // ── Carga masiva de saldos de vacaciones ────────────────────────────────
     public function cargarSaldos(Request $request)
     {
-        if (!$this->esAdminOTH($request)) {
+        if (!$this->esAdministrador($request)) {
             return response()->json(['message' => 'Acceso no autorizado'], 403);
         }
 

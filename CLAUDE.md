@@ -283,6 +283,7 @@ Calculado en `calcularSaldoDisponible()` — usa helper `tasaVacaciones()` en Va
 - Fórmula saldo: `(días desde FECHA_CORTE_VACACIONES / 360) × (tasa_mensual × 12)`
 - Si fecha_ingreso > fecha_corte, se usa fecha_ingreso como base
 - Saldo = `dias_adicionales` (CSV) + devengado − `total_dias_tomados`
+- **Empleados INACTIVOS con `fecha_salida`:** el acumulado se congela en `fecha_salida` (no sigue creciendo hasta hoy). Aplica en `ReporteVacacionesController` (reporte de saldo + kardex) y `LiquidacionVacController`. Condición: `estado = INACTIVO` AND `fecha_salida` no nulo.
 - El response incluye `dias_adicionales_antiguedad` y `dias_anuales` para mostrar en UI
 - Dashboard (empleado CT con 6+ años): chip "+X días/año por antigüedad" en tarjeta saldo
 - Vista Vacaciones (empleado CT con 6+ años): badge azul "15 base + X por antigüedad"
