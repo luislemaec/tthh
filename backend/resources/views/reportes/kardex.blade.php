@@ -15,9 +15,10 @@
   .info-row { display: inline-block; margin-right: 18px; }
   .label { font-weight: bold; }
 
+  .articulo-bloque { margin-bottom: 10px; page-break-inside: avoid; }
+
   table { border-collapse: collapse; width: 100%; table-layout: fixed; margin-top: 4px; }
 
-  /* Header row 1 */
   th {
     border: 1px solid #555;
     padding: 3px 2px;
@@ -60,6 +61,7 @@
   }
 
   .footer { margin-top: 5px; font-size: 6.5px; color: #666; }
+  .separador { height: 6px; }
 </style>
 </head>
 <body>
@@ -80,6 +82,28 @@
     'AJUSTE_NEGATIVO'  => ['badge-ajuste-n',  'Aj. Negativo'],
     'SALDO_INICIAL'    => ['badge-saldo-ini', 'Saldo Inicial'],
   ];
+@endphp
+
+{{-- Encabezado global --}}
+<table style="width:100%; margin-bottom:5px; border-collapse:collapse;">
+  <tr>
+    <td style="width:15%; vertical-align:middle;">
+      <img src="data:image/png;base64,{{ $logoB64 }}" style="height:56px; width:auto;" />
+    </td>
+    <td style="text-align:center; vertical-align:middle;">
+      <div class="header-title">Consejo de Comunicación</div>
+      <div class="header-sub">Tarjeta Kardex — Método Promedio Ponderado (NIC 2)</div>
+      <div style="font-size:7.5px; margin-top:2px; color:#555;">
+        Período: {{ \Carbon\Carbon::parse($request->desde)->format('d/m/Y') }} al {{ \Carbon\Carbon::parse($request->hasta)->format('d/m/Y') }}
+      </div>
+    </td>
+  </tr>
+</table>
+
+@foreach($resultados as $idx => $item)
+@php
+  $articulo = (object) $item['articulo'];
+  $filas    = $item['filas'];
 
   $totalIngCant = 0; $totalIngMonto = 0;
   $totalEgrCant = 0; $totalEgrMonto = 0;
@@ -99,24 +123,13 @@
   }
 @endphp
 
-<table style="width:100%; margin-bottom:5px; border-collapse:collapse;">
-  <tr>
-    <td style="width:15%; vertical-align:middle;">
-      <img src="data:image/png;base64,{{ $logoB64 }}" style="height:56px; width:auto;" />
-    </td>
-    <td style="text-align:center; vertical-align:middle;">
-      <div class="header-title">Consejo de Comunicación</div>
-      <div class="header-sub">Tarjeta Kardex — Método Promedio Ponderado (NIC 2)</div>
-    </td>
-  </tr>
-</table>
+@if($idx > 0)
+<div class="separador"></div>
+@endif
 
+<div class="articulo-bloque">
 <div class="info-block">
   <span class="info-row"><span class="label">Artículo:</span> [{{ $articulo->codigo }}] {{ $articulo->nombre }}</span>
-  <span class="info-row"><span class="label">Período:</span>
-    {{ \Carbon\Carbon::parse($request->desde)->format('d/m/Y') }} al
-    {{ \Carbon\Carbon::parse($request->hasta)->format('d/m/Y') }}
-  </span>
   <span class="info-row"><span class="label">Stock actual:</span> {{ number_format($articulo->stock_actual, 2) }}</span>
   <span class="info-row"><span class="label">Precio s/IVA:</span> $ {{ number_format($articulo->precio_unitario, 4) }}</span>
   <span class="info-row"><span class="label">Valor inventario:</span> $ {{ number_format($articulo->stock_actual * $articulo->precio_unitario, 2) }}</span>
@@ -157,7 +170,6 @@
       <td class="text-center" style="font-size:6.5px">{{ $f->numero_documento ?? '—' }}</td>
       <td><span class="badge {{ $badgeClass }}">{{ $tipoLabel }}</span>@if($f->observacion)<br><span style="font-size:5.5px;color:#555">{{ mb_substr($f->observacion, 0, 40) }}{{ strlen($f->observacion) > 40 ? '…' : '' }}</span>@endif</td>
 
-      {{-- INGRESO --}}
       @if($esIng)
         <td class="td-ing text-right">{{ number_format($f->cantidad_entrada, 2) }}</td>
         <td class="td-ing text-right">{{ number_format($f->precio_movimiento, 4) }}</td>
@@ -174,7 +186,6 @@
         <td class="td-egr text-right">{{ number_format($f->subtotal, 2) }}</td>
       @endif
 
-      {{-- SALDO --}}
       <td class="td-sal text-right">{{ number_format($f->stock_despues, 2) }}</td>
       <td class="td-sal text-right">{{ number_format($f->precio_despues, 4) }}</td>
       <td class="td-sal text-right">{{ number_format($valorSaldo, 2) }}</td>
@@ -183,7 +194,7 @@
     </tr>
     @empty
     <tr>
-      <td colspan="13" style="text-align:center; padding:10px; color:#888;">Sin movimientos en el período seleccionado</td>
+      <td colspan="13" style="text-align:center; padding:10px; color:#888;">Sin movimientos en el período</td>
     </tr>
     @endforelse
   </tbody>
@@ -205,11 +216,12 @@
   </tfoot>
   @endif
 </table>
+</div>
+@endforeach
 
 <div class="footer">
   Generado el: {{ \Carbon\Carbon::now()->format('d/m/Y H:i') }}
-  &nbsp;|&nbsp; Movimientos: {{ count($filas) }}
-  &nbsp;|&nbsp; Saldo final: {{ number_format($ultimoSaldo, 2) }} u. &nbsp;×&nbsp; $ {{ number_format($ultimoPrecio, 4) }} = <strong>$ {{ number_format($ultimoValorSaldo, 2) }}</strong>
+  &nbsp;|&nbsp; Artículos: {{ count($resultados) }}
 </div>
 
 </body>

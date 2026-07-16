@@ -9,7 +9,7 @@ class SolicitudMaterial extends Model
     protected $table = 'adq.solicitud_material';
 
     protected $fillable = [
-        'id_emp', 'id_depto', 'fecha', 'justificacion', 'estado',
+        'id_emp', 'id_depto', 'id_depto_beneficiario', 'fecha', 'justificacion', 'estado',
         'usuario_aprobacion', 'fecha_aprobacion',
         'usuario_despacho', 'fecha_despacho', 'observacion_despacho',
     ];
@@ -17,6 +17,11 @@ class SolicitudMaterial extends Model
     public function empleado()
     {
         return $this->belongsTo(Empleado::class, 'id_emp', 'id_emp');
+    }
+
+    public function aprobador()
+    {
+        return $this->belongsTo(Empleado::class, 'usuario_aprobacion', 'id_emp');
     }
 
     public function detalles()

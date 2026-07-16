@@ -6,12 +6,65 @@ use App\Models\Razon;
 use App\Models\Empleado;
 use App\Models\Supervisor;
 use App\Models\CabeceraVacacion;
+use App\Services\AuditoriaService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class PermisosController extends Controller
 {
+    private string $alfrescoBase = 'http://192.168.26.38:8080/alfresco/api/-default-/public/alfresco/versions/1';
+    private string $alfrescoUser = 'admin';
+    private string $alfrescoPass = 'admin';
+    private string $alfrescoSite = 'talentohumano';
+
+    private function getDocLibNodeId(): string
+    {
+        $resp = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+            ->get("{$this->alfrescoBase}/sites/{$this->alfrescoSite}/containers/documentLibrary");
+        if (!$resp->successful()) abort(502, 'No se pudo conectar con Alfresco');
+        return $resp->json('entry.id');
+    }
+
+    private function getOrCreateFolderNodeId(string $parentNodeId, string $folderName): string
+    {
+        $buscarPorNombre = function (string $parent, string $nombre): ?string {
+            $resp    = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+                ->get("{$this->alfrescoBase}/nodes/{$parent}/children", [
+                    'where'    => '(isFolder=true)',
+                    'maxItems' => 500,
+                ]);
+            $entries = $resp->json('list.entries') ?? [];
+            foreach ($entries as $e) {
+                if ($e['entry']['name'] === $nombre) return $e['entry']['id'];
+            }
+            return null;
+        };
+
+        $found = $buscarPorNombre($parentNodeId, $folderName);
+        if ($found) return $found;
+
+        $create = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+            ->post("{$this->alfrescoBase}/nodes/{$parentNodeId}/children", [
+                'name'     => $folderName,
+                'nodeType' => 'cm:folder',
+            ]);
+
+        if ($create->status() === 409) {
+            $found = $buscarPorNombre($parentNodeId, $folderName);
+            if ($found) return $found;
+        }
+
+        if (!$create->successful()) abort(502, 'No se pudo crear la carpeta en Alfresco');
+        return $create->json('entry.id');
+    }
+
     // Verificar si el empleado es supervisor
     private function esSupervisor($id_emp)
     {
@@ -28,18 +81,29 @@ class PermisosController extends Controller
             ->exists();
     }
 
-    // Obtener IDs de empleados que supervisa
+    // Obtener IDs de empleados que supervisa (incluyendo supervisores de depts hijos)
     private function empleadosDeSupervisor($id_supervisor)
     {
-        // Obtener departamentos que supervisa
         $deptos = Supervisor::where("id_supervisor", $id_supervisor)
             ->pluck("id_depto");
 
-        // Obtener empleados de esos departamentos
-        return Empleado::whereIn("id_depto", $deptos)
+        // Empleados directos en los departamentos supervisados
+        $empleadosDirectos = Empleado::whereIn("id_depto", $deptos)
             ->where("estado", "ACTIVO")
             ->where("id_emp", "!=", $id_supervisor)
             ->pluck("id_emp");
+
+        // Supervisores de departamentos hijos de los supervisados
+        // (ej: coordinador ve al director, presidencia ve al coordinador)
+        $deptosHijos = DB::table("dbo.ad_departamento")
+            ->whereIn("padre_id", $deptos)
+            ->pluck("id_depto");
+
+        $supervisoresHijos = Supervisor::whereIn("id_depto", $deptosHijos)
+            ->where("id_supervisor", "!=", $id_supervisor)
+            ->pluck("id_supervisor");
+
+        return $empleadosDirectos->merge($supervisoresHijos)->unique()->values();
     }
 
     // Listar permisos
@@ -49,24 +113,31 @@ class PermisosController extends Controller
         $esAdminOTH  = $this->esAdminOTH($emp->id_emp);
         $esSupervisor = $this->esSupervisor($emp->id_emp);
 
-        $query = Permiso::with(["empleado.departamento", "razonPermiso"])
+        $query = Permiso::with(["empleado.departamento", "razonPermiso", "aprobador"])
             ->orderBy("fecha_hora", "desc");
 
+        $vista = $request->query("vista", ""); // "mia" | "equipo" | "" (todos)
+
         if ($esAdminOTH) {
-            // Admin y TH ven todos
+            if ($vista === "mia") {
+                $query->where("id_emp", $emp->id_emp);
+            }
+            // vista=equipo o sin vista: ve todos (admin/TH)
         } elseif ($esSupervisor) {
-            // Supervisor ve sus propios permisos + pendientes de sus empleados
-            $deptos = Supervisor::where("id_supervisor", $emp->id_emp)->pluck("id_depto");
-            $empleados = Empleado::whereIn("id_depto", $deptos)->where("estado", "ACTIVO")->where("id_emp", "!=", $emp->id_emp)->pluck("id_emp");
-            $query->where(function($q) use ($emp, $empleados) {
-                $q->where("id_emp", $emp->id_emp)
-                  ->orWhere(function($q2) use ($empleados) {
-                      $q2->whereIn("id_emp", $empleados)
-                         ->whereIn("estado_permiso", ["PENDIENTE", "APROBADO", "NEGADO", "ELIMINADO"]);
-                  });
-            });
+            $empleados = $this->empleadosDeSupervisor($emp->id_emp);
+            if ($vista === "mia") {
+                $query->where("id_emp", $emp->id_emp);
+            } elseif ($vista === "equipo") {
+                $query->whereIn("id_emp", $empleados);
+            } else {
+                // Sin vista: comportamiento anterior (propio + equipo)
+                $query->where(function($q) use ($emp, $empleados) {
+                    $q->where("id_emp", $emp->id_emp)
+                      ->orWhereIn("id_emp", $empleados);
+                });
+            }
         } else {
-            // Empleado solo ve sus propios permisos
+            // Empleado sin rol especial: solo ve los suyos
             $query->where("id_emp", $emp->id_emp);
         }
 
@@ -84,7 +155,37 @@ class PermisosController extends Controller
             $query->where("descontable", $request->descontable);
         }
 
-        return response()->json($query->paginate($request->get("per_page", 15)));
+        // Export si se solicita
+        if ($request->filled('formato')) {
+            $items = $query->get();
+            return $this->exportarPermisosArchivo($items, $request->formato, $request);
+        }
+
+        $result = $query->paginate($request->get("per_page", 15));
+
+        // Aviso para el supervisor: permiso ENTRADA/SALIDA descontable de un día
+        // que ya pasó y no tuvo atraso real registrado (posible error del empleado)
+        $hoy = Carbon::today();
+        foreach ($result->items() as $permiso) {
+            $permiso->sin_atraso = false;
+            if (
+                $permiso->descontable === "SI" &&
+                in_array($permiso->tipo_horario, ["ENTRADA", "SALIDA"]) &&
+                $permiso->fecha_desde &&
+                Carbon::parse($permiso->fecha_desde)->lte($hoy)
+            ) {
+                $cuadre = DB::table("dbo.d2_cuadre_marcacion")
+                    ->where("id_emp", $permiso->id_emp)
+                    ->whereDate("fecha", Carbon::parse($permiso->fecha_desde)->toDateString())
+                    ->first();
+                if ($cuadre) {
+                    $atraso = $permiso->tipo_horario === "ENTRADA" ? $cuadre->atraso_entrada : $cuadre->atraso_salida;
+                    $permiso->sin_atraso = (float) $atraso === 0.0;
+                }
+            }
+        }
+
+        return response()->json($result);
     }
 
     // Obtener info del usuario actual para el frontend
@@ -109,7 +210,9 @@ class PermisosController extends Controller
             "todo_dia"      => "nullable|string",
             "observaciones" => "nullable|string|max:250",
             "concepto"      => "nullable|string|max:20",
-            "tipo_horario"  => "required|in:ENTRADA,ENTRE JORNADA,SALIDA",
+            "tipo_horario"  => $request->todo_dia === 'SI'
+                ? "nullable"
+                : "required|in:ENTRADA,ENTRE JORNADA,SALIDA",
         ]);
 
         $emp   = $request->user();
@@ -129,9 +232,11 @@ class PermisosController extends Controller
 
         $razon = Razon::findOrFail($request->sec_permiso);
 
-        // Verificar que no tenga un permiso con fechas/horas que se crucen
+        // Verificar que no tenga un permiso del mismo tipo con fechas/horas que se crucen.
+        // Permisos de distinto tipo_horario (ej. ENTRADA y SALIDA) pueden coexistir el mismo día.
         $queryExiste = Permiso::where("id_emp", $emp->id_emp)
-            ->whereNotIn("estado_permiso", ["NEGADO", "ELIMINADO"])
+            ->whereNotIn("estado_permiso", ["NEGADO", "ELIMINADO", "ANULADO"])
+            ->where("tipo_horario", $request->tipo_horario)
             ->where(function($q) use ($request) {
                 $q->whereBetween("fecha_desde", [$request->fecha_desde, $request->fecha_hasta])
                   ->orWhereBetween("fecha_hasta", [$request->fecha_desde, $request->fecha_hasta]);
@@ -152,7 +257,7 @@ class PermisosController extends Controller
 
         if ($queryExiste->exists()) {
             return response()->json([
-                "message" => "Ya tienes un permiso registrado en ese horario"
+                "message" => "Ya tienes un permiso de ese tipo registrado en ese horario"
             ], 422);
         }
 
@@ -262,6 +367,11 @@ class PermisosController extends Controller
             $fechaActual->addDay();
         }
 
+        AuditoriaService::log('dbo.d2_permiso', $permiso->id, 'APROBAR',
+            ['estado_permiso' => 'PENDIENTE'],
+            ['estado_permiso' => 'APROBADO', 'fecha_desde' => $permiso->fecha_desde, 'fecha_hasta' => $permiso->fecha_hasta, 'descontable' => $permiso->descontable],
+            $request, "Aprobación de permiso: {$permiso->nombre_emp}");
+
         return response()->json([
             "message" => "Permiso aprobado correctamente",
             "permiso" => $permiso->load(["empleado", "razonPermiso"]),
@@ -305,6 +415,11 @@ class PermisosController extends Controller
             "observacion_negacion" => $request->observacion_negacion,
         ]);
 
+        AuditoriaService::log('dbo.d2_permiso', $permiso->id, 'NEGAR',
+            ['estado_permiso' => 'PENDIENTE'],
+            ['estado_permiso' => 'NEGADO', 'observacion' => $request->observacion_negacion],
+            $request, "Negación de permiso: {$permiso->nombre_emp}");
+
         return response()->json([
             "message" => "Permiso negado",
             "permiso" => $permiso->load(["empleado", "razonPermiso"]),
@@ -339,13 +454,214 @@ class PermisosController extends Controller
             "observacion_negacion" => $request->observacion_negacion,
         ]);
 
+        AuditoriaService::log('dbo.d2_permiso', $permiso->id, 'ELIMINAR',
+            ['estado_permiso' => 'PENDIENTE', 'fecha_desde' => $permiso->fecha_desde, 'fecha_hasta' => $permiso->fecha_hasta],
+            ['estado_permiso' => 'ELIMINADO', 'observacion' => $request->observacion_negacion],
+            $request, "Eliminación de permiso: {$permiso->nombre_emp}");
+
         return response()->json(["message" => "Permiso eliminado correctamente"]);
+    }
+
+    // GET /api/permisos/{id}/documentos
+    public function listarDocumentos($id)
+    {
+        $docs = DB::table('dbo.d2_permiso_documento')
+            ->where('permiso_id', $id)
+            ->orderBy('created_at')
+            ->get();
+        return response()->json($docs);
+    }
+
+    // POST /api/permisos/{id}/documentos
+    public function subirDocumento(Request $request, $id)
+    {
+        $request->validate([
+            'archivo'  => 'required|file|mimes:pdf,jpg,jpeg,png|max:20480',
+            'tipo_doc' => 'required|string|max:60',
+        ]);
+
+        $permiso = Permiso::with('empleado')->findOrFail($id);
+        if ($permiso->estado_permiso !== 'PENDIENTE') {
+            return response()->json(['message' => 'Solo se pueden adjuntar documentos en permisos PENDIENTES.'], 422);
+        }
+        $empleado     = $permiso->empleado;
+        $anio         = Carbon::parse($permiso->fecha_desde)->year;
+        $cedula       = $empleado->id_emp;
+        $apellido     = strtoupper(trim($empleado->apellido_emp));
+        $carpetaEmp   = "{$cedula}_{$apellido}";
+        $relativePath = "permisos/{$anio}/{$carpetaEmp}";
+
+        $docLibId   = $this->getDocLibNodeId();
+        $archivo    = $request->file('archivo');
+        $ext        = $archivo->getClientOriginalExtension();
+        $nombreBase = "permiso_{$id}_{$request->tipo_doc}.{$ext}";
+
+        $upload = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+            ->attach('filedata', file_get_contents($archivo->getRealPath()), $nombreBase)
+            ->post("{$this->alfrescoBase}/nodes/{$docLibId}/children", [
+                'name'         => $nombreBase,
+                'nodeType'     => 'cm:content',
+                'relativePath' => $relativePath,
+                'autoRename'   => true,
+            ]);
+
+        if (!$upload->successful()) {
+            return response()->json(['message' => 'Error al subir el archivo a Alfresco'], 502);
+        }
+
+        $alfrescoId   = $upload->json('entry.id');
+        $nombreFinal  = $upload->json('entry.name');
+
+        DB::table('dbo.d2_permiso_documento')->insert([
+            'permiso_id'     => $id,
+            'tipo_doc'       => $request->tipo_doc,
+            'nombre_archivo' => $nombreFinal,
+            'alfresco_id'    => $alfrescoId,
+            'created_by'     => $request->user()->id_emp,
+            'created_at'     => now(),
+        ]);
+
+        return response()->json(['message' => 'Documento subido correctamente.', 'nombre' => $nombreFinal], 201);
+    }
+
+    // DELETE /api/permisos/{id}/documentos/{docId}
+    public function eliminarDocumento(Request $request, $id, $docId)
+    {
+        $permiso = Permiso::findOrFail($id);
+        if ($permiso->estado_permiso !== 'PENDIENTE') {
+            return response()->json(['message' => 'No se pueden eliminar documentos de un permiso ya procesado.'], 422);
+        }
+
+        $doc = DB::table('dbo.d2_permiso_documento')
+            ->where('id', $docId)
+            ->where('permiso_id', $id)
+            ->first();
+
+        if (!$doc) return response()->json(['message' => 'Documento no encontrado'], 404);
+
+        Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+            ->delete("{$this->alfrescoBase}/nodes/{$doc->alfresco_id}");
+
+        DB::table('dbo.d2_permiso_documento')->where('id', $docId)->delete();
+
+        return response()->json(['message' => 'Documento eliminado']);
+    }
+
+    // GET /api/permisos/{id}/documentos/{docId}/descargar
+    public function descargarDocumento($id, $docId)
+    {
+        $doc = DB::table('dbo.d2_permiso_documento')
+            ->where('id', $docId)
+            ->where('permiso_id', $id)
+            ->first();
+
+        if (!$doc) return response()->json(['message' => 'Documento no encontrado'], 404);
+
+        $resp = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+            ->get("{$this->alfrescoBase}/nodes/{$doc->alfresco_id}/content");
+
+        if (!$resp->successful()) {
+            return response()->json(['message' => 'No se pudo obtener el archivo desde Alfresco'], 502);
+        }
+
+        $ext  = pathinfo($doc->nombre_archivo, PATHINFO_EXTENSION);
+        $mime = in_array($ext, ['jpg','jpeg','png']) ? "image/{$ext}" : 'application/pdf';
+
+        return response($resp->body(), 200, [
+            'Content-Type'        => $mime,
+            'Content-Disposition' => "inline; filename=\"{$doc->nombre_archivo}\"",
+        ]);
+    }
+
+    // Anular permiso aprobado (solo TH/ADMIN) — revierte el descuento de vacaciones
+    public function anular(Request $request, $id)
+    {
+        $request->validate([
+            'observacion_negacion' => 'required|string|max:120',
+        ]);
+
+        $actor = $request->user();
+
+        if (!$this->esAdminOTH($actor->id_emp)) {
+            return response()->json(['message' => 'Solo Talento Humano o Administrador puede anular un permiso aprobado'], 403);
+        }
+
+        $permiso = Permiso::findOrFail($id);
+
+        if ($permiso->estado_permiso !== 'APROBADO') {
+            return response()->json(['message' => 'Solo se pueden anular permisos en estado APROBADO'], 422);
+        }
+
+        // Revertir descuento de vacaciones si era descontable
+        if ($permiso->descontable === 'SI') {
+            $empleado     = Empleado::with('jornada')->find($permiso->id_emp);
+            $horasJornada = $empleado?->jornada ? (float) $empleado->jornada->normal : 8.0;
+
+            if ($permiso->todo_dia === 'SI') {
+                $diasDescuento = Carbon::parse($permiso->fecha_desde)
+                    ->diffInDays(Carbon::parse($permiso->fecha_hasta)) + 1;
+            } else {
+                $horas         = Carbon::parse($permiso->hora_desde)
+                    ->diffInMinutes(Carbon::parse($permiso->hora_hasta)) / 60;
+                $diasDescuento = round($horas / $horasJornada, 4);
+            }
+
+            $cabecera = CabeceraVacacion::where('id_emp', $permiso->id_emp)->first();
+            if ($cabecera) {
+                $cabecera->dias_x_tomar_normal = round((float)($cabecera->dias_x_tomar_normal ?? 0) + $diasDescuento, 4);
+                $cabecera->total_dias_tomados  = max(0, round((float)($cabecera->total_dias_tomados ?? 0) - $diasDescuento, 4));
+                $cabecera->save();
+            }
+        }
+
+        // Revertir actualización del cuadre
+        $campo       = $permiso->descontable === 'SI' ? 'horas_decto' : 'horaspermiso_pag';
+        $diasRango   = $permiso->todo_dia === 'SI'
+            ? (Carbon::parse($permiso->fecha_desde)->diffInDays(Carbon::parse($permiso->fecha_hasta)) + 1)
+            : 1;
+
+        if ($permiso->todo_dia === 'SI') {
+            $diasXDia = 1;
+        } else {
+            $empleado     = $empleado ?? Empleado::with('jornada')->find($permiso->id_emp);
+            $horasJornada = $empleado?->jornada ? (float) $empleado->jornada->normal : 8.0;
+            $horas        = Carbon::parse($permiso->hora_desde)
+                ->diffInMinutes(Carbon::parse($permiso->hora_hasta)) / 60;
+            $diasXDia     = round($horas / $horasJornada, 4);
+        }
+
+        $fechaActual = Carbon::parse($permiso->fecha_desde);
+        for ($i = 0; $i < $diasRango; $i++) {
+            DB::table('dbo.d2_cuadre_marcacion')
+                ->where('id_emp', $permiso->id_emp)
+                ->whereDate('fecha', $fechaActual->toDateString())
+                ->update([
+                    $campo => DB::raw("GREATEST(0, COALESCE($campo, 0) - $diasXDia)"),
+                ]);
+            $fechaActual->addDay();
+        }
+
+        $permiso->update([
+            'estado_permiso'       => 'ANULADO',
+            'observacion_negacion' => $request->observacion_negacion,
+            'usuario'              => $actor->id_emp,
+        ]);
+
+        AuditoriaService::log('dbo.d2_permiso', $permiso->id, 'ANULAR',
+            ['estado_permiso' => 'APROBADO', 'descontable' => $permiso->descontable],
+            ['estado_permiso' => 'ANULADO', 'observacion' => $request->observacion_negacion],
+            $request, "Anulación de permiso aprobado: {$permiso->id_emp}");
+
+        return response()->json([
+            'message' => 'Permiso anulado y descuento revertido correctamente',
+            'permiso' => $permiso->load(['empleado', 'razonPermiso']),
+        ]);
     }
 
     // Listar razones
     public function razones()
     {
-        return response()->json(Razon::orderBy("descripcion")->get());
+        return response()->json(Razon::where('estado', 'ACTIVO')->orderBy("descripcion")->get());
     }
 
 // Estadística de permisos por supervisor
@@ -404,5 +720,110 @@ public function estadistica(Request $request)
 
     return response()->json(array_values($resumen));
 }
+
+    // ─── Export helpers ────────────────────────────────────────────────────────
+
+    private function exportarPermisosArchivo($items, string $formato, Request $request)
+    {
+        // Preparar filas
+        $filas = [];
+        foreach ($items as $p) {
+            $nombreEmp = trim(($p->empleado->apellido_emp ?? '') . ' ' . ($p->empleado->nombre_emp ?? ''));
+            $depto     = $p->empleado->departamento->descripcion ?? '';
+            $razon     = $p->razonPermiso->descripcion ?? '';
+            $filas[] = [
+                'empleado'    => $nombreEmp,
+                'depto'       => $depto,
+                'razon'       => $razon,
+                'tipo_horario'=> $p->tipo_horario ?? '',
+                'fecha_desde' => $p->fecha_desde ? Carbon::parse($p->fecha_desde)->format('d/m/Y') : '',
+                'fecha_hasta' => $p->fecha_hasta ? Carbon::parse($p->fecha_hasta)->format('d/m/Y') : '',
+                'todo_dia'    => $p->todo_dia === 'SI' ? 'Sí' : 'No',
+                'descontable' => $p->descontable === 'SI' ? 'Sí' : 'No',
+                'estado'      => $p->estado_permiso ?? '',
+            ];
+        }
+
+        if ($formato === 'excel') {
+            return $this->exportarPermisosExcel($filas);
+        }
+        return $this->exportarPermisosPdf($filas, $request);
+    }
+
+    private function exportarPermisosExcel(array $filas)
+    {
+        $spreadsheet = new Spreadsheet();
+        $sheet       = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Permisos');
+
+        // Encabezado institucional
+        $sheet->setCellValue('A1', 'CONSEJO DE COMUNICACIÓN DEL ECUADOR');
+        $sheet->setCellValue('A2', 'REPORTE DE PERMISOS Y LICENCIAS');
+        $sheet->setCellValue('A3', 'Generado: ' . now()->format('d/m/Y H:i'));
+        foreach (['A1','A2','A3'] as $c) {
+            $sheet->getStyle($c)->getFont()->setBold(true);
+        }
+
+        // Cabeceras
+        $headers = ['Empleado','Departamento','Razón','Tipo Horario','Fecha Desde','Fecha Hasta','Todo el Día','Descontable','Estado'];
+        $cols    = ['A','B','C','D','E','F','G','H','I'];
+        foreach ($headers as $i => $h) {
+            $cell = $cols[$i] . '5';
+            $sheet->setCellValue($cell, $h);
+            $sheet->getStyle($cell)->applyFromArray([
+                'font'      => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF']],
+                'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF0B5447']],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+            ]);
+        }
+
+        // Datos
+        $row = 6;
+        foreach ($filas as $f) {
+            $sheet->setCellValue("A{$row}", $f['empleado']);
+            $sheet->setCellValue("B{$row}", $f['depto']);
+            $sheet->setCellValue("C{$row}", $f['razon']);
+            $sheet->setCellValue("D{$row}", $f['tipo_horario']);
+            $sheet->setCellValue("E{$row}", $f['fecha_desde']);
+            $sheet->setCellValue("F{$row}", $f['fecha_hasta']);
+            $sheet->setCellValue("G{$row}", $f['todo_dia']);
+            $sheet->setCellValue("H{$row}", $f['descontable']);
+            $sheet->setCellValue("I{$row}", $f['estado']);
+            if ($row % 2 === 0) {
+                $sheet->getStyle("A{$row}:I{$row}")->applyFromArray([
+                    'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFF4FBF8']],
+                ]);
+            }
+            $row++;
+        }
+
+        foreach ($cols as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        $writer   = new Xlsx($spreadsheet);
+        $filename = 'permisos_' . now()->format('Ymd_His') . '.xlsx';
+
+        ob_start();
+        $writer->save('php://output');
+        $content = ob_get_clean();
+
+        return response($content, 200, [
+            'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ]);
+    }
+
+    private function exportarPermisosPdf(array $filas, Request $request)
+    {
+        $logo          = base64_encode(file_get_contents(public_path('logo.png')));
+        $nombreInst    = 'CONSEJO DE COMUNICACIÓN DEL ECUADOR';
+        $generadoPor   = trim($request->user()->apellido_emp . ' ' . $request->user()->nombre_emp);
+
+        $pdf = Pdf::loadView('reportes.permisos_lista', compact('filas', 'logo', 'nombreInst', 'generadoPor'))
+            ->setPaper('a4', 'landscape');
+
+        return $pdf->stream('permisos_' . now()->format('Ymd_His') . '.pdf');
+    }
 
 }

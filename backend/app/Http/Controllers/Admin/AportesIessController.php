@@ -16,7 +16,6 @@ class AportesIessController extends Controller
     }
 
     // GET /api/admin/aportes-iess/vigentes
-    // Retorna las tasas vigentes por modalidad (para usar en otros módulos)
     public function vigentes()
     {
         $aportes = AportesIess::whereNull('fecha_hasta')
@@ -29,31 +28,37 @@ class AportesIessController extends Controller
     }
 
     // POST /api/admin/aportes-iess
-    // Registra nuevas tasas y cierra las anteriores de la misma modalidad
     public function store(Request $request)
     {
         $request->validate([
             'modalidad'         => 'required|string|max:100',
             'aporte_individual' => 'required|numeric|min:0|max:100',
             'aporte_patronal'   => 'required|numeric|min:0|max:100',
+            'iece_patronal'     => 'nullable|numeric|min:0|max:100',
+            'iece_personal'     => 'nullable|numeric|min:0|max:100',
+            'secap_patronal'    => 'nullable|numeric|min:0|max:100',
+            'secap_personal'    => 'nullable|numeric|min:0|max:100',
             'fecha_desde'       => 'required|date',
         ]);
 
         DB::beginTransaction();
         try {
-            // Cerrar la tasa vigente anterior de esta modalidad
             AportesIess::where('modalidad', $request->modalidad)
                 ->whereNull('fecha_hasta')
                 ->update(['fecha_hasta' => date('Y-m-d', strtotime($request->fecha_desde . ' -1 day'))]);
 
-            // Crear nueva tasa
             $aporte = AportesIess::create([
                 'modalidad'         => $request->modalidad,
                 'aporte_individual' => $request->aporte_individual,
                 'aporte_patronal'   => $request->aporte_patronal,
+                'iece_patronal'     => $request->input('iece_patronal', 0),
+                'iece_personal'     => $request->input('iece_personal', 0),
+                'secap_patronal'    => $request->input('secap_patronal', 0),
+                'secap_personal'    => $request->input('secap_personal', 0),
                 'fecha_desde'       => $request->fecha_desde,
                 'fecha_hasta'       => null,
                 'created_at'        => now(),
+                'created_by'        => $request->user()->id_emp,
             ]);
 
             DB::commit();
@@ -64,13 +69,6 @@ class AportesIessController extends Controller
         }
     }
 
-    // DELETE /api/admin/aportes-iess/{id}
-    public function destroy($id)
-    {
-        AportesIess::findOrFail($id)->delete();
-        return response()->json(['message' => 'Eliminado correctamente.']);
-    }
-
     // PUT /api/admin/aportes-iess/{id}
     public function update(Request $request, $id)
     {
@@ -78,6 +76,10 @@ class AportesIessController extends Controller
             'modalidad'         => 'required|string|max:100',
             'aporte_individual' => 'required|numeric|min:0|max:100',
             'aporte_patronal'   => 'required|numeric|min:0|max:100',
+            'iece_patronal'     => 'nullable|numeric|min:0|max:100',
+            'iece_personal'     => 'nullable|numeric|min:0|max:100',
+            'secap_patronal'    => 'nullable|numeric|min:0|max:100',
+            'secap_personal'    => 'nullable|numeric|min:0|max:100',
             'fecha_desde'       => 'required|date',
         ]);
 
@@ -86,10 +88,23 @@ class AportesIessController extends Controller
             'modalidad'         => $request->modalidad,
             'aporte_individual' => $request->aporte_individual,
             'aporte_patronal'   => $request->aporte_patronal,
+            'iece_patronal'     => $request->input('iece_patronal', $aporte->iece_patronal),
+            'iece_personal'     => $request->input('iece_personal', $aporte->iece_personal),
+            'secap_patronal'    => $request->input('secap_patronal', $aporte->secap_patronal),
+            'secap_personal'    => $request->input('secap_personal', $aporte->secap_personal),
             'fecha_desde'       => $request->fecha_desde,
             'fecha_hasta'       => $request->fecha_hasta ?? $aporte->fecha_hasta,
+            'updated_at'        => now(),
+            'updated_by'        => $request->user()->id_emp,
         ]);
 
         return response()->json($aporte);
+    }
+
+    // DELETE /api/admin/aportes-iess/{id}
+    public function destroy($id)
+    {
+        AportesIess::findOrFail($id)->delete();
+        return response()->json(['message' => 'Eliminado correctamente.']);
     }
 }

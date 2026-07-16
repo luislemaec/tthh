@@ -3,6 +3,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Configuracion;
+use App\Services\AuditoriaService;
 use Illuminate\Http\Request;
 
 class ConfiguracionController extends Controller
@@ -19,11 +20,23 @@ class ConfiguracionController extends Controller
     public function update(Request $request, $concepto)
     {
         $request->validate([
-            "valor" => "required|string|max:150",
+            "valor"       => "required|string|max:150",
+            "descripcion" => "nullable|string|max:300",
         ]);
 
         $config = Configuracion::findOrFail($concepto);
-        $config->update(["valor" => $request->valor]);
+        $valorAnterior = $config->valor;
+        $config->update([
+            "valor"       => $request->valor,
+            "descripcion" => $request->descripcion,
+            "updated_at"  => now(),
+            "updated_by"  => $request->user()->id_emp,
+        ]);
+
+        AuditoriaService::log('dbo.d2_configuracion', 0, 'ACTUALIZAR',
+            ['concepto' => $concepto, 'valor' => $valorAnterior],
+            ['concepto' => $concepto, 'valor' => $request->valor],
+            $request, "Cambio de configuración: {$concepto}");
 
         return response()->json($config);
     }
@@ -32,8 +45,9 @@ class ConfiguracionController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            "concepto" => "required|string|max:120",
-            "valor"    => "required|string|max:150",
+            "concepto"    => "required|string|max:120",
+            "valor"       => "required|string|max:150",
+            "descripcion" => "nullable|string|max:300",
         ]);
 
         $existe = Configuracion::where("concepto", $request->concepto)->exists();
@@ -44,8 +58,13 @@ class ConfiguracionController extends Controller
         }
 
         $config = Configuracion::create([
-            "concepto" => $request->concepto,
-            "valor"    => $request->valor,
+            "concepto"    => $request->concepto,
+            "valor"       => $request->valor,
+            "descripcion" => $request->descripcion,
+            "created_at"  => now(),
+            "created_by"  => $request->user()->id_emp,
+            "updated_at"  => now(),
+            "updated_by"  => $request->user()->id_emp,
         ]);
 
         return response()->json($config, 201);
@@ -56,6 +75,22 @@ class ConfiguracionController extends Controller
     {
         Configuracion::findOrFail($concepto)->delete();
         return response()->json(["message" => "Parámetro eliminado correctamente"]);
+    }
+
+    // Firmantes de acciones de personal (para pre-llenar el formulario)
+    public function firmantes()
+    {
+        $cfg = Configuracion::whereIn("concepto", [
+            "FIRMANTE_TH_NOMBRE", "FIRMANTE_TH_CARGO",
+            "FIRMANTE_AUTORIDAD_NOMBRE", "FIRMANTE_AUTORIDAD_CARGO",
+        ])->pluck("valor", "concepto");
+
+        return response()->json([
+            "firmante_th_nombre"        => $cfg["FIRMANTE_TH_NOMBRE"]        ?? "",
+            "firmante_th_cargo"         => $cfg["FIRMANTE_TH_CARGO"]         ?? "",
+            "firmante_autoridad_nombre" => $cfg["FIRMANTE_AUTORIDAD_NOMBRE"] ?? "",
+            "firmante_autoridad_cargo"  => $cfg["FIRMANTE_AUTORIDAD_CARGO"]  ?? "",
+        ]);
     }
 
     // Cargar parámetros base

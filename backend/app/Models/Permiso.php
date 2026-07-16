@@ -48,4 +48,9 @@ class Permiso extends Model
     {
         return $this->belongsTo(Razon::class, "sec_permiso", "secuencial");
     }
+
+    public function aprobador()
+    {
+        return $this->belongsTo(Empleado::class, "usuario", "id_emp");
+    }
 }

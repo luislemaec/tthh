@@ -10,7 +10,8 @@ class Departamento extends Model
     protected $primaryKey   = "id_depto";
     public    $timestamps   = false;
 
-    protected $fillable = ["id_depto", "nombre_depto", "centro_de_costo", "padre_id", "estado"];
+    protected $fillable = ["id_depto", "nombre_depto", "centro_de_costo", "padre_id", "estado",
+                           "created_at", "created_by", "updated_at", "updated_by"];
 
     public function empleados()
     {

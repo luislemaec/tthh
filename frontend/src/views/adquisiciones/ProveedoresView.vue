@@ -1,65 +1,91 @@
 <template>
   <div>
-    <div class="flex justify-between items-center mb-6">
-      <h1 class="text-2xl font-bold text-gray-800">Proveedores</h1>
-      <button @click="abrirCrear" class="bg-green-700 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-800">
-        + Nuevo proveedor
+    <div class="flex justify-between items-center pb-4 mb-5 border-b border-gray-100">
+      <h1 class="text-xl font-bold text-gray-800 tracking-tight">Proveedores</h1>
+      <button @click="abrirCrear" class="inline-flex items-center gap-1.5 bg-[#4a5e3a] text-white px-3.5 py-2 rounded-lg text-sm hover:bg-[#3a4e2a] transition-colors font-medium">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+        Nuevo proveedor
       </button>
     </div>
 
-    <div class="flex gap-3 mb-3 flex-wrap">
-      <input v-model="busqueda" type="text" placeholder="Buscar por RUC o nombre..."
-        class="border rounded-lg px-3 py-2 text-sm w-72 focus:ring-2 focus:ring-amber-300 outline-none" />
-      <select v-model="filtroEstado" class="border rounded-lg px-3 py-2 text-sm">
-        <option value="">Todos los estados</option>
-        <option value="ACTIVO">Activos</option>
-        <option value="INACTIVO">Inactivos</option>
-      </select>
-    </div>
-
-    <!-- Contador -->
-    <div class="mb-3">
-      <span v-if="proveedoresFiltrados.length > 0"
-        class="inline-block bg-green-100 text-green-800 text-xs font-semibold px-3 py-1 rounded-full border border-green-300">
-        Se encontraron {{ proveedoresFiltrados.length }} de {{ proveedores.length }} proveedores
-      </span>
-      <span v-else
-        class="inline-block bg-red-100 text-red-700 text-xs font-semibold px-3 py-1 rounded-full border border-red-300">
-        No se encontraron proveedores (0 de {{ proveedores.length }})
-      </span>
+    <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-4">
+      <div class="flex gap-3 flex-wrap items-end">
+        <div class="flex-1 min-w-[200px]">
+          <label class="block text-xs font-medium text-gray-500 mb-1">Buscar</label>
+          <input v-model="busqueda" type="text" placeholder="RUC o nombre del proveedor..."
+            class="w-full border border-gray-200 bg-white rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#4a5e3a]/30 focus:border-[#4a5e3a] outline-none" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">Estado</label>
+          <select v-model="filtroEstado" class="border border-gray-200 bg-white rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#4a5e3a]/30 focus:border-[#4a5e3a] outline-none">
+            <option value="">Todos los estados</option>
+            <option value="ACTIVO">Activos</option>
+            <option value="INACTIVO">Inactivos</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">Tipo</label>
+          <select v-model="filtroTipo" class="border border-gray-200 bg-white rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#4a5e3a]/30 focus:border-[#4a5e3a] outline-none">
+            <option value="">Todos</option>
+            <option value="bienes">Solo Bienes</option>
+            <option value="taller">Solo Transporte</option>
+          </select>
+        </div>
+        <div class="ml-auto self-center">
+          <span v-if="proveedoresFiltrados.length > 0" class="inline-flex items-center gap-1 text-xs text-[#4a5e3a] bg-green-50 border border-green-200 px-3 py-1.5 rounded-lg font-medium">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+            {{ proveedoresFiltrados.length }} de {{ proveedores.length }} proveedores
+          </span>
+          <span v-else class="inline-flex items-center gap-1 text-xs text-red-600 bg-red-50 border border-red-100 px-3 py-1.5 rounded-lg">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/></svg>
+            Sin resultados
+          </span>
+        </div>
+      </div>
     </div>
 
     <div class="bg-white rounded-xl shadow overflow-x-auto">
       <table class="w-full text-sm">
         <thead>
           <tr style="background-color: #4a5e3a;">
-            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">RUC</th>
-            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Nombre</th>
-            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Contacto</th>
-            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Email</th>
-            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Catálogo</th>
-            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Estado</th>
-            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Acciones</th>
+            <th class="text-left px-4 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">RUC</th>
+            <th class="text-left px-4 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">Nombre</th>
+            <th class="text-left px-4 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">Contacto</th>
+            <th class="text-left px-4 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">Email</th>
+            <th class="text-left px-4 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">Estado</th>
+            <th class="text-left px-4 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">Acciones</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="!proveedoresFiltrados.length">
-            <td colspan="7" class="text-center py-8 text-gray-400">Sin proveedores</td>
-          </tr>
-          <tr v-for="p in proveedoresPaginados" :key="p.id" class="border-b hover:bg-amber-50">
-            <td class="px-4 py-3 font-mono text-xs whitespace-nowrap">{{ p.ruc }}</td>
-            <td class="px-4 py-3 font-medium">{{ p.nombre }}</td>
-            <td class="px-4 py-3 text-gray-500">{{ p.contacto || '-' }}</td>
-            <td class="px-4 py-3 text-gray-500">{{ p.email || '-' }}</td>
-            <td class="px-4 py-3 text-gray-500 whitespace-nowrap">{{ p.catalogo?.length || 0 }} ítem(s)</td>
-            <td class="px-4 py-3 whitespace-nowrap">
-              <span :class="p.estado === 'ACTIVO' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'"
-                class="px-2 py-0.5 rounded-full text-xs font-medium">{{ p.estado }}</span>
+            <td colspan="6" class="py-16 text-center">
+              <div class="flex flex-col items-center gap-2 text-gray-300">
+                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Z"/></svg>
+                <p class="text-sm text-gray-400">Sin proveedores registrados</p>
+              </div>
             </td>
-            <td class="px-4 py-3 whitespace-nowrap flex gap-2">
-              <button @click="abrirEditar(p)" class="text-xs text-blue-600 hover:text-blue-800 font-medium">Editar</button>
-              <button v-if="p.estado === 'ACTIVO'" @click="inactivar(p.id)" class="text-xs text-red-500 hover:text-red-700">Inactivar</button>
-              <button v-else @click="activar(p.id)" class="text-xs text-green-600 hover:text-green-800">Activar</button>
+          </tr>
+          <tr v-for="p in proveedoresPaginados" :key="p.id" class="border-b border-gray-100 hover:bg-green-50/60 transition-colors">
+            <td class="px-4 py-3 font-mono text-xs whitespace-nowrap text-gray-600">{{ p.ruc }}</td>
+            <td class="px-4 py-3 font-medium text-gray-800">{{ p.nombre }}</td>
+            <td class="px-4 py-3 text-gray-500 text-sm">{{ p.contacto || '—' }}</td>
+            <td class="px-4 py-3 text-gray-500 text-sm">{{ p.email || '—' }}</td>
+            <td class="px-4 py-3 whitespace-nowrap">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span v-if="p.es_taller"
+                  class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-200">
+                  Taller
+                </span>
+                <span :class="p.estado === 'ACTIVO' ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-gray-100 text-gray-500 border border-gray-200'"
+                  class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold">{{ p.estado }}</span>
+              </div>
+            </td>
+            <td class="px-4 py-3 whitespace-nowrap">
+              <div class="flex gap-1.5">
+                <button @click="abrirEditar(p)" class="inline-flex items-center px-2.5 py-1 rounded-md border border-blue-200 text-xs text-blue-700 hover:bg-blue-50 font-medium transition-colors">Editar</button>
+                <button v-if="p.estado === 'ACTIVO'" @click="inactivar(p.id)" class="inline-flex items-center px-2.5 py-1 rounded-md border border-red-200 text-xs text-red-600 hover:bg-red-50 font-medium transition-colors">Inactivar</button>
+                <button v-else @click="activar(p.id)" class="inline-flex items-center px-2.5 py-1 rounded-md border border-green-200 text-xs text-green-700 hover:bg-green-50 font-medium transition-colors">Activar</button>
+              </div>
             </td>
           </tr>
         </tbody>
@@ -132,11 +158,15 @@
               class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none" />
           </div>
         </div>
-        <div class="mb-4">
+        <div class="mb-3">
           <label class="block text-xs text-gray-600 mb-1">Dirección</label>
           <input v-model="modal.form.direccion" v-uppercase type="text" maxlength="300"
             class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none" />
         </div>
+        <label class="flex items-center gap-2 cursor-pointer select-none mb-4">
+          <input type="checkbox" v-model="modal.form.es_taller" class="w-4 h-4 rounded" />
+          <span class="text-xs text-gray-700 font-medium">También aparece como taller en Transportes</span>
+        </label>
 
         <!-- Catálogo -->
         <div class="border-t pt-4">
@@ -190,17 +220,22 @@ import api from '@/services/api'
 const proveedores  = ref([])
 const busqueda     = ref('')
 const filtroEstado = ref('ACTIVO')
+const filtroTipo   = ref('bienes')
 const guardando    = ref(false)
 const errorModal   = ref('')
 const paginaActual = ref(1)
 const porPagina    = ref(25)
-const modal = ref({ show: false, editando: false, id: null, form: { ruc: '', nombre: '', direccion: '', contacto: '', email: '', telefono: '', catalogo: [] } })
+const modal = ref({ show: false, editando: false, id: null, form: { ruc: '', nombre: '', direccion: '', contacto: '', email: '', telefono: '', es_taller: false, catalogo: [] } })
 
 const proveedoresFiltrados = computed(() =>
   proveedores.value.filter(p => {
     const q = busqueda.value.toLowerCase()
-    const coincide = !q || p.nombre.toLowerCase().includes(q) || p.ruc.includes(q)
-    return coincide && (!filtroEstado.value || p.estado === filtroEstado.value)
+    const coincide = !q || p.nombre.toLowerCase().includes(q) || (p.ruc || '').toLowerCase().includes(q)
+    const porEstado = !filtroEstado.value || p.estado === filtroEstado.value
+    const porTipo = !filtroTipo.value
+      || (filtroTipo.value === 'bienes'  && p.es_proveedor_bienes)
+      || (filtroTipo.value === 'taller'  && p.es_taller)
+    return coincide && porEstado && porTipo
   })
 )
 
@@ -211,7 +246,7 @@ const proveedoresPaginados = computed(() => {
   return proveedoresFiltrados.value.slice(inicio, inicio + porPagina.value)
 })
 
-watch([busqueda, filtroEstado], () => { paginaActual.value = 1 })
+watch([busqueda, filtroEstado, filtroTipo], () => { paginaActual.value = 1 })
 
 async function cargar() {
   const { data } = await api.get('/adquisiciones/proveedores')
@@ -221,12 +256,12 @@ async function cargar() {
 onMounted(cargar)
 
 function abrirCrear() {
-  modal.value = { show: true, editando: false, id: null, form: { ruc: '', nombre: '', direccion: '', contacto: '', email: '', telefono: '', catalogo: [] } }
+  modal.value = { show: true, editando: false, id: null, form: { ruc: '', nombre: '', direccion: '', contacto: '', email: '', telefono: '', es_taller: false, catalogo: [] } }
   errorModal.value = ''
 }
 
 function abrirEditar(p) {
-  modal.value = { show: true, editando: true, id: p.id, form: { ruc: p.ruc, nombre: p.nombre, direccion: p.direccion, contacto: p.contacto, email: p.email, telefono: p.telefono, catalogo: (p.catalogo || []).map(c => ({ ...c })) } }
+  modal.value = { show: true, editando: true, id: p.id, form: { ruc: p.ruc, nombre: p.nombre, direccion: p.direccion, contacto: p.contacto, email: p.email, telefono: p.telefono, es_taller: p.es_taller, catalogo: (p.catalogo || []).map(c => ({ ...c })) } }
   errorModal.value = ''
 }
 

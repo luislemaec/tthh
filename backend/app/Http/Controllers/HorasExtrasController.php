@@ -8,6 +8,7 @@ use App\Models\HePlanificacionCab;
 use App\Models\HePlanificacionDet;
 use App\Models\HeRegistro;
 use App\Models\Configuracion;
+use App\Services\AuditoriaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -100,18 +101,33 @@ class HorasExtrasController extends Controller
 
     private function getOrCreateFolderNodeId(string $parentNodeId, string $folderName): string
     {
-        $search = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
-            ->get("{$this->alfrescoBase}/nodes/{$parentNodeId}/children", [
-                'where' => "(isFolder=true AND name='{$folderName}')",
-            ]);
-        $entries = $search->json('list.entries') ?? [];
-        if (!empty($entries)) return $entries[0]['entry']['id'];
+        $buscarPorNombre = function (string $parent, string $nombre): ?string {
+            $resp    = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+                ->get("{$this->alfrescoBase}/nodes/{$parent}/children", [
+                    'where'    => '(isFolder=true)',
+                    'maxItems' => 500,
+                ]);
+            $entries = $resp->json('list.entries') ?? [];
+            foreach ($entries as $e) {
+                if ($e['entry']['name'] === $nombre) return $e['entry']['id'];
+            }
+            return null;
+        };
+
+        $found = $buscarPorNombre($parentNodeId, $folderName);
+        if ($found) return $found;
 
         $create = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
             ->post("{$this->alfrescoBase}/nodes/{$parentNodeId}/children", [
                 'name'     => $folderName,
                 'nodeType' => 'cm:folder',
             ]);
+
+        if ($create->status() === 409) {
+            $found = $buscarPorNombre($parentNodeId, $folderName);
+            if ($found) return $found;
+        }
+
         if (!$create->successful()) abort(502, 'No se pudo crear la carpeta en Alfresco');
         return $create->json('entry.id');
     }
@@ -372,6 +388,10 @@ class HorasExtrasController extends Controller
             'observacion'      => null,
         ]);
 
+        AuditoriaService::log('dbo.nom_he_planificacion_cab', $cab->id, 'APROBAR',
+            ['estado' => 'PENDIENTE'], ['estado' => 'APROBADO'],
+            $request, "Aprobación planificación HE: empleado {$cab->id_emp} {$cab->anio}/{$cab->mes}");
+
         return response()->json(['message' => 'Planificación aprobada correctamente.']);
     }
 
@@ -406,6 +426,10 @@ class HorasExtrasController extends Controller
             'observacion'      => $request->observacion,
         ]);
 
+        AuditoriaService::log('dbo.nom_he_planificacion_cab', $cab->id, 'NEGAR',
+            ['estado' => 'PENDIENTE'], ['estado' => 'NEGADO', 'observacion' => $request->observacion],
+            $request, "Negación planificación HE: empleado {$cab->id_emp} {$cab->anio}/{$cab->mes}");
+
         return response()->json(['message' => 'Planificación negada.']);
     }
 
@@ -422,15 +446,19 @@ class HorasExtrasController extends Controller
         $cab = HePlanificacionCab::findOrFail($id);
 
         if ($cab->estado !== 'APROBADO') {
-            return response()->json(['message' => 'Solo se pueden autorizar planificaciones en estado APROBADO.'], 422);
+            return response()->json(['message' => 'Solo se pueden procesar planificaciones en estado APROBADO.'], 422);
         }
 
         $cab->update([
-            'estado'               => 'AUTORIZADO',
+            'estado'               => 'PROCESADO',
             'memorando'            => $request->memorando,
             'usuario_autorizacion' => $user->id_emp,
             'fecha_autorizacion'   => now(),
         ]);
+
+        AuditoriaService::log('dbo.nom_he_planificacion_cab', $cab->id, 'PROCESAR',
+            ['estado' => 'APROBADO'], ['estado' => 'PROCESADO', 'memorando' => $request->memorando],
+            $request, "Procesamiento planificación HE: empleado {$cab->id_emp} {$cab->anio}/{$cab->mes}");
 
         return response()->json(['message' => 'Planificación autorizada.']);
     }
@@ -473,7 +501,7 @@ class HorasExtrasController extends Controller
             'logo'             => $logoBase64,
             'meses'            => $meses,
             'nombreSupervisor' => $nombreSupervisor,
-        ])->setPaper('letter', 'portrait');
+        ])->setPaper('a4', 'portrait');
 
         $filename = "horas_extras_{$emp->apellido_emp}_{$emp->nombre_emp}_{$cab->anio}_{$cab->mes}.pdf";
         return $pdf->download($filename);
@@ -522,7 +550,7 @@ class HorasExtrasController extends Controller
             'logo'            => $logoBase64,
             'meses'           => $meses,
             'nombreSupervisor' => $nombreSupervisor,
-        ])->setPaper('letter', 'portrait');
+        ])->setPaper('a4', 'portrait');
 
         $filename = "horas_trabajadas_{$emp->apellido_emp}_{$emp->nombre_emp}_{$cab->anio}_{$cab->mes}.pdf";
         return $pdf->download($filename);
@@ -539,20 +567,18 @@ class HorasExtrasController extends Controller
                 ->delete("{$this->alfrescoBase}/nodes/{$cab->pdf_aprobado}");
         }
 
-        $anio     = $cab->anio;
-        $docLibId = $this->getDocLibNodeId();
-        $rootId   = $this->getOrCreateFolderNodeId($docLibId, 'horas-extras');
-        $folderId = $this->getOrCreateFolderNodeId($rootId, (string)$anio);
-
-        $emp    = $cab->empleado ?? Empleado::find($cab->id_emp);
-        $nombre = "he_{$cab->id_emp}_{$cab->anio}_{$cab->mes}_firmado.pdf";
+        $anio         = $cab->anio;
+        $docLibId     = $this->getDocLibNodeId();
+        $nombre       = "he_{$cab->id_emp}_{$cab->anio}_{$cab->mes}_firmado.pdf";
+        $relativePath = "horas-extras/{$anio}";
 
         $upload = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
             ->attach('filedata', file_get_contents($request->file('archivo')->getRealPath()), $nombre)
-            ->post("{$this->alfrescoBase}/nodes/{$folderId}/children", [
-                'name'       => $nombre,
-                'nodeType'   => 'cm:content',
-                'autoRename' => true,
+            ->post("{$this->alfrescoBase}/nodes/{$docLibId}/children", [
+                'name'         => $nombre,
+                'nodeType'     => 'cm:content',
+                'relativePath' => $relativePath,
+                'autoRename'   => true,
             ]);
 
         if (!$upload->successful()) {
@@ -628,8 +654,8 @@ class HorasExtrasController extends Controller
         if ($cab->id_emp !== $emp->id_emp) {
             return response()->json(['message' => 'Acceso no autorizado.'], 403);
         }
-        if ($cab->estado !== 'AUTORIZADO') {
-            return response()->json(['message' => 'La planificación debe estar autorizada para registrar horas.'], 422);
+        if ($cab->estado !== 'PROCESADO') {
+            return response()->json(['message' => 'La planificación debe estar procesada para registrar horas.'], 422);
         }
 
         // Validar que el mes/año actual coincida con el mes/año planificado
@@ -756,8 +782,9 @@ class HorasExtrasController extends Controller
         }
 
         $registro->update([
-            'estado'      => 'EN REVISION',
-            'observacion' => $request->observacion,
+            'estado'        => 'EN REVISION',
+            'observacion'   => $request->observacion,
+            'devuelto_count'=> DB::raw('devuelto_count + 1'),
         ]);
         return response()->json(['message' => 'Registro devuelto al empleado para corrección.']);
     }
@@ -842,6 +869,10 @@ class HorasExtrasController extends Controller
             'observacion'      => null,
         ]);
 
+        AuditoriaService::log('dbo.nom_he_registro', $registro->id, 'CONFIRMAR',
+            ['estado' => 'PENDIENTE'], ['estado' => 'APROBADO'],
+            $request, "Confirmación registro HE: empleado {$registro->id_emp} fecha {$registro->fecha}");
+
         return response()->json(['message' => 'Registro confirmado correctamente.']);
     }
 
@@ -875,6 +906,10 @@ class HorasExtrasController extends Controller
             'fecha_decision'   => now(),
             'observacion'      => $request->observacion,
         ]);
+
+        AuditoriaService::log('dbo.nom_he_registro', $registro->id, 'NEGAR',
+            ['estado' => 'PENDIENTE'], ['estado' => 'NEGADO', 'observacion' => $request->observacion],
+            $request, "Negación registro HE: empleado {$registro->id_emp} fecha {$registro->fecha}");
 
         return response()->json(['message' => 'Registro negado.']);
     }

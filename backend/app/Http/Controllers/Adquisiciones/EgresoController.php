@@ -6,6 +6,7 @@ use App\Models\Adq\Articulo;
 use App\Models\Adq\Egreso;
 use App\Models\Adq\EgresoDet;
 use App\Models\Adq\Iva;
+use App\Services\AuditoriaService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -198,6 +199,11 @@ class EgresoController extends Controller
             ]);
         });
 
+        AuditoriaService::log('adq.egreso', $egreso->id, 'CONFIRMAR_EGRESO',
+            ['estado' => 'BORRADOR'],
+            ['estado' => 'DESPACHADO', 'total' => $egreso->total, 'empleado_nombre' => $egreso->empleado_nombre],
+            $request, "Confirmación de egreso de bodega #{$egreso->numero_secuencial}/{$egreso->anio}");
+
         return response()->json($egreso->load('detalles.articulo'));
     }
 
@@ -268,6 +274,11 @@ class EgresoController extends Controller
             ]);
         });
 
+        AuditoriaService::log('adq.egreso', $egreso->id, 'REVERSAR_EGRESO',
+            ['estado' => 'DESPACHADO'],
+            ['estado' => 'BORRADOR', 'motivo_reverso' => $request->motivo_reverso],
+            $request, "Reverso de egreso de bodega #{$egreso->numero_secuencial}/{$egreso->anio}");
+
         return response()->json($egreso->load('detalles.articulo'));
     }
 
@@ -278,7 +289,7 @@ class EgresoController extends Controller
             return response()->json(['message' => 'El PDF solo está disponible para egresos confirmados.'], 422);
         }
         $pdf = Pdf::loadView('reportes.egreso_bodega', compact('egreso'))
-            ->setPaper('letter', 'portrait');
+            ->setPaper('a4', 'portrait');
         return $pdf->download("egreso-bodega-{$egreso->id}.pdf");
     }
 

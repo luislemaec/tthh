@@ -6,6 +6,22 @@
         + Nueva Opcion
       </button>
     </div>
+    <!-- Filtros -->
+    <div class="bg-white rounded-xl shadow p-3 mb-4 flex gap-3 flex-wrap items-center">
+      <input v-model="filtro" type="text" placeholder="Buscar por descripción, URL o categoría..."
+        class="flex-1 min-w-[200px] border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#579186] outline-none"/>
+      <select v-model="filtroCat" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none">
+        <option value="">Todas las categorías</option>
+        <option v-for="c in categorias" :key="c" :value="c">{{ c }}</option>
+      </select>
+      <select v-model="filtroEstado" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none">
+        <option value="">Activos e inactivos</option>
+        <option value="1">Solo activos</option>
+        <option value="0">Solo inactivos</option>
+      </select>
+      <span class="text-xs text-gray-400">{{ opcionesFiltradas.length }} resultado(s)</span>
+    </div>
+
     <div class="bg-white rounded-xl shadow overflow-hidden">
       <table class="w-full text-sm">
         <thead class="bg-gray-50 border-b">
@@ -23,10 +39,10 @@
           <tr v-if="cargando">
             <td colspan="7" class="px-6 py-8 text-center text-gray-400">Cargando...</td>
           </tr>
-          <tr v-else-if="!opciones.length">
-            <td colspan="7" class="px-6 py-8 text-center text-gray-400">No hay opciones registradas</td>
+          <tr v-else-if="!opcionesFiltradas.length">
+            <td colspan="7" class="px-6 py-8 text-center text-gray-400">No hay opciones que coincidan</td>
           </tr>
-          <tr v-for="opcion in opciones" :key="opcion.id" class="border-b hover:bg-gray-50">
+          <tr v-for="opcion in opcionesFiltradas" :key="opcion.id" class="border-b hover:bg-gray-50">
             <td class="px-4 py-3 font-mono text-xs text-gray-500">{{ opcion.id }}</td>
             <td class="px-4 py-3 font-medium">{{ opcion.descripcion }}</td>
             <td class="px-4 py-3 text-gray-500">{{ opcion.url }}</td>
@@ -116,11 +132,29 @@
   </div>
 </template>
 <script setup>
-import { ref, onMounted } from "vue"
+import { ref, computed, onMounted } from "vue"
 import api from "@/services/api"
 const opciones = ref([])
 const categorias = ref([])
 const cargando = ref(false)
+const filtro = ref('')
+const filtroCat = ref('')
+const filtroEstado = ref('')
+
+const opcionesFiltradas = computed(() => {
+  let res = opciones.value
+  if (filtro.value.trim()) {
+    const q = filtro.value.toLowerCase()
+    res = res.filter(o =>
+      (o.descripcion || '').toLowerCase().includes(q) ||
+      (o.url || '').toLowerCase().includes(q) ||
+      (o.categoria || '').toLowerCase().includes(q)
+    )
+  }
+  if (filtroCat.value) res = res.filter(o => o.categoria === filtroCat.value)
+  if (filtroEstado.value !== '') res = res.filter(o => String(o.estado ? 1 : 0) === filtroEstado.value)
+  return res
+})
 const guardando = ref(false)
 const error = ref("")
 const modal = ref({ show: false, titulo: "", editando: false, form: { id: "", descripcion: "", url: "", categoria: "", orden_categoria: "", secuencia: "", padre: "" } })

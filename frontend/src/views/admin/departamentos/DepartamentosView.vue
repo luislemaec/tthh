@@ -73,6 +73,13 @@
           {{ form.id_depto ? 'Editar Departamento' : 'Nuevo Departamento' }}
         </h2>
 
+        <div v-if="!form.editando">
+          <label class="block text-sm font-medium text-gray-600 mb-1">ID (opcional)</label>
+          <input v-model.number="form.id_nuevo" type="number" placeholder="Ej: 74 — vacío = automático"
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+          <p class="text-xs text-gray-400 mt-1">Si lo dejas vacío se asigna automáticamente.</p>
+        </div>
+
         <div>
           <label class="block text-sm font-medium text-gray-600 mb-1">Nombre *</label>
           <input v-model="form.nombre_depto" type="text" placeholder="Ej: RECURSOS HUMANOS"
@@ -142,8 +149,8 @@ const cargar = async () => {
 const abrirModal = (dep = null) => {
   error.value = ''
   form.value = dep
-    ? { id_depto: dep.id_depto, nombre_depto: dep.nombre_depto, centro_de_costo: dep.centro_de_costo, padre_id: dep.padre_id ?? null }
-    : { id_depto: null, nombre_depto: '', centro_de_costo: '', padre_id: null }
+    ? { editando: true,  id_depto: dep.id_depto, nombre_depto: dep.nombre_depto, centro_de_costo: dep.centro_de_costo, padre_id: dep.padre_id ?? null }
+    : { editando: false, id_depto: null, id_nuevo: null, nombre_depto: '', centro_de_costo: '', padre_id: null }
   modal.value = true
 }
 
@@ -152,10 +159,10 @@ const guardar = async () => {
   guardando.value = true
   error.value = ''
   try {
-    if (form.value.id_depto) {
+    if (form.value.editando) {
       await api.put(`/admin/departamentos/${form.value.id_depto}`, form.value)
     } else {
-      await api.post('/admin/departamentos', form.value)
+      await api.post('/admin/departamentos', { ...form.value, id_depto: form.value.id_nuevo || undefined })
     }
     modal.value = false
     cargar()

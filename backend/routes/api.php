@@ -19,6 +19,7 @@ use App\Http\Controllers\LiquidacionVacController;
 use App\Http\Controllers\HorasExtrasController;
 use App\Http\Controllers\NominaController;
 use App\Http\Controllers\RolPagoController;
+use App\Http\Controllers\TransporteController;
 use App\Http\Controllers\Adquisiciones\AdqDashboardController;
 use App\Http\Controllers\Adquisiciones\ProveedorController;
 use App\Http\Controllers\Adquisiciones\ArticuloController;
@@ -26,10 +27,45 @@ use App\Http\Controllers\Adquisiciones\OrdenCompraController;
 use App\Http\Controllers\Adquisiciones\SolicitudMaterialController;
 use App\Http\Controllers\Adquisiciones\ReporteAdqController;
 use App\Http\Controllers\Adquisiciones\AjusteController;
+use App\Http\Controllers\ZktecoController;
+use App\Http\Controllers\Comisiones\ComisionController;
+use App\Http\Controllers\Comisiones\InformeComisionController;
+use App\Http\Controllers\Comisiones\AnticipController;
+use App\Http\Controllers\Comisiones\LiquidacionController;
+use App\Http\Controllers\Comisiones\TarifaViaticosController;
+use App\Http\Controllers\Comisiones\FuncionarioExternoController;
+use App\Http\Controllers\Comisiones\CoeficientePaisController;
 use Illuminate\Support\Facades\Route;
 
 // Rutas PÚBLICAS
 Route::post("/login", [AuthController::class, "login"])->name("login");
+
+Route::get("/modo-mantenimiento", function (\Illuminate\Http\Request $request) {
+    $modulo   = strtolower($request->get('modulo', 'th'));
+    $concepto = 'modo_mantenimiento_' . $modulo;
+    $valor    = \Illuminate\Support\Facades\DB::table('dbo.d2_configuracion')
+        ->whereRaw("LOWER(concepto) = ?", [$concepto])
+        ->value('valor');
+    return response()->json(['activo' => $valor === '1']);
+});
+
+// Endpoints ADMS — reloj biométrico ZKTeco (sin autenticación)
+Route::prefix("iclock")->group(function () {
+    Route::match(["get", "post"], "cdata",       [ZktecoController::class, "cdata"]);
+    Route::get("getrequest",                    [ZktecoController::class, "getrequest"]);
+    Route::match(["get", "post"], "registry",   [ZktecoController::class, "registry"]);
+    Route::post("devicecmd",                    [ZktecoController::class, "devicecmd"]);
+    Route::get("ping",                          [ZktecoController::class, "ping"]);
+});
+
+// Servir archivos del storage público a través del API (resuelve SPA catch-all)
+Route::get("/storage-file/{path}", function (string $path) {
+    $path = ltrim(str_replace('..', '', $path), '/');
+    if (!\Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
+        abort(404);
+    }
+    return \Illuminate\Support\Facades\Storage::disk('public')->response($path);
+})->where('path', '.*');
 
 // Rutas PROTEGIDAS
 Route::middleware("auth:sanctum")->group(function () {
@@ -50,7 +86,8 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::apiResource("departamentos", \App\Http\Controllers\Admin\DepartamentoController::class);
         Route::patch("departamentos/{id}/inactivar", [\App\Http\Controllers\Admin\DepartamentoController::class, "inactivar"]);
         Route::patch("departamentos/{id}/activar",   [\App\Http\Controllers\Admin\DepartamentoController::class, "activar"]);
-        Route::apiResource("razones",       \App\Http\Controllers\Admin\RazonController::class);
+        Route::apiResource("razones",       \App\Http\Controllers\Admin\RazonController::class)->except(['destroy']);
+        Route::patch("razones/{id}/inactivar", [\App\Http\Controllers\Admin\RazonController::class, "inactivar"]);
         Route::apiResource("turnos",        \App\Http\Controllers\Admin\TurnoController::class);
         Route::post("turnos/{id}/horarios", [\App\Http\Controllers\Admin\TurnoController::class, "guardarHorarios"]);
         Route::apiResource("jornadas",      JornadaController::class);
@@ -67,10 +104,24 @@ Route::middleware("auth:sanctum")->group(function () {
 
         // Configuración
         Route::post("configuracion/parametros-base",    [\App\Http\Controllers\Admin\ConfiguracionController::class, "cargarParametrosBase"]);
+        Route::get("configuracion/firmantes",           [\App\Http\Controllers\Admin\ConfiguracionController::class, "firmantes"]);
         Route::get("configuracion",                     [\App\Http\Controllers\Admin\ConfiguracionController::class, "index"]);
         Route::post("configuracion",                    [\App\Http\Controllers\Admin\ConfiguracionController::class, "store"]);
         Route::put("configuracion/{concepto}",          [\App\Http\Controllers\Admin\ConfiguracionController::class, "update"]);
         Route::delete("configuracion/{concepto}",       [\App\Http\Controllers\Admin\ConfiguracionController::class, "destroy"]);
+
+        // Avisos (ticker launcher)
+        Route::get("avisos/activos",              [\App\Http\Controllers\Admin\AvisoController::class, "activos"]);
+        Route::get("avisos",                      [\App\Http\Controllers\Admin\AvisoController::class, "index"]);
+        Route::post("avisos",                     [\App\Http\Controllers\Admin\AvisoController::class, "store"]);
+        Route::put("avisos-direccion",            [\App\Http\Controllers\Admin\AvisoController::class, "setDireccion"]);
+        Route::put("avisos/{id}",                 [\App\Http\Controllers\Admin\AvisoController::class, "update"]);
+        Route::delete("avisos/{id}",              [\App\Http\Controllers\Admin\AvisoController::class, "destroy"]);
+
+        // Modalidades Laborales
+        Route::get("modalidades-laborales",       [\App\Http\Controllers\Admin\ModalidadLaboralController::class, "index"]);
+        Route::post("modalidades-laborales",      [\App\Http\Controllers\Admin\ModalidadLaboralController::class, "store"]);
+        Route::put("modalidades-laborales/{id}",  [\App\Http\Controllers\Admin\ModalidadLaboralController::class, "update"]);
 
         // Aportes IESS
         Route::get("aportes-iess",          [\App\Http\Controllers\Admin\AportesIessController::class, "index"]);
@@ -78,6 +129,14 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post("aportes-iess",         [\App\Http\Controllers\Admin\AportesIessController::class, "store"]);
         Route::put("aportes-iess/{id}",     [\App\Http\Controllers\Admin\AportesIessController::class, "update"]);
         Route::delete("aportes-iess/{id}", [\App\Http\Controllers\Admin\AportesIessController::class, "destroy"]);
+
+        // Auditoría centralizada (solo ADMINISTRADOR)
+        Route::get("auditoria", [\App\Http\Controllers\Admin\AuditoriaController::class, "index"]);
+
+        // Dispositivos ZKTeco
+        Route::get("zkteco",          [ZktecoController::class, "index"]);
+        Route::put("zkteco/{id}",     [ZktecoController::class, "update"]);
+        Route::delete("zkteco/{id}",  [ZktecoController::class, "destroy"]);
     });
 
     // Opciones de menú
@@ -86,10 +145,14 @@ Route::middleware("auth:sanctum")->group(function () {
 
     // Dashboard
     Route::get("/dashboard", [DashboardController::class, "index"]);
+    Route::get("/dashboard/atrasos-coordinacion", [DashboardController::class, "atrasosCoordinacion"]);
 
     // Departamentos
     Route::get("/departamentos", [EmpleadoController::class, "departamentos"]);
-    Route::get("/empleados/partidas-vacantes", [EmpleadoController::class, "partidasVacantes"]);
+    Route::get("/empleados/partidas-vacantes",    [EmpleadoController::class, "partidasVacantes"]);
+    Route::get("/empleados/catalogos-sociales",   [EmpleadoController::class, "catalogosSociales"]);
+    Route::get("/empleados/reporte/resumen",      [\App\Http\Controllers\ReporteEmpleadosController::class, "resumen"]);
+    Route::get("/empleados/reporte",              [\App\Http\Controllers\ReporteEmpleadosController::class, "index"]);
 
     // Empleados
     Route::get("/empleados",         [EmpleadoController::class, "index"]);
@@ -100,18 +163,41 @@ Route::middleware("auth:sanctum")->group(function () {
 
     Route::post("/empleados/importar-distributivo", [EmpleadoController::class, "importarDistributivo"]);
     Route::post("/empleados/{id}/reset-password",  [EmpleadoController::class, "resetPassword"]);
+    Route::post("/empleados/{id}/foto",            [EmpleadoController::class, "subirFoto"]);
+    Route::delete("/empleados/{id}/foto",          [EmpleadoController::class, "eliminarFoto"]);
     Route::post("/cambiar-password",               [EmpleadoController::class, "cambiarPassword"]);
+
+    Route::get("/empleados/{id}/hijos",                    [EmpleadoController::class, "hijoIndex"]);
+    Route::post("/empleados/{id}/hijos",                   [EmpleadoController::class, "hijoStore"]);
+    Route::delete("/empleados/{id}/hijos/{hijoId}",        [EmpleadoController::class, "hijoDestroy"]);
+    Route::post("/empleados/{id}/sustituta-doc",           [EmpleadoController::class, "subirDocSustituta"]);
+    Route::get("/empleados/{id}/sustituta-doc",            [EmpleadoController::class, "descargarDocSustituta"]);
+    Route::delete("/empleados/{id}/sustituta-doc",         [EmpleadoController::class, "eliminarDocSustituta"]);
+    Route::get("/empleados/{id}/teletrabajo",              [EmpleadoController::class, "teletrabajoIndex"]);
+    Route::post("/empleados/{id}/teletrabajo",             [EmpleadoController::class, "teletrabajoStore"]);
+    Route::delete("/empleados/{id}/teletrabajo/{periodoId}", [EmpleadoController::class, "teletrabajoDestroy"]);
 
     // Asignación de roles a empleados
     Route::get("/empleados/{id_emp}/roles",             [RolController::class, "rolesEmpleado"]);
     Route::post("/empleados/{id_emp}/roles",            [RolController::class, "asignarRolEmpleado"]);
     Route::delete("/empleados/{id_emp}/roles/{id_rol}", [RolController::class, "quitarRolEmpleado"]);
 
+    // Certificados Laborales
+    Route::get("/certificados-laborales",                    [\App\Http\Controllers\CertificadoLaboralController::class, "index"]);
+    Route::post("/certificados-laborales",                   [\App\Http\Controllers\CertificadoLaboralController::class, "store"]);
+    Route::post("/certificados-laborales/{id}/subir-firmado", [\App\Http\Controllers\CertificadoLaboralController::class, "subirFirmado"]);
+    Route::get("/certificados-laborales/{id}/descargar",     [\App\Http\Controllers\CertificadoLaboralController::class, "descargar"]);
+
     // Acciones de Personal
-    Route::get("/acciones-personal",                    [\App\Http\Controllers\AccionPersonalController::class, "index"]);
-    Route::post("/acciones-personal",                   [\App\Http\Controllers\AccionPersonalController::class, "store"]);
-    Route::get("/acciones-personal/{id}",               [\App\Http\Controllers\AccionPersonalController::class, "show"]);
-    Route::patch("/acciones-personal/{id}/estado",      [\App\Http\Controllers\AccionPersonalController::class, "cambiarEstado"]);
+    Route::get("/acciones-personal/reporte/pdf",            [\App\Http\Controllers\AccionPersonalController::class, "reportePdf"]);
+    Route::get("/acciones-personal/reporte/excel",         [\App\Http\Controllers\AccionPersonalController::class, "reporteExcel"]);
+    Route::get("/acciones-personal/historial-remuneraciones", [\App\Http\Controllers\AccionPersonalController::class, "historialRemuneraciones"]);
+    Route::get("/acciones-personal",                       [\App\Http\Controllers\AccionPersonalController::class, "index"]);
+    Route::post("/acciones-personal",                      [\App\Http\Controllers\AccionPersonalController::class, "store"]);
+    Route::get("/acciones-personal/{id}",                  [\App\Http\Controllers\AccionPersonalController::class, "show"]);
+    Route::patch("/acciones-personal/{id}/procesar",       [\App\Http\Controllers\AccionPersonalController::class, "procesar"]);
+    Route::patch("/acciones-personal/{id}/editar-borrador",[\App\Http\Controllers\AccionPersonalController::class, "editarBorrador"]);
+    Route::patch("/acciones-personal/{id}/estado",         [\App\Http\Controllers\AccionPersonalController::class, "cambiarEstado"]);
     Route::get("/acciones-personal/{id}/pdf",              [\App\Http\Controllers\AccionPersonalController::class, "pdf"]);
     Route::post("/acciones-personal/{id}/subir-firmado",   [\App\Http\Controllers\AccionPersonalController::class, "subirFirmado"]);
     Route::get("/acciones-personal/{id}/descargar-firmado",[\App\Http\Controllers\AccionPersonalController::class, "descargarFirmado"]);
@@ -127,9 +213,10 @@ Route::middleware("auth:sanctum")->group(function () {
     // Asistencia
     Route::get("/asistencia/mi-estado",   [AsistenciaController::class, "miEstado"]);
     Route::post("/asistencia/marcar",     [AsistenciaController::class, "marcar"]);
-    Route::get("/asistencia/listado",     [AsistenciaController::class, "listado"]);
-    Route::get("/asistencia/reporte",     [AsistenciaController::class, "reporte"]);
-    Route::get("/asistencia/mi-reporte",  [AsistenciaController::class, "miReporte"]);
+    Route::get("/asistencia/listado",          [AsistenciaController::class, "listado"]);
+    Route::get("/asistencia/reporte",          [AsistenciaController::class, "reporte"]);
+    Route::get("/asistencia/mi-reporte",       [AsistenciaController::class, "miReporte"]);
+    Route::get("/asistencia/reporte-sin-atrasos", [AsistenciaController::class, "reporteSinAtrasos"]);
 
     // Importacion
     Route::get("/importacion/plantilla",  [ImportacionController::class, "plantilla"]);
@@ -142,18 +229,24 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::get("/permisos/mi-rol",           [PermisosController::class, "miRol"]);
     Route::get("/permisos",              [PermisosController::class, "index"]);
     Route::post("/permisos",             [PermisosController::class, "store"]);
-    Route::get("/permisos/{id}",         [PermisosController::class, "show"]);
-    Route::patch("/permisos/{id}/aprobar", [PermisosController::class, "aprobar"]);
-    Route::patch("/permisos/{id}/negar",   [PermisosController::class, "negar"]);
-    Route::delete("/permisos/{id}",          [PermisosController::class, "destroy"]);
+    Route::get("/permisos/{id}",                                   [PermisosController::class, "show"]);
+    Route::patch("/permisos/{id}/aprobar",                         [PermisosController::class, "aprobar"]);
+    Route::patch("/permisos/{id}/negar",                           [PermisosController::class, "negar"]);
+    Route::patch("/permisos/{id}/anular",                          [PermisosController::class, "anular"]);
+    Route::delete("/permisos/{id}",                                [PermisosController::class, "destroy"]);
+    Route::get("/permisos/{id}/documentos",                        [PermisosController::class, "listarDocumentos"]);
+    Route::post("/permisos/{id}/documentos",                       [PermisosController::class, "subirDocumento"]);
+    Route::get("/permisos/{id}/documentos/{docId}/descargar",      [PermisosController::class, "descargarDocumento"]);
+    Route::delete("/permisos/{id}/documentos/{docId}",             [PermisosController::class, "eliminarDocumento"]);
 
     // Cuadre de marcaciones
     Route::post("/cuadre/procesar",  [CuadreController::class, "procesar"]);
     Route::get("/cuadre/listado",    [CuadreController::class, "listado"]);
 
-    // Reportes
+    // Reportes (soportan ?formato=excel|pdf)
     Route::get("/reportes/atrasos",               [ReportesController::class, "atrasos"]);
     Route::get("/reportes/marcaciones-faltantes", [ReportesController::class, "marcacionesFaltantes"]);
+    Route::get("/reportes/movimientos-personal",  [ReportesController::class, "movimientosPersonal"]);
 
     // Períodos de planificación (TH admin)
     Route::get("/admin/periodos-planificacion",          [PeriodoPlanificacionController::class, "index"]);
@@ -170,6 +263,13 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::patch("/planificacion/{id}/negar",            [PlanificacionVacController::class, "negar"]);
     Route::delete("/planificacion/{id}",                 [PlanificacionVacController::class, "destroy"]);
     Route::patch("/planificacion/{id}/replanificar",     [PlanificacionVacController::class, "replanificar"]);
+
+    // Reporte saldo de vacaciones (TH)
+    Route::get("/reporte-vacaciones",                    [\App\Http\Controllers\ReporteVacacionesController::class, "index"]);
+    Route::get("/reporte-vacaciones/pdf",               [\App\Http\Controllers\ReporteVacacionesController::class, "pdf"]);
+    Route::post("/reporte-vacaciones/cargar-saldos",    [\App\Http\Controllers\ReporteVacacionesController::class, "cargarSaldos"]);
+    Route::get("/reporte-vacaciones/{id_emp}",          [\App\Http\Controllers\ReporteVacacionesController::class, "detalle"]);
+    Route::patch("/reporte-vacaciones/{id_emp}/saldo",  [\App\Http\Controllers\ReporteVacacionesController::class, "actualizarSaldo"]);
 
     // Reporte planificación de vacaciones (TH)
     Route::get("/reporte-planificacion/{anio}/estado",            [ReportePlanificacionController::class, "estado"]);
@@ -236,6 +336,27 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post('rol-pago/cerrar',            [RolPagoController::class, 'cerrar']);
         Route::post('rol-pago/importar',          [RolPagoController::class, 'importar']);
         Route::get('rol-pago/pdf',                [RolPagoController::class, 'pdf']);
+        Route::get('rol-pago/{cabId}/resumenes',     [RolPagoController::class, 'resumenes']);
+        Route::get('rol-pago/{cabId}/resumenes/pdf', [RolPagoController::class, 'pdfResumenes']);
+    });
+
+    // ── Transportes ───────────────────────────────────────────────────────────
+    Route::prefix('transporte')->group(function () {
+        Route::get('vehiculos',              [TransporteController::class, 'index']);
+        Route::post('vehiculos',             [TransporteController::class, 'store']);
+        Route::put('vehiculos/{id}',         [TransporteController::class, 'update']);
+        Route::get('conductores',            [TransporteController::class, 'conductores']);
+
+        Route::get('mantenimiento',          [TransporteController::class, 'indexMtto']);
+        Route::post('mantenimiento',         [TransporteController::class, 'storeMtto']);
+        Route::put('mantenimiento/{id}',     [TransporteController::class, 'updateMtto']);
+        Route::get('mantenimiento/{id}/pdf', [TransporteController::class, 'pdfMtto']);
+
+        Route::get('movilizacion',                    [TransporteController::class, 'indexMov']);
+        Route::post('movilizacion',                   [TransporteController::class, 'storeMov']);
+        Route::put('movilizacion/{id}',               [TransporteController::class, 'updateMov']);
+        Route::get('movilizacion/{id}/pdf',           [TransporteController::class, 'pdfMov']);
+        Route::get('notificaciones-pendientes',       [TransporteController::class, 'notificacionesPendientes']);
     });
 
     // ── Adquisiciones ─────────────────────────────────────────────────────────
@@ -294,6 +415,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get('ordenes/{id}',                          [OrdenCompraController::class, 'show']);
         Route::put('ordenes/{id}',                          [OrdenCompraController::class, 'update']);
         Route::patch('ordenes/{id}/confirmar',              [OrdenCompraController::class, 'confirmar']);
+        Route::patch('ordenes/{id}/confirmar-con-egreso',   [OrdenCompraController::class, 'confirmarConEgreso']);
         Route::patch('ordenes/{id}/reversar',               [OrdenCompraController::class, 'reversar']);
         Route::get('ordenes/{id}/pdf',                      [OrdenCompraController::class, 'pdf']);
         Route::delete('ordenes/{id}',                       [OrdenCompraController::class, 'destroy']);
@@ -313,12 +435,16 @@ Route::middleware("auth:sanctum")->group(function () {
         // Ajuste de inventario
         Route::get('ajustes',                               [AjusteController::class, 'index']);
         Route::post('ajustes',                              [AjusteController::class, 'store']);
+        Route::post('ajustes/importar-stock',               [AjusteController::class, 'importarStock']);
 
         // Reportes
         Route::get('reportes/kardex',                       [ReporteAdqController::class, 'kardex']);
         Route::get('reportes/libro-compras',                [ReporteAdqController::class, 'libroCompras']);
         Route::get('reportes/egresos-valorizados',          [ReporteAdqController::class, 'egresosValorizados']);
+        Route::get('reportes/inventario-mensual',           [ReporteAdqController::class, 'inventarioMensual']);
+        Route::get('reportes/inventario-valorizado',        [ReporteAdqController::class, 'inventarioValorizado']);
         Route::get('reportes/articulos',                    [ReporteAdqController::class, 'articulosBuscar']);
+        Route::get('reportes/analitica',                    [ReporteAdqController::class, 'analitica']);
 
         // Solicitudes de materiales
         Route::get('solicitudes',                           [SolicitudMaterialController::class, 'index']);
@@ -327,6 +453,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::patch('solicitudes/{id}/aprobar',            [SolicitudMaterialController::class, 'aprobar']);
         Route::patch('solicitudes/{id}/negar',              [SolicitudMaterialController::class, 'negar']);
         Route::patch('solicitudes/{id}/despachar',          [SolicitudMaterialController::class, 'despachar']);
+        Route::get('solicitudes/{id}/pdf',                  [SolicitudMaterialController::class, 'pdf']);
         Route::delete('solicitudes/{id}',                   [SolicitudMaterialController::class, 'destroy']);
     });
 
@@ -335,7 +462,170 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::get("/vacaciones/mi-saldo",          [VacacionesController::class, "miSaldo"]);
     Route::get("/vacaciones",                   [VacacionesController::class, "index"]);
     Route::post("/vacaciones",                  [VacacionesController::class, "store"]);
+    Route::get("/vacaciones/{id}/empleados-depto", [VacacionesController::class, "empleadosDepto"]);
     Route::patch("/vacaciones/{id}/aprobar",    [VacacionesController::class, "aprobar"]);
     Route::patch("/vacaciones/{id}/negar",      [VacacionesController::class, "negar"]);
     Route::delete("/vacaciones/{id}",           [VacacionesController::class, "destroy"]);
+
+    // Transporte — catálogos
+    Route::prefix('transporte')->group(function () {
+        // Vehículos
+        Route::get('vehiculos',    [TransporteController::class, 'index']);
+        Route::post('vehiculos',   [TransporteController::class, 'store']);
+        Route::put('vehiculos/{id}', [TransporteController::class, 'update']);
+
+        // Talleres
+        Route::get('talleres',        [\App\Http\Controllers\Transporte\TallerController::class, 'index']);
+        Route::get('talleres/activos', [\App\Http\Controllers\Transporte\TallerController::class, 'activos']);
+        Route::post('talleres',       [\App\Http\Controllers\Transporte\TallerController::class, 'store']);
+        Route::put('talleres/{id}',   [\App\Http\Controllers\Transporte\TallerController::class, 'update']);
+
+        // Tipos de mantenimiento
+        Route::get('tipos-mantenimiento',        [\App\Http\Controllers\Transporte\TipoMantenimientoController::class, 'index']);
+        Route::get('tipos-mantenimiento/activos', [\App\Http\Controllers\Transporte\TipoMantenimientoController::class, 'activos']);
+        Route::post('tipos-mantenimiento',       [\App\Http\Controllers\Transporte\TipoMantenimientoController::class, 'store']);
+        Route::put('tipos-mantenimiento/{id}',   [\App\Http\Controllers\Transporte\TipoMantenimientoController::class, 'update']);
+
+        // Plan preventivo
+        Route::get('plan-preventivo',               [\App\Http\Controllers\Transporte\PlanPreventivoController::class, 'index']);
+        Route::post('plan-preventivo',              [\App\Http\Controllers\Transporte\PlanPreventivoController::class, 'store']);
+        Route::put('plan-preventivo/{id}',          [\App\Http\Controllers\Transporte\PlanPreventivoController::class, 'update']);
+        Route::post('plan-preventivo/importar-csv', [\App\Http\Controllers\Transporte\PlanPreventivoController::class, 'importarCsv']);
+
+        // Vales de combustible
+        Route::get('vales-combustible',               [\App\Http\Controllers\Transporte\ValeController::class, 'index']);
+        Route::post('vales-combustible',              [\App\Http\Controllers\Transporte\ValeController::class, 'store']);
+        Route::get('vales-combustible/{id}/pdf',      [\App\Http\Controllers\Transporte\ValeController::class, 'pdf']);
+        Route::patch('vales-combustible/{id}/anular', [\App\Http\Controllers\Transporte\ValeController::class, 'anular']);
+
+        // Mantenimiento
+        Route::get('mantenimiento',        [TransporteController::class, 'indexMtto']);
+        Route::post('mantenimiento',       [TransporteController::class, 'storeMtto']);
+        Route::put('mantenimiento/{id}',   [TransporteController::class, 'updateMtto']);
+        Route::get('mantenimiento/{id}/pdf', [TransporteController::class, 'pdfMtto']);
+
+        // Movilización
+        Route::get('movilizacion',         [TransporteController::class, 'indexMov']);
+        Route::post('movilizacion',        [TransporteController::class, 'storeMov']);
+        Route::put('movilizacion/{id}',    [TransporteController::class, 'updateMov']);
+        Route::get('movilizacion/{id}/pdf', [TransporteController::class, 'pdfMov']);
+
+        Route::get('conductores', [TransporteController::class, 'conductores']);
+    });
+
+    // Inventario Tecnológico
+    Route::prefix('tecnologia')->group(function () {
+        // Tipos de equipo
+        Route::get('tipos-equipo',         [\App\Http\Controllers\Tecnologia\TipoEquipoController::class, 'index']);
+        Route::get('tipos-equipo/activos', [\App\Http\Controllers\Tecnologia\TipoEquipoController::class, 'activos']);
+        Route::post('tipos-equipo',        [\App\Http\Controllers\Tecnologia\TipoEquipoController::class, 'store']);
+        Route::put('tipos-equipo/{id}',    [\App\Http\Controllers\Tecnologia\TipoEquipoController::class, 'update']);
+
+        // Equipos
+        Route::get('equipos',                  [\App\Http\Controllers\Tecnologia\EquipoController::class, 'index']);
+        Route::get('equipos/resumen',          [\App\Http\Controllers\Tecnologia\EquipoController::class, 'resumen']);
+        Route::post('equipos',                 [\App\Http\Controllers\Tecnologia\EquipoController::class, 'store']);
+        Route::put('equipos/{id}',             [\App\Http\Controllers\Tecnologia\EquipoController::class, 'update']);
+        Route::post('equipos/importar-csv',    [\App\Http\Controllers\Tecnologia\EquipoController::class, 'importarCsv']);
+        Route::patch('equipos/{id}/asignar',   [\App\Http\Controllers\Tecnologia\EquipoController::class, 'asignar']);
+        Route::patch('equipos/{id}/devolver',  [\App\Http\Controllers\Tecnologia\EquipoController::class, 'devolver']);
+        Route::get('equipos/{id}/historial',   [\App\Http\Controllers\Tecnologia\EquipoController::class, 'historial']);
+        Route::patch('equipos/{id}/baja',       [\App\Http\Controllers\Tecnologia\EquipoController::class, 'marcarBaja']);
+        Route::patch('equipos/{id}/disponible', [\App\Http\Controllers\Tecnologia\EquipoController::class, 'marcarDisponible']);
+
+        // Actividades del checklist de mantenimiento
+        Route::get('actividades-mantenimiento',      [\App\Http\Controllers\Tecnologia\ActividadMantenimientoController::class, 'index']);
+        Route::post('actividades-mantenimiento',     [\App\Http\Controllers\Tecnologia\ActividadMantenimientoController::class, 'store']);
+        Route::put('actividades-mantenimiento/{id}', [\App\Http\Controllers\Tecnologia\ActividadMantenimientoController::class, 'update']);
+
+        // Mantenimiento
+        Route::get('mantenimiento/checklist',           [\App\Http\Controllers\Tecnologia\MantenimientoController::class, 'checklist']);
+        Route::get('mantenimiento/procesos',            [\App\Http\Controllers\Tecnologia\MantenimientoController::class, 'procesos']);
+        Route::get('mantenimiento/pendientes',          [\App\Http\Controllers\Tecnologia\MantenimientoController::class, 'pendientes']);
+        Route::get('mantenimiento/realizados',          [\App\Http\Controllers\Tecnologia\MantenimientoController::class, 'realizados']);
+        Route::post('mantenimiento',                    [\App\Http\Controllers\Tecnologia\MantenimientoController::class, 'store']);
+        Route::get('mantenimiento/{id}/pdf',            [\App\Http\Controllers\Tecnologia\MantenimientoController::class, 'pdf']);
+        Route::post('mantenimiento/{id}/subir-firmado', [\App\Http\Controllers\Tecnologia\MantenimientoController::class, 'subirFirmado']);
+        Route::get('mantenimiento/{id}/descargar-firmado', [\App\Http\Controllers\Tecnologia\MantenimientoController::class, 'descargarFirmado']);
+
+        // Mantenimiento externo (por proveedor, un lote cubre toda una categoría de equipos)
+        Route::post('mantenimiento/externo',                          [\App\Http\Controllers\Tecnologia\MantenimientoController::class, 'storeExterno']);
+        Route::get('mantenimiento/externo/{lote}/pdf',                [\App\Http\Controllers\Tecnologia\MantenimientoController::class, 'pdfExterno']);
+        Route::post('mantenimiento/externo/{lote}/subir-firmado',     [\App\Http\Controllers\Tecnologia\MantenimientoController::class, 'subirFirmadoExterno']);
+        Route::get('mantenimiento/externo/{lote}/descargar-firmado',  [\App\Http\Controllers\Tecnologia\MantenimientoController::class, 'descargarFirmadoExterno']);
+    });
+
+    // Comisiones de Servicios
+    Route::prefix('comisiones')->group(function () {
+        Route::get('mi-rol',                                      [ComisionController::class, 'miRol']);
+        Route::get('provincias',                                  [ComisionController::class, 'provincias']);
+
+        // Solicitudes
+        Route::get('solicitudes',                                 [ComisionController::class, 'index']);
+        Route::post('solicitudes',                                [ComisionController::class, 'store']);
+        Route::get('solicitudes/{id}',                            [ComisionController::class, 'detalle']);
+        Route::put('solicitudes/{id}',                            [ComisionController::class, 'update']);
+        Route::patch('solicitudes/{id}/procesar',                 [ComisionController::class, 'procesar']);
+        Route::patch('solicitudes/{id}/devolver',                 [ComisionController::class, 'devolver']);
+        Route::patch('solicitudes/{id}/solicitar-pago',           [ComisionController::class, 'solicitarPago']);
+        Route::get('solicitudes/{id}/pdf',                        [ComisionController::class, 'pdf']);
+
+        // Documentos de solicitud
+        Route::post('solicitudes/{id}/documentos',                [ComisionController::class, 'uploadDocumento']);
+        Route::delete('solicitudes/{id}/documentos/{docId}',      [ComisionController::class, 'deleteDocumento']);
+        Route::get('solicitudes/{id}/documentos/{docId}/descargar', [ComisionController::class, 'descargarDocumento']);
+        Route::post('solicitudes/{id}/subir-firmado',             [ComisionController::class, 'subirFirmado']);
+
+        // Informe de cumplimiento
+        Route::post('solicitudes/{id}/informe',                   [InformeComisionController::class, 'store']);
+        Route::put('informes/{id}',                               [InformeComisionController::class, 'update']);
+        Route::post('solicitudes/{id}/informe/subir-firmado',     [InformeComisionController::class, 'subirFirmado']);
+        Route::get('solicitudes/{id}/informe/descargar-firmado',  [InformeComisionController::class, 'descargarFirmado']);
+        Route::get('solicitudes/{id}/informe/pdf',                [InformeComisionController::class, 'pdf']);
+
+        // Anticipo de viáticos
+        Route::post('solicitudes/{id}/anticipo',                  [AnticipController::class, 'store']);
+        Route::patch('anticipos/{id}/cur-compromiso',             [AnticipController::class, 'registrarCurCompromiso']);
+        Route::patch('anticipos/{id}/cur-devengado',              [AnticipController::class, 'registrarCurDevengado']);
+        Route::patch('anticipos/{id}/confirmar-pago',             [AnticipController::class, 'confirmarPago']);
+
+        // Ficha de liquidación
+        Route::post('solicitudes/{id}/liquidacion',               [LiquidacionController::class, 'store']);
+        Route::put('liquidaciones/{id}',                          [LiquidacionController::class, 'update']);
+        Route::patch('liquidaciones/{id}/cur-compromiso',         [LiquidacionController::class, 'registrarCurCompromiso']);
+        Route::patch('liquidaciones/{id}/cur-devengado',          [LiquidacionController::class, 'registrarCurDevengado']);
+        Route::patch('liquidaciones/{id}/confirmar-pago',         [LiquidacionController::class, 'confirmarPago']);
+        Route::patch('liquidaciones/{id}/registrar-devolucion',   [LiquidacionController::class, 'registrarDevolucion']);
+        Route::get('solicitudes/{id}/liquidacion/pdf',            [LiquidacionController::class, 'pdf']);
+
+        // Tarifas de viáticos (admin)
+        Route::get('admin/tarifas-viaticos',                      [TarifaViaticosController::class, 'index']);
+        Route::post('admin/tarifas-viaticos',                     [TarifaViaticosController::class, 'store']);
+        Route::put('admin/tarifas-viaticos/{id}',                 [TarifaViaticosController::class, 'update']);
+        Route::delete('admin/tarifas-viaticos/{id}',              [TarifaViaticosController::class, 'destroy']);
+
+        // Coeficientes por país (exterior)
+        Route::get('coeficientes-pais',                           [LiquidacionController::class, 'coeficientes']);
+        Route::post('admin/coeficientes-pais',                    [CoeficientePaisController::class, 'store']);
+        Route::put('admin/coeficientes-pais/{id}',                [CoeficientePaisController::class, 'update']);
+
+        // Provincias y ciudades (admin)
+        Route::get('admin/provincias',                            [\App\Http\Controllers\Admin\ProvinciaCiudadController::class, 'index']);
+        Route::post('admin/provincias',                           [\App\Http\Controllers\Admin\ProvinciaCiudadController::class, 'storeProvincia']);
+        Route::put('admin/provincias/{id}',                       [\App\Http\Controllers\Admin\ProvinciaCiudadController::class, 'updateProvincia']);
+        Route::delete('admin/provincias/{id}',                    [\App\Http\Controllers\Admin\ProvinciaCiudadController::class, 'destroyProvincia']);
+        Route::post('admin/provincias/{id}/ciudades',             [\App\Http\Controllers\Admin\ProvinciaCiudadController::class, 'storeCiudad']);
+        Route::put('admin/ciudades/{id}',                         [\App\Http\Controllers\Admin\ProvinciaCiudadController::class, 'updateCiudad']);
+        Route::delete('admin/ciudades/{id}',                      [\App\Http\Controllers\Admin\ProvinciaCiudadController::class, 'destroyCiudad']);
+
+        // Funcionarios externos (admin)
+        Route::get('admin/funcionarios-externos',                 [FuncionarioExternoController::class, 'index']);
+        Route::post('admin/funcionarios-externos',                [FuncionarioExternoController::class, 'store']);
+        Route::put('admin/funcionarios-externos/{id}',            [FuncionarioExternoController::class, 'update']);
+        Route::delete('admin/funcionarios-externos/{id}',         [FuncionarioExternoController::class, 'destroy']);
+        Route::post('admin/funcionarios-externos/{id}/dar-acceso',[FuncionarioExternoController::class, 'darAcceso']);
+
+        // Búsqueda de servidores (empleados + externos)
+        Route::get('buscar-servidor',                             [ComisionController::class, 'buscarServidor']);
+    });
 });

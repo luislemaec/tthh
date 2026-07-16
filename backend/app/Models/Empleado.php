@@ -25,6 +25,19 @@ class Empleado extends Authenticatable
         "partida_individual", "partida_presupuestaria", "estado_puesto",
         "grupo_ocupacional", "proceso_institucional",
         "acumula_fondos_reserva", "acumula_decimo_tercero", "acumula_decimo_cuarto",
+        "programa", "actividad",
+        "puede_solicitar_vehiculo",
+        "sexo", "tipo_sangre",
+        "num_sercop", "fecha_vence_sercop",
+        "grupo_vulnerable_id", "grupo_prioritario_id",
+        "tiene_discapacidad", "tipo_discapacidad_id", "porcentaje_discapacidad",
+        "tiene_enfermedad_catastrofica", "enfermedad_catastrofica_id",
+        "tiene_persona_sustituta", "sustituta_alfresco_id", "sustituta_nombre_archivo", "sustituta_fecha_caducidad",
+        "num_hijos_mayores",
+        "motivo_salida", "motivo_reactivacion", "institucion_comision",
+        "banco", "tipo_cuenta", "numero_cuenta",
+        "foto",
+        "created_at", "created_by", "updated_at", "updated_by",
     ];
 
     protected $hidden = ["password", "clave"];
@@ -48,6 +61,17 @@ class Empleado extends Authenticatable
     public function jornada()
     {
         return $this->belongsTo(Jornada::class, "id_jornada", "id_jornada");
+    }
+
+    public function hijos()
+    {
+        return $this->hasMany(EmpleadoHijo::class, 'id_emp', 'id_emp')->orderBy('fecha_nacimiento');
+    }
+
+    public function getFotoUrlAttribute(): ?string
+    {
+        $ruta = $this->foto;
+        return $ruta ? \Illuminate\Support\Facades\Storage::disk('public')->url($ruta) : null;
     }
 
     public function getAuthPassword()

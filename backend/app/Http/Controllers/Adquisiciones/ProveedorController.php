@@ -10,7 +10,9 @@ class ProveedorController extends Controller
 {
     public function index()
     {
-        return response()->json(Proveedor::with('catalogo')->orderBy('nombre')->get());
+        return response()->json(
+            Proveedor::with('catalogo')->orderBy('nombre')->get()
+        );
     }
 
     public function store(Request $request)
@@ -25,9 +27,13 @@ class ProveedorController extends Controller
             'catalogo.*.precio_referencial' => 'nullable|numeric|min:0',
         ]);
 
-        $proveedor = Proveedor::create($request->only([
-            'ruc', 'nombre', 'direccion', 'contacto', 'email', 'telefono',
-        ]));
+        $proveedor = Proveedor::create(array_merge(
+            $request->only(['ruc', 'nombre', 'direccion', 'contacto', 'email', 'telefono']),
+            [
+                'es_proveedor_bienes' => true,
+                'es_taller'           => $request->boolean('es_taller', false),
+            ]
+        ));
 
         foreach ($request->catalogo ?? [] as $item) {
             ProveedorCatalogo::create([
@@ -60,9 +66,10 @@ class ProveedorController extends Controller
             'catalogo.*.precio_referencial' => 'nullable|numeric|min:0',
         ]);
 
-        $proveedor->update($request->only([
-            'ruc', 'nombre', 'direccion', 'contacto', 'email', 'telefono',
-        ]));
+        $proveedor->update(array_merge(
+            $request->only(['ruc', 'nombre', 'direccion', 'contacto', 'email', 'telefono']),
+            ['es_taller' => $request->boolean('es_taller', $proveedor->es_taller)]
+        ));
 
         ProveedorCatalogo::where('proveedor_id', $id)->delete();
         foreach ($request->catalogo ?? [] as $item) {

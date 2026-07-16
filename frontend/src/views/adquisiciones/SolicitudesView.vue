@@ -9,7 +9,7 @@
 
     <!-- Filtros -->
     <div class="flex gap-3 mb-4 flex-wrap">
-      <select v-model="filtroEstado" @change="cargar" class="border rounded-lg px-3 py-2 text-sm">
+      <select v-model="filtroEstado" @change="onFiltroChange" class="border rounded-lg px-3 py-2 text-sm">
         <option value="">Todos los estados</option>
         <option value="PENDIENTE">Pendiente</option>
         <option value="APROBADO">Aprobado</option>
@@ -19,86 +19,162 @@
       </select>
     </div>
 
-    <div class="space-y-4">
+    <!-- Lista -->
+    <div class="space-y-2">
       <div v-if="!solicitudes.length" class="bg-white rounded-xl shadow p-8 text-center text-gray-400">
         Sin solicitudes
       </div>
 
-      <div v-for="s in solicitudes" :key="s.id" class="bg-white rounded-xl shadow overflow-hidden">
-        <!-- Cabecera solicitud -->
-        <div class="px-5 py-3 border-b flex justify-between items-start">
-          <div>
-            <p class="font-semibold text-gray-800">
-              {{ s.empleado?.apellido_emp }} {{ s.empleado?.nombre_emp }}
-              <span class="text-gray-400 text-xs ml-2">#{{ s.id }}</span>
-            </p>
-            <p class="text-xs text-gray-500">{{ s.fecha }} · Depto. {{ s.id_depto }}</p>
-            <p v-if="s.justificacion" class="text-xs text-gray-500 mt-0.5 italic">{{ s.justificacion }}</p>
-          </div>
-          <div class="flex items-center gap-3">
-            <span :class="estadoClase(s.estado)" class="px-2 py-0.5 rounded-full text-xs font-medium">
-              {{ s.estado }}
+      <div v-for="s in solicitudesPaginadas" :key="s.id"
+           class="bg-white rounded-xl shadow px-5 py-3 flex justify-between items-center gap-3">
+        <div class="min-w-0">
+          <p class="font-semibold text-gray-800 truncate">
+            {{ s.empleado?.apellido_emp }} {{ s.empleado?.nombre_emp }}
+            <span class="text-gray-400 text-xs ml-2">#{{ s.id }}</span>
+          </p>
+          <p class="text-xs text-gray-500">
+            {{ s.fecha }} · Depto. {{ s.id_depto }}
+            <span v-if="s.nombre_depto_beneficiario" class="ml-1 font-medium text-amber-700">
+              → {{ s.nombre_depto_beneficiario }}
             </span>
-            <!-- Acciones según rol y estado -->
-            <button v-if="s.estado === 'PENDIENTE' && esSupervisorLocal"
-              @click="abrirAprobacion(s)"
-              class="text-xs text-green-700 hover:text-green-900 font-medium border border-green-300 px-3 py-1 rounded-lg">
-              Revisar y aprobar
-            </button>
-            <button v-if="s.estado === 'PENDIENTE' && esSupervisorLocal"
-              @click="negar(s.id)"
-              class="text-xs text-red-600 hover:text-red-800 font-medium border border-red-200 px-3 py-1 rounded-lg">
-              Negar
-            </button>
-            <button v-if="s.estado === 'APROBADO' && esBienes"
-              @click="abrirDespacho(s)"
-              class="text-xs text-amber-700 hover:text-amber-900 font-medium border border-amber-300 px-3 py-1 rounded-lg">
-              Despachar
-            </button>
-            <button v-if="s.estado === 'PENDIENTE' && s.empleado?.id_emp === miId"
-              @click="eliminar(s.id)"
-              class="text-xs text-red-400 hover:text-red-600">
-              Eliminar
-            </button>
-          </div>
+          </p>
+          <p v-if="s.justificacion" class="text-xs text-gray-500 italic mt-0.5">{{ s.justificacion }}</p>
         </div>
 
-        <!-- Detalle artículos -->
-        <table class="w-full text-sm">
-          <thead class="bg-gray-50 border-b">
-            <tr>
-              <th class="text-left px-5 py-2 text-gray-500 font-medium text-xs">Artículo</th>
-              <th class="text-right px-5 py-2 text-gray-500 font-medium text-xs">Solicitado</th>
-              <th v-if="s.estado !== 'PENDIENTE' && s.estado !== 'APROBADO'"
-                class="text-right px-5 py-2 text-gray-500 font-medium text-xs">Entregado</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="d in s.detalles" :key="d.id" class="border-b hover:bg-gray-50">
-              <td class="px-5 py-2">{{ d.articulo?.nombre }}</td>
-              <td class="px-5 py-2 text-right">{{ d.cantidad_solicitada }} {{ d.articulo?.unidad_medida }}</td>
-              <td v-if="s.estado !== 'PENDIENTE' && s.estado !== 'APROBADO'"
-                class="px-5 py-2 text-right">
-                <span :class="d.cantidad_autorizada < d.cantidad_solicitada ? 'text-orange-600 font-semibold' : 'text-green-700'">
-                  {{ d.cantidad_autorizada ?? '-' }} {{ d.articulo?.unidad_medida }}
-                </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <div v-if="s.observacion_despacho" class="px-5 py-2 text-xs text-gray-500 italic border-t">
-          Observación Bienes: {{ s.observacion_despacho }}
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <span :class="estadoClase(s.estado)" class="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
+            {{ s.estado }}
+          </span>
+          <button @click="abrirVer(s)"
+            class="text-xs text-gray-600 hover:text-gray-900 font-medium border border-gray-300 px-3 py-1 rounded-lg">
+            Ver
+          </button>
+          <button v-if="s.estado === 'PENDIENTE' && esSupervisorLocal"
+            @click="abrirAprobacion(s)"
+            class="text-xs text-green-700 hover:text-green-900 font-medium border border-green-300 px-3 py-1 rounded-lg">
+            Revisar
+          </button>
+          <button v-if="s.estado === 'PENDIENTE' && esSupervisorLocal"
+            @click="negar(s.id)"
+            class="text-xs text-red-600 hover:text-red-800 font-medium border border-red-200 px-3 py-1 rounded-lg">
+            Negar
+          </button>
+          <button v-if="s.estado === 'APROBADO' && esBienes"
+            @click="abrirDespacho(s)"
+            class="text-xs text-amber-700 hover:text-amber-900 font-medium border border-amber-300 px-3 py-1 rounded-lg">
+            Despachar
+          </button>
+          <button v-if="['DESPACHADO','DESPACHADO PARCIAL'].includes(s.estado)"
+            @click="descargarPdf(s.id)"
+            class="text-xs text-white font-medium px-3 py-1 rounded-lg hover:opacity-90"
+            style="background-color:#4a5e3a;">
+            PDF
+          </button>
+          <button v-if="s.estado === 'PENDIENTE' && s.empleado?.id_emp === miId"
+            @click="eliminar(s.id)"
+            class="text-xs text-red-400 hover:text-red-600">
+            Eliminar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Paginador -->
+    <div v-if="solicitudes.length > 0" class="flex items-center justify-between mt-4">
+      <div class="flex items-center gap-2 text-sm text-gray-600">
+        <span>Mostrar</span>
+        <select v-model="porPagina" @change="pagina = 1" class="border rounded px-2 py-1 text-sm">
+          <option :value="10">10</option>
+          <option :value="25">25</option>
+          <option :value="50">50</option>
+        </select>
+        <span>por página · {{ solicitudes.length }} total</span>
+      </div>
+      <div class="flex items-center gap-1">
+        <button @click="pagina--" :disabled="pagina === 1"
+          class="px-3 py-1 rounded border text-sm disabled:opacity-40 hover:bg-gray-50">‹</button>
+        <span class="px-3 py-1 text-sm text-gray-700">{{ pagina }} / {{ totalPaginas }}</span>
+        <button @click="pagina++" :disabled="pagina >= totalPaginas"
+          class="px-3 py-1 rounded border text-sm disabled:opacity-40 hover:bg-gray-50">›</button>
+      </div>
+    </div>
+
+    <!-- Modal Ver detalle -->
+    <div v-if="modalVer.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="px-6 py-4 flex-shrink-0 flex justify-between items-center" style="background-color:#4a5e3a;">
+          <h2 class="text-lg font-bold text-white">Detalle Solicitud #{{ modalVer.solicitud?.id }}</h2>
+          <button @click="modalVer.show = false" class="text-white/70 hover:text-white text-xl leading-none">✕</button>
+        </div>
+        <div class="p-5 overflow-y-auto">
+          <div class="mb-3 text-sm text-gray-600 space-y-0.5">
+            <p><b>Solicitante:</b> {{ modalVer.solicitud?.empleado?.apellido_emp }} {{ modalVer.solicitud?.empleado?.nombre_emp }}</p>
+            <p><b>Fecha solicitud:</b> {{ modalVer.solicitud?.fecha }} · Depto. {{ modalVer.solicitud?.id_depto }}</p>
+            <p v-if="modalVer.solicitud?.nombre_depto_beneficiario">
+              <b>Área beneficiaria:</b>
+              <span class="ml-1 text-amber-700 font-medium">{{ modalVer.solicitud.nombre_depto_beneficiario }}</span>
+            </p>
+            <p v-if="modalVer.solicitud?.aprobador">
+              <b>Aprobado por:</b>
+              {{ modalVer.solicitud.aprobador.apellido_emp }} {{ modalVer.solicitud.aprobador.nombre_emp }}
+              <span v-if="modalVer.solicitud.fecha_aprobacion" class="text-gray-400 text-xs ml-1">· {{ modalVer.solicitud.fecha_aprobacion }}</span>
+            </p>
+            <p v-if="modalVer.solicitud?.justificacion"><b>Justificación:</b> {{ modalVer.solicitud?.justificacion }}</p>
+            <p v-if="modalVer.solicitud?.observacion_despacho" class="italic text-gray-500">
+              <b>Obs. despacho:</b> {{ modalVer.solicitud.observacion_despacho }}
+            </p>
+          </div>
+          <table class="w-full text-sm border-collapse">
+            <thead>
+              <tr class="bg-gray-100 text-gray-600 text-xs">
+                <th class="text-left px-3 py-2 font-medium border-b">Artículo</th>
+                <th class="text-right px-3 py-2 font-medium border-b">Solicitado</th>
+                <th v-if="modalVer.solicitud?.estado !== 'PENDIENTE' && modalVer.solicitud?.estado !== 'APROBADO'"
+                  class="text-right px-3 py-2 font-medium border-b">Entregado</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="d in modalVer.solicitud?.detalles" :key="d.id" class="border-b hover:bg-gray-50">
+                <td class="px-3 py-2">{{ d.articulo?.nombre }}</td>
+                <td class="px-3 py-2 text-right">{{ d.cantidad_solicitada }} {{ d.articulo?.unidad_medida }}</td>
+                <td v-if="modalVer.solicitud?.estado !== 'PENDIENTE' && modalVer.solicitud?.estado !== 'APROBADO'"
+                  class="px-3 py-2 text-right">
+                  <span :class="d.cantidad_autorizada < d.cantidad_solicitada ? 'text-orange-600 font-semibold' : 'text-green-700'">
+                    {{ d.cantidad_autorizada ?? '-' }} {{ d.articulo?.unidad_medida }}
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
 
     <!-- Modal crear solicitud -->
     <div v-if="modalCrear.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[95vh] overflow-hidden flex flex-col">
-        <div class="px-6 py-4 flex-shrink-0" style="background-color:#4a5e3a;">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-3xl h-[90vh] overflow-hidden flex flex-col">
+        <div class="px-6 py-4 flex-shrink-0 flex items-center justify-between" style="background-color:#4a5e3a;">
           <h2 class="text-lg font-bold text-white">Nueva Solicitud de Materiales</h2>
+          <button @click="modalCrear.show = false" class="text-white/70 hover:text-white text-xl leading-none">&times;</button>
         </div>
-        <div class="p-6 overflow-y-auto">
+        <div class="p-6 overflow-y-auto flex-1">
+        <!-- Pedido a nombre de otro depto (solo ADQUISICIONES/BIENES) -->
+        <div v-if="esBienes" class="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+          <label class="block text-xs font-semibold text-amber-800 mb-1">
+            ¿Pedido a nombre de otro departamento? <span class="font-normal text-amber-600">(opcional)</span>
+          </label>
+          <select v-model="modalCrear.form.id_depto_beneficiario"
+            class="w-full border border-amber-300 rounded px-3 py-2 text-sm focus:ring-2 outline-none bg-white">
+            <option :value="null">— Mi propio departamento —</option>
+            <option v-for="d in departamentos" :key="d.id_depto" :value="d.id_depto">
+              {{ d.nombre_depto }}
+            </option>
+          </select>
+          <p v-if="modalCrear.form.id_depto_beneficiario" class="text-xs text-amber-700 mt-1">
+            La solicitud quedará registrada a nombre de este departamento y se aprobará automáticamente.
+          </p>
+        </div>
+
         <div class="mb-4">
           <label class="block text-xs text-gray-600 mb-1">Justificación</label>
           <textarea v-model="modalCrear.form.justificacion" rows="2" maxlength="500"
@@ -112,13 +188,23 @@
             placeholder="Escribe código o nombre del artículo..."
             class="w-full border rounded px-3 py-2 text-sm focus:ring-2 outline-none" />
           <div v-if="articulosFiltrados.length && busquedaArticulo"
-            class="absolute z-10 bg-white border rounded-lg shadow-lg w-full mt-1 max-h-48 overflow-y-auto">
-            <div v-for="a in articulosFiltrados" :key="a.id"
-              @click="agregarDetalle(a)"
-              class="px-4 py-2 text-sm hover:bg-gray-100 cursor-pointer">
-              <span class="font-mono text-xs text-gray-400 mr-2">{{ a.codigo }}</span>
-              <span class="font-medium">{{ a.nombre }}</span>
-              <span v-if="a.marca" class="text-gray-400 text-xs ml-1">({{ a.marca }})</span>
+            class="absolute z-10 w-full mt-1 rounded-lg shadow-xl overflow-hidden border-2"
+            style="border-color:#4a5e3a;">
+            <!-- Cabecera del dropdown -->
+            <div class="px-3 py-1.5 text-xs font-semibold text-white flex items-center justify-between"
+              style="background-color:#4a5e3a;">
+              <span>{{ articulosFiltrados.length }} artículo{{ articulosFiltrados.length !== 1 ? 's' : '' }} encontrado{{ articulosFiltrados.length !== 1 ? 's' : '' }}</span>
+              <span class="opacity-75 font-normal">clic para agregar →</span>
+            </div>
+            <!-- Lista de resultados -->
+            <div class="bg-white max-h-64 overflow-y-auto">
+              <div v-for="a in articulosFiltrados" :key="a.id"
+                @click="agregarDetalle(a)"
+                class="px-4 py-2.5 text-sm cursor-pointer border-b border-gray-100 last:border-0 hover:bg-green-50 transition flex items-center gap-3">
+                <span class="font-mono text-xs font-bold flex-shrink-0" style="color:#4a5e3a;">{{ a.codigo }}</span>
+                <span class="font-medium text-gray-800 flex-1">{{ a.nombre }}</span>
+                <span v-if="a.marca" class="text-gray-400 text-xs flex-shrink-0">({{ a.marca }})</span>
+              </div>
             </div>
           </div>
         </div>
@@ -166,7 +252,7 @@
             {{ guardando ? 'Enviando...' : 'Enviar solicitud' }}
           </button>
         </div>
-        </div><!-- /p-6 overflow-y-auto -->
+        </div>
       </div>
     </div>
 
@@ -190,11 +276,6 @@
               <p class="text-sm font-medium text-gray-700 mb-2">{{ det.articulo?.nombre }}</p>
               <div class="flex items-center gap-4 text-sm flex-wrap">
                 <span class="text-gray-500">Solicitado: <b>{{ det.cantidad_solicitada }}</b></span>
-                <span class="text-gray-500">Stock disponible:
-                  <b :class="det.articulo?.stock_actual > 0 ? 'text-green-700' : 'text-red-600'">
-                    {{ det.articulo?.stock_actual }} {{ det.articulo?.unidad_medida }}
-                  </b>
-                </span>
               </div>
               <div class="mt-2">
                 <label class="block text-xs text-gray-500 mb-1">Cantidad a aprobar (puede modificar)</label>
@@ -216,11 +297,12 @@
       </div>
     </div>
 
-    <!-- Modal despachar (Bienes) -->
+    <!-- Modal despachar -->
     <div v-if="modalDespacho.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-xl w-full max-w-xl max-h-[90vh] overflow-hidden flex flex-col">
-        <div class="px-6 py-4 flex-shrink-0" style="background-color:#4a5e3a;">
+        <div class="px-6 py-4 flex-shrink-0 flex items-center justify-between" style="background-color:#4a5e3a;">
           <h2 class="text-lg font-bold text-white">Autorizar Cantidades — Despacho</h2>
+          <button @click="modalDespacho.show = false" class="text-white/70 hover:text-white text-xl leading-none">&times;</button>
         </div>
         <div class="p-6 overflow-y-auto">
         <p class="text-sm text-gray-500 mb-4">
@@ -232,7 +314,7 @@
             <p class="text-sm font-medium text-gray-700 mb-2">{{ det.articulo?.nombre }}</p>
             <div class="flex items-center gap-4 text-sm">
               <span class="text-gray-500">Solicitado: <b>{{ det.cantidad_solicitada }}</b></span>
-              <span class="text-gray-500">Stock disponible: <b :class="det.articulo?.stock_actual < det.cantidad_solicitada ? 'text-orange-600' : 'text-green-700'">
+              <span class="text-gray-500">Stock disponible: <b :class="Number(det.articulo?.stock_actual) < Number(det.cantidad_autorizada ?? det.cantidad_solicitada) ? 'text-orange-600' : 'text-green-700'">
                 {{ det.articulo?.stock_actual }}
               </b></span>
             </div>
@@ -259,7 +341,7 @@
             {{ guardando ? 'Guardando...' : 'Confirmar despacho' }}
           </button>
         </div>
-        </div><!-- /p-6 overflow-y-auto -->
+        </div>
       </div>
     </div>
   </div>
@@ -268,22 +350,32 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { useRouter } from 'vue-router'
 import api from '@/services/api'
 
-const auth         = useAuthStore()
-const solicitudes  = ref([])
-const articulos    = ref([])
-const filtroEstado = ref('')
-const guardando    = ref(false)
-const errorModal   = ref('')
+const auth          = useAuthStore()
+const solicitudes   = ref([])
+const articulos     = ref([])
+const departamentos = ref([])
+const filtroEstado  = ref('')
+const guardando     = ref(false)
+const errorModal    = ref('')
 const busquedaArticulo   = ref('')
 const articulosFiltrados = ref([])
 
+const pagina    = ref(1)
+const porPagina = ref(10)
+
+const totalPaginas = computed(() => Math.max(1, Math.ceil(solicitudes.value.length / porPagina.value)))
+const solicitudesPaginadas = computed(() => {
+  const inicio = (pagina.value - 1) * porPagina.value
+  return solicitudes.value.slice(inicio, inicio + porPagina.value)
+})
+
 const miId              = computed(() => auth.empleado?.id_emp)
-const esBienes          = computed(() => auth.tieneRol('BIENES'))
+const esBienes          = computed(() => auth.tieneRol('BIENES') || auth.tieneRol('ADQUISICIONES'))
 const esSupervisorLocal = ref(false)
 
+const modalVer        = ref({ show: false, solicitud: null })
 const modalCrear      = ref({ show: false, form: { justificacion: '', detalles: [] } })
 const modalAprobacion = ref({ show: false, solicitud: null, detalles: [] })
 const modalDespacho   = ref({ show: false, solicitud: null, detalles: [], observacion: '' })
@@ -311,20 +403,32 @@ async function cargar() {
   const params = filtroEstado.value ? { estado: filtroEstado.value } : {}
   const { data } = await api.get('/adquisiciones/solicitudes', { params })
   solicitudes.value = data
+  pagina.value = 1
+}
+
+function onFiltroChange() {
+  pagina.value = 1
+  cargar()
 }
 
 onMounted(async () => {
-  const [, a, rol] = await Promise.all([
+  const [, a, rol, deptos] = await Promise.all([
     cargar(),
     api.get('/adquisiciones/articulos'),
     api.get('/horas-extras/mi-rol'),
+    api.get('/departamentos'),
   ])
   articulos.value = a.data
   esSupervisorLocal.value = rol.data.es_supervisor || rol.data.es_admin_th
+  departamentos.value = (deptos.data || []).filter(d => d.id_depto != 999)
 })
 
+function abrirVer(s) {
+  modalVer.value = { show: true, solicitud: s }
+}
+
 function abrirCrear() {
-  modalCrear.value = { show: true, form: { justificacion: '', detalles: [] } }
+  modalCrear.value = { show: true, form: { justificacion: '', id_depto_beneficiario: null, detalles: [] } }
   busquedaArticulo.value = ''
   articulosFiltrados.value = []
   errorModal.value = ''
@@ -404,6 +508,17 @@ function abrirDespacho(s) {
     observacion: '',
   }
   errorModal.value = ''
+}
+
+async function descargarPdf(id) {
+  try {
+    const resp = await api.get(`/adquisiciones/solicitudes/${id}/pdf`, { responseType: 'blob' })
+    const url  = URL.createObjectURL(new Blob([resp.data], { type: 'application/pdf' }))
+    window.open(url, '_blank')
+    setTimeout(() => URL.revokeObjectURL(url), 60000)
+  } catch {
+    alert('Error al generar el PDF')
+  }
 }
 
 async function confirmarDespacho() {

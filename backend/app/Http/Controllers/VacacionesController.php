@@ -7,46 +7,57 @@ use App\Models\Configuracion;
 use App\Models\DetalleVacacion;
 use App\Models\Empleado;
 use App\Models\Supervisor;
+use App\Services\AuditoriaService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class VacacionesController extends Controller
 {
+    private function tasaVacaciones(Empleado $emp, ?Carbon $fechaHasta = null): array
+    {
+        $contrato = trim($emp->tipo_contrato ?? '');
+        if ($contrato === 'LOSEP') {
+            return ['tasa_mensual' => 2.50, 'dias_anuales' => 30, 'dias_adicionales_antiguedad' => 0];
+        }
+        if ($contrato === 'CODIGO DEL TRABAJO') {
+            $hasta         = $fechaHasta ?? Carbon::today();
+            $anios         = $emp->fecha_ingreso ? (int) Carbon::parse($emp->fecha_ingreso)->diffInYears($hasta) : 0;
+            $diasExtra     = min(max(0, $anios - 5), 15);
+            $diasAnuales   = 15 + $diasExtra;
+            return ['tasa_mensual' => $diasAnuales / 12, 'dias_anuales' => $diasAnuales, 'dias_adicionales_antiguedad' => $diasExtra];
+        }
+        return ['tasa_mensual' => 0, 'dias_anuales' => 0, 'dias_adicionales_antiguedad' => 0];
+    }
+
     private function calcularSaldoDisponible(Empleado $emp, CabeceraVacacion $cabecera): array
     {
-        $tasas = [
-            "LOSEP"              => 2.50,
-            "CODIGO DEL TRABAJO" => 1.25,
-        ];
-        $tasa = $tasas[trim($emp->tipo_contrato)] ?? 0;
-
         $fechaCorteConfig = Configuracion::find("FECHA_CORTE_VACACIONES");
         $fechaCorte       = $fechaCorteConfig ? Carbon::parse($fechaCorteConfig->valor) : Carbon::today();
 
-        // Si el empleado ingresó después de la fecha de corte, acumula desde su ingreso
         if ($emp->fecha_ingreso && Carbon::parse($emp->fecha_ingreso)->gt($fechaCorte)) {
             $fechaCorte = Carbon::parse($emp->fecha_ingreso);
         }
 
-        // Si el empleado está inactivo con fecha de salida, acumula hasta esa fecha
-        $estaInactivo   = strtoupper(trim($emp->estado)) === 'INACTIVO';
-        $fechaHasta     = ($estaInactivo && $emp->fecha_salida)
+        $estaInactivo = strtoupper(trim($emp->estado)) === 'INACTIVO';
+        $fechaHasta   = ($estaInactivo && $emp->fecha_salida)
             ? Carbon::parse($emp->fecha_salida)
             : Carbon::today();
 
-        // Base 360 días: días transcurridos / 360 × tasa anual (tasa × 12)
+        $info           = $this->tasaVacaciones($emp, $fechaHasta);
         $diasCalendario = max(0, $fechaCorte->diffInDays($fechaHasta));
-        $diasAcumulados = round($diasCalendario / 360 * ($tasa * 12), 2);
+        $diasAcumulados = round($diasCalendario / 360 * ($info['tasa_mensual'] * 12), 2);
         $saldoInicial   = (float) ($cabecera->dias_adicionales  ?? 0);
         $tomados        = (float) ($cabecera->total_dias_tomados ?? 0);
         $disponibles    = round($saldoInicial + $diasAcumulados - $tomados, 2);
 
         return [
-            "saldo_inicial"   => $saldoInicial,
-            "acumulado_a_hoy" => $diasAcumulados,
-            "tomados"         => $tomados,
-            "dias_disponibles"=> max(0, $disponibles),
+            "saldo_inicial"                => $saldoInicial,
+            "acumulado_a_hoy"              => $diasAcumulados,
+            "tomados"                      => $tomados,
+            "dias_disponibles"             => max(0, $disponibles),
+            "dias_anuales"                 => $info['dias_anuales'],
+            "dias_adicionales_antiguedad"  => $info['dias_adicionales_antiguedad'],
         ];
     }
 
@@ -67,10 +78,21 @@ class VacacionesController extends Controller
     private function empleadosDeSupervisor($id_supervisor)
     {
         $deptos = Supervisor::where("id_supervisor", $id_supervisor)->pluck("id_depto");
-        return Empleado::whereIn("id_depto", $deptos)
+
+        $empleadosDirectos = Empleado::whereIn("id_depto", $deptos)
             ->where("estado", "ACTIVO")
             ->where("id_emp", "!=", $id_supervisor)
             ->pluck("id_emp");
+
+        $deptosHijos = DB::table("dbo.ad_departamento")
+            ->whereIn("padre_id", $deptos)
+            ->pluck("id_depto");
+
+        $supervisoresHijos = Supervisor::whereIn("id_depto", $deptosHijos)
+            ->where("id_supervisor", "!=", $id_supervisor)
+            ->pluck("id_supervisor");
+
+        return $empleadosDirectos->merge($supervisoresHijos)->unique()->values();
     }
 
     // Rol del usuario autenticado
@@ -120,21 +142,28 @@ class VacacionesController extends Controller
         $esAdminOTH   = $this->esAdminOTH($emp->id_emp);
         $esSupervisor = $this->esSupervisor($emp->id_emp);
 
-        $query = Vacacion::with(["empleado.departamento"])
+        $query = Vacacion::with(["empleado.departamento", "aprobador"])
             ->orderBy("fecha_hora", "desc");
 
+        $vista = $request->query("vista", ""); // "mia" | "equipo" | ""
+
         if ($esAdminOTH) {
-            // Admin y TH ven todos
+            if ($vista === "mia") {
+                $query->where("id_emp", $emp->id_emp);
+            }
+            // vista=equipo o sin vista: ve todos
         } elseif ($esSupervisor) {
-            $deptos    = Supervisor::where("id_supervisor", $emp->id_emp)->pluck("id_depto");
-            $empleados = Empleado::whereIn("id_depto", $deptos)
-                ->where("estado", "ACTIVO")
-                ->where("id_emp", "!=", $emp->id_emp)
-                ->pluck("id_emp");
-            $query->where(function ($q) use ($emp, $empleados) {
-                $q->where("id_emp", $emp->id_emp)
-                  ->orWhereIn("id_emp", $empleados);
-            });
+            $empleados = $this->empleadosDeSupervisor($emp->id_emp);
+            if ($vista === "mia") {
+                $query->where("id_emp", $emp->id_emp);
+            } elseif ($vista === "equipo") {
+                $query->whereIn("id_emp", $empleados);
+            } else {
+                $query->where(function ($q) use ($emp, $empleados) {
+                    $q->where("id_emp", $emp->id_emp)
+                      ->orWhereIn("id_emp", $empleados);
+                });
+            }
         } else {
             $query->where("id_emp", $emp->id_emp);
         }
@@ -239,7 +268,15 @@ class VacacionesController extends Controller
             return response()->json(["message" => "La solicitud no está en estado PENDIENTE"], 422);
         }
 
-        $vacacion->update(["estado_permiso" => "APROBADO"]);
+        $vacacion->update([
+            "estado_permiso" => "APROBADO",
+            "aprobado_en"    => now(),
+            "aprobado_por"   => $supervisor->id_emp,
+            "backup_id"      => $request->backup_id     ?? null,
+            "backup_nombre"  => $request->backup_nombre ?? null,
+            "updated_at"     => now(),
+            "updated_by"     => $supervisor->id_emp,
+        ]);
 
         // Descontar días del saldo
         $dias     = Carbon::parse($vacacion->fecha_inicial)
@@ -252,7 +289,28 @@ class VacacionesController extends Controller
             $cabecera->save();
         }
 
+        AuditoriaService::log('dbo.d2_vacacion', $vacacion->id, 'APROBAR',
+            ['estado_permiso' => 'PENDIENTE'],
+            ['estado_permiso' => 'APROBADO', 'fecha_inicial' => $vacacion->fecha_inicial, 'fecha_final' => $vacacion->fecha_final, 'dias' => $dias],
+            $request, "Aprobación de vacación: {$vacacion->nombre_emp}");
+
         return response()->json(["message" => "Vacación aprobada correctamente", "vacacion" => $vacacion->load("empleado")]);
+    }
+
+    // Empleados del mismo departamento (para seleccionar backup al aprobar)
+    public function empleadosDepto(Request $request, $id)
+    {
+        $vacacion = Vacacion::findOrFail($id);
+        $idDepto  = DB::table('dbo.ad_empleado')->where('id_emp', $vacacion->id_emp)->value('id_depto');
+
+        $empleados = DB::table('dbo.ad_empleado')
+            ->where('estado', 'ACTIVO')
+            ->where('id_depto', $idDepto)
+            ->where('id_emp', '!=', $vacacion->id_emp)
+            ->orderBy('apellido_emp')
+            ->get(['id_emp', 'nombre_emp', 'apellido_emp']);
+
+        return response()->json($empleados);
     }
 
     // Negar vacación
@@ -282,6 +340,11 @@ class VacacionesController extends Controller
             "estado_permiso"       => "NEGADO",
             "observacion_negacion" => $request->observacion_negacion,
         ]);
+
+        AuditoriaService::log('dbo.d2_vacacion', $vacacion->id, 'NEGAR',
+            ['estado_permiso' => 'PENDIENTE'],
+            ['estado_permiso' => 'NEGADO', 'observacion' => $request->observacion_negacion],
+            $request, "Negación de vacación: {$vacacion->nombre_emp}");
 
         return response()->json(["message" => "Vacación negada", "vacacion" => $vacacion->load("empleado")]);
     }
@@ -313,6 +376,11 @@ class VacacionesController extends Controller
             "estado_permiso"       => "ELIMINADO",
             "observacion_negacion" => $request->observacion_negacion,
         ]);
+
+        AuditoriaService::log('dbo.d2_vacacion', $vacacion->id, 'ELIMINAR',
+            ['estado_permiso' => 'PENDIENTE', 'fecha_inicial' => $vacacion->fecha_inicial, 'fecha_final' => $vacacion->fecha_final],
+            ['estado_permiso' => 'ELIMINADO', 'observacion' => $request->observacion_negacion],
+            $request, "Eliminación de vacación: {$vacacion->nombre_emp}");
 
         return response()->json(["message" => "Vacación eliminada correctamente"]);
     }

@@ -3,15 +3,11 @@
 
     <!-- Tarjeta de timbrada del empleado -->
     <div class="bg-white rounded-xl shadow p-6">
-      <div class="flex items-center justify-between mb-6">
-        <div>
-          <h1 class="text-2xl font-bold text-gray-800">Control de Asistencia</h1>
-          <p class="text-gray-500 text-sm mt-1">{{ fechaHoy }} | {{ horaActual }}</p>
-        </div>
-        <div class="text-right">
-          <p class="text-sm font-medium text-gray-700">{{ estado.empleado?.apellido }} {{ estado.empleado?.nombre }}</p>
-          <p class="text-xs text-gray-500">{{ estado.empleado?.departamento }}</p>
-        </div>
+      <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-800 text-center">Control de Asistencia</h1>
+        <p class="text-center text-xl font-bold text-gray-700 mt-3">
+          {{ fechaHoy }} &nbsp;|&nbsp; {{ horaActual }}
+        </p>
       </div>
 
       <!-- Botones de marcacion -->
@@ -20,21 +16,30 @@
           v-for="btn in botones" :key="btn.concepto"
           @click="marcar(btn.concepto)"
           :disabled="!btn.disponible || marcando"
+          :style="btnStyle(btn.estadoBtn)"
           :class="[
-            btn.disponible
-              ? btn.color + ' cursor-pointer hover:opacity-90'
-              : 'bg-gray-100 text-gray-400 cursor-not-allowed',
-            'w-full py-6 rounded-xl text-sm font-semibold transition flex flex-col items-center gap-2'
+            btn.disponible ? 'cursor-pointer hover:opacity-90' : 'cursor-not-allowed opacity-80',
+            'w-full py-2 rounded-xl text-sm font-semibold transition flex flex-col items-center gap-1'
           ]">
-          <span class="text-2xl">{{ btn.icono }}</span>
+          <img :src="btn.icono" class="w-28 h-28 md:w-44 md:h-44 object-contain" decoding="async" />
           <span>{{ btn.label }}</span>
-          <span v-if="getMarcacion(btn.concepto)" class="text-xs font-normal opacity-80">
+          <span v-if="getMarcacion(btn.concepto)" class="text-xs font-normal opacity-70">
             {{ formatHora(getMarcacion(btn.concepto)?.fecha_hora) }}
           </span>
           <span v-else-if="btn.disponible" class="text-xs font-normal opacity-80">
-            {{ marcando && estado.siguiente === btn.concepto ? "Registrando..." : "Pendiente" }}
+            {{ marcando ? "Registrando..." : "Pendiente" }}
           </span>
         </button>
+      </div>
+
+      <!-- Banner de bloqueo por modalidad BIOMETRICO o TELETRABAJO vencido -->
+      <div v-if="estado.puede_marcar === false"
+        class="flex items-center gap-3 bg-amber-100 border-2 border-amber-400 text-amber-900 px-5 py-4 rounded-xl text-base font-bold mb-4 text-center justify-center">
+        <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+        </svg>
+        <span>{{ estado.mensaje_bloqueo }}</span>
       </div>
 
       <!-- Mensaje de exito -->
@@ -53,7 +58,14 @@
     <!-- Historial personal de marcaciones -->
     <div class="bg-white rounded-xl shadow p-6">
       <div class="flex items-center justify-between mb-4">
-        <h2 class="text-lg font-bold text-gray-800">Mis Marcaciones</h2>
+        <div>
+          <h2 class="text-lg font-bold text-gray-800">Mis Marcaciones</h2>
+          <p v-if="estado.articulo_atrasos"
+            class="text-sm font-medium text-white mt-2 px-4 py-2 rounded-lg max-w-2xl"
+            style="background-color:#0b5447;">
+            {{ estado.articulo_atrasos }}
+          </p>
+        </div>
         <div class="flex flex-wrap gap-2 items-center">
           <input v-model="histFechaDesde" type="date" @change="cargarHistorial"
             class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
@@ -229,36 +241,43 @@ const cargarHistorial = async () => {
 
 let intervalo = null
 
-const botones = computed(() => [
-  {
-    concepto: "ENTRADA",
-    label: "Marcar Entrada",
-    icono: "🟢",
-    color: "bg-green-500 text-white",
-    disponible: estado.value.siguiente === "ENTRADA",
-  },
-  {
-    concepto: "SALIDA AL LUNCH",
-    label: "Salida a Lunch",
-    icono: "🍽️",
-    color: "bg-yellow-500 text-white",
-    disponible: estado.value.siguiente === "SALIDA AL LUNCH",
-  },
-  {
-    concepto: "ENTRADA DEL LUNCH",
-    label: "Regreso de Lunch",
-    icono: "🔄",
-    color: "bg-[#579186] text-white",
-    disponible: estado.value.siguiente === "ENTRADA DEL LUNCH",
-  },
-  {
-    concepto: "SALIDA",
-    label: "Marcar Salida",
-    icono: "🔴",
-    color: "bg-red-500 text-white",
-    disponible: estado.value.siguiente === "SALIDA",
-  },
-])
+const ICONOS = {
+  'ENTRADA':           '/marcacion/marcacion_entrada.png',
+  'SALIDA AL LUNCH':   '/marcacion/marcacion_salida_almuerzo.png',
+  'ENTRADA DEL LUNCH': '/marcacion/marcacion_entrada_almuerzo.png',
+  'SALIDA':            '/marcacion/marcacion_salida.png',
+}
+
+const LABELS = {
+  'ENTRADA':           'Marcar Entrada',
+  'SALIDA AL LUNCH':   'Salida a Lunch',
+  'ENTRADA DEL LUNCH': 'Regreso de Lunch',
+  'SALIDA':            'Marcar Salida',
+}
+
+const btnStyle = (estadoBtn) => {
+  if (estadoBtn === 'apagado')       return 'background-color:#c3dbd7; color:#3a6b63;'
+  if (estadoBtn === 'activo')        return 'background-color:#0b5547; color:#ffffff;'
+  if (estadoBtn === 'por_activarse') return 'background-color:#068174; color:#ffffff;'
+  return ''
+}
+
+const botones = computed(() => {
+  const secuencia = ['ENTRADA', 'SALIDA AL LUNCH', 'ENTRADA DEL LUNCH', 'SALIDA']
+  const bloqueado = estado.value.puede_marcar === false
+  return secuencia.map(concepto => {
+    const yaMarcado = !!getMarcacion(concepto)
+    const esActivo  = !bloqueado && estado.value.siguiente === concepto
+    const estadoBtn = yaMarcado ? 'apagado' : esActivo ? 'activo' : 'por_activarse'
+    return {
+      concepto,
+      label:      LABELS[concepto],
+      icono:      ICONOS[concepto],
+      disponible: esActivo,
+      estadoBtn,
+    }
+  })
+})
 
 const getMarcacion = (concepto) => {
   return estado.value.marcaciones?.find(m => m.concepto === concepto)
@@ -312,6 +331,13 @@ const cargarListado = async () => {
 }
 
 const marcar = async (concepto) => {
+  if (concepto === 'SALIDA') {
+    const ahora = new Date()
+    const minutos = ahora.getHours() * 60 + ahora.getMinutes()
+    if (minutos < 16 * 60 + 30) {
+      if (!window.confirm('¿Está seguro de realizar esta marcación? La hora de salida es antes de las 16:30.')) return
+    }
+  }
   marcando.value     = true
   mensajeExito.value = ""
   mensajeError.value = ""
@@ -330,6 +356,9 @@ const marcar = async (concepto) => {
 }
 
 onMounted(async () => {
+  // Precarga las imágenes para evitar el blank al primer clic
+  Object.values(ICONOS).forEach(src => { const i = new Image(); i.src = src })
+
   actualizarHora()
   intervalo = setInterval(actualizarHora, 1000)
   await cargarEstado()

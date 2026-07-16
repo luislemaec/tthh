@@ -2,12 +2,16 @@
 namespace App\Http\Controllers;
 
 use App\Models\Empleado;
+use App\Models\EmpleadoHijo;
 use App\Models\Departamento;
 use App\Models\EmpleadoMail;
 use App\Models\CabeceraVacacion;
+use App\Services\AuditoriaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 
 class EmpleadoController extends Controller
 {
@@ -51,8 +55,23 @@ class EmpleadoController extends Controller
     // GET /api/empleados/{id}
     public function show($id)
     {
-        $emp = Empleado::with(["departamento", "emails"])->findOrFail($id);
-        return response()->json($emp);
+        $emp  = Empleado::with(["departamento", "emails", "hijos"])->findOrFail($id);
+        $data = $emp->toArray();
+        $data['foto_url'] = $emp->foto_url;
+        // Calcular años y guardería para cada hijo
+        $hoy  = now()->toDateString();
+        $data['hijos'] = collect($emp->hijos)->map(function ($h) use ($hoy) {
+            $fn   = $h->fecha_nacimiento;
+            $anos = $fn ? (int)floor((strtotime($hoy) - strtotime((string)$fn)) / (365.25 * 86400)) : null;
+            return [
+                'id'              => $h->id,
+                'nombre'          => $h->nombre,
+                'fecha_nacimiento'=> $h->fecha_nacimiento,
+                'anos'            => $anos,
+                'guarderia'       => $anos !== null && $anos < 5,
+            ];
+        })->values();
+        return response()->json($data);
     }
 
     // Generar id_emp correlativo
@@ -83,7 +102,25 @@ class EmpleadoController extends Controller
             "partida_individual"     => "required|integer|min:1",
             "proceso_institucional"  => "required|string|max:30",
             "modalidad_laboral"      => "required|string|max:50",
+            "programa"               => "nullable|string|max:4",
+            "actividad"              => "nullable|string|max:6",
+            "sexo"                          => "nullable|string|max:10",
+            "tipo_sangre"                   => "nullable|string|max:5",
+            "num_sercop"                    => "nullable|string|max:50",
+            "fecha_vence_sercop"            => "nullable|date",
+            "grupo_vulnerable_id"           => "nullable|integer",
+            "grupo_prioritario_id"          => "nullable|integer",
+            "tiene_discapacidad"            => "nullable|boolean",
+            "tipo_discapacidad_id"          => "nullable|integer",
+            "porcentaje_discapacidad"       => "nullable|integer|min:0|max:100",
+            "tiene_enfermedad_catastrofica" => "nullable|boolean",
+            "enfermedad_catastrofica_id"    => "nullable|integer",
+            "tiene_persona_sustituta"       => "nullable|boolean",
+            "sustituta_fecha_caducidad"     => "nullable|date",
+            "num_hijos_mayores"             => "nullable|integer|min:0",
         ]);
+
+        $usuario = auth()->user()->id_emp ?? null;
 
         $emp = Empleado::create([
             "id_emp"         => $this->generarIdEmp(),
@@ -101,8 +138,30 @@ class EmpleadoController extends Controller
             "cargo_empleado"   => $request->cargo_empleado,
             "telefono"         => $request->telefono,
             "calle_y_numero"   => $request->calle_y_numero,
-            "modalidad_laboral"=> $request->modalidad_laboral,
-            "id_jornada"       => $request->id_jornada,
+            "modalidad_laboral" => $request->modalidad_laboral,
+            "id_jornada"        => $request->id_jornada,
+            "programa"          => $request->filled('programa')    ? strtoupper($request->programa)    : null,
+            "actividad"         => $request->filled('actividad')   ? strtoupper($request->actividad)   : null,
+            "sexo"              => $request->filled('sexo')        ? strtoupper($request->sexo)        : null,
+            "tipo_sangre"       => $request->filled('tipo_sangre') ? strtoupper($request->tipo_sangre) : null,
+            "num_sercop"                    => $request->num_sercop         ?? null,
+            "fecha_vence_sercop"            => $request->fecha_vence_sercop ?? null,
+            "grupo_vulnerable_id"           => $request->grupo_vulnerable_id           ?? null,
+            "grupo_prioritario_id"          => $request->grupo_prioritario_id          ?? null,
+            "tiene_discapacidad"            => $request->boolean('tiene_discapacidad', false),
+            "tipo_discapacidad_id"          => $request->tipo_discapacidad_id          ?? null,
+            "porcentaje_discapacidad"       => $request->porcentaje_discapacidad       ?? null,
+            "tiene_enfermedad_catastrofica" => $request->boolean('tiene_enfermedad_catastrofica', false),
+            "enfermedad_catastrofica_id"    => $request->enfermedad_catastrofica_id    ?? null,
+            "tiene_persona_sustituta"       => $request->boolean('tiene_persona_sustituta', false),
+            "num_hijos_mayores"             => $request->num_hijos_mayores             ?? 0,
+            "banco"                         => $request->filled('banco')         ? strtoupper($request->banco)       : null,
+            "tipo_cuenta"                   => $request->filled('tipo_cuenta')   ? strtoupper($request->tipo_cuenta) : null,
+            "numero_cuenta"                 => $request->filled('numero_cuenta') ? $request->numero_cuenta           : null,
+            "created_at"       => now(),
+            "created_by"       => $usuario,
+            "updated_at"       => now(),
+            "updated_by"       => $usuario,
         ]);
 	$emp->password = bcrypt($request->identificacion);
 	$emp->save();
@@ -133,6 +192,20 @@ class EmpleadoController extends Controller
             ]);
         }
 
+        // Marcar como OCUPADO al titular inactivo/disponible que tenía esta partida
+        if ($request->filled("partida_individual")) {
+            Empleado::where("estado", "INACTIVO")
+                ->where("estado_puesto", "DISPONIBLE")
+                ->where("partida_individual", $request->partida_individual)
+                ->where("id_emp", "!=", $emp->id_emp)
+                ->update(["estado_puesto" => "OCUPADO"]);
+        }
+
+        AuditoriaService::log('dbo.ad_empleado', $emp->id_emp, 'CREAR',
+            null,
+            ['identificacion' => $emp->identificacion, 'nombre' => $emp->apellido_emp . ' ' . $emp->nombre_emp, 'id_depto' => $emp->id_depto, 'sueldo' => $emp->sueldo],
+            $request, 'Creación de empleado');
+
         return response()->json($emp->load(["departamento", "emails"]), 201);
     }
 
@@ -140,6 +213,25 @@ class EmpleadoController extends Controller
     public function update(Request $request, $id)
     {
         $emp = Empleado::findOrFail($id);
+
+        if ($emp->es_externo) {
+            return response()->json(['message' => 'Los funcionarios externos se gestionan desde el módulo de Comisiones.'], 422);
+        }
+        $anterior = [
+            'sueldo'               => $emp->sueldo,
+            'estado'               => $emp->estado,
+            'id_depto'             => $emp->id_depto,
+            'cargo_empleado'       => $emp->cargo_empleado,
+            'tipo_contrato'        => $emp->tipo_contrato,
+            'modalidad_laboral'    => $emp->modalidad_laboral,
+            'partida_individual'   => $emp->partida_individual,
+            'programa'             => $emp->programa,
+            'actividad'            => $emp->actividad,
+            'modalidad_marcacion'  => $emp->modalidad_marcacion,
+            'motivo_salida'        => $emp->motivo_salida,
+            'motivo_reactivacion'  => $emp->motivo_reactivacion,
+            'institucion_comision' => $emp->institucion_comision,
+        ];
 
         $request->validate([
             "identificacion"         => "nullable|string|max:15",
@@ -158,6 +250,22 @@ class EmpleadoController extends Controller
             "partida_individual"     => "required|integer|min:1",
             "proceso_institucional"  => "required|string|max:30",
             "modalidad_laboral"      => "required|string|max:50",
+            "programa"               => "nullable|string|max:4",
+            "actividad"              => "nullable|string|max:6",
+            "sexo"                   => "nullable|string|max:10",
+            "tipo_sangre"            => "nullable|string|max:5",
+            "num_sercop"                    => "nullable|string|max:50",
+            "fecha_vence_sercop"            => "nullable|date",
+            "grupo_vulnerable_id"           => "nullable|integer",
+            "grupo_prioritario_id"          => "nullable|integer",
+            "tiene_discapacidad"            => "nullable|boolean",
+            "tipo_discapacidad_id"          => "nullable|integer",
+            "porcentaje_discapacidad"       => "nullable|integer|min:0|max:100",
+            "tiene_enfermedad_catastrofica" => "nullable|boolean",
+            "enfermedad_catastrofica_id"    => "nullable|integer",
+            "tiene_persona_sustituta"       => "nullable|boolean",
+            "sustituta_fecha_caducidad"     => "nullable|date",
+            "num_hijos_mayores"             => "nullable|integer|min:0",
         ]);
 
         $emp->update([
@@ -180,12 +288,40 @@ class EmpleadoController extends Controller
             "id_jornada"            => $request->id_jornada              ?? $emp->id_jornada,
             "partida_individual"    => $request->partida_individual      ?? $emp->partida_individual,
             "partida_presupuestaria"=> $request->partida_presupuestaria  ?? $emp->partida_presupuestaria,
-            "estado_puesto"         => $request->estado_puesto           ?? $emp->estado_puesto,
+            "estado_puesto"         => strtoupper($request->estado ?? $emp->estado) === 'INACTIVO'
+                                        ? 'DISPONIBLE'
+                                        : ($request->estado_puesto ?? $emp->estado_puesto),
             "grupo_ocupacional"     => $request->grupo_ocupacional       ?? $emp->grupo_ocupacional,
             "proceso_institucional" => $request->proceso_institucional   ?? $emp->proceso_institucional,
-            "acumula_fondos_reserva"  => $request->acumula_fondos_reserva  ?? $emp->acumula_fondos_reserva,
-            "acumula_decimo_tercero"  => $request->acumula_decimo_tercero  ?? $emp->acumula_decimo_tercero,
-            "acumula_decimo_cuarto"   => $request->acumula_decimo_cuarto   ?? $emp->acumula_decimo_cuarto,
+            "acumula_fondos_reserva"    => $request->acumula_fondos_reserva    ?? $emp->acumula_fondos_reserva,
+            "acumula_decimo_tercero"    => $request->acumula_decimo_tercero    ?? $emp->acumula_decimo_tercero,
+            "acumula_decimo_cuarto"     => $request->acumula_decimo_cuarto     ?? $emp->acumula_decimo_cuarto,
+            "programa"                  => $request->filled('programa')  ? strtoupper($request->programa)  : ($emp->programa  ?? null),
+            "actividad"                 => $request->filled('actividad') ? strtoupper($request->actividad) : ($emp->actividad ?? null),
+            "modalidad_marcacion"       => $request->modalidad_marcacion       ?? $emp->modalidad_marcacion,
+            "puede_solicitar_vehiculo"  => $request->boolean('puede_solicitar_vehiculo', $emp->puede_solicitar_vehiculo ?? false),
+            "sexo"                      => $request->filled('sexo')        ? strtoupper($request->sexo)        : $emp->sexo,
+            "tipo_sangre"               => $request->filled('tipo_sangre') ? strtoupper($request->tipo_sangre) : $emp->tipo_sangre,
+            "num_sercop"                    => $request->num_sercop         ?? $emp->num_sercop,
+            "fecha_vence_sercop"            => $request->fecha_vence_sercop  ?? $emp->fecha_vence_sercop,
+            "grupo_vulnerable_id"           => $request->filled('grupo_vulnerable_id')  ? $request->grupo_vulnerable_id  : $emp->grupo_vulnerable_id,
+            "grupo_prioritario_id"          => $request->filled('grupo_prioritario_id') ? $request->grupo_prioritario_id : $emp->grupo_prioritario_id,
+            "tiene_discapacidad"            => $request->has('tiene_discapacidad')            ? $request->boolean('tiene_discapacidad')            : $emp->tiene_discapacidad,
+            "tipo_discapacidad_id"          => $request->filled('tipo_discapacidad_id')       ? $request->tipo_discapacidad_id       : $emp->tipo_discapacidad_id,
+            "porcentaje_discapacidad"       => $request->filled('porcentaje_discapacidad')    ? $request->porcentaje_discapacidad    : $emp->porcentaje_discapacidad,
+            "tiene_enfermedad_catastrofica" => $request->has('tiene_enfermedad_catastrofica') ? $request->boolean('tiene_enfermedad_catastrofica') : $emp->tiene_enfermedad_catastrofica,
+            "enfermedad_catastrofica_id"    => $request->filled('enfermedad_catastrofica_id') ? $request->enfermedad_catastrofica_id : $emp->enfermedad_catastrofica_id,
+            "tiene_persona_sustituta"       => $request->has('tiene_persona_sustituta')       ? $request->boolean('tiene_persona_sustituta')       : $emp->tiene_persona_sustituta,
+            "sustituta_fecha_caducidad"     => $request->sustituta_fecha_caducidad ?? $emp->sustituta_fecha_caducidad,
+            "num_hijos_mayores"             => $request->filled('num_hijos_mayores') ? (int)$request->num_hijos_mayores : $emp->num_hijos_mayores,
+            "motivo_salida"         => $request->has('motivo_salida')         ? ($request->motivo_salida         ?: null) : $emp->motivo_salida,
+            "motivo_reactivacion"   => $request->has('motivo_reactivacion')   ? ($request->motivo_reactivacion   ?: null) : $emp->motivo_reactivacion,
+            "institucion_comision"  => $request->has('institucion_comision')  ? ($request->institucion_comision  ?: null) : $emp->institucion_comision,
+            "banco"                 => $request->filled('banco')         ? strtoupper($request->banco)         : ($request->has('banco')         ? null : $emp->banco),
+            "tipo_cuenta"           => $request->filled('tipo_cuenta')   ? strtoupper($request->tipo_cuenta)   : ($request->has('tipo_cuenta')   ? null : $emp->tipo_cuenta),
+            "numero_cuenta"         => $request->filled('numero_cuenta') ? $request->numero_cuenta             : ($request->has('numero_cuenta') ? null : $emp->numero_cuenta),
+            "updated_at"                => now(),
+            "updated_by"                => auth()->user()->id_emp ?? null,
         ]);
 
         // Actualizar email
@@ -200,7 +336,38 @@ class EmpleadoController extends Controller
             ]);
         }
 
-        return response()->json($emp->load(["departamento", "emails"]));
+        // Marcar como OCUPADO al titular inactivo/disponible que tenía esta partida
+        if ($request->filled("partida_individual")) {
+            Empleado::where("estado", "INACTIVO")
+                ->where("estado_puesto", "DISPONIBLE")
+                ->where("partida_individual", $request->partida_individual)
+                ->where("id_emp", "!=", $emp->id_emp)
+                ->update(["estado_puesto" => "OCUPADO"]);
+        }
+
+        AuditoriaService::log('dbo.ad_empleado', $emp->id_emp, 'ACTUALIZAR',
+            $anterior,
+            [
+                'sueldo'              => $emp->sueldo,
+                'estado'              => $emp->estado,
+                'id_depto'            => $emp->id_depto,
+                'cargo_empleado'      => $emp->cargo_empleado,
+                'tipo_contrato'       => $emp->tipo_contrato,
+                'modalidad_laboral'   => $emp->modalidad_laboral,
+                'partida_individual'  => $emp->partida_individual,
+                'programa'            => $emp->programa,
+                'actividad'           => $emp->actividad,
+                'modalidad_marcacion' => $emp->modalidad_marcacion,
+                'motivo_salida'        => $emp->motivo_salida,
+                'motivo_reactivacion'  => $emp->motivo_reactivacion,
+                'institucion_comision' => $emp->institucion_comision,
+            ],
+            $request, 'Actualización de empleado: ' . trim($emp->apellido_emp . ' ' . $emp->nombre_emp));
+
+        $emp->load(["departamento", "emails"]);
+        $data = $emp->toArray();
+        $data['foto_url'] = $emp->foto_url;
+        return response()->json($data);
     }
 
     // DELETE /api/empleados/{id}
@@ -353,5 +520,234 @@ class EmpleadoController extends Controller
             ->orderBy('partida_individual')
             ->get(['id_emp', 'nombre_emp', 'apellido_emp', 'partida_individual', 'partida_presupuestaria']);
         return response()->json($partidas);
+    }
+
+    // POST /api/empleados/{id}/foto
+    public function subirFoto(Request $request, $id)
+    {
+        $request->validate(['foto' => 'required|image|max:2048']);
+
+        $emp = Empleado::findOrFail($id);
+
+        if ($emp->foto) {
+            Storage::disk('public')->delete($emp->foto);
+        }
+
+        $path = $request->file('foto')->store('empleados', 'public');
+        $emp->update(['foto' => $path]);
+
+        return response()->json(['foto' => $path]);
+    }
+
+    // DELETE /api/empleados/{id}/foto
+    public function eliminarFoto($id)
+    {
+        $emp = Empleado::findOrFail($id);
+
+        if ($emp->foto) {
+            Storage::disk('public')->delete($emp->foto);
+            $emp->update(['foto' => null]);
+        }
+
+        return response()->json(['message' => 'Foto eliminada.']);
+    }
+
+    // GET /api/empleados/catalogos-sociales
+    public function catalogosSociales()
+    {
+        return response()->json([
+            'grupos_vulnerables'     => DB::table('dbo.ad_grupo_vulnerable')    ->where('activo', true)->orderBy('nombre')->get(['id','nombre']),
+            'grupos_prioritarios'    => DB::table('dbo.ad_grupo_prioritario')   ->where('activo', true)->orderBy('nombre')->get(['id','nombre']),
+            'tipos_discapacidad'     => DB::table('dbo.ad_tipo_discapacidad')   ->where('activo', true)->orderBy('nombre')->get(['id','nombre']),
+            'enfermedades_catastroficas' => DB::table('dbo.ad_enfermedad_catastrofica')->where('activo', true)->orderBy('nombre')->get(['id','nombre']),
+        ]);
+    }
+
+    // GET /api/empleados/{id}/hijos
+    public function hijoIndex($id)
+    {
+        $hijos = EmpleadoHijo::where('id_emp', $id)->orderBy('fecha_nacimiento')->get();
+        $hoy   = now()->toDateString();
+        return response()->json($hijos->map(function ($h) use ($hoy) {
+            $fn   = $h->fecha_nacimiento;
+            $anos = $fn ? (int)floor((strtotime($hoy) - strtotime($fn)) / (365.25 * 86400)) : null;
+            return [
+                'id'              => $h->id,
+                'nombre'          => $h->nombre,
+                'fecha_nacimiento'=> $h->fecha_nacimiento,
+                'anos'            => $anos,
+                'guarderia'       => $anos !== null && $anos < 5,
+            ];
+        }));
+    }
+
+    // POST /api/empleados/{id}/hijos
+    public function hijoStore(Request $request, $id)
+    {
+        $request->validate([
+            'fecha_nacimiento' => 'required|date|before_or_equal:today',
+            'nombre'           => 'nullable|string|max:200',
+        ]);
+        Empleado::findOrFail($id);
+        $hijo = EmpleadoHijo::create([
+            'id_emp'           => $id,
+            'nombre'           => $request->nombre,
+            'fecha_nacimiento' => $request->fecha_nacimiento,
+            'created_at'       => now(),
+        ]);
+        $anos = (int)floor((time() - strtotime($hijo->fecha_nacimiento)) / (365.25 * 86400));
+        return response()->json([
+            'id'              => $hijo->id,
+            'nombre'          => $hijo->nombre,
+            'fecha_nacimiento'=> $hijo->fecha_nacimiento,
+            'anos'            => $anos,
+            'guarderia'       => $anos < 5,
+        ], 201);
+    }
+
+    // DELETE /api/empleados/{id}/hijos/{hijoId}
+    public function hijoDestroy($id, $hijoId)
+    {
+        $hijo = EmpleadoHijo::where('id_emp', $id)->where('id', $hijoId)->firstOrFail();
+        $hijo->delete();
+        return response()->json(['message' => 'Hijo eliminado.']);
+    }
+
+    // ── Documento persona sustituta (Alfresco) ──────────────────────────────
+
+    private string $alfrescoBase = 'http://192.168.26.38:8080/alfresco/api/-default-/public/alfresco/versions/1';
+    private string $alfrescoUser = 'admin';
+    private string $alfrescoPass = 'admin';
+    private string $alfrescoSite = 'talentohumano';
+
+    private function getDocLibNodeId(): string
+    {
+        $resp = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+            ->get("{$this->alfrescoBase}/sites/{$this->alfrescoSite}/containers/documentLibrary");
+        return $resp->json('entry.id');
+    }
+
+    // POST /api/empleados/{id}/sustituta-doc
+    public function subirDocSustituta(Request $request, $id)
+    {
+        $request->validate([
+            'documento'            => 'required|file|mimes:pdf|max:5120',
+            'sustituta_fecha_caducidad' => 'nullable|date',
+        ]);
+
+        $emp      = Empleado::findOrFail($id);
+        $archivo  = $request->file('documento');
+        $cedula   = $emp->identificacion;
+        $apellido = strtoupper(explode(' ', trim($emp->apellido_emp))[0]);
+        $carpeta  = "empleados/{$cedula}_{$apellido}";
+        $nombre   = "sustituta_{$cedula}_" . now()->format('Ymd_His') . '.pdf';
+
+        $docLibId = $this->getDocLibNodeId();
+        $upload   = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+            ->attach('filedata', file_get_contents($archivo->getRealPath()), $nombre)
+            ->post("{$this->alfrescoBase}/nodes/{$docLibId}/children", [
+                'name'         => $nombre,
+                'nodeType'     => 'cm:content',
+                'relativePath' => $carpeta,
+                'autoRename'   => true,
+            ]);
+
+        if (!$upload->successful()) {
+            return response()->json(['message' => 'Error al subir el documento a Alfresco.'], 502);
+        }
+
+        $nodeId = $upload->json('entry.id');
+        $emp->update([
+            'sustituta_alfresco_id'    => $nodeId,
+            'sustituta_nombre_archivo' => $nombre,
+            'sustituta_fecha_caducidad'=> $request->sustituta_fecha_caducidad ?? null,
+            'tiene_persona_sustituta'  => true,
+        ]);
+
+        return response()->json([
+            'sustituta_alfresco_id'    => $nodeId,
+            'sustituta_nombre_archivo' => $nombre,
+            'sustituta_fecha_caducidad'=> $emp->sustituta_fecha_caducidad,
+        ]);
+    }
+
+    // GET /api/empleados/{id}/sustituta-doc
+    public function descargarDocSustituta($id)
+    {
+        $emp = Empleado::findOrFail($id);
+        if (!$emp->sustituta_alfresco_id) {
+            return response()->json(['message' => 'Sin documento de persona sustituta.'], 404);
+        }
+        $resp = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+            ->get("{$this->alfrescoBase}/nodes/{$emp->sustituta_alfresco_id}/content");
+
+        return response($resp->body(), 200, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $emp->sustituta_nombre_archivo . '"',
+        ]);
+    }
+
+    // DELETE /api/empleados/{id}/sustituta-doc
+    public function eliminarDocSustituta($id)
+    {
+        $emp = Empleado::findOrFail($id);
+        if ($emp->sustituta_alfresco_id) {
+            Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+                ->delete("{$this->alfrescoBase}/nodes/{$emp->sustituta_alfresco_id}");
+        }
+        $emp->update([
+            'sustituta_alfresco_id'    => null,
+            'sustituta_nombre_archivo' => null,
+        ]);
+        return response()->json(['message' => 'Documento eliminado.']);
+    }
+
+    // ── Períodos de teletrabajo ─────────────────────────────────────────────
+
+    // GET /api/empleados/{id}/teletrabajo
+    public function teletrabajoIndex($id)
+    {
+        $periodos = DB::table('dbo.ad_empleado_teletrabajo')
+            ->where('id_emp', $id)
+            ->orderByDesc('fecha_desde')
+            ->get();
+        return response()->json($periodos);
+    }
+
+    // POST /api/empleados/{id}/teletrabajo
+    public function teletrabajoStore(Request $request, $id)
+    {
+        Empleado::findOrFail($id);
+
+        $request->validate([
+            'fecha_desde' => 'required|date',
+            'fecha_hasta' => 'required|date|after_or_equal:fecha_desde',
+        ]);
+
+        $periodo = DB::table('dbo.ad_empleado_teletrabajo')->insertGetId([
+            'id_emp'      => $id,
+            'fecha_desde' => $request->fecha_desde,
+            'fecha_hasta' => $request->fecha_hasta,
+            'created_by'  => $request->user()->id_emp,
+            'created_at'  => now(),
+            'updated_at'  => now(),
+        ]);
+
+        return response()->json(
+            DB::table('dbo.ad_empleado_teletrabajo')->find($periodo),
+            201
+        );
+    }
+
+    // DELETE /api/empleados/{id}/teletrabajo/{periodoId}
+    public function teletrabajoDestroy($id, $periodoId)
+    {
+        $deleted = DB::table('dbo.ad_empleado_teletrabajo')
+            ->where('id', $periodoId)
+            ->where('id_emp', $id)
+            ->delete();
+
+        if (!$deleted) abort(404);
+        return response()->json(['message' => 'Período eliminado.']);
     }
 }

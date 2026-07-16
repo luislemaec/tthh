@@ -1,104 +1,118 @@
 <template>
   <div>
-    <div class="flex justify-between items-center mb-6">
-      <h1 class="text-2xl font-bold text-gray-800">Inventario de Artículos</h1>
-      <div class="flex gap-3">
+    <div class="flex justify-between items-center pb-4 mb-5 border-b border-gray-100">
+      <h1 class="text-xl font-bold text-gray-800 tracking-tight">Inventario de Artículos</h1>
+      <div class="flex gap-2">
         <button @click="abrirConfiguracion"
-          class="border border-green-700 text-green-700 px-4 py-2 rounded-lg text-sm hover:bg-green-50">
-          ⚙ Stock mínimo ({{ porcentajeMinimo }}%)
+          class="inline-flex items-center gap-1.5 border border-[#4a5e3a] text-[#4a5e3a] px-3.5 py-2 rounded-lg text-sm hover:bg-green-50 transition-colors font-medium">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 0 1 1.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.559.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.894.149c-.424.07-.764.383-.929.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 0 1-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.398.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 0 1-.12-1.45l.527-.737c.25-.35.273-.806.108-1.204-.165-.397-.506-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.108-1.204l-.526-.738a1.125 1.125 0 0 1 .12-1.45l.773-.773a1.125 1.125 0 0 1 1.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894Z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>
+          Stock mínimo ({{ porcentajeMinimo }}%)
+        </button>
+        <button @click="modalImport.show = true"
+          class="inline-flex items-center gap-1.5 border border-[#4a5e3a] text-[#4a5e3a] px-3.5 py-2 rounded-lg text-sm hover:bg-green-50 transition-colors font-medium">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/></svg>
+          Importar Stock CSV
         </button>
         <button @click="abrirModalCrear"
-          class="bg-green-700 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-800">
-          + Nuevo artículo
+          class="inline-flex items-center gap-1.5 bg-[#4a5e3a] text-white px-3.5 py-2 rounded-lg text-sm hover:bg-[#3a4e2a] transition-colors font-medium">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+          Nuevo artículo
         </button>
       </div>
     </div>
 
     <!-- Filtros -->
-    <div class="flex gap-3 mb-3 flex-wrap items-end">
-      <div>
-        <label class="block text-xs text-gray-500 mb-1">Nivel 1</label>
-        <select v-model="filtroNivel1" @change="filtroNivel2 = ''" class="border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none">
-          <option value="">Todas las categorías</option>
-          <option v-for="n in nivel1s" :key="n.nivel1" :value="n.nivel1">{{ n.nivel1 }} — {{ n.descripcion }}</option>
-        </select>
+    <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-4">
+      <div class="flex gap-3 flex-wrap items-end">
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">Nivel 1</label>
+          <select v-model="filtroNivel1" @change="filtroNivel2 = ''" class="border border-gray-200 bg-white rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#4a5e3a]/30 focus:border-[#4a5e3a] outline-none">
+            <option value="">Todas las categorías</option>
+            <option v-for="n in nivel1s" :key="n.nivel1" :value="n.nivel1">{{ n.nivel1 }} — {{ n.descripcion }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">Nivel 2</label>
+          <select v-model="filtroNivel2" :disabled="!filtroNivel1" class="border border-gray-200 bg-white rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#4a5e3a]/30 focus:border-[#4a5e3a] outline-none disabled:opacity-50">
+            <option value="">Todos los subniveles</option>
+            <option v-for="c in nivel2sParaBuscar" :key="c.nivel2" :value="c.nivel2">{{ c.nivel2 }} — {{ c.descripcion }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">Texto</label>
+          <input v-model="busqueda" type="text" placeholder="Nombre o código..."
+            class="border border-gray-200 bg-white rounded-lg px-3 py-2 text-sm w-48 focus:ring-2 focus:ring-[#4a5e3a]/30 focus:border-[#4a5e3a] outline-none" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">Estado</label>
+          <select v-model="filtroEstado" class="border border-gray-200 bg-white rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#4a5e3a]/30 focus:border-[#4a5e3a] outline-none">
+            <option value="">Todos</option>
+            <option value="alerta">Solo alertas</option>
+            <option value="ACTIVO">Activos</option>
+            <option value="INACTIVO">Inactivos</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">Condición</label>
+          <select v-model="filtroFisico" class="border border-gray-200 bg-white rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#4a5e3a]/30 focus:border-[#4a5e3a] outline-none">
+            <option value="">Todas</option>
+            <option value="BUENO">Bueno</option>
+            <option value="MALO">Malo</option>
+            <option value="INSERVIBLE">Inservible</option>
+          </select>
+        </div>
+        <button @click="buscar" class="inline-flex items-center gap-1.5 bg-[#4a5e3a] text-white px-5 py-2 rounded-lg text-sm hover:bg-[#3a4e2a] transition-colors font-medium">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
+          Buscar
+        </button>
+        <div class="ml-auto self-center">
+          <span v-if="!hasBuscado" class="inline-flex items-center gap-1 text-xs text-blue-600 bg-blue-50 border border-blue-100 px-3 py-1.5 rounded-lg">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+            Use los filtros y presione Buscar
+          </span>
+          <span v-else-if="articulosFiltrados.length > 0" class="inline-flex items-center gap-1 text-xs text-[#4a5e3a] bg-green-50 border border-green-200 px-3 py-1.5 rounded-lg font-medium">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+            {{ articulosFiltrados.length }} de {{ articulos.length }} artículos
+          </span>
+          <span v-else class="inline-flex items-center gap-1 text-xs text-red-600 bg-red-50 border border-red-100 px-3 py-1.5 rounded-lg">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/></svg>
+            Sin resultados
+          </span>
+        </div>
       </div>
-      <div>
-        <label class="block text-xs text-gray-500 mb-1">Nivel 2</label>
-        <select v-model="filtroNivel2" :disabled="!filtroNivel1" class="border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 outline-none">
-          <option value="">Todos los subniveles</option>
-          <option v-for="c in nivel2sParaBuscar" :key="c.nivel2" :value="c.nivel2">{{ c.nivel2 }} — {{ c.descripcion }}</option>
-        </select>
-      </div>
-      <div>
-        <label class="block text-xs text-gray-500 mb-1">Texto</label>
-        <input v-model="busqueda" type="text" placeholder="Nombre o código..."
-          class="border rounded-lg px-3 py-2 text-sm w-48 focus:ring-2 focus:ring-amber-300 outline-none" />
-      </div>
-      <div>
-        <label class="block text-xs text-gray-500 mb-1">Estado</label>
-        <select v-model="filtroEstado" class="border rounded-lg px-3 py-2 text-sm">
-          <option value="">Todos</option>
-          <option value="alerta">Solo alertas</option>
-          <option value="ACTIVO">Activos</option>
-          <option value="INACTIVO">Inactivos</option>
-        </select>
-      </div>
-      <div>
-        <label class="block text-xs text-gray-500 mb-1">Condición</label>
-        <select v-model="filtroFisico" class="border rounded-lg px-3 py-2 text-sm">
-          <option value="">Todas</option>
-          <option value="BUENO">Bueno</option>
-          <option value="MALO">Malo</option>
-          <option value="INSERVIBLE">Inservible</option>
-        </select>
-      </div>
-      <button @click="buscar" class="bg-amber-700 text-white px-5 py-2 rounded-lg text-sm hover:bg-amber-800">
-        Buscar
-      </button>
-    </div>
-
-    <!-- Contador de resultados -->
-    <div class="mb-3">
-      <span v-if="!hasBuscado" class="inline-block bg-blue-50 text-blue-700 text-xs font-semibold px-3 py-1 rounded-full border border-blue-200">
-        Seleccione los filtros y presione Buscar
-      </span>
-      <span v-else-if="articulosFiltrados.length > 0"
-        class="inline-block bg-green-100 text-green-800 text-xs font-semibold px-3 py-1 rounded-full border border-green-300">
-        Se encontraron {{ articulosFiltrados.length }} de {{ articulos.length }} artículos
-      </span>
-      <span v-else
-        class="inline-block bg-red-100 text-red-700 text-xs font-semibold px-3 py-1 rounded-full border border-red-300">
-        No se encontraron artículos
-      </span>
     </div>
 
     <div class="bg-white rounded-xl shadow overflow-x-auto">
       <table class="text-xs" style="min-width: 1200px; width: 100%;">
         <thead>
           <tr style="background-color: #4a5e3a;">
-            <th class="text-left px-3 py-3 text-white font-semibold whitespace-nowrap">#</th>
-            <th class="text-left px-3 py-3 text-white font-semibold whitespace-nowrap">Código</th>
-            <th class="text-left px-3 py-3 text-white font-semibold whitespace-nowrap">Niv.1</th>
-            <th class="text-left px-3 py-3 text-white font-semibold whitespace-nowrap">Niv.2</th>
-            <th class="text-left px-3 py-3 text-white font-semibold whitespace-nowrap">Ítem Presup.</th>
-            <th class="text-left px-3 py-3 text-white font-semibold whitespace-nowrap">Descripción</th>
-            <th class="text-left px-3 py-3 text-white font-semibold whitespace-nowrap">Unidad</th>
-            <th class="text-right px-3 py-3 text-white font-semibold whitespace-nowrap">Stock</th>
-            <th class="text-right px-3 py-3 text-white font-semibold whitespace-nowrap">Precio s/IVA</th>
-            <th class="text-right px-3 py-3 text-white font-semibold whitespace-nowrap">IVA%</th>
-            <th class="text-right px-3 py-3 text-white font-semibold whitespace-nowrap">IVA $</th>
-            <th class="text-right px-3 py-3 text-white font-semibold whitespace-nowrap">Total</th>
-            <th class="text-left px-3 py-3 text-white font-semibold whitespace-nowrap">Estado</th>
-            <th class="text-left px-3 py-3 text-white font-semibold whitespace-nowrap">Condición</th>
-            <th class="text-left px-3 py-3 text-white font-semibold whitespace-nowrap sticky right-0" style="background-color: #4a5e3a;">Acciones</th>
+            <th class="text-left px-3 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">#</th>
+            <th class="text-left px-3 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">Código</th>
+            <th class="text-left px-3 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">Niv.1</th>
+            <th class="text-left px-3 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">Niv.2</th>
+            <th class="text-left px-3 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">Ítem Presup.</th>
+            <th class="text-left px-3 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">Descripción</th>
+            <th class="text-left px-3 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">Unidad</th>
+            <th class="text-right px-3 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">Stock</th>
+            <th class="text-right px-3 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">Precio s/IVA</th>
+            <th class="text-right px-3 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">IVA%</th>
+            <th class="text-right px-3 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">IVA $</th>
+            <th class="text-right px-3 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">Total</th>
+            <th class="text-left px-3 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">Estado</th>
+            <th class="text-left px-3 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">Condición</th>
+            <th class="text-left px-3 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide sticky right-0" style="background-color: #4a5e3a;">Acciones</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="!articulosFiltrados.length">
-            <td colspan="15" class="text-center py-8 text-gray-400">Sin artículos</td>
+            <td colspan="15" class="py-16 text-center">
+              <div class="flex flex-col items-center gap-2 text-gray-300">
+                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z"/></svg>
+                <p class="text-sm text-gray-400">Sin artículos para mostrar</p>
+              </div>
+            </td>
           </tr>
-          <tr v-for="a in articulosPaginados" :key="a.id" class="border-b hover:bg-amber-50">
+          <tr v-for="a in articulosPaginados" :key="a.id" class="border-b border-gray-100 hover:bg-green-50/60 transition-colors">
             <td class="px-3 py-2 text-gray-400 whitespace-nowrap">{{ a.id }}</td>
             <td class="px-3 py-2 font-mono whitespace-nowrap">{{ a.codigo }}</td>
             <td class="px-3 py-2 text-gray-500 whitespace-nowrap">{{ a.nivel1 || '-' }}</td>
@@ -117,23 +131,24 @@
             <td class="px-3 py-2 text-right font-mono whitespace-nowrap">${{ fmt(a.iva_valor) }}</td>
             <td class="px-3 py-2 text-right font-mono font-semibold whitespace-nowrap">${{ fmt(a.precio_total) }}</td>
             <td class="px-3 py-2 whitespace-nowrap">
-              <span :class="a.estado === 'ACTIVO' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'"
-                class="px-2 py-0.5 rounded-full font-medium">{{ a.estado }}</span>
+              <span :class="a.estado === 'ACTIVO' ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-gray-100 text-gray-500 border border-gray-200'"
+                class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold">{{ a.estado }}</span>
             </td>
             <td class="px-3 py-2 whitespace-nowrap">
               <span :class="{
-                'bg-green-100 text-green-700':   a.estado_fisico === 'BUENO',
-                'bg-yellow-100 text-yellow-700': a.estado_fisico === 'MALO',
-                'bg-red-100 text-red-700':       a.estado_fisico === 'INSERVIBLE',
-              }" class="px-2 py-0.5 rounded-full font-medium">
+                'bg-green-100 text-green-700 border border-green-200':   a.estado_fisico === 'BUENO',
+                'bg-amber-100 text-amber-700 border border-amber-200':   a.estado_fisico === 'MALO',
+                'bg-red-100 text-red-700 border border-red-200':         a.estado_fisico === 'INSERVIBLE',
+                'bg-green-100 text-green-700 border border-green-200':   !a.estado_fisico,
+              }" class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold">
                 {{ a.estado_fisico || 'BUENO' }}
               </span>
             </td>
             <td class="px-3 py-2 whitespace-nowrap sticky right-0 bg-white border-l border-gray-100">
-              <div class="flex gap-2">
-                <button @click="abrirEditar(a)" class="text-blue-600 hover:text-blue-800 font-medium">Editar</button>
+              <div class="flex gap-1.5">
+                <button @click="abrirEditar(a)" class="inline-flex items-center px-2.5 py-1 rounded-md border border-blue-200 text-xs text-blue-700 hover:bg-blue-50 font-medium transition-colors">Editar</button>
                 <button v-if="a.estado === 'ACTIVO'" @click="inactivar(a.id)"
-                  class="text-red-500 hover:text-red-700">Inactivar</button>
+                  class="inline-flex items-center px-2.5 py-1 rounded-md border border-red-200 text-xs text-red-600 hover:bg-red-50 font-medium transition-colors">Inactivar</button>
               </div>
             </td>
           </tr>
@@ -320,6 +335,56 @@
       </div>
     </div>
 
+    <!-- Modal importar stock CSV -->
+    <div v-if="modalImport.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden">
+        <div class="px-6 py-4" style="background-color:#4a5e3a;">
+          <h2 class="text-lg font-bold text-white">Importar Stock desde CSV</h2>
+        </div>
+        <div class="p-6 space-y-4">
+          <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800 space-y-1">
+            <p class="font-semibold">Formato del archivo CSV (con encabezado):</p>
+            <p class="font-mono bg-white border border-blue-100 rounded px-2 py-1 mt-1">codigo,stock,precio_unitario,unidad_medida</p>
+            <ul class="mt-2 space-y-0.5 list-disc list-inside text-blue-700">
+              <li><b>codigo</b> — código del artículo en el sistema</li>
+              <li><b>stock</b> — cantidad a establecer</li>
+              <li><b>precio_unitario</b> — precio sin IVA</li>
+              <li><b>unidad_medida</b> — ej: UNIDAD, RESMA, CAJA</li>
+            </ul>
+            <p class="mt-1 text-blue-600">Los artículos no encontrados por código se reportarán al final.</p>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Archivo CSV</label>
+            <input type="file" accept=".csv,.txt" @change="onCsvChange" ref="inputCsv"
+              class="w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-medium file:bg-green-50 file:text-green-700 hover:file:bg-green-100 cursor-pointer border rounded-lg p-1" />
+          </div>
+
+          <p v-if="modalImport.error" class="text-red-600 text-sm">{{ modalImport.error }}</p>
+
+          <!-- Resultado -->
+          <div v-if="modalImport.resultado" class="space-y-2">
+            <div class="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-4 py-2.5">
+              <svg class="w-5 h-5 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+              <span class="text-sm text-green-800 font-medium">{{ modalImport.resultado.procesados }} artículo(s) actualizados correctamente</span>
+            </div>
+            <div v-if="modalImport.resultado.no_encontrados.length" class="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+              <p class="text-xs font-semibold text-amber-800 mb-1">No encontrados ({{ modalImport.resultado.no_encontrados.length }}):</p>
+              <p class="text-xs font-mono text-amber-700">{{ modalImport.resultado.no_encontrados.join(', ') }}</p>
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-3 pt-1">
+            <button @click="cerrarImport" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cerrar</button>
+            <button @click="subirCsv" :disabled="!modalImport.archivo || modalImport.cargando"
+              class="bg-[#4a5e3a] text-white px-5 py-2 rounded-lg text-sm hover:bg-[#3a4e2a] disabled:opacity-50 font-medium">
+              {{ modalImport.cargando ? 'Procesando...' : 'Importar' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Modal configuración porcentaje -->
     <div v-if="modalConfig.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
@@ -372,6 +437,8 @@ const porPagina        = ref(25)
 
 const modal       = ref({ show: false, editando: false, id: null, form: {}, precioActual: 0 })
 const modalConfig = ref({ show: false, porcentaje: 20 })
+const modalImport = ref({ show: false, archivo: null, cargando: false, error: '', resultado: null })
+const inputCsv    = ref(null)
 const tabModal    = ref('catalogo')
 const tabsModal   = [
   { key: 'catalogo', label: 'Catálogo MEF' },
@@ -540,9 +607,7 @@ async function guardar() {
     if (imagenFile.value) {
       const fd = new FormData()
       fd.append('imagen', imagenFile.value)
-      await api.post(`/adquisiciones/articulos/${articuloId}/imagen`, fd, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
+      await api.post(`/adquisiciones/articulos/${articuloId}/imagen`, fd)
     }
 
     modal.value.show = false
@@ -570,5 +635,36 @@ async function guardarConfiguracion() {
   porcentajeMinimo.value = modalConfig.value.porcentaje
   modalConfig.value.show = false
   await cargar()
+}
+
+function onCsvChange(e) {
+  modalImport.value.archivo  = e.target.files[0] || null
+  modalImport.value.error    = ''
+  modalImport.value.resultado = null
+}
+
+function cerrarImport() {
+  modalImport.value = { show: false, archivo: null, cargando: false, error: '', resultado: null }
+  if (inputCsv.value) inputCsv.value.value = ''
+}
+
+async function subirCsv() {
+  if (!modalImport.value.archivo) return
+  modalImport.value.cargando  = true
+  modalImport.value.error     = ''
+  modalImport.value.resultado = null
+  try {
+    const fd = new FormData()
+    fd.append('archivo', modalImport.value.archivo)
+    const { data } = await api.post('/adquisiciones/ajustes/importar-stock', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    modalImport.value.resultado = data
+    await cargar()
+  } catch (e) {
+    modalImport.value.error = e.response?.data?.message || 'Error al procesar el archivo.'
+  } finally {
+    modalImport.value.cargando = false
+  }
 }
 </script>

@@ -37,23 +37,32 @@ class ReportePlanificacionController extends Controller
     // Obtiene o crea una carpeta por año dentro del DocumentLibrary
     private function getOrCreateFolderNodeId(string $parentNodeId, string $folderName): string
     {
-        // Buscar si ya existe
-        $search = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
-            ->get("{$this->alfrescoBase}/nodes/{$parentNodeId}/children", [
-                'where' => "(isFolder=true AND name='{$folderName}')",
-            ]);
+        $buscarPorNombre = function (string $parent, string $nombre): ?string {
+            $resp    = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
+                ->get("{$this->alfrescoBase}/nodes/{$parent}/children", [
+                    'where'    => '(isFolder=true)',
+                    'maxItems' => 500,
+                ]);
+            $entries = $resp->json('list.entries') ?? [];
+            foreach ($entries as $e) {
+                if ($e['entry']['name'] === $nombre) return $e['entry']['id'];
+            }
+            return null;
+        };
 
-        $entries = $search->json('list.entries') ?? [];
-        if (!empty($entries)) {
-            return $entries[0]['entry']['id'];
-        }
+        $found = $buscarPorNombre($parentNodeId, $folderName);
+        if ($found) return $found;
 
-        // Crear carpeta
         $create = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
             ->post("{$this->alfrescoBase}/nodes/{$parentNodeId}/children", [
                 'name'      => $folderName,
                 'nodeType'  => 'cm:folder',
             ]);
+
+        if ($create->status() === 409) {
+            $found = $buscarPorNombre($parentNodeId, $folderName);
+            if ($found) return $found;
+        }
 
         if (!$create->successful()) {
             abort(502, 'No se pudo crear la carpeta en Alfresco');
@@ -105,20 +114,22 @@ class ReportePlanificacionController extends Controller
                 ];
             });
 
-            $totalEmp     = $empsData->count();
-            $aprobados    = $empsData->where('estado_plan', 'APROBADO')->count();
-            $pendientes   = $empsData->where('estado_plan', 'PENDIENTE')->count();
-            $sinPlan      = $empsData->whereNull('estado_plan')->count();
+            $totalEmp           = $empsData->count();
+            $aprobados          = $empsData->whereIn('estado_plan', ['APROBADO', 'REPLANIFICADO'])->count();
+            $pendientes         = $empsData->where('estado_plan', 'PENDIENTE')->count();
+            $sinPlan            = $empsData->whereNull('estado_plan')->count();
+            $tieneReplanificados = $empsData->where('estado_plan', 'REPLANIFICADO')->count() > 0;
 
             return [
-                'id_depto'     => $depto->id_depto,
-                'nombre_depto' => $depto->nombre_depto,
-                'total'        => $totalEmp,
-                'aprobados'    => $aprobados,
-                'pendientes'   => $pendientes,
-                'sin_plan'     => $sinPlan,
-                'completo'     => $aprobados === $totalEmp,
-                'empleados'    => $empsData->values(),
+                'id_depto'            => $depto->id_depto,
+                'nombre_depto'        => $depto->nombre_depto,
+                'total'               => $totalEmp,
+                'aprobados'           => $aprobados,
+                'pendientes'          => $pendientes,
+                'sin_plan'            => $sinPlan,
+                'completo'            => $aprobados === $totalEmp,
+                'tiene_replanificados'=> $tieneReplanificados,
+                'empleados'           => $empsData->values(),
             ];
         })->filter()->values();
 
@@ -142,7 +153,7 @@ class ReportePlanificacionController extends Controller
         $empleados       = $this->empleadosElegibles($anio);
         $planificaciones = PlanificacionCab::with('periodos')
             ->where('anio', $anio)
-            ->where('estado', 'APROBADO')
+            ->whereIn('estado', ['APROBADO', 'REPLANIFICADO'])
             ->whereIn('id_emp', $empleados->pluck('id_emp'))
             ->get()
             ->keyBy('id_emp');
@@ -201,10 +212,10 @@ class ReportePlanificacionController extends Controller
             'archivo' => 'required|file|mimes:pdf|max:10240',
         ]);
 
-        $docLibId  = $this->getDocLibNodeId();
-        $folderId  = $this->getOrCreateFolderNodeId($docLibId, (string)$anio);
-        $archivo   = $request->file('archivo');
-        $nombre    = "planificacion_vacaciones_{$anio}_firmado.pdf";
+        $docLibId     = $this->getDocLibNodeId();
+        $archivo      = $request->file('archivo');
+        $nombre       = "planificacion_vacaciones_{$anio}_firmado.pdf";
+        $relativePath = "planificacion-vacaciones/{$anio}";
 
         // Eliminar nodo anterior si existe
         $existente = ReportePlanificacion::where('anio', $anio)->first();
@@ -216,10 +227,11 @@ class ReportePlanificacionController extends Controller
         // Subir a Alfresco
         $upload = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
             ->attach('filedata', file_get_contents($archivo->getRealPath()), $nombre)
-            ->post("{$this->alfrescoBase}/nodes/{$folderId}/children", [
-                'name'              => $nombre,
-                'nodeType'          => 'cm:content',
-                'autoRename'        => true,
+            ->post("{$this->alfrescoBase}/nodes/{$docLibId}/children", [
+                'name'         => $nombre,
+                'nodeType'     => 'cm:content',
+                'relativePath' => $relativePath,
+                'autoRename'   => true,
             ]);
 
         if (!$upload->successful()) {

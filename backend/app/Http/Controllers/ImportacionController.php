@@ -3,38 +3,49 @@ namespace App\Http\Controllers;
 
 use App\Models\Empleado;
 use App\Models\EmpleadoMail;
+use App\Models\CabeceraVacacion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class ImportacionController extends Controller
 {
+    private const COLUMNAS = [
+        'identificacion', 'nombre_emp', 'apellido_emp', 'id_depto',
+        'estado', 'estado_puesto', 'tipo_contrato', 'sueldo', 'nivel',
+        'cargo_empleado', 'grupo_ocupacional', 'proceso_institucional',
+        'modalidad_laboral', 'modalidad_marcacion',
+        'partida_individual', 'partida_presupuestaria',
+        'fecha_ingreso', 'fecha_salida',
+        'acumula_decimo_tercero', 'acumula_decimo_cuarto', 'acumula_fondos_reserva',
+        'puede_solicitar_vehiculo',
+        'telefono', 'calle_y_numero', 'email',
+    ];
+
+    private const EJEMPLO = [
+        '1234567890', 'JUAN CARLOS', 'PEREZ GARCIA', '16',
+        'ACTIVO', 'OCUPADO', 'LOSEP', '1500.00', '1',
+        'ANALISTA', 'GESTIÓN INTERNA', 'TALENTO HUMANO',
+        'SERVIDOR PÚBLICO', 'PRESENCIAL',
+        'PI-001', 'PP-001',
+        '2020-01-15', '',
+        '0', '0', '0',
+        '0',
+        '0991234567', 'Av. Amazonas 123', 'juan@correo.com',
+    ];
+
     // Descargar plantilla CSV
     public function plantilla()
     {
         $headers = [
-            "Content-Type"        => "text/csv",
-            "Content-Disposition" => "attachment; filename=plantilla_empleados.csv",
+            'Content-Type'        => 'text/csv',
+            'Content-Disposition' => 'attachment; filename=plantilla_empleados.csv',
         ];
 
-        $columnas = [
-            "identificacion", "nombre_emp", "apellido_emp",
-            "id_depto", "estado", "fecha_ingreso",
-            "cargo_empleado", "telefono", "tipo_contrato",
-            "sueldo", "nivel", "calle_y_numero", "email"
-        ];
-
-        $ejemplo = [
-            "1234567890", "JUAN CARLOS", "PEREZ GARCIA",
-            "16", "ACTIVO", "2020-01-15",
-            "ANALISTA", "0991234567", "101",
-            "1500.00", "1", "Av. Amazonas 123", "juan@correo.com"
-        ];
-
-        $callback = function() use ($columnas, $ejemplo) {
-            $file = fopen("php://output", "w");
+        $callback = function () {
+            $file = fopen('php://output', 'w');
             fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
-            fputcsv($file, $columnas);
-            fputcsv($file, $ejemplo);
+            fputcsv($file, self::COLUMNAS);
+            fputcsv($file, self::EJEMPLO);
             fclose($file);
         };
 
@@ -45,42 +56,41 @@ class ImportacionController extends Controller
     public function preview(Request $request)
     {
         $request->validate([
-            "archivo" => "required|file|mimes:csv,txt|max:5120",
+            'archivo' => 'required|file|mimes:csv,txt|max:5120',
         ]);
 
-        $filas   = [];
-        $errores = [];
-        $archivo = $request->file("archivo");
-        $handle  = fopen($archivo->getPathname(), "r");
+        $filas    = [];
+        $errores  = [];
+        $handle   = fopen($request->file('archivo')->getPathname(), 'r');
         $cabeceras = null;
         $fila_num  = 0;
 
-        while (($fila = fgetcsv($handle, 1000, ",")) !== false) {
+        while (($fila = fgetcsv($handle, 2000, ',')) !== false) {
             if ($fila_num === 0) {
-                $cabeceras = array_map("trim", $fila);
+                $cabeceras = array_map('trim', $fila);
                 $fila_num++;
                 continue;
             }
             if (count($fila) !== count($cabeceras)) {
-                $errores[] = "Fila $fila_num: numero de columnas incorrecto";
+                $errores[] = "Fila $fila_num: número de columnas incorrecto";
                 $fila_num++;
                 continue;
             }
-            $datos = array_combine($cabeceras, array_map("trim", $fila));
-            if (empty($datos["identificacion"])) $errores[] = "Fila $fila_num: identificacion requerida";
-            if (empty($datos["nombre_emp"]))     $errores[] = "Fila $fila_num: nombre_emp requerido";
-            if (empty($datos["apellido_emp"]))   $errores[] = "Fila $fila_num: apellido_emp requerido";
-            if (empty($datos["id_depto"]))       $errores[] = "Fila $fila_num: id_depto requerido";
-            $datos["_existe"] = Empleado::where("identificacion", $datos["identificacion"])->exists();
+            $datos = array_combine($cabeceras, array_map('trim', $fila));
+            if (empty($datos['identificacion'])) $errores[] = "Fila $fila_num: identificacion requerida";
+            if (empty($datos['nombre_emp']))      $errores[] = "Fila $fila_num: nombre_emp requerido";
+            if (empty($datos['apellido_emp']))    $errores[] = "Fila $fila_num: apellido_emp requerido";
+            if (empty($datos['id_depto']))        $errores[] = "Fila $fila_num: id_depto requerido";
+            $datos['_existe'] = Empleado::where('identificacion', $datos['identificacion'])->exists();
             $filas[] = $datos;
             $fila_num++;
         }
 
         fclose($handle);
         return response()->json([
-            "filas"   => $filas,
-            "errores" => $errores,
-            "total"   => count($filas),
+            'filas'   => $filas,
+            'errores' => $errores,
+            'total'   => count($filas),
         ]);
     }
 
@@ -88,79 +98,85 @@ class ImportacionController extends Controller
     public function importar(Request $request)
     {
         $request->validate([
-            "archivo" => "required|file|mimes:csv,txt|max:5120",
+            'archivo' => 'required|file|mimes:csv,txt|max:5120',
         ]);
 
         $importados   = 0;
         $actualizados = 0;
         $errores      = [];
-        $archivo      = $request->file("archivo");
-        $handle       = fopen($archivo->getPathname(), "r");
+        $handle       = fopen($request->file('archivo')->getPathname(), 'r');
         $cabeceras    = null;
         $fila_num     = 0;
 
         DB::beginTransaction();
         try {
-            while (($fila = fgetcsv($handle, 1000, ",")) !== false) {
+            while (($fila = fgetcsv($handle, 2000, ',')) !== false) {
                 if ($fila_num === 0) {
-                    $cabeceras = array_map("trim", $fila);
+                    $cabeceras = array_map('trim', $fila);
                     $fila_num++;
                     continue;
                 }
                 if (count($fila) !== count($cabeceras)) {
-                    $errores[] = "Fila $fila_num: numero de columnas incorrecto";
+                    $errores[] = "Fila $fila_num: número de columnas incorrecto";
                     $fila_num++;
                     continue;
                 }
-                $datos = array_combine($cabeceras, array_map("trim", $fila));
+                $d = array_combine($cabeceras, array_map('trim', $fila));
                 try {
-                    $existe = Empleado::where("identificacion", $datos["identificacion"])->first();
+                    $campos = [
+                        'nombre_emp'             => strtoupper($d['nombre_emp']),
+                        'apellido_emp'           => strtoupper($d['apellido_emp']),
+                        'id_depto'               => (int)$d['id_depto'],
+                        'estado'                 => strtoupper($d['estado'] ?? 'ACTIVO'),
+                        'estado_puesto'          => strtoupper($d['estado_puesto'] ?? 'OCUPADO'),
+                        'tipo_contrato'          => $d['tipo_contrato'] ?? null,
+                        'sueldo'                 => !empty($d['sueldo']) ? (float)$d['sueldo'] : null,
+                        'nivel'                  => !empty($d['nivel']) ? (int)$d['nivel'] : null,
+                        'cargo_empleado'         => $d['cargo_empleado'] ?? null,
+                        'grupo_ocupacional'      => $d['grupo_ocupacional'] ?? null,
+                        'proceso_institucional'  => $d['proceso_institucional'] ?? null,
+                        'modalidad_laboral'      => $d['modalidad_laboral'] ?? null,
+                        'modalidad_marcacion'    => strtoupper($d['modalidad_marcacion'] ?? 'PRESENCIAL'),
+                        'partida_individual'     => $d['partida_individual'] ?? null,
+                        'partida_presupuestaria' => $d['partida_presupuestaria'] ?? null,
+                        'fecha_ingreso'          => !empty($d['fecha_ingreso']) ? $d['fecha_ingreso'] : null,
+                        'fecha_salida'           => !empty($d['fecha_salida']) ? $d['fecha_salida'] : null,
+                        'acumula_decimo_tercero' => (bool)($d['acumula_decimo_tercero'] ?? false),
+                        'acumula_decimo_cuarto'  => (bool)($d['acumula_decimo_cuarto'] ?? false),
+                        'acumula_fondos_reserva' => (int)($d['acumula_fondos_reserva'] ?? 0),
+                        'puede_solicitar_vehiculo' => (bool)($d['puede_solicitar_vehiculo'] ?? false),
+                        'telefono'               => $d['telefono'] ?? null,
+                        'calle_y_numero'         => $d['calle_y_numero'] ?? null,
+                    ];
+
+                    $existe = Empleado::where('identificacion', $d['identificacion'])->first();
                     if ($existe) {
-                        $existe->update([
-                            "nombre_emp"     => strtoupper($datos["nombre_emp"]),
-                            "apellido_emp"   => strtoupper($datos["apellido_emp"]),
-                            "id_depto"       => (int)$datos["id_depto"],
-                            "estado"         => strtoupper($datos["estado"] ?? "ACTIVO"),
-                            "cargo_empleado" => $datos["cargo_empleado"] ?? null,
-                            "telefono"       => $datos["telefono"] ?? null,
-                            "tipo_contrato"      => $datos["tipo_contrato"] ?? null,
-                            "sueldo"         => !empty($datos["sueldo"]) ? (float)$datos["sueldo"] : null,
-                            "nivel"          => !empty($datos["nivel"]) ? (int)$datos["nivel"] : null,
-                            "calle_y_numero" => $datos["calle_y_numero"] ?? null,
-                            "fecha_ingreso"  => !empty($datos["fecha_ingreso"]) ? $datos["fecha_ingreso"] : null,
-                        ]);
-                        if (!empty($datos["email"])) {
-                            EmpleadoMail::where("id_emp", $existe->id_emp)->update(["estado" => "INACTIVO"]);
-                            EmpleadoMail::create(["id_emp" => $existe->id_emp, "mail" => $datos["email"], "estado" => "ACTIVO"]);
+                        $existe->update($campos);
+                        if (!empty($d['email'])) {
+                            EmpleadoMail::where('id_emp', $existe->id_emp)->update(['estado' => 'INACTIVO']);
+                            EmpleadoMail::create(['id_emp' => $existe->id_emp, 'mail' => $d['email'], 'estado' => 'ACTIVO']);
                         }
                         $actualizados++;
                     } else {
-                        $ultimo = Empleado::orderByRaw("id_emp DESC")->value("id_emp");
+                        $ultimo = Empleado::orderByRaw('id_emp DESC')->value('id_emp');
                         $numero = $ultimo ? ((int)$ultimo) + 1 : 1;
-                        $id_emp = str_pad($numero, 5, "0", STR_PAD_LEFT);
-                        $emp = Empleado::create([
-                            "id_emp"         => $id_emp,
-			    "identificacion" => str_pad($datos["identificacion"], 10, "0", STR_PAD_LEFT),
-                            "nombre_emp"     => strtoupper($datos["nombre_emp"]),
-                            "apellido_emp"   => strtoupper($datos["apellido_emp"]),
-                            "id_depto"       => (int)$datos["id_depto"],
-                            "estado"         => strtoupper($datos["estado"] ?? "ACTIVO"),
-                            "cargo_empleado" => $datos["cargo_empleado"] ?? null,
-                            "telefono"       => $datos["telefono"] ?? null,
-                            "tipo_contrato"      => $datos["tipo_contrato"] ?? null,
-                            "sueldo"         => !empty($datos["sueldo"]) ? (float)$datos["sueldo"] : null,
-                            "nivel"          => !empty($datos["nivel"]) ? (int)$datos["nivel"] : null,
-                            "calle_y_numero" => $datos["calle_y_numero"] ?? null,
-                            "fecha_ingreso"  => !empty($datos["fecha_ingreso"]) ? $datos["fecha_ingreso"] : null,
-                            "password"       => bcrypt($datos["identificacion"]),
-                        ]);
-                        if (!empty($datos["email"])) {
-                            EmpleadoMail::create(["id_emp" => $emp->id_emp, "mail" => $datos["email"], "estado" => "ACTIVO"]);
+                        $id_emp = str_pad($numero, 5, '0', STR_PAD_LEFT);
+                        $emp = Empleado::create(array_merge($campos, [
+                            'id_emp'         => $id_emp,
+                            'identificacion' => str_pad($d['identificacion'], 10, '0', STR_PAD_LEFT),
+                            'password'       => bcrypt($d['identificacion']),
+                        ]));
+                        CabeceraVacacion::firstOrCreate(
+                            ['id_emp' => $emp->id_emp],
+                            ['dias_adicionales' => 0, 'total_dias_tomados' => 0, 'total_tomados' => 0, 'dias_x_tomar_normal' => 0]
+                        );
+                        if (!empty($d['email'])) {
+                            EmpleadoMail::create(['id_emp' => $emp->id_emp, 'mail' => $d['email'], 'estado' => 'ACTIVO']);
                         }
                         $importados++;
                     }
                 } catch (\Exception $e) {
-                    $errores[] = "Fila $fila_num ($datos[identificacion]): " . $e->getMessage();
+                    $errores[] = "Fila $fila_num ({$d['identificacion']}): " . $e->getMessage();
                 }
                 $fila_num++;
             }
@@ -168,15 +184,15 @@ class ImportacionController extends Controller
             DB::commit();
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(["message" => "Error: " . $e->getMessage()], 500);
+            return response()->json(['message' => 'Error: ' . $e->getMessage()], 500);
         }
 
         return response()->json([
-            "message"      => "Importacion completada",
-            "importados"   => $importados,
-            "actualizados" => $actualizados,
-            "errores"      => $errores,
-            "total"        => $importados + $actualizados,
+            'message'      => 'Importación completada',
+            'importados'   => $importados,
+            'actualizados' => $actualizados,
+            'errores'      => $errores,
+            'total'        => $importados + $actualizados,
         ]);
     }
 }

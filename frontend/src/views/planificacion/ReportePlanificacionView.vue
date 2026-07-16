@@ -109,7 +109,9 @@
                 <td class="px-4 py-2 text-center text-yellow-700 font-medium">{{ depto.pendientes }}</td>
                 <td class="px-4 py-2 text-center text-red-600 font-medium">{{ depto.sin_plan }}</td>
                 <td class="px-4 py-2 text-center">
-                  <span v-if="depto.completo"
+                  <span v-if="depto.completo && depto.tiene_replanificados"
+                    class="px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-700 font-medium">Completo R</span>
+                  <span v-else-if="depto.completo"
                     class="px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-700 font-medium">Completo</span>
                   <span v-else
                     class="px-2 py-0.5 rounded-full text-xs bg-orange-100 text-orange-700 font-medium">Pendiente</span>
@@ -127,6 +129,8 @@
                   <td class="px-4 py-1.5 text-center">
                     <span v-if="emp.estado_plan === 'APROBADO'"
                       class="px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-700">Aprobado</span>
+                    <span v-else-if="emp.estado_plan === 'REPLANIFICADO'"
+                      class="px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-700">Replanificado</span>
                     <span v-else-if="emp.estado_plan === 'PENDIENTE'"
                       class="px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-700">Pendiente</span>
                     <span v-else-if="emp.estado_plan"

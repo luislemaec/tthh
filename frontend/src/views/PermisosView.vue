@@ -7,11 +7,21 @@
           class="bg-[#0b5447] text-white px-4 py-2 rounded-lg hover:bg-[#00372e] text-sm font-medium">
           📊 Estadística
         </button>
-        <button @click="abrirModalNuevo"
+        <button v-if="!esSupervisorOAdmin || tabActivo === 'mia'" @click="abrirModalNuevo"
           class="bg-[#0b5447] text-white px-4 py-2 rounded-lg hover:bg-[#00372e] text-sm font-medium">
           + Solicitar Permiso
         </button>
       </div>
+    </div>
+
+    <!-- Tabs (solo supervisor/admin) -->
+    <div v-if="esSupervisorOAdmin" class="flex gap-0 rounded-xl overflow-hidden border border-gray-200 mb-1">
+      <button @click="cambiarTab('mia')"
+        :class="['flex-1 py-2.5 text-sm font-semibold transition', tabActivo === 'mia' ? 'text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100']"
+        :style="tabActivo === 'mia' ? 'background-color:#0b5447' : ''">Mis Permisos</button>
+      <button @click="cambiarTab('equipo')"
+        :class="['flex-1 py-2.5 text-sm font-semibold transition', tabActivo === 'equipo' ? 'text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100']"
+        :style="tabActivo === 'equipo' ? 'background-color:#0b5447' : ''">Permisos Equipo</button>
     </div>
 
     <!-- Filtros -->
@@ -23,6 +33,7 @@
         <option value="APROBADO">Aprobado</option>
         <option value="NEGADO">Negado</option>
         <option value="ELIMINADO">Eliminado</option>
+        <option value="ANULADO">Anulado</option>
       </select>
       <label class="flex items-center gap-2 cursor-pointer select-none text-sm text-gray-700 border rounded-lg px-3 py-2 hover:bg-gray-50"
         :class="filtros.descontable === 'SI' ? 'border-[#579186] bg-[#f0faf8]' : ''">
@@ -46,6 +57,16 @@
         class="border rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-50">
         Limpiar
       </button>
+      <template v-if="permisos.length > 0">
+        <button @click="exportar('excel')" :disabled="exportando"
+          class="border rounded-lg px-3 py-2 text-sm font-medium text-green-700 border-green-300 hover:bg-green-50 disabled:opacity-50">
+          {{ exportando === 'excel' ? 'Generando…' : 'Excel' }}
+        </button>
+        <button @click="exportar('pdf')" :disabled="exportando"
+          class="border rounded-lg px-3 py-2 text-sm font-medium text-red-700 border-red-300 hover:bg-red-50 disabled:opacity-50">
+          {{ exportando === 'pdf' ? 'Generando…' : 'PDF' }}
+        </button>
+      </template>
     </div>
 
     <!-- Tabla -->
@@ -60,15 +81,16 @@
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Hasta</th>
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Todo el dia</th>
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Estado</th>
+            <th class="text-left px-4 py-3 text-gray-600 font-medium">Aprobado/Negado por</th>
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Acciones</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="cargando">
-            <td colspan="7" class="text-center py-8 text-gray-400">Cargando...</td>
+            <td colspan="9" class="text-center py-8 text-gray-400">Cargando...</td>
           </tr>
           <tr v-else-if="permisos.length === 0">
-            <td colspan="7" class="text-center py-8 text-gray-400">No hay permisos registrados</td>
+            <td colspan="9" class="text-center py-8 text-gray-400">No hay permisos registrados</td>
           </tr>
           <tr v-for="p in permisos" :key="p.secuencial_clave" class="border-b hover:bg-gray-50">
             <td class="px-4 py-3 font-medium">
@@ -94,18 +116,42 @@
                 {{ p.estado_permiso }}
               </span>
             </td>
+            <td class="px-4 py-3 text-sm text-gray-600">
+              <template v-if="p.aprobador">
+                {{ p.aprobador.apellido_emp }}, {{ p.aprobador.nombre_emp }}
+              </template>
+              <span v-else class="text-gray-300">—</span>
+            </td>
             <td class="px-4 py-3">
-              <div class="flex gap-2">
+              <div class="flex gap-1 flex-wrap">
                 <button @click="verPermiso(p)"
-                  class="text-[#0b5447] hover:underline text-xs font-medium">Ver</button>
-                <template v-if="esSupervisorOAdmin && p.estado_permiso === 'PENDIENTE' && p.empleado?.id_emp !== auth.empleado?.id_emp">
+                  class="inline-flex items-center px-2.5 py-1 rounded-md border border-[#0b5447] text-xs text-[#0b5447] hover:bg-[#f0faf8] font-medium transition-colors">
+                  Ver
+                </button>
+                <template v-if="esSupervisorOAdmin && tabActivo === 'equipo' && p.estado_permiso === 'PENDIENTE'">
+                  <span v-if="p.sin_atraso" title="Este empleado no registra atraso ese día"
+                    class="inline-flex items-center px-2 py-1 rounded-md bg-amber-100 text-amber-700 text-xs font-medium">
+                    ⚠ Sin atraso
+                  </span>
                   <button @click="aprobar(p.secuencial_clave)"
-                    class="text-green-600 hover:underline text-xs font-medium">Aprobar</button>
+                    class="inline-flex items-center px-2.5 py-1 rounded-md border border-green-300 text-xs text-green-700 hover:bg-green-50 font-medium transition-colors">
+                    Aprobar
+                  </button>
                   <button @click="abrirModalNegar(p)"
-                    class="text-red-500 hover:underline text-xs font-medium">Negar</button>
+                    class="inline-flex items-center px-2.5 py-1 rounded-md border border-red-200 text-xs text-red-600 hover:bg-red-50 font-medium transition-colors">
+                    Negar
+                  </button>
                   <button @click="abrirModalEliminar(p)"
-                    class="text-gray-500 hover:underline text-xs font-medium">Eliminar</button>
+                    class="inline-flex items-center px-2.5 py-1 rounded-md border border-gray-200 text-xs text-gray-500 hover:bg-gray-50 font-medium transition-colors">
+                    Eliminar
+                  </button>
                 </template>
+                <!-- Anular: solo TH/ADMIN, permiso APROBADO -->
+                <button v-if="miRol.es_admin_th && p.estado_permiso === 'APROBADO'"
+                  @click="abrirModalAnular(p)"
+                  class="inline-flex items-center px-2.5 py-1 rounded-md border border-orange-300 text-xs text-orange-700 hover:bg-orange-50 font-medium transition-colors">
+                  Anular
+                </button>
               </div>
             </td>
           </tr>
@@ -127,8 +173,11 @@
 
     <!-- Modal Solicitar Permiso -->
     <div v-if="modalNuevo" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-lg space-y-4">
-        <h2 class="text-lg font-semibold text-gray-700">Solicitar Permiso</h2>
+      <div class="bg-white rounded-xl shadow-lg w-full max-w-lg overflow-hidden">
+        <div class="px-6 py-4" style="background-color:#0b5447;">
+          <h2 class="text-lg font-semibold text-white">Solicitar Permiso</h2>
+        </div>
+        <div class="p-6">
         <div class="space-y-4">
           <div class="space-y-2">
             <label class="block text-sm font-medium text-gray-600">Descontable *</label>
@@ -155,20 +204,21 @@
               </option>
             </select>
           </div>
-          <div>
+          <div class="flex items-center gap-2">
+            <input v-model="formNuevo.todo_dia" type="checkbox" id="todo_dia"
+              true-value="SI" false-value="NO" class="rounded"
+              @change="formNuevo.todo_dia === 'SI' && (formNuevo.tipo_horario = '')" />
+            <label for="todo_dia" class="text-sm text-gray-600">Todo el dia</label>
+          </div>
+          <div v-if="formNuevo.todo_dia !== 'SI'">
             <label class="block text-sm font-medium text-gray-600 mb-1">Tipo de permiso *</label>
             <select v-model="formNuevo.tipo_horario"
               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
               <option value="">Seleccionar tipo...</option>
-              <option value="ENTRADA">Entrada — atraso a la entrada</option>
+              <option value="ENTRADA">Entrada — trámite personal</option>
               <option value="ENTRE JORNADA">Entre jornada — lunch, cita médica, etc.</option>
               <option value="SALIDA">Salida — salida anticipada</option>
             </select>
-          </div>
-          <div class="flex items-center gap-2">
-            <input v-model="formNuevo.todo_dia" type="checkbox" id="todo_dia"
-              true-value="SI" false-value="NO" class="rounded" />
-            <label for="todo_dia" class="text-sm text-gray-600">Todo el dia</label>
           </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
@@ -185,13 +235,11 @@
           <div v-if="formNuevo.todo_dia !== 'SI'" class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Hora Desde *</label>
-              <input v-model="formNuevo.hora_desde" type="time"
-                class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+              <TimePicker24 v-model="formNuevo.hora_desde" />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Hora Hasta *</label>
-              <input v-model="formNuevo.hora_hasta" type="time"
-                class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+              <TimePicker24 v-model="formNuevo.hora_hasta" />
             </div>
           </div>
           <div>
@@ -209,12 +257,13 @@
             </button>
           </div>
         </div>
+        </div>
       </div>
     </div>
 
     <!-- Modal Ver Permiso -->
-    <div v-if="modalVer" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-lg space-y-4">
+    <div v-if="modalVer" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-2xl space-y-4 my-4">
         <h2 class="text-lg font-semibold text-gray-700">Detalle del Permiso</h2>
         <dl class="grid grid-cols-2 gap-3 text-sm">
           <div>
@@ -284,6 +333,59 @@
             <dd class="font-medium text-red-600">{{ permisoSeleccionado?.observacion_negacion }}</dd>
           </div>
         </dl>
+        <!-- Documentos de respaldo (solo permisos no descontables) -->
+        <div v-if="permisoSeleccionado?.descontable === 'NO'" class="border-t pt-4">
+          <h3 class="text-sm font-semibold text-gray-700 mb-3">Documentos de Respaldo</h3>
+
+          <!-- Lista de documentos -->
+          <div v-if="documentos.length" class="space-y-2 mb-3">
+            <div v-for="doc in documentos" :key="doc.id"
+              class="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-sm">
+              <div class="flex items-center gap-2 min-w-0">
+                <svg class="w-4 h-4 text-red-500 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM6 20V4h5v7h7v9H6z"/>
+                </svg>
+                <span class="truncate text-gray-700">{{ doc.nombre_archivo }}</span>
+                <span class="shrink-0 text-xs text-gray-400 bg-gray-200 px-1.5 py-0.5 rounded">
+                  {{ tiposDocumento.find(t => t.value === doc.tipo_doc)?.label || doc.tipo_doc }}
+                </span>
+              </div>
+              <div class="flex gap-1 shrink-0 ml-2">
+                <button @click="descargarDocumento(doc)"
+                  class="inline-flex items-center px-2 py-1 rounded border border-blue-200 text-xs text-blue-700 hover:bg-blue-50 transition-colors">
+                  Ver
+                </button>
+                <button v-if="permisoSeleccionado?.estado_permiso === 'PENDIENTE'"
+                  @click="eliminarDocumento(doc)"
+                  class="inline-flex items-center px-2 py-1 rounded border border-red-200 text-xs text-red-600 hover:bg-red-50 transition-colors">
+                  Eliminar
+                </button>
+              </div>
+            </div>
+          </div>
+          <p v-else class="text-xs text-gray-400 mb-3">Sin documentos adjuntos.</p>
+
+          <!-- Subir nuevo (solo en PENDIENTE) -->
+          <div v-if="permisoSeleccionado?.estado_permiso === 'PENDIENTE'" class="bg-blue-50 rounded-lg p-3 space-y-2">
+            <p class="text-xs font-medium text-blue-800">Adjuntar nuevo documento</p>
+            <div class="flex flex-col sm:flex-row gap-2">
+              <select v-model="formDoc.tipo_doc"
+                class="border rounded-lg px-2 py-1.5 text-sm flex-1 bg-white">
+                <option value="">— Tipo de documento —</option>
+                <option v-for="t in tiposDocumento" :key="t.value" :value="t.value">{{ t.label }}</option>
+              </select>
+              <input id="inputArchivoDoc" type="file" accept=".pdf,.jpg,.jpeg,.png"
+                @change="onArchivoDoc"
+                class="border rounded-lg px-2 py-1.5 text-sm flex-1 bg-white file:mr-2 file:py-0.5 file:px-2 file:rounded file:border-0 file:text-xs file:bg-blue-100 file:text-blue-700" />
+            </div>
+            <button @click="subirDocumento" :disabled="subiendoDoc || !formDoc.tipo_doc || !formDoc.archivo"
+              class="w-full py-1.5 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors">
+              {{ subiendoDoc ? "Subiendo..." : "Subir documento" }}
+            </button>
+          </div>
+          <p v-else class="text-xs text-gray-400 italic">Solo se pueden adjuntar documentos mientras el permiso está en estado PENDIENTE.</p>
+        </div>
+
         <div class="flex justify-end pt-2">
           <button @click="modalVer = false"
             class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cerrar</button>
@@ -327,6 +429,49 @@
           <button @click="confirmarEliminar"
             class="px-4 py-2 rounded-lg bg-gray-600 text-white text-sm hover:bg-gray-700">
             Confirmar Eliminación
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Anular Permiso Aprobado -->
+    <div v-if="modalAnular" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md space-y-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
+            <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+          </div>
+          <div>
+            <h2 class="text-lg font-semibold text-gray-700">Anular Permiso Aprobado</h2>
+            <p class="text-xs text-gray-500 mt-0.5">
+              {{ permisoSeleccionado?.empleado?.apellido_emp }}, {{ permisoSeleccionado?.empleado?.nombre_emp }}
+              &mdash; {{ permisoSeleccionado?.fecha_desde?.substring(0,10) }}
+            </p>
+          </div>
+        </div>
+        <div class="bg-orange-50 border border-orange-200 rounded-lg px-4 py-3 text-xs text-orange-700 space-y-1">
+          <p class="font-medium">Esta acción:</p>
+          <p>• Cambia el estado del permiso a ANULADO</p>
+          <p v-if="permisoSeleccionado?.descontable === 'SI'">• Revierte el descuento de vacaciones ya aplicado</p>
+          <p v-else>• El permiso era no descontable (sin afectación a vacaciones)</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">
+            Motivo de anulación <span class="text-red-500">*</span>
+          </label>
+          <textarea v-model="motivoAnulacion" rows="3" maxlength="120" placeholder="Ej: El empleado no hizo uso del permiso..."
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"></textarea>
+          <p v-if="errorAnular" class="text-red-500 text-xs mt-1">{{ errorAnular }}</p>
+        </div>
+        <div class="flex justify-end gap-3">
+          <button @click="modalAnular = false"
+            class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
+          <button @click="confirmarAnular" :disabled="anulando"
+            class="px-4 py-2 rounded-lg bg-orange-600 text-white text-sm hover:bg-orange-700 disabled:opacity-50">
+            {{ anulando ? "Anulando..." : "Confirmar Anulación" }}
           </button>
         </div>
       </div>
@@ -406,15 +551,14 @@
 
 <script setup>
 import { ref, computed, onMounted } from "vue"
-import { useAuthStore } from "@/stores/auth"
 import api from "@/services/api"
-
-const auth = useAuthStore()
+import TimePicker24 from "@/components/TimePicker24.vue"
 
 const permisos            = ref([])
 const razones             = ref([])
 const cargando            = ref(false)
 const guardando           = ref(false)
+const exportando          = ref(false)
 const modalNuevo          = ref(false)
 const modalVer            = ref(false)
 const modalNegar          = ref(false)
@@ -422,17 +566,32 @@ const modalEliminar       = ref(false)
 const permisoSeleccionado = ref(null)
 const motivoNegacion      = ref("")
 const motivoEliminacion   = ref("")
+
+// Documentos de respaldo
+const documentos       = ref([])
+const subiendoDoc      = ref(false)
+const tiposDocumento   = [
+  { value: "certificado_medico",   label: "Certificado Médico" },
+  { value: "partida_nacimiento",   label: "Partida de Nacimiento" },
+  { value: "certificado_defuncion",label: "Certificado de Defunción" },
+  { value: "solicitud",            label: "Solicitud" },
+  { value: "otro",                 label: "Otro" },
+]
+const formDoc = ref({ tipo_doc: "", archivo: null })
 const errorEliminar       = ref("")
 const errorNuevo          = ref("")
 const total               = ref(0)
 const pagina              = ref(1)
 const totalPaginas        = ref(1)
 const miRol               = ref({ es_supervisor: false, es_admin_th: false })
+const tabActivo           = ref("mia")
 
 const filtros = ref({ estado: "", fecha_desde: "", fecha_hasta: "", descontable: "" })
 
+const hoy = new Date().toISOString().split('T')[0]
+
 const formNuevo = ref({
-  sec_permiso: "", tipo_horario: "", fecha_desde: "", fecha_hasta: "",
+  sec_permiso: "", tipo_horario: "", fecha_desde: hoy, fecha_hasta: hoy,
   hora_desde: "08:00", hora_hasta: "17:00",
   todo_dia: "NO", observaciones: "",
 })
@@ -453,6 +612,7 @@ const colorEstado = (estado) => {
     "APROBADO":  "bg-green-100 text-green-700",
     "NEGADO":    "bg-red-100 text-red-700",
     "ELIMINADO": "bg-gray-100 text-gray-700",
+    "ANULADO":   "bg-orange-100 text-orange-700",
   }
   return colores[estado] || "bg-gray-100 text-gray-700"
 }
@@ -460,7 +620,8 @@ const colorEstado = (estado) => {
 const cargar = async () => {
   cargando.value = true
   try {
-    const params = { page: pagina.value, per_page: 15, ...filtros.value }
+    const vista  = esSupervisorOAdmin.value ? tabActivo.value : ""
+    const params = { page: pagina.value, per_page: 15, ...filtros.value, ...(vista ? { vista } : {}) }
     const { data } = await api.get("/permisos", { params })
     permisos.value     = data.data
     total.value        = data.total
@@ -472,11 +633,18 @@ const cargar = async () => {
   }
 }
 
+const cambiarTab = (tab) => {
+  tabActivo.value = tab
+  pagina.value    = 1
+  filtros.value   = { estado: "", fecha_desde: "", fecha_hasta: "", descontable: "" }
+  cargar()
+}
+
 const abrirModalNuevo = async () => {
   errorNuevo.value = ""
   filtroDescontableForm.value = "SI"
   formNuevo.value = {
-    sec_permiso: "", tipo_horario: "", fecha_desde: "", fecha_hasta: "",
+    sec_permiso: "", tipo_horario: "", fecha_desde: hoy, fecha_hasta: hoy,
     hora_desde: "08:00", hora_hasta: "17:00",
     todo_dia: "NO", observaciones: "",
   }
@@ -493,9 +661,13 @@ const guardarPermiso = async () => {
   guardando.value  = true
   errorNuevo.value = ""
   try {
-    await api.post("/permisos", formNuevo.value)
+    const { data: creado } = await api.post("/permisos", formNuevo.value)
     modalNuevo.value = false
-    cargar()
+    await cargar()
+    // Si el permiso es no descontable, abrir detalle para subir documentos de respaldo
+    if (creado.descontable === "NO") {
+      verPermiso(creado)
+    }
   } catch (e) {
     errorNuevo.value = e.response?.data?.message || "Error al solicitar permiso"
   } finally {
@@ -503,9 +675,65 @@ const guardarPermiso = async () => {
   }
 }
 
-const verPermiso = (p) => {
+const verPermiso = async (p) => {
   permisoSeleccionado.value = p
-  modalVer.value = true
+  documentos.value          = []
+  formDoc.value             = { tipo_doc: "", archivo: null }
+  modalVer.value            = true
+  if (p.descontable === "NO") {
+    try {
+      const { data } = await api.get(`/permisos/${p.secuencial_clave}/documentos`)
+      documentos.value = data
+    } catch { /* silencioso */ }
+  }
+}
+
+const onArchivoDoc = (e) => { formDoc.value.archivo = e.target.files[0] || null }
+
+const subirDocumento = async () => {
+  if (!formDoc.value.tipo_doc || !formDoc.value.archivo) return
+  subiendoDoc.value = true
+  try {
+    const fd = new FormData()
+    fd.append("tipo_doc", formDoc.value.tipo_doc)
+    fd.append("archivo",  formDoc.value.archivo)
+    await api.post(`/permisos/${permisoSeleccionado.value.secuencial_clave}/documentos`, fd)
+    const { data } = await api.get(`/permisos/${permisoSeleccionado.value.secuencial_clave}/documentos`)
+    documentos.value  = data
+    formDoc.value     = { tipo_doc: "", archivo: null }
+    const inp = document.getElementById("inputArchivoDoc")
+    if (inp) inp.value = ""
+  } catch (e) {
+    alert(e.response?.data?.message || "Error al subir el documento")
+  } finally {
+    subiendoDoc.value = false
+  }
+}
+
+const eliminarDocumento = async (doc) => {
+  if (!confirm(`¿Eliminar "${doc.nombre_archivo}"?`)) return
+  try {
+    await api.delete(`/permisos/${permisoSeleccionado.value.secuencial_clave}/documentos/${doc.id}`)
+    documentos.value = documentos.value.filter(d => d.id !== doc.id)
+  } catch (e) {
+    alert(e.response?.data?.message || "Error al eliminar")
+  }
+}
+
+const descargarDocumento = async (doc) => {
+  try {
+    const resp = await api.get(
+      `/permisos/${permisoSeleccionado.value.secuencial_clave}/documentos/${doc.id}/descargar`,
+      { responseType: "blob" }
+    )
+    const tipo = resp.headers["content-type"] || "application/pdf"
+    const blob = new Blob([resp.data], { type: tipo })
+    const url  = URL.createObjectURL(blob)
+    window.open(url, "_blank")
+    setTimeout(() => URL.revokeObjectURL(url), 60000)
+  } catch {
+    alert("No se pudo descargar el archivo")
+  }
 }
 
 const aprobar = async (id) => {
@@ -572,6 +800,63 @@ const limpiarFiltros = () => {
   filtros.value = { estado: "", fecha_desde: "", fecha_hasta: "", descontable: "" }
   pagina.value  = 1
   cargar()
+}
+
+const exportar = async (formato) => {
+  exportando.value = formato
+  try {
+    const vista  = esSupervisorOAdmin.value ? tabActivo.value : ""
+    const params = { ...filtros.value, formato, ...(vista ? { vista } : {}) }
+    const resp   = await api.get("/permisos", { params, responseType: 'blob' })
+    const ext    = formato === 'excel' ? 'xlsx' : 'pdf'
+    const mime   = formato === 'excel'
+      ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      : 'application/pdf'
+    const blob   = new Blob([resp.data], { type: mime })
+    const url    = URL.createObjectURL(blob)
+    const a      = document.createElement('a')
+    a.href       = url
+    a.download   = `permisos_${new Date().toISOString().slice(0,10)}.${ext}`
+    a.click()
+    setTimeout(() => URL.revokeObjectURL(url), 60000)
+  } catch (e) {
+    console.error(e)
+    alert('Error al generar el archivo')
+  } finally {
+    exportando.value = false
+  }
+}
+
+const modalAnular      = ref(false)
+const motivoAnulacion  = ref("")
+const errorAnular      = ref("")
+const anulando         = ref(false)
+
+const abrirModalAnular = (p) => {
+  permisoSeleccionado.value = p
+  motivoAnulacion.value     = ""
+  errorAnular.value         = ""
+  modalAnular.value         = true
+}
+
+const confirmarAnular = async () => {
+  if (!motivoAnulacion.value.trim()) {
+    errorAnular.value = "El motivo de anulación es obligatorio"
+    return
+  }
+  anulando.value = true
+  errorAnular.value = ""
+  try {
+    await api.patch(`/permisos/${permisoSeleccionado.value.secuencial_clave}/anular`, {
+      observacion_negacion: motivoAnulacion.value
+    })
+    modalAnular.value = false
+    cargar()
+  } catch (e) {
+    errorAnular.value = e.response?.data?.message || "Error al anular el permiso"
+  } finally {
+    anulando.value = false
+  }
 }
 
 const modalEstadistica = ref(false)

@@ -2,10 +2,20 @@
   <div class="space-y-6">
     <div class="flex items-center justify-between">
       <h1 class="text-2xl font-bold text-gray-800">Vacaciones</h1>
-      <button v-if="!saldo.inactivo" @click="abrirModalNuevo"
+      <button v-if="!saldo.inactivo && (!esSupervisorOAdmin || tabActivo === 'mia')" @click="abrirModalNuevo"
         class="bg-[#0b5447] text-white px-4 py-2 rounded-lg hover:bg-[#00372e] text-sm font-medium">
         + Solicitar Vacaciones
       </button>
+    </div>
+
+    <!-- Tabs (solo supervisor/admin) -->
+    <div v-if="esSupervisorOAdmin" class="flex gap-0 rounded-xl overflow-hidden border border-gray-200 mb-1">
+      <button @click="cambiarTab('mia')"
+        :class="['flex-1 py-2.5 text-sm font-semibold transition', tabActivo === 'mia' ? 'text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100']"
+        :style="tabActivo === 'mia' ? 'background-color:#0b5447' : ''">Mis Vacaciones</button>
+      <button @click="cambiarTab('equipo')"
+        :class="['flex-1 py-2.5 text-sm font-semibold transition', tabActivo === 'equipo' ? 'text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100']"
+        :style="tabActivo === 'equipo' ? 'background-color:#0b5447' : ''">Vacaciones Equipo</button>
     </div>
 
     <!-- Empleado inactivo -->
@@ -17,10 +27,6 @@
     <div v-if="saldo.saldo_calculado" class="bg-white rounded-xl shadow p-4 space-y-3">
       <div class="flex items-center justify-between">
         <h2 class="text-sm font-semibold text-gray-700">Saldo de Vacaciones</h2>
-        <button @click="mostrarDetalleSaldo = !mostrarDetalleSaldo"
-          class="text-xs text-[#0b5447] hover:underline">
-          {{ mostrarDetalleSaldo ? "Ocultar detalle" : "Ver detalle por período" }}
-        </button>
       </div>
       <div class="flex gap-6">
         <div class="text-center">
@@ -39,34 +45,17 @@
           <p class="text-xl font-semibold text-green-600">+{{ saldo.saldo_calculado.acumulado_a_hoy ?? 0 }}</p>
           <p class="text-xs text-gray-500 mt-1">Acumulado a hoy</p>
         </div>
+        <div v-if="saldo.saldo_calculado.dias_adicionales_antiguedad > 0" class="text-center">
+          <p class="text-xl font-semibold text-blue-600">+{{ saldo.saldo_calculado.dias_adicionales_antiguedad }}</p>
+          <p class="text-xs text-gray-500 mt-1">Días adicionales<br>por antigüedad/año</p>
+        </div>
+      </div>
+      <div v-if="saldo.saldo_calculado.dias_adicionales_antiguedad > 0"
+        class="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5">
+        Código del Trabajo — {{ saldo.saldo_calculado.dias_anuales }} días/año
+        (15 base + {{ saldo.saldo_calculado.dias_adicionales_antiguedad }} por antigüedad)
       </div>
 
-      <!-- Detalle por período -->
-      <div v-if="mostrarDetalleSaldo && saldo.detalle.length > 0" class="border-t pt-3">
-        <table class="w-full text-xs">
-          <thead class="bg-gray-50">
-            <tr>
-              <th class="text-left px-3 py-2 text-gray-500">Período</th>
-              <th class="text-right px-3 py-2 text-gray-500">Por tomar</th>
-              <th class="text-right px-3 py-2 text-gray-500">Tomados</th>
-              <th class="text-right px-3 py-2 text-gray-500">Disponibles</th>
-              <th class="text-right px-3 py-2 text-gray-500">Acumulado</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="d in saldo.detalle" :key="d.secuencial" class="border-b">
-              <td class="px-3 py-2 font-medium">{{ d.periodo }}</td>
-              <td class="px-3 py-2 text-right">{{ d.dias_por_tomar }}</td>
-              <td class="px-3 py-2 text-right">{{ d.tomados_normal ?? 0 }}</td>
-              <td class="px-3 py-2 text-right font-semibold text-[#0b5447]">{{ d.disponible_normal ?? 0 }}</td>
-              <td class="px-3 py-2 text-right">{{ d.acumulado }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div v-else-if="mostrarDetalleSaldo" class="border-t pt-3 text-xs text-gray-400 text-center">
-        Sin detalle de períodos registrado
-      </div>
     </div>
 
     <div v-else-if="cargandoSaldo" class="bg-white rounded-xl shadow p-4 text-center text-gray-400 text-sm">
@@ -101,17 +90,18 @@
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Empleado</th>
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Fecha Inicio</th>
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Fecha Fin</th>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium">Todo el día</th>
+            <th class="text-center px-4 py-3 text-gray-600 font-medium">Días</th>
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Estado</th>
+            <th class="text-left px-4 py-3 text-gray-600 font-medium">Aprobado por</th>
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Acciones</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="cargando">
-            <td colspan="6" class="text-center py-8 text-gray-400">Cargando...</td>
+            <td colspan="7" class="text-center py-8 text-gray-400">Cargando...</td>
           </tr>
           <tr v-else-if="vacaciones.length === 0">
-            <td colspan="6" class="text-center py-8 text-gray-400">No hay solicitudes registradas</td>
+            <td colspan="7" class="text-center py-8 text-gray-400">No hay solicitudes registradas</td>
           </tr>
           <tr v-for="v in vacaciones" :key="v.secuencial_clave" class="border-b hover:bg-gray-50">
             <td class="px-4 py-3 font-medium">
@@ -119,9 +109,8 @@
             </td>
             <td class="px-4 py-3 text-gray-600">{{ v.fecha_inicial?.substring(0, 10) }}</td>
             <td class="px-4 py-3 text-gray-600">{{ v.fecha_final?.substring(0, 10) }}</td>
-            <td class="px-4 py-3 text-center">
-              <span v-if="v.todo_dia === 'SI'" class="text-green-600">✓</span>
-              <span v-else class="text-gray-400">—</span>
+            <td class="px-4 py-3 text-center font-semibold text-[#0b5447]">
+              {{ diasVac(v.fecha_inicial, v.fecha_final) }}
             </td>
             <td class="px-4 py-3">
               <span :class="colorEstado(v.estado_permiso)"
@@ -129,12 +118,18 @@
                 {{ v.estado_permiso }}
               </span>
             </td>
+            <td class="px-4 py-3 text-sm text-gray-600">
+              <template v-if="v.aprobador">
+                {{ v.aprobador.apellido_emp }}, {{ v.aprobador.nombre_emp }}
+              </template>
+              <span v-else class="text-gray-300">—</span>
+            </td>
             <td class="px-4 py-3">
               <div class="flex gap-2">
                 <button @click="verVacacion(v)"
                   class="text-[#0b5447] hover:underline text-xs font-medium">Ver</button>
-                <template v-if="esSupervisorOAdmin && v.estado_permiso === 'PENDIENTE' && v.empleado?.id_emp !== auth.empleado?.id_emp">
-                  <button @click="aprobar(v.secuencial_clave)"
+                <template v-if="esSupervisorOAdmin && tabActivo === 'equipo' && v.estado_permiso === 'PENDIENTE'">
+                  <button @click="abrirModalBackup(v.secuencial_clave)"
                     class="text-green-600 hover:underline text-xs font-medium">Aprobar</button>
                   <button @click="abrirModalNegar(v)"
                     class="text-red-500 hover:underline text-xs font-medium">Negar</button>
@@ -164,12 +159,21 @@
     <div v-if="modalNuevo" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-lg space-y-4">
         <h2 class="text-lg font-semibold text-gray-700">Solicitar Vacaciones</h2>
-        <div class="space-y-4">
-          <div class="flex items-center gap-2">
-            <input v-model="formNuevo.todo_dia" type="checkbox" id="todo_dia_vac"
-              true-value="SI" false-value="NO" class="rounded" />
-            <label for="todo_dia_vac" class="text-sm text-gray-600">Todo el día</label>
+
+        <!-- Recordatorio períodos planificados -->
+        <div v-if="periodosPlani.length" class="bg-[#0b5447]/5 border border-[#0b5447]/20 rounded-lg px-4 py-3">
+          <p class="text-xs font-semibold text-[#0b5447] uppercase tracking-wide mb-2">
+            📅 Tus períodos planificados {{ anioActual }}
+          </p>
+          <div class="flex flex-wrap gap-2">
+            <span v-for="(p, i) in periodosPlani" :key="i"
+              class="inline-flex items-center gap-1 bg-white border border-[#0b5447]/30 text-[#0b5447] text-xs font-medium px-2.5 py-1 rounded-full">
+              Per. {{ i + 1 }}: {{ fmtFechaPlan(p.fecha_inicial) }} — {{ fmtFechaPlan(p.fecha_final) }}
+            </span>
           </div>
+        </div>
+
+        <div class="space-y-4">
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Fecha Inicio *</label>
@@ -179,18 +183,6 @@
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Fecha Fin *</label>
               <input v-model="formNuevo.fecha_final" type="date"
-                class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
-            </div>
-          </div>
-          <div v-if="formNuevo.todo_dia !== 'SI'" class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-sm font-medium text-gray-600 mb-1">Hora Desde *</label>
-              <input v-model="formNuevo.hora_desde" type="time"
-                class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-600 mb-1">Hora Hasta *</label>
-              <input v-model="formNuevo.hora_hasta" type="time"
                 class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
             </div>
           </div>
@@ -312,15 +304,46 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal Backup al Aprobar -->
+    <div v-if="modalBackup.show" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md space-y-4">
+        <h2 class="text-lg font-semibold text-gray-700">Aprobar Vacación</h2>
+        <p class="text-sm text-gray-500">Puede seleccionar un empleado de respaldo (backup) para cubrir al solicitante durante su ausencia.</p>
+
+        <div v-if="modalBackup.cargando" class="text-center py-4 text-sm text-gray-400">Cargando empleados...</div>
+        <div v-else>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Empleado de respaldo (opcional)</label>
+          <select v-model="modalBackup.seleccionado"
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
+            <option :value="null">— Sin backup —</option>
+            <option v-for="emp in modalBackup.empleados" :key="emp.id_emp" :value="emp.id_emp">
+              {{ emp.apellido_emp }} {{ emp.nombre_emp }}
+            </option>
+          </select>
+        </div>
+
+        <div class="flex justify-end gap-3">
+          <button @click="modalBackup.show = false"
+            class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
+          <button @click="confirmarAprobar(false)"
+            class="px-4 py-2 rounded-lg border border-green-600 text-green-700 text-sm hover:bg-green-50">
+            Aprobar sin backup
+          </button>
+          <button @click="confirmarAprobar(true)" :disabled="!modalBackup.seleccionado"
+            class="px-4 py-2 rounded-lg bg-[#579186] text-white text-sm hover:bg-[#46786f] disabled:opacity-40 disabled:cursor-not-allowed">
+            Aprobar con backup
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from "vue"
-import { useAuthStore } from "@/stores/auth"
 import api from "@/services/api"
-
-const auth = useAuthStore()
+import TimePicker24 from "@/components/TimePicker24.vue"
 
 const vacaciones   = ref([])
 const cargando     = ref(false)
@@ -329,15 +352,19 @@ const total        = ref(0)
 const pagina       = ref(1)
 const totalPaginas = ref(1)
 const miRol        = ref({ es_supervisor: false, es_admin_th: false })
+const tabActivo    = ref("mia")
 
 const saldo               = ref({ cabecera: null, detalle: [] })
 const cargandoSaldo       = ref(false)
 const mostrarDetalleSaldo = ref(false)
 
+const periodosPlani  = ref([])
+const anioActual     = new Date().getFullYear()
 const modalNuevo     = ref(false)
 const modalVer       = ref(false)
 const modalNegar          = ref(false)
 const modalEliminar       = ref(false)
+const modalBackup         = ref({ show: false, vacId: null, empleados: [], seleccionado: null, cargando: false })
 const seleccionado        = ref(null)
 const motivoNegacion      = ref("")
 const motivoEliminacion   = ref("")
@@ -346,8 +373,10 @@ const errorNuevo          = ref("")
 
 const filtros = ref({ estado: "", fecha_desde: "", fecha_hasta: "" })
 
+const hoy = new Date().toISOString().split('T')[0]
+
 const formNuevo = ref({
-  fecha_inicial: "", fecha_final: "",
+  fecha_inicial: hoy, fecha_final: hoy,
   hora_desde: "08:00", hora_hasta: "17:00",
   todo_dia: "SI", observaciones: "",
 })
@@ -369,7 +398,8 @@ const colorEstado = (estado) => {
 const cargar = async () => {
   cargando.value = true
   try {
-    const params = { page: pagina.value, per_page: 15, ...filtros.value }
+    const vista  = esSupervisorOAdmin.value ? tabActivo.value : ""
+    const params = { page: pagina.value, per_page: 15, ...filtros.value, ...(vista ? { vista } : {}) }
     const { data } = await api.get("/vacaciones", { params })
     vacaciones.value   = data.data
     total.value        = data.total
@@ -379,6 +409,13 @@ const cargar = async () => {
   } finally {
     cargando.value = false
   }
+}
+
+const cambiarTab = (tab) => {
+  tabActivo.value = tab
+  pagina.value    = 1
+  filtros.value   = { estado: "", fecha_desde: "", fecha_hasta: "" }
+  cargar()
 }
 
 const cargarSaldo = async () => {
@@ -393,14 +430,36 @@ const cargarSaldo = async () => {
   }
 }
 
-const abrirModalNuevo = () => {
+const diasVac = (desde, hasta) => {
+  if (!desde || !hasta) return '—'
+  const d1 = new Date(desde.substring(0, 10) + 'T00:00:00')
+  const d2 = new Date(hasta.substring(0, 10) + 'T00:00:00')
+  return Math.round((d2 - d1) / 86400000) + 1
+}
+
+const fmtFechaPlan = (fecha) => {
+  if (!fecha) return '—'
+  const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
+  const [, m, d] = fecha.split('-')
+  return `${parseInt(d)} ${meses[parseInt(m) - 1]}`
+}
+
+const abrirModalNuevo = async () => {
   errorNuevo.value = ""
+  periodosPlani.value = []
   formNuevo.value = {
-    fecha_inicial: "", fecha_final: "",
+    fecha_inicial: hoy, fecha_final: hoy,
     hora_desde: "08:00", hora_hasta: "17:00",
     todo_dia: "SI", observaciones: "",
   }
   modalNuevo.value = true
+  try {
+    const { data } = await api.get('/planificacion/mi-planificacion', { params: { anio: anioActual } })
+    const plani = data.planificacion
+    if (plani && ['APROBADO', 'REPLANIFICADO'].includes(plani.estado)) {
+      periodosPlani.value = (plani.periodos ?? []).filter(p => p.fecha_inicial && p.fecha_final)
+    }
+  } catch {}
 }
 
 const guardar = async () => {
@@ -427,10 +486,28 @@ const verVacacion = (v) => {
   modalVer.value = true
 }
 
-const aprobar = async (id) => {
-  if (!confirm("¿Aprobar esta solicitud de vacaciones?")) return
+const abrirModalBackup = async (id) => {
+  modalBackup.value = { show: true, vacId: id, empleados: [], seleccionado: null, cargando: true }
   try {
-    await api.patch("/vacaciones/" + id + "/aprobar")
+    const { data } = await api.get("/vacaciones/" + id + "/empleados-depto")
+    modalBackup.value.empleados = data
+  } catch {
+    modalBackup.value.empleados = []
+  } finally {
+    modalBackup.value.cargando = false
+  }
+}
+
+const confirmarAprobar = async (conBackup) => {
+  const payload = {}
+  if (conBackup && modalBackup.value.seleccionado) {
+    const emp = modalBackup.value.empleados.find(e => e.id_emp === modalBackup.value.seleccionado)
+    payload.backup_id     = emp.id_emp
+    payload.backup_nombre = (emp.apellido_emp + " " + emp.nombre_emp).trim()
+  }
+  try {
+    await api.patch("/vacaciones/" + modalBackup.value.vacId + "/aprobar", payload)
+    modalBackup.value.show = false
     cargar()
   } catch (e) {
     alert(e.response?.data?.message || "Error al aprobar")

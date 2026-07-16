@@ -1,43 +1,51 @@
 <template>
   <div>
-    <div class="flex justify-between items-center mb-6">
-      <h1 class="text-2xl font-bold text-gray-800">Ingresos de Bienes</h1>
-      <button @click="abrirCrear" class="text-white px-4 py-2 rounded-lg text-sm hover:opacity-90" style="background-color:#4a5e3a;">
-        + Nuevo ingreso
+    <div class="flex justify-between items-center pb-4 mb-5 border-b border-gray-100">
+      <h1 class="text-xl font-bold text-gray-800 tracking-tight">Ingresos de Bienes</h1>
+      <button @click="abrirCrear" class="inline-flex items-center gap-1.5 text-white px-3.5 py-2 rounded-lg text-sm hover:bg-[#3a4e2a] transition-colors font-medium" style="background-color:#4a5e3a;">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+        Nuevo ingreso
       </button>
     </div>
 
     <!-- Filtros -->
-    <div class="flex gap-3 mb-3 flex-wrap items-end">
-      <select v-model="filtroEstado" class="border rounded-lg px-3 py-2 text-sm">
-        <option value="">Todos los estados</option>
-        <option value="BORRADOR">Borrador</option>
-        <option value="RECIBIDO">Recibido</option>
-      </select>
-      <select v-model="filtroTipo" class="border rounded-lg px-3 py-2 text-sm">
-        <option value="">Todos los tipos</option>
-        <option value="COMPRA">Compra</option>
-        <option value="DONACION">Donación</option>
-      </select>
-      <button @click="buscar" class="text-white px-5 py-2 rounded-lg text-sm hover:opacity-90" style="background-color:#4a5e3a;">
-        Buscar
-      </button>
-    </div>
-
-    <!-- Contador -->
-    <div class="mb-3">
-      <span v-if="!hasBuscado"
-        class="inline-block bg-blue-50 text-blue-700 text-xs font-semibold px-3 py-1 rounded-full border border-blue-200">
-        Seleccione los filtros y presione Buscar
-      </span>
-      <span v-else-if="ordenes.length > 0"
-        class="inline-block bg-green-100 text-green-800 text-xs font-semibold px-3 py-1 rounded-full border border-green-300">
-        Se encontraron {{ ordenes.length }} ingreso{{ ordenes.length !== 1 ? 's' : '' }}
-      </span>
-      <span v-else
-        class="inline-block bg-red-100 text-red-700 text-xs font-semibold px-3 py-1 rounded-full border border-red-300">
-        No se encontraron ingresos registrados
-      </span>
+    <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-4">
+      <div class="flex gap-3 flex-wrap items-end">
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">Estado</label>
+          <select v-model="filtroEstado" class="border border-gray-200 bg-white rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#4a5e3a]/30 focus:border-[#4a5e3a] outline-none">
+            <option value="">Todos los estados</option>
+            <option value="BORRADOR">Borrador</option>
+            <option value="RECIBIDO">Recibido</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">Tipo</label>
+          <select v-model="filtroTipo" class="border border-gray-200 bg-white rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#4a5e3a]/30 focus:border-[#4a5e3a] outline-none">
+            <option value="">Todos los tipos</option>
+            <option value="COMPRA">Compra</option>
+            <option value="DONACION">Donación</option>
+          </select>
+        </div>
+        <button @click="buscar" class="inline-flex items-center gap-1.5 text-white px-5 py-2 rounded-lg text-sm hover:bg-[#3a4e2a] transition-colors font-medium" style="background-color:#4a5e3a;">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
+          Buscar
+        </button>
+        <div class="ml-auto self-center">
+          <span v-if="!hasBuscado" class="inline-flex items-center gap-1 text-xs text-blue-600 bg-blue-50 border border-blue-100 px-3 py-1.5 rounded-lg">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+            Seleccione filtros y presione Buscar
+          </span>
+          <span v-else-if="ordenes.length > 0" class="inline-flex items-center gap-1 text-xs text-[#4a5e3a] bg-green-50 border border-green-200 px-3 py-1.5 rounded-lg font-medium">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+            {{ ordenes.length }} ingreso{{ ordenes.length !== 1 ? 's' : '' }}
+          </span>
+          <span v-else class="inline-flex items-center gap-1 text-xs text-red-600 bg-red-50 border border-red-100 px-3 py-1.5 rounded-lg">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/></svg>
+            Sin ingresos registrados
+          </span>
+        </div>
+      </div>
     </div>
 
     <!-- Lista -->
@@ -45,53 +53,60 @@
       <table class="w-full text-sm">
         <thead>
           <tr style="background-color: #4a5e3a;">
-            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">#</th>
-            <th v-show="filtroEstado !== 'RECIBIDO'" class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Tipo</th>
-            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Documento</th>
-            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Proveedor</th>
-            <th v-show="filtroEstado !== 'RECIBIDO'" class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Fecha Doc.</th>
-            <th class="text-right px-4 py-3 text-white font-semibold whitespace-nowrap">Subtotal</th>
-            <th class="text-right px-4 py-3 text-white font-semibold whitespace-nowrap">IVA</th>
-            <th class="text-right px-4 py-3 text-white font-semibold whitespace-nowrap">Total</th>
-            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Estado</th>
-            <th class="text-left px-4 py-3 text-white font-semibold whitespace-nowrap">Acciones</th>
+            <th class="text-left px-4 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">#</th>
+            <th v-show="filtroEstado !== 'RECIBIDO'" class="text-left px-4 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">Tipo</th>
+            <th class="text-left px-4 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">Documento</th>
+            <th class="text-left px-4 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">Proveedor</th>
+            <th v-show="filtroEstado !== 'RECIBIDO'" class="text-left px-4 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">Fecha Doc.</th>
+            <th class="text-right px-4 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">Subtotal</th>
+            <th class="text-right px-4 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">IVA</th>
+            <th class="text-right px-4 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">Total</th>
+            <th class="text-left px-4 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">Estado</th>
+            <th class="text-left px-4 py-3 text-white/80 font-semibold whitespace-nowrap text-[11px] uppercase tracking-wide">Acciones</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="!ordenes.length">
-            <td colspan="10" class="text-center py-8 text-gray-400">Sin ingresos registrados</td>
+            <td colspan="10" class="py-16 text-center">
+              <div class="flex flex-col items-center gap-2 text-gray-300">
+                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25Z"/></svg>
+                <p class="text-sm text-gray-400">Sin ingresos registrados</p>
+              </div>
+            </td>
           </tr>
-          <tr v-for="o in ordenes" :key="o.id" class="border-b hover:bg-green-50">
+          <tr v-for="o in ordenes" :key="o.id" class="border-b border-gray-100 hover:bg-green-50/60 transition-colors">
             <td class="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">{{ o.id }}</td>
             <td v-show="filtroEstado !== 'RECIBIDO'" class="px-4 py-3 whitespace-nowrap">
-              <span :class="o.tipo_ingreso === 'COMPRA' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'"
-                class="px-2 py-0.5 rounded-full text-xs font-medium">{{ o.tipo_ingreso }}</span>
+              <span :class="o.tipo_ingreso === 'COMPRA' ? 'bg-blue-100 text-blue-700 border border-blue-200' : 'bg-purple-100 text-purple-700 border border-purple-200'"
+                class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold">{{ o.tipo_ingreso }}</span>
             </td>
             <td class="px-4 py-3 whitespace-nowrap">
-              <div class="text-xs text-gray-500">{{ o.tipo_documento || '-' }}</div>
-              <div class="font-mono text-xs">{{ o.numero_documento || '-' }}</div>
+              <div class="text-[11px] text-gray-400 uppercase tracking-wide">{{ o.tipo_documento || '' }}</div>
+              <div class="font-mono text-xs font-medium text-gray-700">{{ o.numero_documento || '—' }}</div>
             </td>
-            <td class="px-4 py-3 text-gray-700">{{ o.proveedor?.nombre || '-' }}</td>
-            <td v-show="filtroEstado !== 'RECIBIDO'" class="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{{ o.fecha_documento || '-' }}</td>
-            <td class="px-4 py-3 text-right font-mono text-xs whitespace-nowrap">${{ fmt(o.subtotal) }}</td>
-            <td class="px-4 py-3 text-right font-mono text-xs whitespace-nowrap">${{ fmt(o.iva_valor) }}</td>
-            <td class="px-4 py-3 text-right font-mono font-semibold whitespace-nowrap">${{ fmt(o.total) }}</td>
+            <td class="px-4 py-3 text-gray-700 text-sm">{{ o.proveedor?.nombre || '—' }}</td>
+            <td v-show="filtroEstado !== 'RECIBIDO'" class="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{{ o.fecha_documento || '—' }}</td>
+            <td class="px-4 py-3 text-right font-mono text-xs whitespace-nowrap text-gray-600">${{ fmt(o.subtotal) }}</td>
+            <td class="px-4 py-3 text-right font-mono text-xs whitespace-nowrap text-gray-600">${{ fmt(o.iva_valor) }}</td>
+            <td class="px-4 py-3 text-right font-mono text-sm font-semibold whitespace-nowrap text-gray-800">${{ fmt(o.total) }}</td>
             <td class="px-4 py-3 whitespace-nowrap">
-              <span :class="o.estado === 'BORRADOR' ? 'bg-gray-100 text-gray-600' : 'bg-green-100 text-green-700'"
-                class="px-2 py-0.5 rounded-full text-xs font-medium">{{ o.estado }}</span>
+              <span :class="o.estado === 'BORRADOR' ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-green-100 text-green-700 border border-green-200'"
+                class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold">{{ o.estado }}</span>
             </td>
-            <td class="px-4 py-3 whitespace-nowrap flex gap-2">
-              <button @click="verDetalle(o)" class="text-xs text-blue-600 hover:text-blue-800 font-medium">Ver</button>
-              <button v-if="o.estado === 'RECIBIDO'" @click="descargarPdf(o.id)"
-                class="text-xs text-purple-600 hover:text-purple-800 font-medium">PDF</button>
-              <button v-if="o.estado === 'RECIBIDO'" @click="abrirReverso(o.id)"
-                class="text-xs text-red-600 hover:text-red-800 font-medium">Reversar</button>
-              <button v-if="o.estado === 'BORRADOR'" @click="abrirEditar(o)"
-                class="text-xs text-amber-600 hover:text-amber-800 font-medium">Editar</button>
-              <button v-if="o.estado === 'BORRADOR'" @click="confirmar(o.id)"
-                class="text-xs text-green-600 hover:text-green-800 font-medium">Confirmar</button>
-              <button v-if="o.estado === 'BORRADOR'" @click="eliminar(o.id)"
-                class="text-xs text-red-500 hover:text-red-700">Eliminar</button>
+            <td class="px-4 py-3 whitespace-nowrap">
+              <div class="flex gap-1.5 flex-wrap">
+                <button @click="verDetalle(o)" class="inline-flex items-center px-2.5 py-1 rounded-md border border-blue-200 text-xs text-blue-700 hover:bg-blue-50 font-medium transition-colors">Ver</button>
+                <button v-if="o.estado === 'RECIBIDO'" @click="descargarPdf(o.id)"
+                  class="inline-flex items-center px-2.5 py-1 rounded-md border border-purple-200 text-xs text-purple-700 hover:bg-purple-50 font-medium transition-colors">PDF</button>
+                <button v-if="o.estado === 'RECIBIDO'" @click="abrirReverso(o.id)"
+                  class="inline-flex items-center px-2.5 py-1 rounded-md border border-red-200 text-xs text-red-600 hover:bg-red-50 font-medium transition-colors">Reversar</button>
+                <button v-if="o.estado === 'BORRADOR'" @click="abrirEditar(o)"
+                  class="inline-flex items-center px-2.5 py-1 rounded-md border border-amber-200 text-xs text-amber-700 hover:bg-amber-50 font-medium transition-colors">Editar</button>
+                <button v-if="o.estado === 'BORRADOR'" @click="confirmar(o.id)"
+                  class="inline-flex items-center px-2.5 py-1 rounded-md border border-green-200 text-xs text-green-700 hover:bg-green-50 font-medium transition-colors">Confirmar</button>
+                <button v-if="o.estado === 'BORRADOR'" @click="eliminar(o.id)"
+                  class="inline-flex items-center px-2.5 py-1 rounded-md border border-red-100 text-xs text-red-500 hover:bg-red-50 font-medium transition-colors">Eliminar</button>
+              </div>
             </td>
           </tr>
         </tbody>
@@ -213,6 +228,7 @@
                   <div>
                     <span class="font-mono text-xs text-gray-400 mr-2">{{ a.codigo }}</span>
                     <span class="font-medium">{{ a.nombre }}</span>
+                    <span v-if="a.unidad_medida" class="ml-2 text-xs text-blue-600 font-medium">({{ a.unidad_medida }})</span>
                   </div>
                   <div class="text-xs text-gray-500 text-right">
                     <div>Stock: {{ a.stock_actual }}</div>
@@ -422,6 +438,77 @@
       </div>
     </div>
 
+    <!-- ══ MODAL CAJA CHICA ══ -->
+    <div v-if="modalCajaChica.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden">
+        <div class="px-6 py-4" style="background-color:#4a5e3a;">
+          <h2 class="text-lg font-bold text-white">Confirmar Ingreso — Caja Chica</h2>
+        </div>
+        <div class="p-6">
+
+          <!-- Fase 1: pregunta -->
+          <div v-if="modalCajaChica.fase === 'pregunta'">
+            <p class="text-sm text-gray-600 mb-5">
+              Este ingreso es de <b>Caja Chica</b>. El precio del artículo no se modificará.<br>
+              ¿Desea generar un egreso automático con los mismos artículos?
+            </p>
+            <div class="flex justify-end gap-3">
+              <button @click="modalCajaChica.show = false" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">
+                Cancelar
+              </button>
+              <button @click="confirmarSinEgreso" :disabled="modalCajaChica.cargando"
+                class="border border-gray-400 px-4 py-2 text-sm rounded-lg hover:bg-gray-50 disabled:opacity-50">
+                {{ modalCajaChica.cargando ? 'Confirmando...' : 'Confirmar sin Egreso' }}
+              </button>
+              <button @click="modalCajaChica.fase = 'formulario'"
+                class="text-white px-4 py-2 text-sm rounded-lg hover:opacity-90" style="background-color:#4a5e3a;">
+                Confirmar con Egreso
+              </button>
+            </div>
+          </div>
+
+          <!-- Fase 2: formulario egreso -->
+          <div v-else>
+            <p class="text-sm text-gray-500 mb-4">Complete los datos del destinatario del egreso automático.</p>
+            <div class="mb-3">
+              <label class="block text-xs text-gray-600 mb-1">Dirección / Área *</label>
+              <select v-model="modalCajaChica.form.direccion_id" @change="onDireccionChangeCajaChica"
+                class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none">
+                <option value="">Seleccionar...</option>
+                <option v-for="d in direcciones" :key="d.id_depto" :value="d.id_depto">{{ d.nombre_depto }}</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="block text-xs text-gray-600 mb-1">Empleado destinatario *</label>
+              <select v-model="modalCajaChica.form.empleado_id"
+                :disabled="!modalCajaChica.form.direccion_id || cargandoEmpleadosCaja"
+                @change="onEmpleadoChangeCajaChica"
+                class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none disabled:bg-gray-50">
+                <option value="">{{ cargandoEmpleadosCaja ? 'Cargando...' : 'Seleccionar...' }}</option>
+                <option v-for="e in empleadosCajaChica" :key="e.id_emp" :value="e.id_emp">{{ e.nombre_completo }}</option>
+              </select>
+            </div>
+            <div class="mb-4">
+              <label class="block text-xs text-gray-600 mb-1">Observación (opcional)</label>
+              <input v-model="modalCajaChica.form.observacion" type="text" maxlength="300"
+                class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-300 outline-none" />
+            </div>
+            <p v-if="modalCajaChica.error" class="text-red-600 text-sm mb-3">{{ modalCajaChica.error }}</p>
+            <div class="flex justify-end gap-3">
+              <button @click="modalCajaChica.fase = 'pregunta'" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">
+                Atrás
+              </button>
+              <button @click="confirmarConEgreso" :disabled="modalCajaChica.cargando"
+                class="text-white px-5 py-2 rounded-lg text-sm hover:opacity-90 disabled:opacity-50" style="background-color:#4a5e3a;">
+                {{ modalCajaChica.cargando ? 'Procesando...' : 'Confirmar y Generar Egreso' }}
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
     <!-- ══ MODAL REVERSO ══ -->
     <div v-if="modalReverso.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
@@ -481,6 +568,15 @@ const modalForm    = ref({ show: false, editando: false, id: null })
 const modalDetalle = ref({ show: false, orden: null })
 const modalReverso = ref({ show: false, id: null, motivo: '', error: '', guardando: false })
 
+const modalCajaChica = ref({
+  show: false, fase: 'pregunta', ordenId: null,
+  form: { direccion_id: '', direccion_nombre: '', empleado_id: '', empleado_nombre: '', observacion: '' },
+  error: '', cargando: false,
+})
+const direcciones         = ref([])
+const empleadosCajaChica  = ref([])
+const cargandoEmpleadosCaja = ref(false)
+
 const formInicial = () => ({
   tipo_ingreso: 'COMPRA',
   proceso_contratacion: '',
@@ -494,7 +590,7 @@ const formInicial = () => ({
 })
 const form = ref(formInicial())
 
-const proveedoresActivos = computed(() => proveedores.value.filter(p => p.estado === 'ACTIVO'))
+const proveedoresActivos = computed(() => proveedores.value.filter(p => p.estado === 'ACTIVO' && p.es_proveedor_bienes))
 
 const totales = computed(() => {
   let subtotal = 0, ivaLineas = 0
@@ -754,6 +850,19 @@ async function guardar() {
 }
 
 async function confirmar(id) {
+  const orden = ordenes.value.find(o => o.id === id)
+  if (orden?.proceso_contratacion === 'CAJA CHICA') {
+    modalCajaChica.value = {
+      show: true, fase: 'pregunta', ordenId: id,
+      form: { direccion_id: '', direccion_nombre: '', empleado_id: '', empleado_nombre: '', observacion: '' },
+      error: '', cargando: false,
+    }
+    if (!direcciones.value.length) {
+      const { data } = await api.get('/adquisiciones/departamentos-activos')
+      direcciones.value = data
+    }
+    return
+  }
   if (!confirm('¿Confirmar recepción? Se actualizará el stock y precio promedio de los artículos.')) return
   try {
     await api.patch(`/adquisiciones/ordenes/${id}/confirmar`)
@@ -761,6 +870,66 @@ async function confirmar(id) {
   } catch (e) {
     alert(e.response?.data?.message || 'Error al confirmar')
   }
+}
+
+async function confirmarSinEgreso() {
+  modalCajaChica.value.cargando = true
+  modalCajaChica.value.error    = ''
+  try {
+    await api.patch(`/adquisiciones/ordenes/${modalCajaChica.value.ordenId}/confirmar`)
+    modalCajaChica.value.show = false
+    await cargar()
+  } catch (e) {
+    modalCajaChica.value.error = e.response?.data?.message || 'Error al confirmar'
+  } finally { modalCajaChica.value.cargando = false }
+}
+
+async function onDireccionChangeCajaChica() {
+  const dir = direcciones.value.find(d => d.id_depto == modalCajaChica.value.form.direccion_id)
+  modalCajaChica.value.form.direccion_nombre = dir?.nombre_depto || ''
+  modalCajaChica.value.form.empleado_id      = ''
+  modalCajaChica.value.form.empleado_nombre  = ''
+  empleadosCajaChica.value = []
+  if (!modalCajaChica.value.form.direccion_id) return
+  cargandoEmpleadosCaja.value = true
+  try {
+    const { data } = await api.get('/adquisiciones/empleados-activos', {
+      params: { depto: modalCajaChica.value.form.direccion_id },
+    })
+    empleadosCajaChica.value = data
+  } finally { cargandoEmpleadosCaja.value = false }
+}
+
+function onEmpleadoChangeCajaChica() {
+  const emp = empleadosCajaChica.value.find(e => e.id_emp === modalCajaChica.value.form.empleado_id)
+  modalCajaChica.value.form.empleado_nombre = emp?.nombre_completo || ''
+}
+
+async function confirmarConEgreso() {
+  modalCajaChica.value.error = ''
+  if (!modalCajaChica.value.form.direccion_id) {
+    modalCajaChica.value.error = 'Seleccione la dirección.'; return
+  }
+  if (!modalCajaChica.value.form.empleado_id) {
+    modalCajaChica.value.error = 'Seleccione el empleado destinatario.'; return
+  }
+  modalCajaChica.value.cargando = true
+  try {
+    const { data } = await api.patch(
+      `/adquisiciones/ordenes/${modalCajaChica.value.ordenId}/confirmar-con-egreso`,
+      {
+        direccion:       modalCajaChica.value.form.direccion_nombre,
+        empleado_id:     modalCajaChica.value.form.empleado_id,
+        empleado_nombre: modalCajaChica.value.form.empleado_nombre,
+        observacion:     modalCajaChica.value.form.observacion || null,
+      }
+    )
+    modalCajaChica.value.show = false
+    await cargar()
+    alert(`Ingreso confirmado y egreso #${data.egreso_secuencial}/${data.egreso_anio} generado automáticamente.`)
+  } catch (e) {
+    modalCajaChica.value.error = e.response?.data?.message || 'Error al procesar'
+  } finally { modalCajaChica.value.cargando = false }
 }
 
 function abrirReverso(id) {

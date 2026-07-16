@@ -33,6 +33,32 @@ class AsistenciaController extends Controller
             $siguiente = "SALIDA";
         }
 
+        $articuloAtrasos = DB::table('dbo.d2_configuracion')
+            ->whereRaw("LOWER(concepto) = 'articulo_atrasos'")
+            ->value('valor');
+
+        $modalidad = $emp->modalidad_marcacion ?? 'PRESENCIAL';
+
+        // Determinar si puede marcar desde el web
+        $puedeMarcar = true;
+        $mensajeBloqueo = null;
+
+        if ($modalidad === 'BIOMETRICO') {
+            $puedeMarcar = false;
+            $mensajeBloqueo = 'Tu marcación es exclusivamente por reloj biométrico.';
+        } elseif ($modalidad === 'TELETRABAJO') {
+            $periodoActivo = DB::table('dbo.ad_empleado_teletrabajo')
+                ->where('id_emp', $emp->id_emp)
+                ->where('fecha_desde', '<=', now()->toDateString())
+                ->where('fecha_hasta', '>=', now()->toDateString())
+                ->first();
+
+            if (!$periodoActivo) {
+                $puedeMarcar = false;
+                $mensajeBloqueo = 'Tu período de teletrabajo ha vencido o no está habilitado. Contacta a Talento Humano.';
+            }
+        }
+
         return response()->json([
             "empleado"    => [
                 "id_emp"     => $emp->id_emp,
@@ -40,10 +66,14 @@ class AsistenciaController extends Controller
                 "apellido"   => $emp->apellido_emp,
                 "departamento" => $emp->departamento?->nombre_depto,
             ],
-            "fecha"       => now()->toDateString(),
-            "hora"        => now()->format("H:i:s"),
-            "marcaciones" => $marcaciones,
-            "siguiente"   => $siguiente,
+            "fecha"            => now()->toDateString(),
+            "hora"             => now()->format("H:i:s"),
+            "marcaciones"      => $marcaciones,
+            "siguiente"        => $siguiente,
+            "articulo_atrasos" => $articuloAtrasos,
+            "modalidad"        => $modalidad,
+            "puede_marcar"     => $puedeMarcar,
+            "mensaje_bloqueo"  => $mensajeBloqueo,
         ]);
     }
 
@@ -62,9 +92,29 @@ class AsistenciaController extends Controller
         // Validar modalidad de marcación
         $modalidad = $emp->modalidad_marcacion ?? 'PRESENCIAL';
 
+        if ($modalidad === 'BIOMETRICO') {
+            return response()->json([
+                'message' => 'Tu marcación es exclusivamente por reloj biométrico. Contacta a Talento Humano si necesitas cambiar tu modalidad.',
+            ], 403);
+        }
+
+        if ($modalidad === 'TELETRABAJO') {
+            $periodoActivo = DB::table('dbo.ad_empleado_teletrabajo')
+                ->where('id_emp', $emp->id_emp)
+                ->where('fecha_desde', '<=', $hoy)
+                ->where('fecha_hasta', '>=', $hoy)
+                ->exists();
+
+            if (!$periodoActivo) {
+                return response()->json([
+                    'message' => 'Tu período de teletrabajo ha vencido o no está habilitado. Contacta a Talento Humano.',
+                ], 403);
+            }
+        }
+
         if ($modalidad === 'PRESENCIAL') {
             $vlansConf = DB::table('dbo.d2_configuracion')
-                ->where('concepto', 'vlans_permitidas')
+                ->whereRaw("LOWER(concepto) = 'vlans_permitidas'")
                 ->value('valor');
 
             $vlans    = array_filter(array_map('trim', explode(',', $vlansConf ?? '')));
@@ -74,6 +124,25 @@ class AsistenciaController extends Controller
             if (!$permitida) {
                 return response()->json([
                     'message' => 'Solo puede registrar asistencia desde las instalaciones de la institución.',
+                ], 403);
+            }
+        }
+
+        // Validar que la IP no haya sido usada por otro empleado hoy (si está habilitado)
+        $controlIp = DB::table('dbo.d2_configuracion')
+            ->whereRaw("LOWER(concepto) = 'control_ip_marcacion'")
+            ->value('valor');
+
+        if (trim($controlIp ?? '0') === '1') {
+            $ip = $request->ip();
+            $ipUsada = SgControlPersona::whereDate('fecha_hora', $hoy)
+                ->where('ip', $ip)
+                ->where('nro_documento', '!=', $emp->id_emp)
+                ->exists();
+
+            if ($ipUsada) {
+                return response()->json([
+                    'message' => 'Esta computadora ya fue utilizada por otro empleado hoy.',
                 ], 403);
             }
         }
@@ -259,5 +328,53 @@ class AsistenciaController extends Controller
         }
 
         return response()->json(array_values($resultado));
+    }
+
+    public function reporteSinAtrasos(Request $request)
+    {
+        $tieneAcceso = DB::table('dbo.admin_usuario_rol as ur')
+            ->join('dbo.admin_rol as r', 'ur.id_rol', '=', 'r.id')
+            ->where('ur.id_emp', $request->user()->id_emp)
+            ->whereIn('r.descripcion', ['ADMINISTRADOR', 'TALENTO HUMANO'])
+            ->exists();
+
+        if (!$tieneAcceso) {
+            return response()->json(['message' => 'Acceso restringido.'], 403);
+        }
+
+        $desde = $request->fecha_desde;
+        $hasta = $request->fecha_hasta;
+
+        if (!$desde || !$hasta) {
+            return response()->json(['message' => 'Se requieren fecha_desde y fecha_hasta.'], 422);
+        }
+
+        $empleados = DB::table('dbo.ad_empleado as e')
+            ->join('dbo.ad_departamento as d', 'e.id_depto', '=', 'd.id_depto')
+            ->where('e.estado', 'ACTIVO')
+            ->where('e.id_depto', '!=', 999)
+            ->whereExists(function ($q) use ($desde, $hasta) {
+                $q->select(DB::raw(1))
+                  ->from('dbo.d2_cuadre_marcacion as c')
+                  ->whereColumn('c.id_emp', 'e.id_emp')
+                  ->whereBetween(DB::raw("DATE(c.fecha)"), [$desde, $hasta]);
+            })
+            ->whereNotExists(function ($q) use ($desde, $hasta) {
+                $q->select(DB::raw(1))
+                  ->from('dbo.d2_cuadre_marcacion as c')
+                  ->whereColumn('c.id_emp', 'e.id_emp')
+                  ->whereBetween(DB::raw("DATE(c.fecha)"), [$desde, $hasta])
+                  ->where(function ($q2) {
+                      $q2->where('c.atraso_entrada', '>', 0)
+                         ->orWhere('c.atraso_lunch',  '>', 0)
+                         ->orWhere('c.atraso_salida', '>', 0);
+                  });
+            })
+            ->select('e.id_emp', 'e.apellido_emp', 'e.nombre_emp', 'e.cargo_empleado', 'd.nombre_depto')
+            ->orderBy('d.nombre_depto')
+            ->orderBy('e.apellido_emp')
+            ->get();
+
+        return response()->json($empleados);
     }
 }

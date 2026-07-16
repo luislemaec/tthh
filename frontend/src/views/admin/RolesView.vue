@@ -56,7 +56,7 @@
         <form @submit.prevent="guardarRol" class="space-y-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
-            <input v-model="modal.form.descripcion" type="text" maxlength="20"
+            <input v-model="modal.form.descripcion" type="text" maxlength="50"
               class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#579186] outline-none"
               required />
           </div>
@@ -141,13 +141,17 @@ function editarRol(rol) {
 }
 
 async function guardarRol() {
-  if (modal.value.form.id) {
-    await api.put(`/roles/${modal.value.form.id}`, modal.value.form)
-  } else {
-    await api.post('/roles', modal.value.form)
+  try {
+    if (modal.value.form.id) {
+      await api.put(`/roles/${modal.value.form.id}`, modal.value.form)
+    } else {
+      await api.post('/roles', modal.value.form)
+    }
+    modal.value.show = false
+    cargar()
+  } catch (e) {
+    alert('Error al guardar: ' + (e.response?.data?.message || e.message))
   }
-  modal.value.show = false
-  cargar()
 }
 
 async function desactivarRol(id) {

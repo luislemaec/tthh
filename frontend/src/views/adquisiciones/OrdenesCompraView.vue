@@ -234,7 +234,7 @@ const articulosFiltrados = ref([])
 const modalCrear   = ref({ show: false, form: { proveedor_id: '', fecha: '', observacion: '', detalles: [] } })
 const modalDetalle = ref({ show: false, orden: null })
 
-const proveedoresActivos = computed(() => proveedores.value.filter(p => p.estado === 'ACTIVO'))
+const proveedoresActivos = computed(() => proveedores.value.filter(p => p.estado === 'ACTIVO' && p.es_proveedor_bienes))
 
 const totalOrden = computed(() =>
   modalCrear.value.form.detalles.reduce((s, d) =>

@@ -70,8 +70,52 @@ class ProcesarCuadre extends Command
             $rEntLunch = $mEntLunch ? $this->toDecimalHours($mEntLunch->fecha_hora) : null;
             $rSalida   = $mSalida   ? $this->toDecimalHours($mSalida->fecha_hora)   : null;
 
-            // Atrasos en minutos
-            $atrasoEntrada = $rEntrada  !== null ? max(0, round(($rEntrada  - $tEntrada)  * 60)) : 0;
+            // Permisos aprobados del empleado para este día
+            $permisosHoy = DB::table('dbo.d2_permiso')
+                ->where('id_emp', $emp->id_emp)
+                ->where('estado_permiso', 'APROBADO')
+                ->whereDate('fecha_desde', '<=', $fecha->toDateString())
+                ->whereDate('fecha_hasta', '>=', $fecha->toDateString())
+                ->get();
+
+            // Límites justificados por permisos (en horas decimales)
+            $entradaJustificada = null; // hora máxima justificada de llegada tardía
+            $salidaJustificada  = null; // hora mínima justificada de salida anticipada
+            foreach ($permisosHoy as $perm) {
+                if ($perm->todo_dia === 'SI') {
+                    // Permiso de día completo: no hay atrasos
+                    $entradaJustificada = 99.0;
+                    $salidaJustificada  = 0.0;
+                    break;
+                }
+                $hDesde = $this->toDecimalHours($perm->hora_desde);
+                $hHasta = $this->toDecimalHours($perm->hora_hasta);
+                if ($perm->tipo_horario === 'ENTRADA') {
+                    // Permiso de llegada tardía: justifica hasta hora_hasta
+                    if ($entradaJustificada === null || $hHasta > $entradaJustificada) {
+                        $entradaJustificada = $hHasta;
+                    }
+                } elseif ($perm->tipo_horario === 'SALIDA') {
+                    // Permiso de salida anticipada: justifica desde hora_desde
+                    if ($salidaJustificada === null || $hDesde < $salidaJustificada) {
+                        $salidaJustificada = $hDesde;
+                    }
+                }
+                // ENTRE JORNADA: afecta almuerzo o ausencia parcial — no se ajusta atraso_entrada/salida
+            }
+
+            // Atrasos en minutos (ajustados por permisos aprobados)
+            if ($rEntrada !== null) {
+                if ($entradaJustificada !== null && $rEntrada <= $entradaJustificada) {
+                    // Llegó dentro del permiso: atraso = 0 o solo lo que exceda el permiso
+                    $atrasoEntrada = max(0, round(($rEntrada - $entradaJustificada) * 60));
+                } else {
+                    $atrasoEntrada = max(0, round(($rEntrada - $tEntrada) * 60));
+                }
+            } else {
+                $atrasoEntrada = 0;
+            }
+
             // Lunch = 30 minutos desde que timbró salida al lunch (sin importar la hora)
             if ($rEntLunch !== null && $rSalLunch !== null) {
                 $limiteRegreso = $rSalLunch + (30 / 60);
@@ -79,7 +123,20 @@ class ProcesarCuadre extends Command
             } else {
                 $atrasoLunch = 0;
             }
-            $atrasoSalida  = $rSalida   !== null ? max(0, round(($tSalida   - $rSalida)   * 60)) : 0;
+
+            if ($rSalida !== null) {
+                if ($salidaJustificada !== null && $rSalida >= $salidaJustificada) {
+                    // Salió a la hora del permiso o después: atraso = 0
+                    $atrasoSalida = 0;
+                } elseif ($salidaJustificada !== null && $rSalida < $salidaJustificada) {
+                    // Salió antes de que empiece el permiso: solo los minutos entre salida real y inicio permiso
+                    $atrasoSalida = max(0, round(($salidaJustificada - $rSalida) * 60));
+                } else {
+                    $atrasoSalida = max(0, round(($tSalida - $rSalida) * 60));
+                }
+            } else {
+                $atrasoSalida = 0;
+            }
 
             // Horas a descontar
             $horasDecto = round(($atrasoEntrada + $atrasoLunch + $atrasoSalida) / 60, 4);

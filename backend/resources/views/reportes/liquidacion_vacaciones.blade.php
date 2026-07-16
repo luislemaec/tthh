@@ -250,8 +250,8 @@
 
 <div class="pie">
   <div class="linea"></div><br>
-  <strong>{{ $aprobador }}</strong><br>
-  <span style="font-size:8px; color:#6b7280;">Responsable de Talento Humano</span>
+  <strong>{{ $firmanteNombre }}</strong><br>
+  <span style="font-size:8px; color:#6b7280;">{{ $firmanteCargo }}</span>
   <br><br>
   <span style="font-size:8px; color:#6b7280;">Generado por: <strong>{{ $generadoPor }}</strong></span>
 </div>

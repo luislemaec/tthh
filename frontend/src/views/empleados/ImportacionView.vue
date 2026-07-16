@@ -61,13 +61,16 @@
           <thead class="bg-gray-50 border-b">
             <tr>
               <th class="text-left px-3 py-2 text-gray-600">#</th>
-              <th class="text-left px-3 py-2 text-gray-600">Cedula</th>
-              <th class="text-left px-3 py-2 text-gray-600">Nombres</th>
+              <th class="text-left px-3 py-2 text-gray-600">Cédula</th>
               <th class="text-left px-3 py-2 text-gray-600">Apellidos</th>
+              <th class="text-left px-3 py-2 text-gray-600">Nombres</th>
               <th class="text-left px-3 py-2 text-gray-600">Depto</th>
+              <th class="text-left px-3 py-2 text-gray-600">Contrato</th>
+              <th class="text-left px-3 py-2 text-gray-600">Sueldo</th>
               <th class="text-left px-3 py-2 text-gray-600">Estado</th>
               <th class="text-left px-3 py-2 text-gray-600">F. Ingreso</th>
-              <th class="text-left px-3 py-2 text-gray-600">Accion</th>
+              <th class="text-left px-3 py-2 text-gray-600">Marcación</th>
+              <th class="text-left px-3 py-2 text-gray-600">Acción</th>
             </tr>
           </thead>
           <tbody>
@@ -76,19 +79,22 @@
               class="border-b">
               <td class="px-3 py-2 text-gray-400">{{ i + 1 }}</td>
               <td class="px-3 py-2 font-mono">{{ f.identificacion }}</td>
-              <td class="px-3 py-2">{{ f.nombre_emp }}</td>
               <td class="px-3 py-2">{{ f.apellido_emp }}</td>
+              <td class="px-3 py-2">{{ f.nombre_emp }}</td>
               <td class="px-3 py-2">{{ f.id_depto }}</td>
+              <td class="px-3 py-2">{{ f.tipo_contrato }}</td>
+              <td class="px-3 py-2 text-right">{{ f.sueldo }}</td>
               <td class="px-3 py-2">
                 <span :class="f.estado === 'ACTIVO' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
-                  class="px-2 py-0.5 rounded-full text-xs">{{ f.estado }}</span>
+                  class="px-2 py-0.5 rounded-full">{{ f.estado }}</span>
               </td>
               <td class="px-3 py-2">{{ f.fecha_ingreso }}</td>
+              <td class="px-3 py-2">{{ f.modalidad_marcacion || 'PRESENCIAL' }}</td>
               <td class="px-3 py-2">
-                <span v-if="f._existe" class="bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full text-xs">
+                <span v-if="f._existe" class="bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">
                   Actualizar
                 </span>
-                <span v-else class="bg-blue-100 text-[#0b5447] px-2 py-0.5 rounded-full text-xs">
+                <span v-else class="bg-blue-100 text-[#0b5447] px-2 py-0.5 rounded-full">
                   Nuevo
                 </span>
               </td>

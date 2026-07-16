@@ -6,6 +6,9 @@ use App\Models\Adq\Articulo;
 use App\Models\Adq\SolicitudMaterial;
 use App\Models\Adq\SolicitudMaterialDet;
 use App\Models\Supervisor;
+use App\Services\AuditoriaService;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -43,7 +46,7 @@ class SolicitudMaterialController extends Controller
         $esAdq         = $this->esRol($emp->id_emp, 'ADQUISICIONES');
         $esSupervisor  = $this->esSupervisor($emp->id_emp);
 
-        $query = SolicitudMaterial::with(['empleado', 'detalles.articulo'])
+        $query = SolicitudMaterial::with(['empleado', 'aprobador', 'detalles.articulo'])
             ->orderByDesc('created_at');
 
         if ($esBienes || $esAdq) {
@@ -57,30 +60,47 @@ class SolicitudMaterialController extends Controller
 
         if ($request->estado) $query->where('estado', $request->estado);
 
-        return response()->json($query->get());
+        $solicitudes = $query->get();
+
+        $deptos = DB::table('dbo.ad_departamento')->pluck('nombre_depto', 'id_depto');
+        $solicitudes->each(function ($s) use ($deptos) {
+            $s->nombre_depto_beneficiario = $s->id_depto_beneficiario
+                ? ($deptos[$s->id_depto_beneficiario] ?? 'Depto. ' . $s->id_depto_beneficiario)
+                : null;
+        });
+
+        return response()->json($solicitudes);
     }
 
     // POST /api/adquisiciones/solicitudes
     public function store(Request $request)
     {
         $request->validate([
-            'justificacion' => 'nullable|string|max:500',
-            'detalles'      => 'required|array|min:1',
+            'justificacion'        => 'nullable|string|max:500',
+            'id_depto_beneficiario' => 'nullable|integer',
+            'detalles'             => 'required|array|min:1',
             'detalles.*.articulo_id'         => 'required|exists:pgsql.adq.articulo,id',
             'detalles.*.cantidad_solicitada' => 'required|numeric|min:0.01',
         ]);
 
         $emp = $request->user();
-        $esSupervisor = $this->esSupervisor($emp->id_emp);
+        $esSupervisor  = $this->esSupervisor($emp->id_emp);
+        $esBienes      = $this->esRol($emp->id_emp, 'BIENES');
+        $esAdq         = $this->esRol($emp->id_emp, 'ADQUISICIONES');
+        $deptosBen     = $request->id_depto_beneficiario;
+
+        // Auto-aprobado: supervisor propio, o ADQUISICIONES/BIENES pidiendo por otro depto
+        $autoAprobar = $esSupervisor || (($esBienes || $esAdq) && $deptosBen);
 
         $solicitud = SolicitudMaterial::create([
-            'id_emp'        => $emp->id_emp,
-            'id_depto'      => $emp->id_depto,
-            'fecha'         => now()->toDateString(),
-            'justificacion' => $request->justificacion,
-            'estado'        => $esSupervisor ? 'APROBADO' : 'PENDIENTE',
-            'usuario_aprobacion' => $esSupervisor ? $emp->id_emp : null,
-            'fecha_aprobacion'   => $esSupervisor ? now() : null,
+            'id_emp'                => $emp->id_emp,
+            'id_depto'              => $emp->id_depto,
+            'id_depto_beneficiario' => $deptosBen ?: null,
+            'fecha'                 => now()->toDateString(),
+            'justificacion'         => $request->justificacion,
+            'estado'                => $autoAprobar ? 'APROBADO' : 'PENDIENTE',
+            'usuario_aprobacion'    => $autoAprobar ? $emp->id_emp : null,
+            'fecha_aprobacion'      => $autoAprobar ? now() : null,
         ]);
 
         foreach ($request->detalles as $det) {
@@ -126,6 +146,11 @@ class SolicitudMaterialController extends Controller
             ]);
         });
 
+        AuditoriaService::log('adq.solicitud_material', $solicitud->id, 'APROBAR',
+            ['estado' => 'PENDIENTE'],
+            ['estado' => 'APROBADO'],
+            $request, "Aprobación de solicitud de material #{$solicitud->id}");
+
         return response()->json($solicitud->load('detalles.articulo'));
     }
 
@@ -148,6 +173,11 @@ class SolicitudMaterialController extends Controller
             'fecha_aprobacion'    => now(),
         ]);
 
+        AuditoriaService::log('adq.solicitud_material', $solicitud->id, 'NEGAR',
+            ['estado' => 'PENDIENTE'],
+            ['estado' => 'NEGADO'],
+            $request, "Negación de solicitud de material #{$solicitud->id}");
+
         return response()->json($solicitud->load('detalles.articulo'));
     }
 
@@ -155,8 +185,8 @@ class SolicitudMaterialController extends Controller
     public function despachar(Request $request, $id)
     {
         $emp = $request->user();
-        if (!$this->esRol($emp->id_emp, 'BIENES')) {
-            return response()->json(['message' => 'Solo la unidad de Bienes puede despachar.'], 403);
+        if (!$this->esRol($emp->id_emp, 'BIENES') && !$this->esRol($emp->id_emp, 'ADQUISICIONES')) {
+            return response()->json(['message' => 'No tiene permiso para despachar.'], 403);
         }
 
         $request->validate([
@@ -201,12 +231,43 @@ class SolicitudMaterialController extends Controller
                 $det->update(['cantidad_autorizada' => $autorizada]);
 
                 if ($autorizada > 0) {
+                    $articulo    = DB::table('adq.articulo')->where('id', $det->articulo_id)->first();
+                    $stockAntes  = (float) $articulo->stock_actual;
+                    $precioAntes = (float) $articulo->precio_unitario;
+                    $nuevoStock  = max(0, $stockAntes - $autorizada);
+                    $nuevoPrecio = $nuevoStock == 0 ? 0 : $precioAntes;
+
                     DB::table('adq.articulo')
                         ->where('id', $det->articulo_id)
                         ->update([
-                            'stock_actual' => DB::raw('GREATEST(0, stock_actual - ' . $autorizada . ')'),
-                            'updated_at'   => now(),
+                            'stock_actual'    => $nuevoStock,
+                            'precio_unitario' => $nuevoPrecio,
+                            'updated_at'      => now(),
                         ]);
+
+                    DB::table('adq.kardex')->insert([
+                        'articulo_id'       => $det->articulo_id,
+                        'fecha'             => now(),
+                        'tipo_movimiento'   => 'EGRESO',
+                        'referencia_tipo'   => 'solicitud_material',
+                        'referencia_id'     => $solicitud->id,
+                        'referencia_det_id' => $det->id,
+                        'numero_documento'  => null,
+                        'cantidad_entrada'  => 0,
+                        'cantidad_salida'   => $autorizada,
+                        'stock_antes'       => $stockAntes,
+                        'stock_despues'     => $nuevoStock,
+                        'precio_antes'      => $precioAntes,
+                        'precio_despues'    => $nuevoPrecio,
+                        'precio_movimiento' => $precioAntes,
+                        'subtotal'          => round($autorizada * $precioAntes, 2),
+                        'iva_valor'         => 0,
+                        'total_linea'       => round($autorizada * $precioAntes, 2),
+                        'valor_saldo'       => round($nuevoStock * $nuevoPrecio, 2),
+                        'usuario'           => $emp->id_emp,
+                        'observacion'       => 'Solicitud de materiales #' . $solicitud->id,
+                        'created_at'        => now(),
+                    ]);
                 }
 
                 $totalAutorizado += $autorizada;
@@ -226,7 +287,63 @@ class SolicitudMaterialController extends Controller
             ]);
         });
 
-        return response()->json($solicitud->fresh(['detalles.articulo', 'empleado']));
+        $solicitudFresh = $solicitud->fresh(['detalles.articulo', 'empleado']);
+
+        AuditoriaService::log('adq.solicitud_material', $solicitud->id, 'DESPACHAR',
+            ['estado' => 'APROBADO'],
+            ['estado' => $solicitudFresh->estado],
+            $request, "Despacho de solicitud de material #{$solicitud->id}");
+
+        return response()->json($solicitudFresh);
+    }
+
+    // GET /api/adquisiciones/solicitudes/{id}/pdf
+    public function pdf(Request $request, $id)
+    {
+        $solicitud = SolicitudMaterial::with(['empleado', 'detalles.articulo'])->findOrFail($id);
+
+        if (!in_array($solicitud->estado, ['DESPACHADO', 'DESPACHADO PARCIAL'])) {
+            return response()->json(['message' => 'Solo solicitudes despachadas tienen PDF.'], 422);
+        }
+
+        $nombreInst = DB::table('dbo.d2_configuracion')
+            ->whereRaw("LOWER(concepto) = 'nombre_institucion'")
+            ->value('valor') ?? 'CONSEJO DE COMUNICACIÓN';
+
+        $logo = file_exists(public_path('logo.png'))
+            ? 'data:image/png;base64,' . base64_encode(file_get_contents(public_path('logo.png')))
+            : null;
+
+        $despachador = $solicitud->usuario_despacho
+            ? DB::table('dbo.ad_empleado')->where('id_emp', $solicitud->usuario_despacho)->first()
+            : null;
+
+        $nombreDespachador = $despachador
+            ? strtoupper(trim($despachador->apellido_emp . ' ' . $despachador->nombre_emp))
+            : '________________________________';
+        $cargoDespachador  = $despachador?->cargo_empleado ?? '';
+
+        $nombreSolicitante = strtoupper(trim($solicitud->empleado->apellido_emp . ' ' . $solicitud->empleado->nombre_emp));
+        $cargoSolicitante  = $solicitud->empleado->cargo_empleado ?? '';
+
+        $depto = DB::table('dbo.ad_departamento')
+            ->where('id_depto', $solicitud->id_depto)
+            ->value('nombre_depto') ?? $solicitud->id_depto;
+
+        $fechaDespacho = $solicitud->fecha_despacho
+            ? Carbon::parse($solicitud->fecha_despacho)->format('d/m/Y H:i')
+            : '—';
+
+        $generadoPor = trim($request->user()->apellido_emp . ' ' . $request->user()->nombre_emp);
+
+        $pdf = Pdf::loadView('reportes.adq_solicitud_material', compact(
+            'solicitud', 'logo', 'nombreInst',
+            'nombreDespachador', 'cargoDespachador',
+            'nombreSolicitante', 'cargoSolicitante',
+            'depto', 'fechaDespacho', 'generadoPor'
+        ))->setPaper('a4', 'portrait');
+
+        return $pdf->stream("solicitud-materiales-{$solicitud->id}.pdf");
     }
 
     public function show($id)

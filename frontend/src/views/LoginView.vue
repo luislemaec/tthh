@@ -10,7 +10,7 @@
       <div class="text-center mb-8">
         <div class="inline-flex items-center justify-center w-24 h-24 rounded-full mb-4"
              style="background-color: #0b5447;">
-          <img src="@/assets/LOGOS-CONSEJOBLANCOH.png" alt="CORDICOM"
+          <img src="@/assets/LOGOS-CONSEJOBLANCOH.png" alt="CONSEJO"
                class="w-20 h-20 object-contain" />
         </div>
         <h1 class="text-2xl font-bold text-gray-800">CONSEJO DE COMUNICACIÓN</h1>

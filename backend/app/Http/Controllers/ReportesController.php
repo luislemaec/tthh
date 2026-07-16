@@ -1,8 +1,13 @@
 <?php
 namespace App\Http\Controllers;
 
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
 
 class ReportesController extends Controller
 {
@@ -81,18 +86,98 @@ class ReportesController extends Controller
             $pendSalida  = max(0, $r->atraso_salida  - (float)$r->min_just_salida);
             $pendiente   = $pendEntrada + $pendLunch + $pendSalida;
 
-            if ($pendiente <= 0) return null; // Totalmente justificado → no aparece
+            if ($pendiente <= 0) return null;
 
-            $tieneAlgunJustificado = $r->min_just_entrada > 0
-                || $r->min_just_lunch > 0
-                || $r->min_just_salida > 0;
-
-            $r->justificacion      = $tieneAlgunJustificado ? 'PARCIAL' : 'NINGUNA';
+            $r->justificacion      = ($r->min_just_entrada > 0 || $r->min_just_lunch > 0 || $r->min_just_salida > 0) ? 'PARCIAL' : 'NINGUNA';
             $r->minutos_pendientes = $pendiente;
             return $r;
         })->filter()->values();
 
+        $formato = $request->get('formato');
+        if ($formato === 'excel') return $this->exportarAtrasosExcel($resultado, $request);
+        if ($formato === 'pdf')   return $this->exportarAtrasosPdf($resultado, $request);
         return response()->json($resultado);
+    }
+
+    private function exportarAtrasosExcel($datos, $request)
+    {
+        $spreadsheet = new Spreadsheet();
+        $sheet       = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Atrasos');
+
+        $nombreInst = DB::table('dbo.d2_configuracion')->whereRaw("LOWER(concepto)='nombre_institucion'")->value('valor') ?? 'CONSEJO DE COMUNICACIÓN';
+
+        // Encabezado institucional
+        $sheet->mergeCells('A1:J1');
+        $sheet->setCellValue('A1', strtoupper($nombreInst));
+        $sheet->mergeCells('A2:J2');
+        $sheet->setCellValue('A2', 'REPORTE DE ATRASOS');
+        $sheet->mergeCells('A3:J3');
+        $sheet->setCellValue('A3', 'Período: ' . $request->fecha_desde . ' al ' . $request->fecha_hasta);
+
+        foreach (['A1','A2','A3'] as $c) {
+            $sheet->getStyle($c)->getFont()->setBold(true);
+            $sheet->getStyle($c)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        }
+        $sheet->getStyle('A1')->getFont()->setSize(13);
+        $sheet->getStyle('A2')->getFont()->setSize(11);
+
+        // Cabecera de columnas
+        $cabeceras = ['Fecha','Empleado','Departamento','H. Programada','H. Real Entrada','Atr. Entrada','Atr. Lunch','Sal. Anticipada','H. Descuento','Justificación'];
+        $sheet->fromArray($cabeceras, null, 'A5');
+        $sheet->getStyle('A5:J5')->getFont()->setBold(true);
+        $sheet->getStyle('A5:J5')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF0B5447');
+        $sheet->getStyle('A5:J5')->getFont()->getColor()->setARGB('FFFFFFFF');
+
+        $fila = 6;
+        foreach ($datos as $r) {
+            $decHora = function ($v) {
+                if (!$v && $v !== 0) return '—';
+                $h = floor($v); $m = round(($v - $h) * 60);
+                return sprintf('%02d:%02d', $h, $m);
+            };
+            $minTexto = function ($min) {
+                if (!$min || $min <= 0) return '—';
+                $h = intdiv($min, 60); $m = $min % 60;
+                return $h > 0 ? ($m > 0 ? "{$h}h {$m}min" : "{$h}h") : "{$m}min";
+            };
+            $sheet->fromArray([
+                substr($r->fecha, 0, 10),
+                $r->nombre_completo,
+                $r->nombre_depto,
+                $decHora($r->hora_turno_entrada),
+                $decHora($r->hora_real_entrada),
+                $minTexto($r->atraso_entrada),
+                $minTexto($r->atraso_lunch),
+                $minTexto($r->atraso_salida),
+                $minTexto(round($r->horas_decto * 60)),
+                $r->justificacion === 'PARCIAL' ? "Parcial ({$minTexto($r->minutos_pendientes)} pend.)" : 'Sin justificar',
+            ], null, "A{$fila}");
+            if ($fila % 2 === 0) {
+                $sheet->getStyle("A{$fila}:J{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFF4FBF8');
+            }
+            $fila++;
+        }
+
+        foreach (range('A', 'J') as $col) $sheet->getColumnDimension($col)->setAutoSize(true);
+
+        $writer = new Xlsx($spreadsheet);
+        ob_start(); $writer->save('php://output'); $content = ob_get_clean();
+        return response($content, 200, [
+            'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="reporte_atrasos_' . $request->fecha_desde . '_' . $request->fecha_hasta . '.xlsx"',
+        ]);
+    }
+
+    private function exportarAtrasosPdf($datos, $request)
+    {
+        $logo       = base64_encode(file_get_contents(public_path('logo.png')));
+        $nombreInst = DB::table('dbo.d2_configuracion')->whereRaw("LOWER(concepto)='nombre_institucion'")->value('valor') ?? 'CONSEJO DE COMUNICACIÓN';
+        $generadoPor = trim($request->user()->apellido_emp) . ' ' . trim($request->user()->nombre_emp);
+
+        $pdf = Pdf::loadView('reportes.reporte_atrasos', compact('datos', 'logo', 'nombreInst', 'generadoPor', 'request'))
+            ->setPaper('a4', 'landscape');
+        return $pdf->download('reporte_atrasos_' . $request->fecha_desde . '_' . $request->fecha_hasta . '.pdf');
     }
 
     // Reporte 2: Marcaciones faltantes — base todos los empleados activos
@@ -177,6 +262,288 @@ class ReportesController extends Controller
             }
         }
 
+        $formato = $request->get('formato');
+        if ($formato === 'excel') return $this->exportarFaltantesExcel($resultado, $request);
+        if ($formato === 'pdf')   return $this->exportarFaltantesPdf($resultado, $request);
         return response()->json($resultado);
+    }
+
+    private function exportarFaltantesExcel($datos, $request)
+    {
+        $spreadsheet = new Spreadsheet();
+        $sheet       = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Marc. No Realizadas');
+
+        $nombreInst = DB::table('dbo.d2_configuracion')->whereRaw("LOWER(concepto)='nombre_institucion'")->value('valor') ?? 'CONSEJO DE COMUNICACIÓN';
+
+        $sheet->mergeCells('A1:G1');
+        $sheet->setCellValue('A1', strtoupper($nombreInst));
+        $sheet->mergeCells('A2:G2');
+        $sheet->setCellValue('A2', 'REPORTE DE MARCACIONES NO REALIZADAS');
+        $sheet->mergeCells('A3:G3');
+        $sheet->setCellValue('A3', 'Período: ' . $request->fecha_desde . ' al ' . $request->fecha_hasta);
+
+        foreach (['A1','A2','A3'] as $c) {
+            $sheet->getStyle($c)->getFont()->setBold(true);
+            $sheet->getStyle($c)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        }
+        $sheet->getStyle('A1')->getFont()->setSize(13);
+        $sheet->getStyle('A2')->getFont()->setSize(11);
+
+        $cabeceras = ['Fecha','Empleado','Departamento','Entrada','Sal. Lunch','Ent. Lunch','Salida'];
+        $sheet->fromArray($cabeceras, null, 'A5');
+        $sheet->getStyle('A5:G5')->getFont()->setBold(true);
+        $sheet->getStyle('A5:G5')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF0B5447');
+        $sheet->getStyle('A5:G5')->getFont()->getColor()->setARGB('FFFFFFFF');
+
+        $estado = fn($v) => $v ? '✓' : 'No registró';
+        $fila = 6;
+        foreach ($datos as $r) {
+            $sheet->fromArray([
+                $r['fecha'],
+                $r['nombre_completo'],
+                $r['nombre_depto'],
+                $estado($r['tiene_entrada']),
+                $estado($r['tiene_sal_lunch']),
+                $estado($r['tiene_ent_lunch']),
+                $estado($r['tiene_salida']),
+            ], null, "A{$fila}");
+            if ($fila % 2 === 0) {
+                $sheet->getStyle("A{$fila}:G{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFF4FBF8');
+            }
+            $fila++;
+        }
+
+        foreach (range('A', 'G') as $col) $sheet->getColumnDimension($col)->setAutoSize(true);
+
+        $writer = new Xlsx($spreadsheet);
+        ob_start(); $writer->save('php://output'); $content = ob_get_clean();
+        return response($content, 200, [
+            'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="marcaciones_no_realizadas_' . $request->fecha_desde . '_' . $request->fecha_hasta . '.xlsx"',
+        ]);
+    }
+
+    private function exportarFaltantesPdf($datos, $request)
+    {
+        $logo        = base64_encode(file_get_contents(public_path('logo.png')));
+        $nombreInst  = DB::table('dbo.d2_configuracion')->whereRaw("LOWER(concepto)='nombre_institucion'")->value('valor') ?? 'CONSEJO DE COMUNICACIÓN';
+        $generadoPor = trim($request->user()->apellido_emp) . ' ' . trim($request->user()->nombre_emp);
+
+        $pdf = Pdf::loadView('reportes.reporte_faltantes', compact('datos', 'logo', 'nombreInst', 'generadoPor', 'request'))
+            ->setPaper('a4', 'landscape');
+        return $pdf->download('marcaciones_no_realizadas_' . $request->fecha_desde . '_' . $request->fecha_hasta . '.pdf');
+    }
+
+    // Reporte 3: Movimientos de Personal
+    public function movimientosPersonal(Request $request)
+    {
+        $request->validate([
+            'fecha_desde' => 'required|date',
+            'fecha_hasta' => 'required|date',
+        ]);
+
+        $tipos = $request->get('tipos', 'VACACIONES,PERMISO,LICENCIA,COMISION');
+        if (!is_array($tipos)) $tipos = explode(',', $tipos);
+        $tipos = array_map('trim', $tipos);
+
+        // Normalizar: aceptar con o sin tilde
+        $tipos = array_map(fn($t) => str_replace('COMISIÓN', 'COMISION', $t), $tipos);
+
+        $resultado = collect();
+
+        // Closure que aplica filtros comunes a cualquier query
+        $applyFilters = function ($q) use ($request) {
+            if ($request->filled('id_depto')) {
+                $q->where('e.id_depto', $request->id_depto);
+            }
+            if ($request->filled('id_emp')) {
+                $b = '%' . $request->id_emp . '%';
+                $q->whereRaw("(e.identificacion ILIKE ? OR e.apellido_emp ILIKE ? OR e.nombre_emp ILIKE ?)", [$b, $b, $b]);
+            }
+            return $q;
+        };
+
+        // VACACIONES
+        if (in_array('VACACIONES', $tipos)) {
+            $q = DB::table('dbo.d2_vacacion as v')
+                ->join('dbo.ad_empleado as e', 'e.id_emp', '=', 'v.id_emp')
+                ->join('dbo.ad_departamento as d', 'd.id_depto', '=', 'e.id_depto')
+                ->where('v.estado_permiso', 'APROBADO')
+                ->whereDate('v.fecha_inicial', '>=', $request->fecha_desde)
+                ->whereDate('v.fecha_inicial', '<=', $request->fecha_hasta)
+                ->where('e.id_depto', '!=', 999);
+            $applyFilters($q);
+            $rows = $q->select(
+                DB::raw("'VACACIONES' as tipo"),
+                'e.id_emp',
+                DB::raw("trim(e.apellido_emp) || ' ' || trim(e.nombre_emp) as nombre_completo"),
+                'd.nombre_depto',
+                'e.cargo_empleado',
+                DB::raw("v.fecha_inicial::date as fecha_desde"),
+                DB::raw("v.fecha_final::date as fecha_hasta"),
+                DB::raw("(v.fecha_final::date - v.fecha_inicial::date + 1) as dias"),
+                DB::raw("'Vacaciones aprobadas' as detalle")
+            )->get();
+            $resultado = $resultado->concat($rows);
+        }
+
+        // PERMISOS con descuento
+        if (in_array('PERMISO', $tipos)) {
+            $q = DB::table('dbo.d2_permiso as p')
+                ->join('dbo.ad_empleado as e', 'e.id_emp', '=', 'p.id_emp')
+                ->join('dbo.ad_departamento as d', 'd.id_depto', '=', 'e.id_depto')
+                ->where('p.estado_permiso', 'APROBADO')
+                ->where('p.descontable', 'SI')
+                ->whereDate('p.fecha_desde', '>=', $request->fecha_desde)
+                ->whereDate('p.fecha_desde', '<=', $request->fecha_hasta)
+                ->where('e.id_depto', '!=', 999);
+            $applyFilters($q);
+            $rows = $q->select(
+                DB::raw("'PERMISO' as tipo"),
+                'e.id_emp',
+                DB::raw("trim(e.apellido_emp) || ' ' || trim(e.nombre_emp) as nombre_completo"),
+                'd.nombre_depto',
+                'e.cargo_empleado',
+                DB::raw("p.fecha_desde::date as fecha_desde"),
+                DB::raw("p.fecha_hasta::date as fecha_hasta"),
+                DB::raw("CASE WHEN p.todo_dia='SI' THEN (p.fecha_hasta::date - p.fecha_desde::date + 1) ELSE NULL END as dias"),
+                'p.razon as detalle'
+            )->get();
+            $resultado = $resultado->concat($rows);
+        }
+
+        // LICENCIAS (permisos sin descuento)
+        if (in_array('LICENCIA', $tipos)) {
+            $q = DB::table('dbo.d2_permiso as p')
+                ->join('dbo.ad_empleado as e', 'e.id_emp', '=', 'p.id_emp')
+                ->join('dbo.ad_departamento as d', 'd.id_depto', '=', 'e.id_depto')
+                ->where('p.estado_permiso', 'APROBADO')
+                ->where('p.descontable', 'NO')
+                ->whereDate('p.fecha_desde', '>=', $request->fecha_desde)
+                ->whereDate('p.fecha_desde', '<=', $request->fecha_hasta)
+                ->where('e.id_depto', '!=', 999);
+            $applyFilters($q);
+            $rows = $q->select(
+                DB::raw("'LICENCIA' as tipo"),
+                'e.id_emp',
+                DB::raw("trim(e.apellido_emp) || ' ' || trim(e.nombre_emp) as nombre_completo"),
+                'd.nombre_depto',
+                'e.cargo_empleado',
+                DB::raw("p.fecha_desde::date as fecha_desde"),
+                DB::raw("p.fecha_hasta::date as fecha_hasta"),
+                DB::raw("CASE WHEN p.todo_dia='SI' THEN (p.fecha_hasta::date - p.fecha_desde::date + 1) ELSE NULL END as dias"),
+                'p.razon as detalle'
+            )->get();
+            $resultado = $resultado->concat($rows);
+        }
+
+        // COMISIONES
+        if (in_array('COMISION', $tipos)) {
+            $q = DB::table('dbo.vac_liquidacion_historico as l')
+                ->join('dbo.ad_empleado as e', 'e.id_emp', '=', 'l.id_emp')
+                ->join('dbo.ad_departamento as d', 'd.id_depto', '=', 'e.id_depto')
+                ->whereIn('l.motivo', ['INICIO_COMISION', 'FIN_COMISION_SALIDA'])
+                ->whereDate('l.fecha_evento', '>=', $request->fecha_desde)
+                ->whereDate('l.fecha_evento', '<=', $request->fecha_hasta)
+                ->where('e.id_depto', '!=', 999);
+            $applyFilters($q);
+            $rows = $q->select(
+                DB::raw("'COMISION' as tipo"),
+                'e.id_emp',
+                DB::raw("trim(e.apellido_emp) || ' ' || trim(e.nombre_emp) as nombre_completo"),
+                'd.nombre_depto',
+                'e.cargo_empleado',
+                DB::raw("l.fecha_evento::date as fecha_desde"),
+                DB::raw("l.fecha_evento::date as fecha_hasta"),
+                DB::raw("NULL::integer as dias"),
+                'l.motivo as detalle'
+            )->get();
+            $resultado = $resultado->concat($rows);
+        }
+
+        // Ordenar en PHP por fecha y nombre
+        $resultado = $resultado->sortBy([
+            ['fecha_desde', 'asc'],
+            ['nombre_completo', 'asc'],
+        ])->values();
+
+        $formato = $request->get('formato');
+        if ($formato === 'excel') return $this->exportarMovimientosExcel($resultado, $request);
+        if ($formato === 'pdf')   return $this->exportarMovimientosPdf($resultado, $request);
+        return response()->json($resultado);
+    }
+
+    private function exportarMovimientosExcel($datos, $request)
+    {
+        $spreadsheet = new Spreadsheet();
+        $sheet       = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Movimientos');
+
+        $nombreInst = DB::table('dbo.d2_configuracion')->whereRaw("LOWER(concepto)='nombre_institucion'")->value('valor') ?? 'CONSEJO DE COMUNICACIÓN';
+
+        $sheet->mergeCells('A1:H1');
+        $sheet->setCellValue('A1', strtoupper($nombreInst));
+        $sheet->mergeCells('A2:H2');
+        $sheet->setCellValue('A2', 'REPORTE DE MOVIMIENTOS DE PERSONAL');
+        $sheet->mergeCells('A3:H3');
+        $sheet->setCellValue('A3', 'Período: ' . $request->fecha_desde . ' al ' . $request->fecha_hasta);
+
+        foreach (['A1','A2','A3'] as $c) {
+            $sheet->getStyle($c)->getFont()->setBold(true);
+            $sheet->getStyle($c)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        }
+        $sheet->getStyle('A1')->getFont()->setSize(13);
+        $sheet->getStyle('A2')->getFont()->setSize(11);
+
+        $cabeceras = ['Tipo','Empleado','Cargo','Departamento','Fecha Desde','Fecha Hasta','Días','Detalle'];
+        $sheet->fromArray($cabeceras, null, 'A5');
+        $sheet->getStyle('A5:H5')->getFont()->setBold(true);
+        $sheet->getStyle('A5:H5')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF0B5447');
+        $sheet->getStyle('A5:H5')->getFont()->getColor()->setARGB('FFFFFFFF');
+
+        $coloresTipo = [
+            'VACACIONES' => 'FFD1FAE5',
+            'PERMISO'    => 'FFFEF9C3',
+            'LICENCIA'   => 'FFE0E7FF',
+            'COMISION'   => 'FFFCE7F3',
+        ];
+
+        $fila = 6;
+        foreach ($datos as $r) {
+            $sheet->fromArray([
+                $r->tipo,
+                $r->nombre_completo,
+                $r->cargo_empleado ?? '—',
+                $r->nombre_depto,
+                $r->fecha_desde,
+                $r->fecha_hasta,
+                $r->dias ?? '—',
+                $r->detalle,
+            ], null, "A{$fila}");
+            $color = $coloresTipo[$r->tipo] ?? 'FFFFFFFF';
+            $sheet->getStyle("A{$fila}:H{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB($color);
+            $fila++;
+        }
+
+        foreach (range('A', 'H') as $col) $sheet->getColumnDimension($col)->setAutoSize(true);
+
+        $writer = new Xlsx($spreadsheet);
+        ob_start(); $writer->save('php://output'); $content = ob_get_clean();
+        return response($content, 200, [
+            'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="movimientos_personal_' . $request->fecha_desde . '_' . $request->fecha_hasta . '.xlsx"',
+        ]);
+    }
+
+    private function exportarMovimientosPdf($datos, $request)
+    {
+        $logo        = base64_encode(file_get_contents(public_path('logo.png')));
+        $nombreInst  = DB::table('dbo.d2_configuracion')->whereRaw("LOWER(concepto)='nombre_institucion'")->value('valor') ?? 'CONSEJO DE COMUNICACIÓN';
+        $generadoPor = trim($request->user()->apellido_emp) . ' ' . trim($request->user()->nombre_emp);
+
+        $pdf = Pdf::loadView('reportes.reporte_movimientos', compact('datos', 'logo', 'nombreInst', 'generadoPor', 'request'))
+            ->setPaper('a4', 'landscape');
+        return $pdf->download('movimientos_personal_' . $request->fecha_desde . '_' . $request->fecha_hasta . '.pdf');
     }
 }
