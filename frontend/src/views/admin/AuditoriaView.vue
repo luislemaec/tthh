@@ -11,6 +11,7 @@
           <option value="talento">Talento Humano</option>
           <option value="adquisiciones">Adquisiciones</option>
           <option value="transportes">Transportes</option>
+          <option value="tecnologia">Tecnología</option>
         </select>
       </div>
       <div>
