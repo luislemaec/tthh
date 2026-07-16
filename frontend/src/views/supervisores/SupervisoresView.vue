@@ -8,6 +8,19 @@
       </button>
     </div>
 
+    <!-- Alerta supervisores inactivos -->
+    <div v-if="tieneInactivos"
+      class="flex items-center gap-3 bg-red-50 border border-red-300 text-red-700 rounded-lg px-4 py-3 text-sm">
+      <span class="text-lg">⚠</span>
+      <span>Hay áreas con supervisores en estado <strong>INACTIVO</strong>. Se recomienda reasignar a un empleado activo.</span>
+    </div>
+
+    <!-- Filtro búsqueda -->
+    <div class="bg-white rounded-xl shadow p-4">
+      <input v-model="filtroBuscar" placeholder="Buscar por área o nombre del supervisor..."
+        class="border rounded-lg px-3 py-2 text-sm w-80 focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+    </div>
+
     <!-- Tabla -->
     <div class="bg-white rounded-xl shadow overflow-hidden">
       <table class="w-full text-sm">
@@ -24,13 +37,27 @@
           <tr v-if="cargando">
             <td colspan="5" class="text-center py-8 text-gray-400">Cargando...</td>
           </tr>
-          <tr v-else-if="supervisores.length === 0">
+          <tr v-else-if="supervisoresFiltrados.length === 0">
             <td colspan="5" class="text-center py-8 text-gray-400">No hay supervisores asignados</td>
           </tr>
-          <tr v-for="s in supervisores" :key="s.id" class="border-b hover:bg-gray-50">
+          <tr v-for="s in supervisoresFiltrados" :key="s.id"
+            class="border-b"
+            :class="s.supervisor?.estado === 'INACTIVO'
+              ? 'bg-red-50 hover:bg-red-100'
+              : 'hover:bg-gray-50'">
             <td class="px-4 py-3 font-medium">{{ s.departamento?.nombre_depto }}</td>
-            <td class="px-4 py-3 font-medium text-[#0b5447]">
-              {{ s.supervisor?.apellido_emp }}, {{ s.supervisor?.nombre_emp }}
+            <td class="px-4 py-3">
+              <div class="flex items-center gap-2">
+                <span :class="s.supervisor?.estado === 'INACTIVO' ? 'font-medium text-red-700' : 'font-medium text-[#0b5447]'">
+                  {{ s.supervisor?.apellido_emp }}, {{ s.supervisor?.nombre_emp }}
+                </span>
+                <span v-if="s.supervisor?.estado === 'INACTIVO'"
+                  class="text-xs font-bold bg-red-100 text-red-700 border border-red-300 px-2 py-0.5 rounded-full">
+                  INACTIVO
+                </span>
+              </div>
+              <p v-if="s.supervisor?.estado === 'INACTIVO'"
+                class="text-xs text-red-500 mt-0.5">Reasignar a un supervisor activo</p>
             </td>
             <td class="px-4 py-3 text-gray-500">
               {{ s.supervisor?.departamento?.nombre_depto }}
@@ -109,7 +136,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue"
+import { ref, computed, onMounted } from "vue"
 import api from "@/services/api"
 
 const supervisores   = ref([])
@@ -121,10 +148,25 @@ const guardando      = ref(false)
 const error          = ref("")
 const buscarSup      = ref("")
 const resultadosSup  = ref([])
+const filtroBuscar   = ref("")
 
 const form = ref({
   editando: false, id: null,
   id_depto: "", id_supervisor: "", nombreSupervisor: ""
+})
+
+const tieneInactivos = computed(() =>
+  supervisores.value.some(s => s.supervisor?.estado === 'INACTIVO')
+)
+
+const supervisoresFiltrados = computed(() => {
+  const b = filtroBuscar.value.toLowerCase().trim()
+  if (!b) return supervisores.value
+  return supervisores.value.filter(s =>
+    s.departamento?.nombre_depto?.toLowerCase().includes(b) ||
+    s.supervisor?.apellido_emp?.toLowerCase().includes(b) ||
+    s.supervisor?.nombre_emp?.toLowerCase().includes(b)
+  )
 })
 
 const cargar = async () => {
@@ -150,7 +192,7 @@ const abrirModal = async () => {
     departamentos.value = data
   }
   if (todosEmpleados.value.length === 0) {
-    const { data } = await api.get("/empleados?per_page=500")
+    const { data } = await api.get("/empleados?per_page=500&estado=ACTIVO")
     todosEmpleados.value = data.data
   }
   modal.value = true
@@ -163,7 +205,7 @@ const editar = async (s) => {
     departamentos.value = data
   }
   if (todosEmpleados.value.length === 0) {
-    const { data } = await api.get("/empleados?per_page=500")
+    const { data } = await api.get("/empleados?per_page=500&estado=ACTIVO")
     todosEmpleados.value = data.data
   }
   form.value = {
