@@ -254,18 +254,22 @@ class LiquidacionVacController extends Controller
         $historico = LiquidacionHistorico::with('empleado.departamento')->findOrFail($historico_id);
         $emp       = $historico->empleado;
 
-        $aprobador    = optional(Configuracion::find('APROBADOR_INST_VACACION'))->valor
-                        ?? 'Coordinador General Administrativo Financiero';
-        $fechaHoy     = Carbon::now()->locale('es')->isoFormat('D [de] MMMM [de] YYYY');
+        $firmanteNombre = optional(Configuracion::find('FIRMANTE_TH_NOMBRE'))->valor
+                          ?? optional(Configuracion::find('APROBADOR_INST_VACACION'))->valor
+                          ?? 'Coordinador General Administrativo Financiero';
+        $firmanteCargo  = optional(Configuracion::find('FIRMANTE_TH_CARGO'))->valor
+                          ?? 'Directora de Administración del Talento Humano';
+        $fechaHoy      = Carbon::now()->locale('es')->isoFormat('D [de] MMMM [de] YYYY');
         $usuarioActual = $request->user();
-        $generadoPor  = strtoupper($usuarioActual->apellido_emp . ' ' . $usuarioActual->nombre_emp);
+        $generadoPor   = strtoupper($usuarioActual->apellido_emp . ' ' . $usuarioActual->nombre_emp);
 
         $pdf = Pdf::loadView('reportes.liquidacion_vacaciones', [
-            'historico'   => $historico,
-            'empleado'    => $emp,
-            'aprobador'   => $aprobador,
-            'fechaHoy'    => $fechaHoy,
-            'generadoPor' => $generadoPor,
+            'historico'      => $historico,
+            'empleado'       => $emp,
+            'firmanteNombre' => strtoupper($firmanteNombre),
+            'firmanteCargo'  => strtoupper($firmanteCargo),
+            'fechaHoy'       => $fechaHoy,
+            'generadoPor'    => $generadoPor,
         ])->setPaper('a4', 'portrait');
 
         $motivo   = strtolower($historico->motivo);
