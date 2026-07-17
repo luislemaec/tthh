@@ -50,89 +50,97 @@ class ZktecoController extends Controller
         }
 
         // POST = marcaciones reales
-        if (!$this->dispositivoAutorizado($request)) {
-            return response('ERROR', 403)->header('Content-Type', 'text/plain');
-        }
-
-        DB::table('dbo.d2_zkteco_dispositivo')
-            ->where('serial', $sn)
-            ->update(['ultimo_push' => now(), 'ip' => $request->ip()]);
-
-        $secuencia = ['ENTRADA', 'SALIDA AL LUNCH', 'ENTRADA DEL LUNCH', 'SALIDA'];
-        $lineas    = array_filter(explode("\n", trim($request->getContent())));
-
-        foreach ($lineas as $linea) {
-            $campos = explode("\t", trim($linea));
-            if (count($campos) < 2) continue;
-
-            $pin      = trim($campos[0]);
-            $fechaHora = trim($campos[1]);
-
-            if (!$pin || !$fechaHora) continue;
-
-            // ZKTeco trata el PIN como número y elimina ceros iniciales
-            // Cédulas ecuatorianas son 10 dígitos — completar si llegan 9
-            if (strlen($pin) === 9 && is_numeric($pin)) {
-                $pin = '0' . $pin;
+        try {
+            if (!$this->dispositivoAutorizado($request)) {
+                return response('ERROR', 403)->header('Content-Type', 'text/plain');
             }
 
-            // Validar formato de fecha
-            if (!preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $fechaHora)) continue;
+            DB::table('dbo.d2_zkteco_dispositivo')
+                ->where('serial', $sn)
+                ->update(['ultimo_push' => now(), 'ip' => $request->ip()]);
 
-            // Buscar empleado activo por cédula (identificacion), no por id_emp
-            $empleado = DB::table('dbo.ad_empleado')
-                ->where('identificacion', $pin)
-                ->where('estado', 'ACTIVO')
-                ->first(['id_emp', 'nombre_emp', 'apellido_emp']);
+            $secuencia = ['ENTRADA', 'SALIDA AL LUNCH', 'ENTRADA DEL LUNCH', 'SALIDA'];
+            $lineas    = array_filter(explode("\n", trim($request->getContent())));
 
-            if (!$empleado) continue;
+            foreach ($lineas as $linea) {
+                $campos = explode("\t", trim($linea));
+                if (count($campos) < 2) continue;
 
-            $idEmp = $empleado->id_emp;
+                $pin      = trim($campos[0]);
+                $fechaHora = trim($campos[1]);
 
-            // Ignorar duplicados exactos (por id_emp + fecha_hora)
-            $yaExiste = DB::table('dbo.sg_control_persona')
-                ->where('nro_documento', $idEmp)
-                ->where('fecha_hora', $fechaHora)
-                ->exists();
+                if (!$pin || !$fechaHora) continue;
 
-            if ($yaExiste) continue;
-
-            // Determinar siguiente concepto en la secuencia del día
-            $fecha = substr($fechaHora, 0, 10);
-            $marcacionesHoy = DB::table('dbo.sg_control_persona')
-                ->where('nro_documento', $idEmp)
-                ->whereRaw("DATE(fecha_hora) = ?", [$fecha])
-                ->orderBy('fecha_hora')
-                ->pluck('concepto')
-                ->toArray();
-
-            $siguiente = null;
-            foreach ($secuencia as $concepto) {
-                if (!in_array($concepto, $marcacionesHoy)) {
-                    $siguiente = $concepto;
-                    break;
+                // ZKTeco trata el PIN como número y elimina ceros iniciales
+                // Cédulas ecuatorianas son 10 dígitos — completar si llegan 9
+                if (strlen($pin) === 9 && is_numeric($pin)) {
+                    $pin = '0' . $pin;
                 }
+
+                // Validar formato de fecha
+                if (!preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $fechaHora)) continue;
+
+                // Buscar empleado activo por cédula (identificacion), no por id_emp
+                $empleado = DB::table('dbo.ad_empleado')
+                    ->where('identificacion', $pin)
+                    ->where('estado', 'ACTIVO')
+                    ->first(['id_emp', 'nombre_emp', 'apellido_emp']);
+
+                if (!$empleado) continue;
+
+                $idEmp = $empleado->id_emp;
+
+                // Ignorar duplicados exactos (por id_emp + fecha_hora)
+                $yaExiste = DB::table('dbo.sg_control_persona')
+                    ->where('nro_documento', $idEmp)
+                    ->where('fecha_hora', $fechaHora)
+                    ->exists();
+
+                if ($yaExiste) continue;
+
+                // Determinar siguiente concepto en la secuencia del día
+                $fecha = substr($fechaHora, 0, 10);
+                $marcacionesHoy = DB::table('dbo.sg_control_persona')
+                    ->where('nro_documento', $idEmp)
+                    ->whereRaw("DATE(fecha_hora) = ?", [$fecha])
+                    ->orderBy('fecha_hora')
+                    ->pluck('concepto')
+                    ->toArray();
+
+                $siguiente = null;
+                foreach ($secuencia as $concepto) {
+                    if (!in_array($concepto, $marcacionesHoy)) {
+                        $siguiente = $concepto;
+                        break;
+                    }
+                }
+
+                // Ya tiene las 4 marcaciones del día
+                if (!$siguiente) continue;
+
+                $clasificacion = in_array($siguiente, ['ENTRADA', 'ENTRADA DEL LUNCH']) ? 'ENTRADA' : 'SALIDA';
+
+                DB::table('dbo.sg_control_persona')->insert([
+                    'nro_documento'  => $idEmp,
+                    'identificador'  => 0,
+                    'clasificacion'  => $clasificacion,
+                    'lugar'          => 'BIOMETRICO',
+                    'concepto'       => $siguiente,
+                    'fecha_hora'     => $fechaHora,
+                    'tipo_marcacion' => 'BIOMETRICO',
+                    'ip'             => $request->ip(),
+                    'procesado'      => 'NO',
+                ]);
             }
 
-            // Ya tiene las 4 marcaciones del día
-            if (!$siguiente) continue;
-
-            $clasificacion = in_array($siguiente, ['ENTRADA', 'ENTRADA DEL LUNCH']) ? 'ENTRADA' : 'SALIDA';
-
-            DB::table('dbo.sg_control_persona')->insert([
-                'nro_documento'  => $idEmp,
-                'identificador'  => 0,
-                'clasificacion'  => $clasificacion,
-                'lugar'          => 'BIOMETRICO',
-                'concepto'       => $siguiente,
-                'fecha_hora'     => $fechaHora,
-                'tipo_marcacion' => 'BIOMETRICO',
-                'ip'             => $request->ip(),
-                'procesado'      => 'NO',
-            ]);
+            return response('OK', 200)->header('Content-Type', 'text/plain');
+        } catch (\Throwable $e) {
+            // BD u otra falla del servidor: responder en el formato de texto plano
+            // que espera el protocolo ADMS (no la página HTML de error de Laravel),
+            // para que el reloj reconozca el rechazo y reintente el envío mas tarde.
+            \Log::error('ZKTeco cdata error: ' . $e->getMessage());
+            return response('ERROR', 500)->header('Content-Type', 'text/plain');
         }
-
-        return response('OK', 200)->header('Content-Type', 'text/plain');
     }
 
     // GET /iclock/getrequest — polling del reloj
