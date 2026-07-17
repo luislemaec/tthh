@@ -51,6 +51,20 @@ Después de cualquier cambio: Push → Pull en servidor → `npm run build` (sol
 
 Las tablas `adq.orden_compra`, `adq.egreso`, `adq.kardex`, `adq.solicitud_material` quedaron vacías porque las migraciones de adquisiciones no estaban registradas en `public.migrations`. Al correr `php artisan migrate`, Laravel las ejecutó de nuevo borrando los datos. Los 482 artículos (`adq.articulo`) no se vieron afectados. **Solución aplicada:** se insertaron manualmente los registros de las 21 migraciones adq en `public.migrations` con batch=1.
 
+### Incidente 2026-07-17 — disco lleno en servidor BD (`192.168.26.38`) por logs de Alfresco/Tomcat
+
+**Causa raíz:** `/opt/alfresco-community/tomcat/logs/localhost_access_log*.txt` (logs de acceso de Tomcat, sin rotación configurada) acumularon ~12.5 GB (1-2 GB/día) hasta llenar el `/` del servidor de BD al 100%. Con el disco lleno, PostgreSQL 13 (`postgresql-13.service`) no podía operar con normalidad y empezó a rechazar conexiones (`SQLSTATE[08006] Connection refused` / `No route to host` / `FATAL: the database system is starting up`), afectando toda la aplicación (login, marcaciones web, todo lo que dependiera de la BD) entre aprox. `08:21` y `08:22:41` del 2026-07-17.
+
+**Solución aplicada:**
+1. Se liberó espacio borrando los `localhost_access_log*.txt` viejos (los de fecha pasada ya no los usa Tomcat, es seguro `rm` directo; **no** usar `rm` en `catalina.out` mientras Tomcat corre — ahí se trunca con `: > catalina.out` porque el proceso mantiene el file handle abierto).
+2. Se instaló `/etc/logrotate.d/alfresco-tomcat` con `rotate 7` / `maxage 7` para `localhost_access_log*.txt`, `catalina.out` (con `copytruncate`, `maxsize 200M`) y el resto de `*.log` de Tomcat/Alfresco, para que no se repita.
+
+**Efecto colateral descubierto — pérdida de marcaciones del reloj biométrico durante la caída:** con la red y Apache/Laravel funcionando normal pero Postgres caído, el reloj ZKTeco (`VDE2261200055`) sí intentó enviar sus marcaciones en tiempo real (`Realtime=1`), pero `ZktecoController` dejaba que la excepción de conexión a BD reventara como error 500 HTML sin manejar. El reloj recibía *una respuesta* (aunque fuera de error) y no reintentaba esa transacción — a diferencia de un corte de red puro (sin respuesta / timeout), donde el reloj sí reintenta solo hasta entregar el dato exitosamente. Confirmado con dos pruebas controladas en producción: (a) desconectar el cable de red → el reloj reintentó y sincronizó solo con la hora original; (b) bajar `postgresql-13` a propósito, timbrar, y volver a subirlo → **antes del fix esto se perdía, después del fix la marcación llegó con la hora real** una vez restablecida la BD.
+
+**Fix aplicado en `ZktecoController.php`:** las 4 rutas del protocolo ADMS que usa el reloj (`cdata` GET/handshake, `cdata` POST/marcaciones reales, `getrequest`, `registry`, `devicecmd`) ahora envuelven su lógica en `try/catch` y, ante cualquier falla (típicamente de conexión a BD), responden `"ERROR"` en texto plano (helper privado `errorAdms()`) en vez de dejar pasar el error 500 de Laravel — ese es el formato que el protocolo ADMS ya usa para los rechazos (mismo que la respuesta 403 de dispositivo no autorizado), y es lo que le permite al reloj reconocer el rechazo y reintentar más tarde en vez de darlo por entregado.
+
+**Limitación conocida:** las marcaciones perdidas la mañana del 2026-07-17 (antes de aplicar el fix, en el grupo piloto del reloj biométrico) no se recuperan automáticamente — el fix solo corrige el comportamiento hacia adelante. Para ese día puntual se decidió no hacer corrección manual (dejar el atraso registrado tal cual); si se necesitara justificar sin afectar vacaciones, la vía es aprobar un permiso `tipo_horario=ENTRADA` con una razón `descontable=NO` en `dbo.d2_razon` (ver sección Permisos).
+
 ---
 
 ## Autenticación
@@ -1647,6 +1661,8 @@ PIN\tDateTime\tStatus\tVerify\tWorkcode\tReserved1\tReserved2
 - **Lookup por cédula:** el controller busca al empleado por `identificacion` (cédula 10 dígitos) en `dbo.ad_empleado`, NO por `id_emp`. El `id_emp` (código corto como `00002`) es lo que se guarda en `nro_documento` de `sg_control_persona`
 
 **Lógica de asignación de concepto:** igual que el aplicativo web — cuenta las marcaciones del empleado en el día y asigna la siguiente en la secuencia `ENTRADA → SALIDA AL LUNCH → ENTRADA DEL LUNCH → SALIDA`. Si ya tiene 4, descarta.
+
+**Manejo de errores de BD (desde el incidente 2026-07-17, ver sección Backups):** las 4 rutas (`cdata` en ambos métodos, `getrequest`, `registry`, `devicecmd`) envuelven su lógica en `try/catch`. Ante cualquier excepción (típicamente pérdida de conexión a Postgres) responden `"ERROR"` en texto plano vía el helper privado `errorAdms()`, en el mismo formato que ya usa la respuesta 403 de dispositivo no autorizado — **nunca dejar que una excepción llegue sin capturar aquí**, porque el error 500 en HTML de Laravel no lo reconoce el protocolo ADMS y el reloj no reintenta esa marcación (la da por entregada aunque haya fallado). Un corte de red puro sí se recupera solo (el reloj no recibe respuesta y reintenta), pero una respuesta HTTP de error mal formada no.
 
 ### Endpoints admin — protegidos con Sanctum
 

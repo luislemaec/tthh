@@ -78,7 +78,7 @@
         <div class="min-w-0">
           <p class="font-semibold text-gray-800">
             {{ e.codigo_bien }}
-            <span class="text-gray-500 font-normal ml-2">{{ e.marca }} {{ e.modelo }}</span>
+            <span class="text-gray-500 font-normal ml-2">{{ e.marca }} {{ e.descripcion }}</span>
           </p>
           <p class="text-xs text-gray-500 mt-0.5">
             {{ e.tipo_equipo?.nombre }}
@@ -105,7 +105,7 @@
           <div class="min-w-0">
             <p class="font-semibold text-gray-800">
               {{ grupo.m.equipo?.codigo_bien }}
-              <span class="text-gray-500 font-normal ml-2">{{ grupo.m.equipo?.marca }} {{ grupo.m.equipo?.modelo }}</span>
+              <span class="text-gray-500 font-normal ml-2">{{ grupo.m.equipo?.marca }} {{ grupo.m.equipo?.descripcion }}</span>
             </p>
             <p class="text-xs text-gray-500 mt-0.5">
               {{ grupo.m.fecha_mantenimiento }} · {{ grupo.m.hora_inicio?.substring(0,5) }} - {{ grupo.m.hora_fin?.substring(0,5) }}
