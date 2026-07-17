@@ -17,6 +17,14 @@ class ZktecoController extends Controller
             ->exists();
     }
 
+    // Respuesta de error en el formato de texto plano que espera el protocolo
+    // ADMS (no la pagina HTML de Laravel), para que el reloj reintente despues.
+    private function errorAdms(\Throwable $e, string $origen)
+    {
+        \Log::error("ZKTeco {$origen} error: " . $e->getMessage());
+        return response('ERROR', 500)->header('Content-Type', 'text/plain');
+    }
+
     // GET|POST /iclock/cdata
     public function cdata(Request $request)
     {
@@ -26,12 +34,16 @@ class ZktecoController extends Controller
         if ($request->isMethod('get')) {
             if (!$sn) return response('ERROR', 400)->header('Content-Type', 'text/plain');
 
-            // Registrar automáticamente si no existe
-            DB::table('dbo.d2_zkteco_dispositivo')
-                ->updateOrInsert(
-                    ['serial' => $sn],
-                    ['ip' => $request->ip(), 'ultimo_push' => now(), 'activo' => true]
-                );
+            try {
+                // Registrar automáticamente si no existe
+                DB::table('dbo.d2_zkteco_dispositivo')
+                    ->updateOrInsert(
+                        ['serial' => $sn],
+                        ['ip' => $request->ip(), 'ultimo_push' => now(), 'activo' => true]
+                    );
+            } catch (\Throwable $e) {
+                return $this->errorAdms($e, 'cdata-handshake');
+            }
 
             $opts  = "GET OPTION FROM: {$sn}\r\n";
             $opts .= "Stamp=0\r\n";
@@ -135,46 +147,50 @@ class ZktecoController extends Controller
 
             return response('OK', 200)->header('Content-Type', 'text/plain');
         } catch (\Throwable $e) {
-            // BD u otra falla del servidor: responder en el formato de texto plano
-            // que espera el protocolo ADMS (no la página HTML de error de Laravel),
-            // para que el reloj reconozca el rechazo y reintente el envío mas tarde.
-            \Log::error('ZKTeco cdata error: ' . $e->getMessage());
-            return response('ERROR', 500)->header('Content-Type', 'text/plain');
+            return $this->errorAdms($e, 'cdata-post');
         }
     }
 
     // GET /iclock/getrequest — polling del reloj
     public function getrequest(Request $request)
     {
-        if (!$this->dispositivoAutorizado($request)) {
-            return response('ERROR', 403)->header('Content-Type', 'text/plain');
+        try {
+            if (!$this->dispositivoAutorizado($request)) {
+                return response('ERROR', 403)->header('Content-Type', 'text/plain');
+            }
+
+            $sn       = $request->query('SN', '');
+            $cacheKey = "zkteco_last_query_{$sn}";
+
+            // Enviar DATA QUERY cada 2 minutos para traer nuevas marcaciones
+            if (!\Cache::has($cacheKey)) {
+                \Cache::put($cacheKey, true, now()->addMinutes(2));
+                $cmd = "C:1:DATA QUERY table=attlog startTime=2000-01-01 00:00:00 endTime=2099-12-31 23:59:59\r\n";
+                return response($cmd, 200)->header('Content-Type', 'text/plain');
+            }
+
+            return response('', 200)->header('Content-Type', 'text/plain');
+        } catch (\Throwable $e) {
+            return $this->errorAdms($e, 'getrequest');
         }
-
-        $sn       = $request->query('SN', '');
-        $cacheKey = "zkteco_last_query_{$sn}";
-
-        // Enviar DATA QUERY cada 2 minutos para traer nuevas marcaciones
-        if (!\Cache::has($cacheKey)) {
-            \Cache::put($cacheKey, true, now()->addMinutes(2));
-            $cmd = "C:1:DATA QUERY table=attlog startTime=2000-01-01 00:00:00 endTime=2099-12-31 23:59:59\r\n";
-            return response($cmd, 200)->header('Content-Type', 'text/plain');
-        }
-
-        return response('', 200)->header('Content-Type', 'text/plain');
     }
 
     // GET|POST /iclock/registry — registro inicial del dispositivo al arrancar
     public function registry(Request $request)
     {
-        $sn = $request->query('SN', $request->input('SN', 'DESCONOCIDO'));
+        try {
+            $sn = $request->query('SN', $request->input('SN', 'DESCONOCIDO'));
 
-        DB::table('dbo.d2_zkteco_dispositivo')
-            ->updateOrInsert(
-                ['serial' => $sn],
-                ['ip' => $request->ip(), 'ultimo_push' => now(), 'activo' => true]
-            );
+            DB::table('dbo.d2_zkteco_dispositivo')
+                ->updateOrInsert(
+                    ['serial' => $sn],
+                    ['ip' => $request->ip(), 'ultimo_push' => now(), 'activo' => true]
+                );
 
-        return response('OK', 200)->header('Content-Type', 'text/plain');
+            return response('OK', 200)->header('Content-Type', 'text/plain');
+        } catch (\Throwable $e) {
+            return $this->errorAdms($e, 'registry');
+        }
     }
 
     // GET /iclock/ping
@@ -186,10 +202,14 @@ class ZktecoController extends Controller
     // POST /iclock/devicecmd — confirmación de ejecución de comandos (ignorar)
     public function devicecmd(Request $request)
     {
-        if (!$this->dispositivoAutorizado($request)) {
-            return response('ERROR', 403)->header('Content-Type', 'text/plain');
+        try {
+            if (!$this->dispositivoAutorizado($request)) {
+                return response('ERROR', 403)->header('Content-Type', 'text/plain');
+            }
+            return response('OK', 200)->header('Content-Type', 'text/plain');
+        } catch (\Throwable $e) {
+            return $this->errorAdms($e, 'devicecmd');
         }
-        return response('OK', 200)->header('Content-Type', 'text/plain');
     }
 
     // ── Admin ────────────────────────────────────────────────────────────────
