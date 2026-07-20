@@ -263,8 +263,12 @@
 
     <!-- Modal Ver Permiso -->
     <div v-if="modalVer" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-2xl space-y-4 my-4">
-        <h2 class="text-lg font-semibold text-gray-700">Detalle del Permiso</h2>
+      <div class="bg-white rounded-xl shadow-lg w-full max-w-2xl my-4 overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#0b5447;">
+          <h2 class="text-lg font-semibold text-white">Detalle del Permiso</h2>
+          <button @click="modalVer = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
+        </div>
+        <div class="p-6 space-y-4">
         <dl class="grid grid-cols-2 gap-3 text-sm">
           <div>
             <dt class="text-gray-500">Empleado</dt>
@@ -402,6 +406,7 @@
         <div class="flex justify-end pt-2">
           <button @click="modalVer = false"
             class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cerrar</button>
+        </div>
         </div>
       </div>
     </div>
