@@ -170,7 +170,7 @@
             <h2 class="text-lg font-bold text-white">Registrar Mantenimiento</h2>
             <p class="text-white/80 text-xs mt-0.5">{{ modal.equipo?.codigo_bien }} — {{ modal.equipo?.marca }} {{ modal.equipo?.modelo }}</p>
           </div>
-          <button @click="modal.show = false" class="text-white/80 hover:text-white text-xl leading-none">&times;</button>
+          <button @click="modal.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6 max-h-[75vh] overflow-y-auto">
           <p class="text-xs text-gray-500 mb-3">
@@ -249,7 +249,7 @@
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
         <div class="px-6 py-4 flex items-center justify-between" style="background-color:#4d7c8a;">
           <h2 class="text-lg font-bold text-white">Subir Acta Firmada</h2>
-          <button @click="modalFirmado.show = false" class="text-white/80 hover:text-white text-xl leading-none">&times;</button>
+          <button @click="modalFirmado.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6">
           <input type="file" accept="application/pdf" @change="e => modalFirmado.archivo = e.target.files[0]"
@@ -272,7 +272,7 @@
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
         <div class="px-6 py-4 flex items-center justify-between" style="background-color:#4d7c8a;">
           <h2 class="text-lg font-bold text-white">Registrar Mantenimiento Externo</h2>
-          <button @click="modalExterno.show = false" class="text-white/80 hover:text-white text-xl leading-none">&times;</button>
+          <button @click="modalExterno.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6">
           <p class="text-xs text-gray-500 mb-3">

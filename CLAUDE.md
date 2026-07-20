@@ -709,6 +709,45 @@ layouts/MainLayout.vue  # Layout del módulo RRHH (menú colapsado, se abre el g
                         # Incluye <ChatbotFAB /> como elemento raíz adicional (Vue 3 fragment)
 ```
 
+### Estándar de modales (OBLIGATORIO en todos los modales nuevos)
+
+Todo modal del sistema debe seguir esta estructura — cabecera coloreada con el color del módulo + botón `×` de cierre en la esquina superior derecha:
+
+```html
+<div v-if="modalX" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+  <div class="bg-white rounded-xl shadow-lg w-full max-w-lg overflow-hidden">
+
+    <!-- Cabecera coloreada -->
+    <div class="flex items-center justify-between px-6 py-4" style="background-color:#0b5447;">
+      <h2 class="text-lg font-semibold text-white">Título del Modal</h2>
+      <button @click="modalX = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
+    </div>
+
+    <!-- Contenido -->
+    <div class="p-6 space-y-4">
+      <!-- ... campos del formulario o detalle ... -->
+      <div class="flex justify-end gap-3 pt-2">
+        <button @click="modalX = false" class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
+        <button class="px-4 py-2 rounded-lg bg-[#0b5447] text-white text-sm">Guardar</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+```
+
+**Color del módulo para `background-color`:**
+- Talento Humano, Admin, Nómina, Adquisiciones, Empleados, Permisos, Vacaciones, Acciones, Asistencia, Horas Extras, Planificación, Certificados, Reportes: `#0b5447`
+- Transportes: `#1e3a5f`
+- Comisiones: `#5c4a6e`
+- Tecnología: `#4d7c8a`
+
+**Reglas:**
+- NUNCA usar `<h2 class="text-lg font-semibold text-gray-700">` como título de modal — siempre va blanco en la cabecera coloreada
+- El contenedor principal lleva `overflow-hidden` (no `p-6`) — el padding va en el div interno de contenido
+- Si el modal tiene scroll, usar `<div class="p-6 space-y-4 overflow-y-auto max-h-[80vh]">` en el div de contenido
+- El botón `×` en la cabecera NO reemplaza el botón Cancelar/Cerrar al final — ambos deben existir
+
 ### Componentes reutilizables
 
 ```

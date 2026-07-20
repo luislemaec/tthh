@@ -82,8 +82,9 @@
     <div v-if="modal.show" class="fixed inset-0 z-50 flex items-center justify-center px-4">
       <div class="fixed inset-0 bg-black/40" @click="modal.show = false"/>
       <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden z-10">
-        <div class="px-6 py-4 text-white font-bold text-base" style="background-color:#5c4a6e">
-          {{ modal.id ? 'Editar Funcionario' : 'Nuevo Funcionario Externo' }}
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#5c4a6e;">
+          <h2 class="text-base font-bold text-white">{{ modal.id ? 'Editar Funcionario' : 'Nuevo Funcionario Externo' }}</h2>
+          <button type="button" @click="modal.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6 space-y-4">
           <div class="grid grid-cols-2 gap-3">
@@ -163,8 +164,9 @@
     <div v-if="modalAcceso.show" class="fixed inset-0 z-50 flex items-center justify-center px-4">
       <div class="fixed inset-0 bg-black/40" @click="modalAcceso.show = false"/>
       <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden z-10">
-        <div class="px-6 py-4 text-white font-bold text-base" style="background-color:#5c4a6e">
-          Dar Acceso al Sistema
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#5c4a6e;">
+          <h2 class="text-base font-bold text-white">Dar Acceso al Sistema</h2>
+          <button type="button" @click="modalAcceso.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6 space-y-4">
           <div class="bg-gray-50 rounded-lg p-3 text-sm">

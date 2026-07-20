@@ -93,8 +93,9 @@
     <div v-if="modalProv.show" class="fixed inset-0 z-50 flex items-center justify-center px-4">
       <div class="fixed inset-0 bg-black/40" @click="modalProv.show = false"/>
       <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden z-10">
-        <div class="px-5 py-4 text-white font-bold text-sm" style="background-color:#5c4a6e">
-          {{ modalProv.id ? 'Editar Provincia' : 'Nueva Provincia' }}
+        <div class="flex items-center justify-between px-5 py-4" style="background-color:#5c4a6e;">
+          <h2 class="text-sm font-bold text-white">{{ modalProv.id ? 'Editar Provincia' : 'Nueva Provincia' }}</h2>
+          <button type="button" @click="modalProv.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-5 space-y-3">
           <div>
@@ -119,8 +120,9 @@
     <div v-if="modalCiu.show" class="fixed inset-0 z-50 flex items-center justify-center px-4">
       <div class="fixed inset-0 bg-black/40" @click="modalCiu.show = false"/>
       <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden z-10">
-        <div class="px-5 py-4 text-white font-bold text-sm" style="background-color:#5c4a6e">
-          Editar Ciudad — {{ modalCiu.provNombre }}
+        <div class="flex items-center justify-between px-5 py-4" style="background-color:#5c4a6e;">
+          <h2 class="text-sm font-bold text-white">Editar Ciudad — {{ modalCiu.provNombre }}</h2>
+          <button type="button" @click="modalCiu.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-5 space-y-3">
           <div>

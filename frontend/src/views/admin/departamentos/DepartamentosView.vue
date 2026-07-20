@@ -67,12 +67,13 @@
     </div>
 
     <!-- Modal -->
-    <div v-if="modal" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-      <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md space-y-4">
-        <h2 class="text-lg font-semibold text-gray-700">
-          {{ form.id_depto ? 'Editar Departamento' : 'Nuevo Departamento' }}
-        </h2>
-
+    <div v-if="modal" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-lg w-full max-w-md overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#0b5447;">
+          <h2 class="text-lg font-semibold text-white">{{ form.id_depto ? 'Editar Departamento' : 'Nuevo Departamento' }}</h2>
+          <button @click="modal = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
+        </div>
+        <div class="p-6 space-y-4">
         <div v-if="!form.editando">
           <label class="block text-sm font-medium text-gray-600 mb-1">ID (opcional)</label>
           <input v-model.number="form.id_nuevo" type="number" placeholder="Ej: 74 — vacío = automático"
@@ -112,6 +113,7 @@
             class="px-4 py-2 rounded-lg bg-[#0b5447] text-white text-sm hover:bg-[#00372e] disabled:opacity-50">
             {{ guardando ? 'Guardando...' : 'Guardar' }}
           </button>
+        </div>
         </div>
       </div>
     </div>

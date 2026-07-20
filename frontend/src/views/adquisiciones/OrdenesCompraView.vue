@@ -61,8 +61,12 @@
 
     <!-- ══ MODAL CREAR — estilo facturación ══ -->
     <div v-if="modalCrear.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-4xl p-6 max-h-[95vh] overflow-y-auto">
-        <h2 class="text-lg font-bold mb-4">Nueva Orden de Compra</h2>
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[95vh] overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#0b5447;">
+          <h2 class="text-lg font-bold text-white">Nueva Orden de Compra</h2>
+          <button @click="modalCrear.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
+        </div>
+        <div class="p-6 overflow-y-auto">
 
         <!-- Cabecera -->
         <div class="grid grid-cols-3 gap-3 mb-5">
@@ -172,16 +176,18 @@
             {{ guardando ? 'Guardando...' : 'Guardar orden' }}
           </button>
         </div>
+        </div><!-- /p-6 overflow-y-auto -->
       </div>
     </div>
 
     <!-- Modal ver detalle -->
     <div v-if="modalDetalle.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-xl p-6 max-h-[90vh] overflow-y-auto">
-        <div class="flex justify-between items-start mb-4">
-          <h2 class="text-lg font-bold">Orden #{{ modalDetalle.orden?.id }}</h2>
-          <button @click="modalDetalle.show = false" class="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#0b5447;">
+          <h2 class="text-lg font-bold text-white">Orden #{{ modalDetalle.orden?.id }}</h2>
+          <button @click="modalDetalle.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
+        <div class="p-6 overflow-y-auto">
         <p class="text-sm text-gray-600 mb-1"><b>Proveedor:</b> {{ modalDetalle.orden?.proveedor?.nombre }}</p>
         <p class="text-sm text-gray-600 mb-4"><b>Fecha:</b> {{ modalDetalle.orden?.fecha }}</p>
         <table class="w-full text-sm border rounded-lg overflow-hidden">
@@ -213,6 +219,7 @@
         <p v-if="modalDetalle.orden?.observacion" class="text-sm text-gray-600 mt-3">
           <b>Observación:</b> {{ modalDetalle.orden.observacion }}
         </p>
+        </div><!-- /p-6 overflow-y-auto -->
       </div>
     </div>
   </div>

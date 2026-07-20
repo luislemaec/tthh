@@ -224,10 +224,12 @@
 
     <!-- ── MODAL PLANIFICAR (empleado) ───────────────────────────────────── -->
     <div v-if="modalPlanificar" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-2xl space-y-4">
-        <h2 class="text-lg font-semibold text-gray-700">
-          Planificar vacaciones {{ periodoActivo?.anio }}
-        </h2>
+      <div class="bg-white rounded-xl shadow-lg w-full max-w-2xl overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#0b5447;">
+          <h2 class="text-lg font-semibold text-white">Planificar vacaciones {{ periodoActivo?.anio }}</h2>
+          <button @click="modalPlanificar = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
+        </div>
+        <div class="p-6 space-y-4">
 
         <!-- Contador 30 días + saldo informativo -->
         <div class="bg-gray-50 rounded-lg p-3 text-sm flex items-center justify-between">
@@ -271,13 +273,18 @@
             {{ guardandoPlan ? 'Enviando...' : 'Enviar planificación' }}
           </button>
         </div>
+        </div>
       </div>
     </div>
 
     <!-- ── MODAL NEGAR ────────────────────────────────────────────────────── -->
     <div v-if="modalNegar" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md space-y-4">
-        <h2 class="text-lg font-semibold text-gray-700">Negar Planificación</h2>
+      <div class="bg-white rounded-xl shadow-lg w-full max-w-md overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#0b5447;">
+          <h2 class="text-lg font-semibold text-white">Negar Planificación</h2>
+          <button @click="modalNegar = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
+        </div>
+        <div class="p-6 space-y-4">
         <div>
           <label class="block text-sm font-medium text-gray-600 mb-1">Motivo *</label>
           <textarea v-model="motivoAccion" rows="3" maxlength="250"
@@ -290,13 +297,18 @@
           <button @click="confirmarNegar"
             class="px-4 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700">Confirmar</button>
         </div>
+        </div>
       </div>
     </div>
 
     <!-- ── MODAL ELIMINAR ─────────────────────────────────────────────────── -->
     <div v-if="modalEliminar" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md space-y-4">
-        <h2 class="text-lg font-semibold text-gray-700">Eliminar Planificación</h2>
+      <div class="bg-white rounded-xl shadow-lg w-full max-w-md overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#0b5447;">
+          <h2 class="text-lg font-semibold text-white">Eliminar Planificación</h2>
+          <button @click="modalEliminar = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
+        </div>
+        <div class="p-6 space-y-4">
         <div>
           <label class="block text-sm font-medium text-gray-600 mb-1">Motivo *</label>
           <textarea v-model="motivoAccion" rows="3" maxlength="250"
@@ -309,16 +321,18 @@
           <button @click="confirmarEliminar"
             class="px-4 py-2 rounded-lg bg-gray-600 text-white text-sm hover:bg-gray-700">Confirmar</button>
         </div>
+        </div>
       </div>
     </div>
 
     <!-- ── MODAL REPLANIFICAR ─────────────────────────────────────────────── -->
     <div v-if="modalReplanificar" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-2xl space-y-4">
-        <h2 class="text-lg font-semibold text-gray-700">
-          Replanificar — {{ planSeleccionada?.empleado?.apellido_emp }},
-          {{ planSeleccionada?.empleado?.nombre_emp }}
-        </h2>
+      <div class="bg-white rounded-xl shadow-lg w-full max-w-2xl overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#0b5447;">
+          <h2 class="text-lg font-semibold text-white">Replanificar — {{ planSeleccionada?.empleado?.apellido_emp }}, {{ planSeleccionada?.empleado?.nombre_emp }}</h2>
+          <button @click="modalReplanificar = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
+        </div>
+        <div class="p-6 space-y-4">
         <p class="text-xs text-orange-600 bg-orange-50 rounded p-2">
           Esta acción solo puede realizarse una vez. Una vez replanificado no podrá volver a modificarse.
         </p>
@@ -360,6 +374,7 @@
             class="px-4 py-2 rounded-lg bg-[#0b5447] text-white text-sm hover:bg-[#00372e] disabled:opacity-50">
             {{ guardandoReplan ? 'Guardando...' : 'Confirmar replanificación' }}
           </button>
+        </div>
         </div>
       </div>
     </div>

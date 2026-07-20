@@ -92,7 +92,7 @@
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
         <div class="px-6 py-4 flex justify-between items-center flex-shrink-0" style="background-color:#1e3a5f;">
           <h2 class="text-lg font-bold text-white">Solicitud #{{ modalVer.s?.id }}</h2>
-          <button @click="modalVer.show = false" class="text-white/70 hover:text-white text-xl leading-none">&times;</button>
+          <button @click="modalVer.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6 overflow-y-auto">
         <template v-if="modalVer.s">
@@ -163,8 +163,9 @@
     <!-- Modal Nueva Solicitud -->
     <div v-if="modalCrear.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
-        <div class="px-6 py-4 flex-shrink-0" style="background-color:#1e3a5f;">
+        <div class="flex items-center justify-between px-6 py-4 flex-shrink-0" style="background-color:#1e3a5f;">
           <h2 class="text-lg font-bold text-white">Nueva Solicitud de Movilización</h2>
+          <button @click="modalCrear.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6 overflow-y-auto">
         <div class="space-y-3">
@@ -242,12 +243,15 @@
     <!-- Modal Aprobar -->
     <div v-if="modalAprobar.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-        <div class="px-6 py-4" style="background-color:#1e3a5f;">
-          <h2 class="text-lg font-bold text-white">Aprobar Solicitud #{{ modalAprobar.s?.id }}</h2>
-          <p class="text-xs text-blue-200 mt-0.5">
-            {{ modalAprobar.s?.solicitante?.apellido_emp }} · {{ formatFechaCorta(modalAprobar.s?.fecha_movilizacion) }}
-            · {{ modalAprobar.s?.hora_salida?.slice(0,5) }}–{{ modalAprobar.s?.hora_retorno?.slice(0,5) }}
-          </p>
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#1e3a5f;">
+          <div>
+            <h2 class="text-lg font-bold text-white">Aprobar Solicitud #{{ modalAprobar.s?.id }}</h2>
+            <p class="text-xs text-blue-200 mt-0.5">
+              {{ modalAprobar.s?.solicitante?.apellido_emp }} · {{ formatFechaCorta(modalAprobar.s?.fecha_movilizacion) }}
+              · {{ modalAprobar.s?.hora_salida?.slice(0,5) }}–{{ modalAprobar.s?.hora_retorno?.slice(0,5) }}
+            </p>
+          </div>
+          <button @click="modalAprobar.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6">
         <div class="space-y-3">
@@ -291,8 +295,9 @@
     <!-- Modal Negar -->
     <div v-if="modalNegar.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-        <div class="px-6 py-4" style="background-color:#1e3a5f;">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#1e3a5f;">
           <h2 class="text-lg font-bold text-white">Negar Solicitud #{{ modalNegar.id }}</h2>
+          <button @click="modalNegar.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6">
         <div>
@@ -315,9 +320,12 @@
     <!-- Modal Hoja de Ruta -->
     <div v-if="modalHojaRuta.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-        <div class="px-6 py-4" style="background-color:#1e3a5f;">
-          <h2 class="text-lg font-bold text-white">Hoja de Ruta</h2>
-          <p class="text-xs text-blue-200 mt-0.5">Solicitud #{{ modalHojaRuta.s?.id }} — {{ modalHojaRuta.s?.lugar_destino }}</p>
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#1e3a5f;">
+          <div>
+            <h2 class="text-lg font-bold text-white">Hoja de Ruta</h2>
+            <p class="text-xs text-blue-200 mt-0.5">Solicitud #{{ modalHojaRuta.s?.id }} — {{ modalHojaRuta.s?.lugar_destino }}</p>
+          </div>
+          <button @click="modalHojaRuta.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6">
         <div class="space-y-3">

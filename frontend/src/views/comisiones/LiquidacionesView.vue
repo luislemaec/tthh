@@ -312,11 +312,7 @@
           <h2 class="text-base font-bold">{{ detalleData?.numero_solicitud }} — Detalle completo</h2>
           <p class="text-xs opacity-80">{{ detalleData?.nombre_empleado }}</p>
         </div>
-        <button @click="modalDetalle = false" class="text-white/80 hover:text-white">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-          </svg>
-        </button>
+        <button @click="modalDetalle = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
       </div>
       <div v-if="cargandoDetalle" class="flex items-center justify-center py-16">
         <div class="w-8 h-8 border-2 border-[#5c4a6e] border-t-transparent rounded-full animate-spin"></div>
@@ -396,7 +392,10 @@
   <div v-if="modalDevolverSol" class="fixed inset-0 z-50 flex items-center justify-center px-4">
     <div class="fixed inset-0 bg-black/40" @click="modalDevolverSol = false"/>
     <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden z-10">
-      <div class="px-6 py-4 text-white font-bold text-base" style="background-color:#5c4a6e">Devolver Solicitud para Corrección</div>
+      <div class="flex items-center justify-between px-6 py-4" style="background-color:#5c4a6e;">
+        <h2 class="text-base font-bold text-white">Devolver Solicitud para Corrección</h2>
+        <button type="button" @click="modalDevolverSol = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
+      </div>
       <div class="p-6">
         <p class="text-sm text-gray-600 mb-3">La solicitud <span class="font-mono font-semibold">{{ devolverTarget?.numero_solicitud }}</span> volverá al estado <strong>DEVUELTO</strong> y el empleado podrá reeditarla desde el inicio.</p>
         <label class="text-xs font-semibold text-gray-600 mb-1 block">Motivo de devolución *</label>
@@ -421,11 +420,7 @@
     <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-xl max-h-[90vh] flex flex-col z-10 overflow-hidden">
       <div class="flex items-center justify-between px-5 py-4 text-white" style="background-color:#5c4a6e;">
         <h2 class="text-base font-bold">Ficha de Liquidación</h2>
-        <button @click="modalFicha = false" class="text-white/80 hover:text-white">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-          </svg>
-        </button>
+        <button @click="modalFicha = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
       </div>
       <div class="overflow-y-auto flex-1 p-5 space-y-3">
         <div class="grid grid-cols-2 gap-3">
@@ -524,7 +519,10 @@
   <div v-if="modalCur" class="fixed inset-0 z-50 flex items-center justify-center px-4">
     <div class="fixed inset-0 bg-black/40" @click="modalCur = false"/>
     <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden z-10">
-      <div class="px-6 py-4 text-white font-bold text-base" style="background-color:#5c4a6e">{{ curTitulo }}</div>
+      <div class="flex items-center justify-between px-6 py-4" style="background-color:#5c4a6e;">
+        <h2 class="text-base font-bold text-white">{{ curTitulo }}</h2>
+        <button type="button" @click="modalCur = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
+      </div>
       <div class="p-6">
         <label class="text-xs font-semibold text-gray-600 mb-1 block">N° CUR (eSIGEF) *</label>
         <input v-model="curValor" type="text" placeholder="Ej: 2026-CUR-00123"
@@ -546,7 +544,10 @@
   <div v-if="modalDevolucion" class="fixed inset-0 z-50 flex items-center justify-center px-4">
     <div class="fixed inset-0 bg-black/40" @click="modalDevolucion = false"/>
     <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden z-10">
-      <div class="px-6 py-4 text-white font-bold text-base" style="background-color:#5c4a6e">Registrar Devolución</div>
+      <div class="flex items-center justify-between px-6 py-4" style="background-color:#5c4a6e;">
+        <h2 class="text-base font-bold text-white">Registrar Devolución</h2>
+        <button type="button" @click="modalDevolucion = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
+      </div>
       <div class="p-6">
         <div class="space-y-3">
           <div>

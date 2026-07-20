@@ -96,9 +96,9 @@
     <!-- Modal Ver -->
     <div v-if="modalVer.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
-        <div class="px-6 py-4 flex justify-between items-center flex-shrink-0" style="background-color:#1e3a5f;">
+        <div class="flex items-center justify-between px-6 py-4 flex-shrink-0" style="background-color:#1e3a5f;">
           <h2 class="text-lg font-bold text-white">Detalle Requerimiento #{{ modalVer.m?.id }}</h2>
-          <button @click="modalVer.show = false" class="text-white/70 hover:text-white text-xl leading-none">&times;</button>
+          <button @click="modalVer.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6 overflow-y-auto">
         <template v-if="modalVer.m">
@@ -171,8 +171,9 @@
     <!-- Modal Nuevo Requerimiento -->
     <div v-if="modalCrear.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
-        <div class="px-6 py-4 flex-shrink-0" style="background-color:#1e3a5f;">
+        <div class="flex items-center justify-between px-6 py-4 flex-shrink-0" style="background-color:#1e3a5f;">
           <h2 class="text-lg font-bold text-white">Nuevo Requerimiento de Mantenimiento</h2>
+          <button @click="modalCrear.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6 overflow-y-auto">
         <div class="space-y-3">
@@ -262,9 +263,12 @@
     <!-- Modal Generar Orden -->
     <div v-if="modalOrden.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-        <div class="px-6 py-4" style="background-color:#1e3a5f;">
-          <h2 class="text-lg font-bold text-white">Generar Orden de Trabajo</h2>
-          <p class="text-xs text-blue-200 mt-0.5">El número de orden se asigna automáticamente por tipo (ej. 0001-2026).</p>
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#1e3a5f;">
+          <div>
+            <h2 class="text-lg font-bold text-white">Generar Orden de Trabajo</h2>
+            <p class="text-xs text-blue-200 mt-0.5">El número de orden se asigna automáticamente por tipo (ej. 0001-2026).</p>
+          </div>
+          <button @click="modalOrden.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6">
         <div class="space-y-3">
@@ -304,8 +308,9 @@
     <!-- Modal Negar -->
     <div v-if="modalNegar.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-        <div class="px-6 py-4" style="background-color:#1e3a5f;">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#1e3a5f;">
           <h2 class="text-lg font-bold text-white">Negar Requerimiento</h2>
+          <button @click="modalNegar.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6">
         <div>
@@ -330,8 +335,9 @@
     <!-- Modal Finalizar -->
     <div v-if="modalFinalizar.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-        <div class="px-6 py-4" style="background-color:#1e3a5f;">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#1e3a5f;">
           <h2 class="text-lg font-bold text-white">Finalizar Mantenimiento</h2>
+          <button @click="modalFinalizar.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6">
         <div class="space-y-3">

@@ -105,8 +105,9 @@
     <div v-if="modalForm.show" class="fixed inset-0 bg-black/50 flex items-start justify-center z-50 p-4 overflow-y-auto">
       <div class="bg-white rounded-xl shadow-xl w-full max-w-7xl my-4 overflow-hidden">
 
-        <div class="px-6 py-4" style="background-color:#4a5e3a;">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#0b5447;">
           <h2 class="text-lg font-bold text-white">{{ modalForm.editando ? 'Editar Egreso #' + modalForm.id : 'Nuevo Egreso de Bienes' }}</h2>
+          <button @click="modalForm.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6">
 
@@ -264,9 +265,9 @@
     <!-- ══ MODAL VER DETALLE ══ -->
     <div v-if="modalDetalle.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
-        <div class="px-6 py-4 flex items-center justify-between flex-shrink-0" style="background-color:#4a5e3a;">
+        <div class="flex items-center justify-between px-6 py-4 flex-shrink-0" style="background-color:#0b5447;">
           <h2 class="text-lg font-bold text-white">Egreso #{{ modalDetalle.egreso?.numero_secuencial ?? modalDetalle.egreso?.id }}</h2>
-          <button @click="modalDetalle.show = false" class="text-white/70 hover:text-white text-xl leading-none">✕</button>
+          <button @click="modalDetalle.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6 overflow-y-auto">
         <div class="grid grid-cols-2 gap-x-6 gap-y-1 text-sm mb-4">
@@ -319,8 +320,9 @@
     <!-- ══ MODAL REVERSO ══ -->
     <div v-if="modalReverso.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
-        <div class="px-6 py-4" style="background-color:#dc2626;">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#dc2626;">
           <h2 class="text-lg font-bold text-white">Reversar Egreso</h2>
+          <button @click="modalReverso.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6">
         <p class="text-sm text-gray-500 mb-4">El stock de los artículos será restituido. El precio se restaura si quedó en cero.</p>

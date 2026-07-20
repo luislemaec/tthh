@@ -170,11 +170,7 @@
           </p>
           <p v-if="stepperData?.destino" class="text-xs text-white/70 truncate">{{ stepperData.destino }}</p>
         </div>
-        <button @click="cerrarStepper" class="text-white/70 hover:text-white ml-4 flex-shrink-0">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-          </svg>
-        </button>
+        <button @click="cerrarStepper" class="text-white hover:text-gray-200 text-xl font-bold leading-none ml-4 flex-shrink-0">×</button>
       </div>
 
       <!-- STEPPER BAR -->
@@ -664,8 +660,12 @@
   <!-- MODAL DEVOLVER -->
   <div v-if="modalDevolver" class="fixed inset-0 z-[60] flex items-center justify-center px-4">
     <div class="fixed inset-0 bg-black/50" @click="modalDevolver = false"/>
-    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md z-10 p-6">
-      <h3 class="text-base font-bold text-gray-800 mb-1">Devolver solicitud</h3>
+    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md z-10 overflow-hidden">
+      <div class="flex items-center justify-between px-6 py-4" style="background-color:#dc2626;">
+        <h3 class="text-lg font-bold text-white">Devolver solicitud</h3>
+        <button type="button" @click="modalDevolver = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
+      </div>
+      <div class="p-6">
       <p class="text-sm text-gray-500 mb-4">Indique el motivo de la devolución. El empleado verá este mensaje y podrá corregir su solicitud desde el inicio.</p>
       <textarea v-model="observacionDevolucion" rows="4" placeholder="Describa qué debe corregirse..."
         class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-red-400 resize-none" style="text-transform:uppercase"/>
@@ -676,6 +676,7 @@
           class="px-5 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50">
           {{ devolviendo ? 'Devolviendo...' : 'Confirmar Devolución' }}
         </button>
+      </div>
       </div>
     </div>
   </div>

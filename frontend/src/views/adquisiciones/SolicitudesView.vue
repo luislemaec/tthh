@@ -102,9 +102,9 @@
     <!-- Modal Ver detalle -->
     <div v-if="modalVer.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-xl w-full max-w-xl max-h-[90vh] overflow-hidden flex flex-col">
-        <div class="px-6 py-4 flex-shrink-0 flex justify-between items-center" style="background-color:#4a5e3a;">
+        <div class="flex items-center justify-between px-6 py-4 flex-shrink-0" style="background-color:#0b5447;">
           <h2 class="text-lg font-bold text-white">Detalle Solicitud #{{ modalVer.solicitud?.id }}</h2>
-          <button @click="modalVer.show = false" class="text-white/70 hover:text-white text-xl leading-none">✕</button>
+          <button @click="modalVer.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-5 overflow-y-auto">
           <div class="mb-3 text-sm text-gray-600 space-y-0.5">
@@ -153,9 +153,9 @@
     <!-- Modal crear solicitud -->
     <div v-if="modalCrear.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-xl w-full max-w-3xl h-[90vh] overflow-hidden flex flex-col">
-        <div class="px-6 py-4 flex-shrink-0 flex items-center justify-between" style="background-color:#4a5e3a;">
+        <div class="flex items-center justify-between px-6 py-4 flex-shrink-0" style="background-color:#0b5447;">
           <h2 class="text-lg font-bold text-white">Nueva Solicitud de Materiales</h2>
-          <button @click="modalCrear.show = false" class="text-white/70 hover:text-white text-xl leading-none">&times;</button>
+          <button @click="modalCrear.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6 overflow-y-auto flex-1">
         <!-- Pedido a nombre de otro depto (solo ADQUISICIONES/BIENES) -->
@@ -259,8 +259,9 @@
     <!-- Modal aprobar (Supervisor) -->
     <div v-if="modalAprobacion.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-xl w-full max-w-xl max-h-[90vh] overflow-hidden flex flex-col">
-        <div class="px-6 py-4 flex-shrink-0 bg-blue-700">
+        <div class="flex items-center justify-between px-6 py-4 flex-shrink-0" style="background-color:#0b5447;">
           <h2 class="text-lg font-bold text-white">Revisar y Aprobar Solicitud</h2>
+          <button @click="modalAprobacion.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6 overflow-y-auto">
           <p class="text-sm text-gray-500 mb-4">
@@ -300,9 +301,9 @@
     <!-- Modal despachar -->
     <div v-if="modalDespacho.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-xl w-full max-w-xl max-h-[90vh] overflow-hidden flex flex-col">
-        <div class="px-6 py-4 flex-shrink-0 flex items-center justify-between" style="background-color:#4a5e3a;">
+        <div class="flex items-center justify-between px-6 py-4 flex-shrink-0" style="background-color:#0b5447;">
           <h2 class="text-lg font-bold text-white">Autorizar Cantidades — Despacho</h2>
-          <button @click="modalDespacho.show = false" class="text-white/70 hover:text-white text-xl leading-none">&times;</button>
+          <button @click="modalDespacho.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6 overflow-y-auto">
         <p class="text-sm text-gray-500 mb-4">

@@ -293,10 +293,13 @@
     <div v-if="error" class="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">{{ error }}</div>
 
     <!-- Modal importar CSV -->
-    <div v-if="modalImportar" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-      <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-lg space-y-4">
-        <h2 class="text-lg font-semibold text-gray-700">Importar descuentos desde CSV</h2>
-
+    <div v-if="modalImportar" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-lg w-full max-w-lg overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#0b5447;">
+          <h2 class="text-lg font-semibold text-white">Importar descuentos desde CSV</h2>
+          <button @click="cerrarImportar" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
+        </div>
+        <div class="p-6 space-y-4">
         <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700 space-y-1">
           <p>El archivo CSV debe tener las siguientes columnas (con encabezado):</p>
           <p class="font-mono">cedula, quirografario, hipotecario, impuesto_renta, poliza_blanket, sanciones, otros_descuentos</p>
@@ -348,6 +351,7 @@
             class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-50">
             {{ importando ? 'Importando...' : 'Importar' }}
           </button>
+        </div>
         </div>
       </div>
     </div>

@@ -452,8 +452,12 @@
     <!-- Modal: Crear/Editar planificación -->
     <div v-if="modalPlan.show"
       class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
-        <h2 class="text-lg font-bold mb-4">{{ modalPlan.editando ? 'Editar' : 'Nueva' }} Planificación de Horas Extras</h2>
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div class="flex items-center justify-between px-6 py-4 flex-shrink-0" style="background-color:#0b5447;">
+          <h2 class="text-lg font-bold text-white">{{ modalPlan.editando ? 'Editar' : 'Nueva' }} Planificación de Horas Extras</h2>
+          <button @click="modalPlan.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
+        </div>
+        <div class="p-6 overflow-y-auto">
         <p class="text-sm text-gray-500 mb-4">{{ mesNombre(filtro.mes) }} {{ filtro.anio }}</p>
 
         <div class="space-y-3 mb-4">
@@ -518,15 +522,19 @@
             {{ guardando ? 'Guardando...' : 'Guardar' }}
           </button>
         </div>
+        </div>
       </div>
     </div>
 
     <!-- Modal: Registrar horas reales -->
     <div v-if="modalRegistro.show"
       class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-        <h2 class="text-lg font-bold mb-4">Registrar Horas Trabajadas</h2>
-
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#0b5447;">
+          <h2 class="text-lg font-bold text-white">Registrar Horas Trabajadas</h2>
+          <button @click="modalRegistro.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
+        </div>
+        <div class="p-6">
         <div class="space-y-3 mb-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Fecha *</label>
@@ -587,14 +595,19 @@
             {{ guardando ? 'Guardando...' : 'Registrar' }}
           </button>
         </div>
+        </div>
       </div>
     </div>
 
     <!-- Modal: Negar planificación -->
     <div v-if="modalNegar.show"
       class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-        <h2 class="text-lg font-bold mb-4">Negar Planificación</h2>
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#0b5447;">
+          <h2 class="text-lg font-bold text-white">Negar Planificación</h2>
+          <button @click="modalNegar.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
+        </div>
+        <div class="p-6">
         <label class="block text-sm font-medium text-gray-700 mb-1">Observación *</label>
         <textarea v-model="modalNegar.observacion" rows="3" maxlength="250"
           placeholder="Indique la razón"
@@ -611,14 +624,19 @@
             {{ guardando ? 'Negando...' : 'Negar' }}
           </button>
         </div>
+        </div>
       </div>
     </div>
 
     <!-- Modal: Negar registro -->
     <div v-if="modalNegarReg.show"
       class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-        <h2 class="text-lg font-bold mb-4">Negar Registro</h2>
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#0b5447;">
+          <h2 class="text-lg font-bold text-white">Negar Registro</h2>
+          <button @click="modalNegarReg.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
+        </div>
+        <div class="p-6">
         <label class="block text-sm font-medium text-gray-700 mb-1">Observación *</label>
         <textarea v-model="modalNegarReg.observacion" rows="3" maxlength="250"
           placeholder="Indique la razón"
@@ -635,14 +653,19 @@
             {{ guardando ? 'Negando...' : 'Negar' }}
           </button>
         </div>
+        </div>
       </div>
     </div>
 
     <!-- Modal: Editar registro (empleado EN REVISION) -->
     <div v-if="modalEditarReg.show"
       class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-        <h2 class="text-lg font-bold mb-4">Editar Registro de Horas</h2>
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#0b5447;">
+          <h2 class="text-lg font-bold text-white">Editar Registro de Horas</h2>
+          <button @click="modalEditarReg.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
+        </div>
+        <div class="p-6">
         <div class="space-y-3 mb-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Fecha *</label>
@@ -682,15 +705,22 @@
             {{ guardando ? 'Guardando...' : 'Guardar' }}
           </button>
         </div>
+        </div>
       </div>
     </div>
 
     <!-- Modal: Devolver registro (TH NOMINA) -->
     <div v-if="modalDevolverReg.show"
       class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-        <h2 class="text-lg font-bold mb-2">Devolver para Corrección</h2>
-        <p class="text-sm text-gray-500 mb-4">Indique al empleado qué debe corregir</p>
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#0b5447;">
+          <div>
+            <h2 class="text-lg font-bold text-white">Devolver para Corrección</h2>
+            <p class="text-white/80 text-xs mt-0.5">Indique al empleado qué debe corregir</p>
+          </div>
+          <button @click="modalDevolverReg.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
+        </div>
+        <div class="p-6">
         <textarea v-model="modalDevolverReg.observacion" rows="3" maxlength="250"
           placeholder="Ej: La hora de inicio no corresponde al rango autorizado..."
           class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-400 outline-none resize-none mb-4"></textarea>
@@ -702,15 +732,22 @@
             {{ guardando ? 'Enviando...' : 'Devolver' }}
           </button>
         </div>
+        </div>
       </div>
     </div>
 
     <!-- Modal: Procesar planificación -->
     <div v-if="modalAutorizar.show"
       class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
-        <h2 class="text-lg font-bold mb-2">Procesar Planificación</h2>
-        <p class="text-sm text-gray-500 mb-4">Ingrese la referencia del memorando de procesamiento</p>
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#0b5447;">
+          <div>
+            <h2 class="text-lg font-bold text-white">Procesar Planificación</h2>
+            <p class="text-white/80 text-xs mt-0.5">Ingrese la referencia del memorando de procesamiento</p>
+          </div>
+          <button @click="modalAutorizar.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
+        </div>
+        <div class="p-6">
         <textarea v-model="modalAutorizar.memorando" rows="3" maxlength="300"
           placeholder="Ej: Según Memorando nro. CDPIC-DATH-2026-0098-M se autorizó el pago de horas extras."
           class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-400 outline-none resize-none mb-4">
@@ -726,14 +763,19 @@
             {{ guardando ? 'Procesando...' : 'Procesar' }}
           </button>
         </div>
+        </div>
       </div>
     </div>
 
     <!-- Modal: Subir PDF firmado -->
     <div v-if="modalFirmado.show"
       class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-        <h2 class="text-lg font-bold mb-4">Subir PDF Firmado</h2>
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#0b5447;">
+          <h2 class="text-lg font-bold text-white">Subir PDF Firmado</h2>
+          <button @click="modalFirmado.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
+        </div>
+        <div class="p-6">
         <input type="file" accept=".pdf" @change="onArchivoFirmado"
           class="w-full text-sm mb-4" />
         <div v-if="errorModal" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">
@@ -746,6 +788,7 @@
             class="bg-[#00372e] text-white px-5 py-2 rounded-lg text-sm hover:bg-blue-800 disabled:opacity-50">
             {{ guardando ? 'Subiendo...' : 'Subir' }}
           </button>
+        </div>
         </div>
       </div>
     </div>

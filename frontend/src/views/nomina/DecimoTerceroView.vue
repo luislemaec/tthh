@@ -131,34 +131,44 @@
 
     <!-- Modal confirmación recalcular -->
     <div v-if="modalConfirm" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
-        <h3 class="font-bold text-gray-800 mb-3">¿Recalcular período?</h3>
-        <p class="text-sm text-gray-600 mb-5">
-          Ya existen datos en BORRADOR para <strong>{{ meses[form.mes - 1]?.l }} {{ form.anio }}</strong>.
-          Al recalcular se eliminarán los registros actuales y se generarán nuevos.
-        </p>
-        <div class="flex gap-3 justify-end">
-          <button @click="modalConfirm = false" class="px-4 py-2 border rounded-lg text-sm text-gray-700 hover:bg-gray-50">Cancelar</button>
-          <button @click="confirmarCalculo" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700">
-            Sí, recalcular
-          </button>
+      <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full mx-4 overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#0b5447;">
+          <h3 class="text-lg font-bold text-white">¿Recalcular período?</h3>
+          <button type="button" @click="modalConfirm = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
+        </div>
+        <div class="p-6">
+          <p class="text-sm text-gray-600 mb-5">
+            Ya existen datos en BORRADOR para <strong>{{ meses[form.mes - 1]?.l }} {{ form.anio }}</strong>.
+            Al recalcular se eliminarán los registros actuales y se generarán nuevos.
+          </p>
+          <div class="flex gap-3 justify-end">
+            <button @click="modalConfirm = false" class="px-4 py-2 border rounded-lg text-sm text-gray-700 hover:bg-gray-50">Cancelar</button>
+            <button @click="confirmarCalculo" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700">
+              Sí, recalcular
+            </button>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- Modal confirmación cerrar -->
     <div v-if="modalCerrar" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
-        <h3 class="font-bold text-gray-800 mb-3">¿Cerrar período?</h3>
-        <p class="text-sm text-gray-600 mb-5">
-          Al cerrar el período de <strong>{{ meses[form.mes - 1]?.l }} {{ form.anio }}</strong>
-          no se podrá recalcular. Esta acción queda registrada en auditoría.
-        </p>
-        <div class="flex gap-3 justify-end">
-          <button @click="modalCerrar = false" class="px-4 py-2 border rounded-lg text-sm text-gray-700 hover:bg-gray-50">Cancelar</button>
-          <button @click="confirmarCierre" class="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700">
-            Sí, cerrar
-          </button>
+      <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full mx-4 overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#0b5447;">
+          <h3 class="text-lg font-bold text-white">¿Cerrar período?</h3>
+          <button type="button" @click="modalCerrar = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
+        </div>
+        <div class="p-6">
+          <p class="text-sm text-gray-600 mb-5">
+            Al cerrar el período de <strong>{{ meses[form.mes - 1]?.l }} {{ form.anio }}</strong>
+            no se podrá recalcular. Esta acción queda registrada en auditoría.
+          </p>
+          <div class="flex gap-3 justify-end">
+            <button @click="modalCerrar = false" class="px-4 py-2 border rounded-lg text-sm text-gray-700 hover:bg-gray-50">Cancelar</button>
+            <button @click="confirmarCierre" class="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700">
+              Sí, cerrar
+            </button>
+          </div>
         </div>
       </div>
     </div>

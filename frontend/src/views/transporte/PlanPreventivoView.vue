@@ -98,7 +98,7 @@
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[85vh]">
         <div class="px-6 py-4 flex justify-between items-center flex-shrink-0" style="background-color:#1e3a5f;">
           <h2 class="text-lg font-bold text-white">{{ modalVer.plan?.nombre }}</h2>
-          <button @click="modalVer.show = false" class="text-white/70 hover:text-white text-xl leading-none">&times;</button>
+          <button @click="modalVer.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6 overflow-y-auto">
         <p class="text-xs text-gray-500 mb-4">
@@ -139,10 +139,11 @@
     <!-- Modal crear/editar -->
     <div v-if="modal.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
-        <div class="px-6 py-4 flex-shrink-0" style="background-color:#1e3a5f;">
+        <div class="flex items-center justify-between px-6 py-4 flex-shrink-0" style="background-color:#1e3a5f;">
           <h2 class="text-lg font-bold text-white">
             {{ modal.id ? 'Editar Plan Preventivo' : 'Nuevo Plan Preventivo' }}
           </h2>
+          <button @click="modal.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6 overflow-y-auto">
         <div class="space-y-3">
