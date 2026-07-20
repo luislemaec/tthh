@@ -240,7 +240,7 @@
 
     <!-- Modal Historial -->
     <div v-if="modalHistorial.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden">
         <div class="px-6 py-4 flex items-center justify-between" style="background-color:#4d7c8a;">
           <div>
             <h2 class="text-lg font-bold text-white">Historial de la Pieza</h2>
