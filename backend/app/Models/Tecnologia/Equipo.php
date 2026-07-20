@@ -37,4 +37,9 @@ class Equipo extends Model
     {
         return $this->hasOne(Asignacion::class, 'equipo_id')->whereNull('fecha_devolucion');
     }
+
+    public function piezasInstaladas()
+    {
+        return $this->hasMany(Pieza::class, 'equipo_id')->where('estado', 'INSTALADA');
+    }
 }

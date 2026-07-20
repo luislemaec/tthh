@@ -7,6 +7,8 @@ use App\Models\Tecnologia\Asignacion;
 use App\Models\Tecnologia\Equipo;
 use App\Models\Tecnologia\Mantenimiento;
 use App\Models\Tecnologia\MantenimientoDetalle;
+use App\Models\Tecnologia\Pieza;
+use App\Models\Tecnologia\PiezaMovimiento;
 use App\Services\AuditoriaService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -135,6 +137,11 @@ class MantenimientoController extends Controller
             'checklist'                    => 'required|array|min:1',
             'checklist.*.actividad_id'     => 'required|exists:pgsql.dbo.ti_actividad_mantenimiento,id',
             'checklist.*.realizado'        => 'required|boolean',
+            'piezas'                       => 'nullable|array',
+            'piezas.*.pieza_id'            => 'nullable|exists:pgsql.dbo.ti_pieza,id',
+            'piezas.*.codigo'              => 'nullable|string|max:50',
+            'piezas.*.serie'               => 'nullable|string|max:100',
+            'piezas.*.descripcion'         => 'nullable|string|max:300',
         ]);
 
         $anio = (int) date('Y', strtotime($request->fecha_mantenimiento));
@@ -143,32 +150,72 @@ class MantenimientoController extends Controller
             return response()->json(['message' => 'Este equipo ya tiene un mantenimiento registrado para ese año.'], 422);
         }
 
+        foreach ($request->input('piezas', []) as $item) {
+            if (!empty($item['pieza_id'])) {
+                $pieza = Pieza::find($item['pieza_id']);
+                if (!$pieza || $pieza->estado !== 'DISPONIBLE') {
+                    return response()->json(['message' => 'Una de las piezas seleccionadas ya no está disponible.'], 422);
+                }
+            } elseif (empty($item['descripcion'])) {
+                return response()->json(['message' => 'Cada pieza nueva requiere una descripción.'], 422);
+            }
+        }
+
         $idEmpCustodio = Asignacion::where('equipo_id', $request->equipo_id)
             ->whereNull('fecha_devolucion')
             ->value('id_emp');
 
-        $mantenimiento = Mantenimiento::create([
-            'equipo_id'           => $request->equipo_id,
-            'anio'                => $anio,
-            'fecha_mantenimiento' => $request->fecha_mantenimiento,
-            'hora_inicio'         => $request->hora_inicio,
-            'hora_fin'            => $request->hora_fin,
-            'tipo'                => $request->tipo ?? 'PREVENTIVO',
-            'id_emp_tecnico'      => $request->user()->id_emp,
-            'id_emp_custodio'     => $idEmpCustodio,
-            'observaciones'       => $request->observaciones,
-            'created_by'          => $request->user()->id_emp,
-        ]);
-
-        foreach ($request->checklist as $item) {
-            MantenimientoDetalle::create([
-                'mantenimiento_id' => $mantenimiento->id,
-                'actividad_id'     => $item['actividad_id'],
-                'realizado'        => $item['realizado'],
+        $mantenimiento = DB::transaction(function () use ($request, $anio, $idEmpCustodio) {
+            $mantenimiento = Mantenimiento::create([
+                'equipo_id'           => $request->equipo_id,
+                'anio'                => $anio,
+                'fecha_mantenimiento' => $request->fecha_mantenimiento,
+                'hora_inicio'         => $request->hora_inicio,
+                'hora_fin'            => $request->hora_fin,
+                'tipo'                => $request->tipo ?? 'PREVENTIVO',
+                'id_emp_tecnico'      => $request->user()->id_emp,
+                'id_emp_custodio'     => $idEmpCustodio,
+                'observaciones'       => $request->observaciones,
+                'created_by'          => $request->user()->id_emp,
             ]);
-        }
 
-        Equipo::whereKey($request->equipo_id)->update(['ultimo_mantenimiento' => $request->fecha_mantenimiento]);
+            foreach ($request->checklist as $item) {
+                MantenimientoDetalle::create([
+                    'mantenimiento_id' => $mantenimiento->id,
+                    'actividad_id'     => $item['actividad_id'],
+                    'realizado'        => $item['realizado'],
+                ]);
+            }
+
+            foreach ($request->input('piezas', []) as $item) {
+                if (!empty($item['pieza_id'])) {
+                    $pieza = Pieza::findOrFail($item['pieza_id']);
+                } else {
+                    $pieza = Pieza::create([
+                        'codigo'        => $item['codigo'] ?? null,
+                        'serie'         => $item['serie'] ?? null,
+                        'descripcion'   => $item['descripcion'],
+                        'fecha_entrega' => $request->fecha_mantenimiento,
+                        'estado'        => 'DISPONIBLE',
+                        'created_by'    => $request->user()->id_emp,
+                    ]);
+                }
+
+                PiezaMovimiento::create([
+                    'pieza_id'          => $pieza->id,
+                    'equipo_id'         => $request->equipo_id,
+                    'mantenimiento_id'  => $mantenimiento->id,
+                    'fecha_instalacion' => $request->fecha_mantenimiento,
+                    'usuario_instala'   => $request->user()->id_emp,
+                ]);
+
+                $pieza->update(['estado' => 'INSTALADA', 'equipo_id' => $request->equipo_id, 'updated_by' => $request->user()->id_emp]);
+            }
+
+            Equipo::whereKey($request->equipo_id)->update(['ultimo_mantenimiento' => $request->fecha_mantenimiento]);
+
+            return $mantenimiento;
+        });
 
         AuditoriaService::log('dbo.ti_mantenimiento', $mantenimiento->id, 'REGISTRAR_MANTENIMIENTO',
             null,

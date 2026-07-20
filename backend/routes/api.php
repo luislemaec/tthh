@@ -532,6 +532,17 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get('equipos/{id}/historial',   [\App\Http\Controllers\Tecnologia\EquipoController::class, 'historial']);
         Route::patch('equipos/{id}/baja',       [\App\Http\Controllers\Tecnologia\EquipoController::class, 'marcarBaja']);
         Route::patch('equipos/{id}/disponible', [\App\Http\Controllers\Tecnologia\EquipoController::class, 'marcarDisponible']);
+        Route::get('equipos/{id}/piezas',       [\App\Http\Controllers\Tecnologia\PiezaController::class, 'porEquipo']);
+
+        // Piezas / repuestos
+        Route::get('piezas',                  [\App\Http\Controllers\Tecnologia\PiezaController::class, 'index']);
+        Route::post('piezas',                 [\App\Http\Controllers\Tecnologia\PiezaController::class, 'store']);
+        Route::put('piezas/{id}',             [\App\Http\Controllers\Tecnologia\PiezaController::class, 'update']);
+        Route::patch('piezas/{id}/instalar',  [\App\Http\Controllers\Tecnologia\PiezaController::class, 'instalar']);
+        Route::patch('piezas/{id}/retirar',   [\App\Http\Controllers\Tecnologia\PiezaController::class, 'retirar']);
+        Route::patch('piezas/{id}/baja',       [\App\Http\Controllers\Tecnologia\PiezaController::class, 'marcarBaja']);
+        Route::patch('piezas/{id}/disponible', [\App\Http\Controllers\Tecnologia\PiezaController::class, 'marcarDisponible']);
+        Route::get('piezas/{id}/historial',    [\App\Http\Controllers\Tecnologia\PiezaController::class, 'historial']);
 
         // Actividades del checklist de mantenimiento
         Route::get('actividades-mantenimiento',      [\App\Http\Controllers\Tecnologia\ActividadMantenimientoController::class, 'index']);

@@ -116,6 +116,7 @@ const routes = [
     children: [
       { path: '', redirect: '/tecnologia/equipos' },
       { path: 'equipos',                   name: 'TecEquipos',          component: () => import('@/views/tecnologia/EquiposView.vue') },
+      { path: 'piezas',                    name: 'TecPiezas',           component: () => import('@/views/tecnologia/PiezasView.vue') },
       { path: 'mantenimiento',             name: 'TecMantenimiento',    component: () => import('@/views/tecnologia/MantenimientoView.vue') },
       { path: 'tipos-equipo',              name: 'TecTiposEquipo',      component: () => import('@/views/tecnologia/TiposEquipoView.vue') },
       { path: 'actividades-mantenimiento', name: 'TecActividadesMtto',  component: () => import('@/views/tecnologia/ActividadesMantenimientoView.vue') },

@@ -711,42 +711,24 @@ layouts/MainLayout.vue  # Layout del módulo RRHH (menú colapsado, se abre el g
 
 ### Estándar de modales (OBLIGATORIO en todos los modales nuevos)
 
-Todo modal del sistema debe seguir esta estructura — cabecera coloreada con el color del módulo + botón `×` de cierre en la esquina superior derecha:
-
 ```html
 <div v-if="modalX" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
   <div class="bg-white rounded-xl shadow-lg w-full max-w-lg overflow-hidden">
-
-    <!-- Cabecera coloreada -->
-    <div class="flex items-center justify-between px-6 py-4" style="background-color:#0b5447;">
-      <h2 class="text-lg font-semibold text-white">Título del Modal</h2>
+    <div class="flex items-center justify-between px-6 py-4" style="background-color:COLOR;">
+      <h2 class="text-lg font-semibold text-white">Título</h2>
       <button @click="modalX = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
     </div>
-
-    <!-- Contenido -->
     <div class="p-6 space-y-4">
-      <!-- ... campos del formulario o detalle ... -->
+      <!-- contenido -->
       <div class="flex justify-end gap-3 pt-2">
         <button @click="modalX = false" class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
-        <button class="px-4 py-2 rounded-lg bg-[#0b5447] text-white text-sm">Guardar</button>
       </div>
     </div>
-
   </div>
 </div>
 ```
 
-**Color del módulo para `background-color`:**
-- Talento Humano, Admin, Nómina, Adquisiciones, Empleados, Permisos, Vacaciones, Acciones, Asistencia, Horas Extras, Planificación, Certificados, Reportes: `#0b5447`
-- Transportes: `#1e3a5f`
-- Comisiones: `#5c4a6e`
-- Tecnología: `#4d7c8a`
-
-**Reglas:**
-- NUNCA usar `<h2 class="text-lg font-semibold text-gray-700">` como título de modal — siempre va blanco en la cabecera coloreada
-- El contenedor principal lleva `overflow-hidden` (no `p-6`) — el padding va en el div interno de contenido
-- Si el modal tiene scroll, usar `<div class="p-6 space-y-4 overflow-y-auto max-h-[80vh]">` en el div de contenido
-- El botón `×` en la cabecera NO reemplaza el botón Cancelar/Cerrar al final — ambos deben existir
+Color por módulo: TH/Admin/Adq `#0b5447` · Transportes `#1e3a5f` · Comisiones `#5c4a6e` · Tecnología `#4d7c8a`
 
 ### Componentes reutilizables
 
@@ -1531,8 +1513,10 @@ Quinto módulo del sistema, para la Dirección de Tecnología. Color institucion
 | `ti_actividad_mantenimiento` | Catálogo maestro del checklist de mantenimiento (10 ítems reales del formulario físico de TI, editable) |
 | `ti_mantenimiento` | Cabecera de cada ejecución de mantenimiento; `UNIQUE(equipo_id, anio)` — refuerza que el mantenimiento preventivo es una vez al año por equipo. Incluye `hora_inicio`/`hora_fin` (nullable — el mantenimiento externo por lote no siempre registra hora exacta), `id_emp_tecnico` (usuario que registró) e `id_emp_custodio` (snapshot del custodio en ese momento). Campos de mantenimiento externo (migración `000090`): `origen` (`INTERNO`/`EXTERNO`), `proveedor`, `proceso_contratacion`, `numero_orden_compra`, `lote_externo` — ver sección "Mantenimiento externo" abajo |
 | `ti_mantenimiento_detalle` | Snapshot SI/NO del checklist para esa ejecución (una fila por actividad del catálogo activa al momento de registrar). Solo se genera cuando `origen = INTERNO` |
+| `ti_pieza` | Catálogo de piezas/repuestos (ver sección "Piezas y repuestos" abajo). `codigo`/`serie` opcionales, `descripcion` obligatoria, `fecha_entrega` (obligatoria — fecha en que la Unidad de Bienes/Dirección Administrativa entregó la pieza a Tecnología; **Tecnología no tiene bodega propia**, las piezas llegan ya codificadas por Bienes). `estado`: `DISPONIBLE`/`INSTALADA`/`DE_BAJA`. `equipo_id` = equipo donde está instalada actualmente (null si disponible o de baja) |
+| `ti_pieza_movimiento` | Historial de instalación/retiro de piezas, mismo patrón que `ti_asignacion` pero pieza↔equipo. `mantenimiento_id` (nullable) liga el movimiento al mantenimiento en el que se hizo el cambio. Solo puede existir **una fila con `fecha_retiro IS NULL` por `pieza_id`** a la vez |
 
-Migraciones: `000088` (crea las 6 tablas + rol `TECNOLOGIA` + seeds de tipos de equipo y checklist), `000089` (amplía `ti_equipo.marca`/`modelo`, ver arriba), `000090` (agrega columnas de mantenimiento externo a `ti_mantenimiento` y hace `hora_inicio`/`hora_fin` nullable).
+Migraciones: `000088` (crea las 6 tablas + rol `TECNOLOGIA` + seeds de tipos de equipo y checklist), `000089` (amplía `ti_equipo.marca`/`modelo`, ver arriba), `000090` (agrega columnas de mantenimiento externo a `ti_mantenimiento` y hace `hora_inicio`/`hora_fin` nullable), `000092` (crea `ti_pieza` y `ti_pieza_movimiento`).
 
 `Equipo` (modelo) tiene un accessor `vida_util_vencida` (`$appends`, calculado en PHP con `fecha_ingreso + vida_util_anios <= hoy`, sin necesidad de cast ni columna nueva) — se usa para el badge/filtro/tarjeta "Vida útil vencida" en `EquiposView.vue`. `EquipoController::resumen()` incluye el conteo `vida_util_vencida` (excluye equipos `DE_BAJA`) y `index()` acepta `?vida_util_vencida=1` como filtro.
 
@@ -1578,6 +1562,20 @@ En la pestaña "Realizados" de `MantenimientoView.vue`, los registros con `lote_
 - **Tipo de equipo**: se compara contra el catálogo ignorando mayúsculas/minúsculas, punto final y espacios repetidos — evita falsos "no existe en el catálogo" por diferencias de formato (ej. `"INFRAESTRUCTURA DE VIDEOVIGILANCIA."` con punto vs `"INFRAESTRUCTURA DE VIDEOVIGILANCIA"` sin punto en el catálogo).
 - Valida todas las filas antes de insertar y reporta todos los errores encontrados de una vez; si hay algún error no inserta nada (`DB::transaction`).
 
+### Piezas y repuestos
+
+Trazabilidad de partes/piezas cambiadas durante un mantenimiento (ej. disco, RAM, fuente de poder), para saber en qué equipo está instalada cada una y no perder el rastro cuando se mueven entre equipos. **Importante:** Tecnología no mantiene bodega propia de piezas — las entrega la **Unidad de Bienes (Dirección Administrativa)**, que ya las codifica y gestiona su trámite interno; Tecnología solo las solicita, las recibe y ahí procede con el cambio. Por eso `ti_pieza.fecha_entrega` es obligatoria: es la fecha en que Bienes entrega físicamente la pieza a Tecnología (distinta de `created_at`, que es cuándo se registró en el sistema).
+
+Ciclo de vida de una pieza: `DISPONIBLE` (ya entregada por Bienes, sin instalar) → `INSTALADA` (en un `equipo_id`) → puede volver a `DISPONIBLE` (retiro por reemplazo/desinstalación, reutilizable) o pasar a `DE_BAJA` (retiro por daño, o baja directa desde disponible).
+
+**Dos puntos de entrada** para instalar/retirar (`PiezaController`):
+1. **Pantalla `tecnologia/piezas`** (`PiezasView.vue`) — catálogo completo: crear pieza (código, serie, descripción, fecha de entrega), buscar por código/serie/descripción, ver en qué equipo está instalada, instalar/retirar/dar de baja en cualquier momento, historial (timeline) de en qué equipos ha estado.
+2. **Dentro del formulario de "Registrar Mantenimiento"** (`MantenimientoView.vue`, solo mantenimiento interno individual, no el externo por lote) — sección "Piezas Cambiadas": buscador inline de piezas `DISPONIBLE` existentes, o botón "+ Pieza nueva" para crear una al vuelo (código/serie/descripción); al guardar el mantenimiento, cada pieza queda instalada en ese equipo con `mantenimiento_id` ligado al registro. Si la pieza se crea al vuelo desde aquí, `fecha_entrega` se autocompleta con la fecha del mantenimiento (asumiendo que Bienes la entregó por esas fechas); si no es correcto, se puede corregir después desde `tecnologia/piezas`.
+
+**Simplificación deliberada:** el formulario de mantenimiento solo *instala* piezas nuevas — no intenta adivinar qué pieza vieja reemplaza a cuál. Si se está reemplazando una pieza que ya estaba en ese equipo, esa se retira aparte desde `tecnologia/piezas` (ahí se ve qué piezas tiene instaladas cada equipo).
+
+`EquipoController`/modelo `Equipo` tiene `piezasInstaladas()` (`hasMany` filtrado por `estado = INSTALADA`) para consultar rápido qué piezas tiene un equipo sin pasar por el historial completo de movimientos.
+
 ### Backend
 
 Controladores en `app/Http/Controllers/Tecnologia/`:
@@ -1587,13 +1585,14 @@ Controladores en `app/Http/Controllers/Tecnologia/`:
 | `TipoEquipoController` | CRUD catálogo de tipos de equipo |
 | `EquipoController` | `index` (paginado 20/pág, filtros tipo/estado/búsqueda/`vida_util_vencida`), `resumen` (conteos por estado + vida útil vencida para las tarjetas del frontend), `store`/`update`, `importarCsv`, `asignar`/`devolver`/`historial`/`marcarBaja`/`marcarDisponible` |
 | `ActividadMantenimientoController` | CRUD catálogo del checklist |
-| `MantenimientoController` | `checklist`, `procesos` (lista fija de procesos de contratación), `pendientes`/`realizados` (con filtros tipo/búsqueda), `store`, `pdf`, `subirFirmado`, `descargarFirmado`, `storeExterno`, `pdfExterno`, `subirFirmadoExterno`, `descargarFirmadoExterno` (estos 4 últimos operan por `lote_externo`, no por `id`) |
+| `MantenimientoController` | `checklist`, `procesos` (lista fija de procesos de contratación), `pendientes`/`realizados` (con filtros tipo/búsqueda), `store` (acepta `piezas[]` opcional — instala piezas nuevas/existentes ligadas al mantenimiento), `pdf`, `subirFirmado`, `descargarFirmado`, `storeExterno`, `pdfExterno`, `subirFirmadoExterno`, `descargarFirmadoExterno` (estos 4 últimos operan por `lote_externo`, no por `id`) |
+| `PiezaController` | `index` (paginado 20/pág, filtros estado/búsqueda), `store`/`update`, `instalar`/`retirar`/`historial`, `marcarBaja`/`marcarDisponible`, `porEquipo` (piezas instaladas/históricas de un equipo — `GET /equipos/{id}/piezas`) |
 
-Modelos en `app/Models/Tecnologia/`: `TipoEquipo`, `Equipo` (`tipoEquipo()`, `asignaciones()`, `asignacionActiva()` — `hasOne` con `whereNull('fecha_devolucion')`; accessor `vida_util_vencida`), `Asignacion`, `ActividadMantenimiento`, `Mantenimiento` (`tecnico()`/`custodio()` → `Empleado`, `detalle()` → `MantenimientoDetalle`), `MantenimientoDetalle` (`$timestamps = false`).
+Modelos en `app/Models/Tecnologia/`: `TipoEquipo`, `Equipo` (`tipoEquipo()`, `asignaciones()`, `asignacionActiva()` — `hasOne` con `whereNull('fecha_devolucion')`; `piezasInstaladas()`; accessor `vida_util_vencida`), `Asignacion`, `ActividadMantenimiento`, `Mantenimiento` (`tecnico()`/`custodio()` → `Empleado`, `detalle()` → `MantenimientoDetalle`), `MantenimientoDetalle` (`$timestamps = false`), `Pieza` (`equipo()`, `movimientos()`), `PiezaMovimiento` (`pieza()`, `equipo()`, `mantenimiento()`).
 
 Rutas bajo `/api/tecnologia/*`, dentro del grupo `auth:sanctum` existente — sin middleware de rol dedicado, mismo patrón del resto del sistema (autorización real es la visibilidad del menú).
 
-Auditado con `AuditoriaService::log()` en `ASIGNAR`, `DEVOLVER`, `DAR_DE_BAJA`, `MARCAR_DISPONIBLE`, `REGISTRAR_MANTENIMIENTO` y `REGISTRAR_MANTENIMIENTO_EXTERNO`.
+Auditado con `AuditoriaService::log()` en `ASIGNAR`, `DEVOLVER`, `DAR_DE_BAJA`, `MARCAR_DISPONIBLE`, `REGISTRAR_MANTENIMIENTO`, `REGISTRAR_MANTENIMIENTO_EXTERNO` (equipos/mantenimiento) e `INSTALAR`/`RETIRAR`/`DAR_DE_BAJA`/`MARCAR_DISPONIBLE` (piezas, tabla `dbo.ti_pieza`).
 
 ### Frontend
 
@@ -1621,6 +1620,13 @@ views/tecnologia/
                                      # Técnico y custodio se autocompletan en el backend, no se piden en el form
                                      # Pestaña Realizados agrupa visualmente los mantenimientos EXTERNO por
                                      #   lote_externo (computed realizadosAgrupados, client-side)
+  PiezasView.vue                     # Catálogo de piezas/repuestos (ver sección "Piezas y repuestos" arriba)
+                                     # Tabla: código, descripción (+ fecha de entrega de Bienes), serie, estado,
+                                     #   equipo actual, acciones (Instalar/Retirar/Marcar disponible/Historial/
+                                     #   Editar/Dar de baja). Modal Instalar busca equipo por código/marca/modelo
+                                     #   (mismo endpoint de búsqueda que usa EquiposView)
+                                     # Modal crear/editar exige "Fecha de entrega (Bienes)" — no hay bodega
+                                     #   propia de TI, las piezas llegan ya codificadas desde Bienes
   TiposEquipoView.vue                # CRUD catálogo de tipos de equipo
   ActividadesMantenimientoView.vue   # CRUD catálogo del checklist de mantenimiento (nombre + orden + activo)
 ```
