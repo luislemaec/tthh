@@ -218,6 +218,14 @@
             <dd class="font-medium">{{ seleccionado?.empleado?.departamento?.nombre_depto }}</dd>
           </div>
           <div>
+            <dt class="text-gray-500">Fecha de solicitud</dt>
+            <dd class="font-medium">{{ seleccionado?.fecha_hora?.substring(0, 16)?.replace('T', ' ') }}</dd>
+          </div>
+          <div>
+            <dt class="text-gray-500">Fecha de aprobación</dt>
+            <dd class="font-medium">{{ seleccionado?.aprobado_en?.substring(0, 16)?.replace('T', ' ') || '—' }}</dd>
+          </div>
+          <div>
             <dt class="text-gray-500">Fecha Inicio</dt>
             <dd class="font-medium">{{ seleccionado?.fecha_inicial?.substring(0, 10) }}</dd>
           </div>

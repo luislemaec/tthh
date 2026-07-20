@@ -326,6 +326,7 @@ class PermisosController extends Controller
         $permiso->update([
             "estado_permiso" => "APROBADO",
             "usuario"        => $supervisor->id_emp,
+            "aprobado_en"    => now(),
         ]);
 
         // Calcular días a descontar según jornada del empleado

@@ -275,6 +275,19 @@
             <dd class="font-medium">{{ permisoSeleccionado?.empleado?.departamento?.nombre_depto }}</dd>
           </div>
           <div>
+            <dt class="text-gray-500">Fecha de solicitud</dt>
+            <dd class="font-medium">{{ permisoSeleccionado?.fecha_hora?.substring(0, 16)?.replace('T', ' ') }}</dd>
+          </div>
+          <div>
+            <dt class="text-gray-500">
+              {{ permisoSeleccionado?.estado_permiso === 'APROBADO' ? 'Fecha de aprobación'
+               : permisoSeleccionado?.estado_permiso === 'NEGADO'   ? 'Fecha de negación'
+               : permisoSeleccionado?.estado_permiso === 'ANULADO'  ? 'Fecha de anulación'
+               : 'Última actualización' }}
+            </dt>
+            <dd class="font-medium">{{ permisoSeleccionado?.aprobado_en?.substring(0, 16)?.replace('T', ' ') || '—' }}</dd>
+          </div>
+          <div>
             <dt class="text-gray-500">Razon</dt>
             <dd class="font-medium">{{ permisoSeleccionado?.razon_permiso?.descripcion?.trim() }}</dd>
           </div>
