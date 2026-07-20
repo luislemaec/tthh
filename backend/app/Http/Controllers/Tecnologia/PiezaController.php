@@ -171,7 +171,7 @@ class PiezaController extends Controller
         $pieza = Pieza::findOrFail($id);
 
         return response()->json(
-            PiezaMovimiento::with('equipo')
+            PiezaMovimiento::with(['equipo.asignacionActiva.empleado'])
                 ->where('pieza_id', $pieza->id)
                 ->orderBy('fecha_instalacion', 'desc')
                 ->get()

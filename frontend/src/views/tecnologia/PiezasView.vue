@@ -256,9 +256,18 @@
                 :style="m.fecha_retiro ? 'background-color:#9ca3af;' : 'background-color:#22c55e;'"></span>
               <div class="bg-gray-50 rounded-lg px-4 py-3">
                 <div class="flex items-center justify-between gap-2">
-                  <p class="font-semibold text-gray-800">{{ m.equipo?.codigo_bien }}</p>
+                  <p class="font-semibold text-gray-800">
+                    {{ m.equipo?.codigo_bien }}
+                    <span class="text-gray-500 font-normal">— {{ m.equipo?.descripcion }}</span>
+                  </p>
                   <span v-if="!m.fecha_retiro" class="text-xs font-semibold text-green-600 bg-green-100 px-2 py-0.5 rounded-full">Instalada</span>
                 </div>
+                <p class="text-xs mt-1" style="color:#4d7c8a;">
+                  <span v-if="m.equipo?.asignacion_activa">
+                    Custodio actual: {{ m.equipo.asignacion_activa.empleado?.apellido_emp }} {{ m.equipo.asignacion_activa.empleado?.nombre_emp }}
+                  </span>
+                  <span v-else class="text-gray-400">Sin custodio asignado actualmente</span>
+                </p>
                 <p class="text-xs text-gray-500 mt-1">
                   Desde {{ m.fecha_instalacion }}
                   <span v-if="m.fecha_retiro"> hasta {{ m.fecha_retiro }} · {{ m.motivo_retiro }}</span>
