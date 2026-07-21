@@ -192,7 +192,7 @@ class ReporteVacacionesController extends Controller
             $movimientos[] = [
                 'tipo'        => 'VACACION',
                 'fecha'       => null,
-                'descripcion' => 'Vacaciones tomadas (registros anteriores al sistema)',
+                'descripcion' => 'Descuentos por permisos y vacaciones anteriores al sistema',
                 'entrada'     => null,
                 'salida'      => $diasLegado,
                 'saldo'       => null,
