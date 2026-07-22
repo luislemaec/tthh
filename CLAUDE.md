@@ -1499,7 +1499,9 @@ Quinto módulo del sistema, para la Dirección de Tecnología. Color institucion
 | URL | Descripción | Roles |
 |---|---|---|
 | `tecnologia/equipos` | Inventario de Equipos | TECNOLOGIA, ADMINISTRADOR |
+| `tecnologia/piezas` | Piezas y Repuestos | TECNOLOGIA, ADMINISTRADOR |
 | `tecnologia/mantenimiento` | Mantenimiento | TECNOLOGIA, ADMINISTRADOR |
+| `tecnologia/reportes` | Reportes de Equipos | TECNOLOGIA, ADMINISTRADOR |
 | `tecnologia/tipos-equipo` | Tipos de Equipo | TECNOLOGIA, ADMINISTRADOR |
 | `tecnologia/actividades-mantenimiento` | Actividades del checklist | TECNOLOGIA, ADMINISTRADOR |
 
@@ -1576,6 +1578,14 @@ Ciclo de vida de una pieza: `DISPONIBLE` (ya entregada por Bienes, sin instalar)
 
 `EquipoController`/modelo `Equipo` tiene `piezasInstaladas()` (`hasMany` filtrado por `estado = INSTALADA`) para consultar rápido qué piezas tiene un equipo sin pasar por el historial completo de movimientos.
 
+### Reportes de equipos
+
+Pantalla `tecnologia/reportes` (`ReporteEquiposView.vue`) — una sola pantalla de reportes combinables en vez de pantallas separadas por cada tipo de consulta (por empleado, por marca/modelo, por vida útil vencida/vigente son todos, en el fondo, el mismo listado de equipos con distintos filtros). Filtros: **Custodio** (buscador de empleado, mismo patrón que `EquiposView.vue`), **Marca** y **Modelo** (selects poblados con los valores únicos que ya existen en el inventario vía `ReporteEquipoController::filtros()`, no texto libre), **Tipo de equipo**, **Vida útil** (Todos/Vencida/Vigente). No pagina en el backend (el reporte necesita el listado completo para exportar); se pagina 30/pág solo en el frontend para no listar cientos de filas de una vez.
+
+Columna **"🔧 N Piezas"**: si el equipo tiene piezas instaladas (`piezas_instaladas_count` vía `withCount`), un botón abre un modal con el detalle (reutiliza `GET /equipos/{id}/piezas`, el mismo endpoint de `PiezaController::porEquipo` que ya existía pero no estaba conectado a ninguna pantalla).
+
+**Exportar Excel/PDF**: los botones envían los mismos filtros activos en pantalla con `?formato=excel` o `?formato=pdf` — exportan exactamente lo que se está viendo, no todo el inventario. Excel con PhpSpreadsheet (patrón `ob_start()` + `Xlsx->save('php://output')`, sin archivo temporal), encabezado con fondo `#4d7c8a`. PDF con plantilla nueva `resources/views/reportes/ti_reporte_equipos.blade.php` (landscape A4, sin firmas — es un listado, no un documento a firmar).
+
 ### Backend
 
 Controladores en `app/Http/Controllers/Tecnologia/`:
@@ -1587,6 +1597,7 @@ Controladores en `app/Http/Controllers/Tecnologia/`:
 | `ActividadMantenimientoController` | CRUD catálogo del checklist |
 | `MantenimientoController` | `checklist`, `procesos` (lista fija de procesos de contratación), `pendientes`/`realizados` (con filtros tipo/búsqueda), `store` (acepta `piezas[]` opcional — instala piezas nuevas/existentes ligadas al mantenimiento), `pdf`, `subirFirmado`, `descargarFirmado`, `storeExterno`, `pdfExterno`, `subirFirmadoExterno`, `descargarFirmadoExterno` (estos 4 últimos operan por `lote_externo`, no por `id`) |
 | `PiezaController` | `index` (paginado 20/pág, filtros estado/búsqueda), `store`/`update`, `instalar`/`retirar`/`historial`, `marcarBaja`/`marcarDisponible`, `porEquipo` (piezas instaladas/históricas de un equipo — `GET /equipos/{id}/piezas`) |
+| `ReporteEquipoController` | `filtros` (marcas/modelos únicos existentes, para los selects), `index` (sin paginar — filtros custodio/marca/modelo/tipo/vida útil; con `?formato=excel\|pdf` exporta exactamente lo filtrado) |
 
 Modelos en `app/Models/Tecnologia/`: `TipoEquipo`, `Equipo` (`tipoEquipo()`, `asignaciones()`, `asignacionActiva()` — `hasOne` con `whereNull('fecha_devolucion')`; `piezasInstaladas()`; accessor `vida_util_vencida`), `Asignacion`, `ActividadMantenimiento`, `Mantenimiento` (`tecnico()`/`custodio()` → `Empleado`, `detalle()` → `MantenimientoDetalle`), `MantenimientoDetalle` (`$timestamps = false`), `Pieza` (`equipo()`, `movimientos()`), `PiezaMovimiento` (`pieza()`, `equipo()`, `mantenimiento()`).
 
@@ -1627,6 +1638,10 @@ views/tecnologia/
                                      #   (mismo endpoint de búsqueda que usa EquiposView)
                                      # Modal crear/editar exige "Fecha de entrega (Bienes)" — no hay bodega
                                      #   propia de TI, las piezas llegan ya codificadas desde Bienes
+                                     # Modal Historial: además del equipo, muestra su descripción y el
+                                     #   custodio actual (no solo el código de bien) — modal max-w-2xl
+  ReporteEquiposView.vue             # Ver sección "Reportes de equipos" arriba — filtros combinables
+                                     #   (custodio/marca/modelo/tipo/vida útil) + export Excel/PDF de lo filtrado
   TiposEquipoView.vue                # CRUD catálogo de tipos de equipo
   ActividadesMantenimientoView.vue   # CRUD catálogo del checklist de mantenimiento (nombre + orden + activo)
 ```

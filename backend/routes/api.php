@@ -544,6 +544,10 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::patch('piezas/{id}/disponible', [\App\Http\Controllers\Tecnologia\PiezaController::class, 'marcarDisponible']);
         Route::get('piezas/{id}/historial',    [\App\Http\Controllers\Tecnologia\PiezaController::class, 'historial']);
 
+        // Reportes de equipos
+        Route::get('reportes/equipos/filtros', [\App\Http\Controllers\Tecnologia\ReporteEquipoController::class, 'filtros']);
+        Route::get('reportes/equipos',         [\App\Http\Controllers\Tecnologia\ReporteEquipoController::class, 'index']);
+
         // Actividades del checklist de mantenimiento
         Route::get('actividades-mantenimiento',      [\App\Http\Controllers\Tecnologia\ActividadMantenimientoController::class, 'index']);
         Route::post('actividades-mantenimiento',     [\App\Http\Controllers\Tecnologia\ActividadMantenimientoController::class, 'store']);

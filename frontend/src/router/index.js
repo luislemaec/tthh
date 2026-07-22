@@ -118,6 +118,7 @@ const routes = [
       { path: 'equipos',                   name: 'TecEquipos',          component: () => import('@/views/tecnologia/EquiposView.vue') },
       { path: 'piezas',                    name: 'TecPiezas',           component: () => import('@/views/tecnologia/PiezasView.vue') },
       { path: 'mantenimiento',             name: 'TecMantenimiento',    component: () => import('@/views/tecnologia/MantenimientoView.vue') },
+      { path: 'reportes',                  name: 'TecReportes',         component: () => import('@/views/tecnologia/ReporteEquiposView.vue') },
       { path: 'tipos-equipo',              name: 'TecTiposEquipo',      component: () => import('@/views/tecnologia/TiposEquipoView.vue') },
       { path: 'actividades-mantenimiento', name: 'TecActividadesMtto',  component: () => import('@/views/tecnologia/ActividadesMantenimientoView.vue') },
     ],
