@@ -15,12 +15,18 @@ class Equipo extends Model
         'ultimo_mantenimiento', 'observaciones', 'created_by', 'updated_by',
     ];
 
-    protected $appends = ['vida_util_vencida'];
+    protected $appends = ['vida_util_vencida', 'custodio_inactivo'];
 
     public function getVidaUtilVencidaAttribute(): bool
     {
         if (!$this->fecha_ingreso || !$this->vida_util_anios) return false;
         return Carbon::parse($this->fecha_ingreso)->addYears((int) $this->vida_util_anios)->lte(now());
+    }
+
+    public function getCustodioInactivoAttribute(): bool
+    {
+        $activa = $this->asignacionActiva;
+        return (bool) ($activa && $activa->empleado && $activa->empleado->estado === 'INACTIVO');
     }
 
     public function tipoEquipo()

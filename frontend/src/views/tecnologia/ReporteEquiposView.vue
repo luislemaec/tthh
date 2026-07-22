@@ -108,6 +108,9 @@
                   {{ e.asignacion_activa.empleado?.apellido_emp }} {{ e.asignacion_activa.empleado?.nombre_emp }}
                 </span>
                 <span v-else class="text-gray-300">—</span>
+                <span v-if="e.custodio_inactivo" class="block mt-0.5 text-[10px] font-semibold text-red-700 bg-red-100 px-1.5 py-0.5 rounded w-fit">
+                  ⚠ Empleado inactivo
+                </span>
               </td>
               <td class="px-4 py-3 text-center">
                 <button v-if="e.piezas_instaladas_count > 0" @click="abrirPiezas(e)"

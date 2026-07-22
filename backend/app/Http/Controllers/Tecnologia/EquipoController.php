@@ -32,6 +32,10 @@ class EquipoController extends Controller
         if ($request->boolean('vida_util_vencida')) {
             $query->whereRaw($this->vidaUtilVencidaRaw());
         }
+        if ($request->boolean('custodio_inactivo')) {
+            $query->where('estado', 'ASIGNADO')
+                  ->whereHas('asignacionActiva.empleado', fn ($q) => $q->where('estado', 'INACTIVO'));
+        }
         if ($request->filled('busqueda')) {
             $b = $request->busqueda;
             $query->where(function ($q) use ($b) {
@@ -56,6 +60,10 @@ class EquipoController extends Controller
             ->whereRaw($this->vidaUtilVencidaRaw())
             ->count();
 
+        $custodioInactivo = Equipo::where('estado', 'ASIGNADO')
+            ->whereHas('asignacionActiva.empleado', fn ($q) => $q->where('estado', 'INACTIVO'))
+            ->count();
+
         return response()->json([
             'total'             => (int) $porEstado->sum(),
             'disponible'        => (int) ($porEstado['DISPONIBLE'] ?? 0),
@@ -63,6 +71,7 @@ class EquipoController extends Controller
             'danado'            => (int) ($porEstado['DAÑADO'] ?? 0),
             'de_baja'           => (int) ($porEstado['DE_BAJA'] ?? 0),
             'vida_util_vencida' => (int) $vidaUtilVencida,
+            'custodio_inactivo' => (int) $custodioInactivo,
         ]);
     }
 

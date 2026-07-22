@@ -1522,6 +1522,8 @@ Migraciones: `000088` (crea las 6 tablas + rol `TECNOLOGIA` + seeds de tipos de 
 
 `Equipo` (modelo) tiene un accessor `vida_util_vencida` (`$appends`, calculado en PHP con `fecha_ingreso + vida_util_anios <= hoy`, sin necesidad de cast ni columna nueva) — se usa para el badge/filtro/tarjeta "Vida útil vencida" en `EquiposView.vue`. `EquipoController::resumen()` incluye el conteo `vida_util_vencida` (excluye equipos `DE_BAJA`) y `index()` acepta `?vida_util_vencida=1` como filtro.
 
+**Custodio inactivo:** no hay ningún trigger ni validación que cruce `ad_empleado.estado` con la custodia de equipos — si un empleado pasa a `INACTIVO` mientras tiene equipos asignados, estos se quedan `ASIGNADO` a esa persona indefinidamente hasta que alguien lo note y haga "Devolver" manualmente. Para que no pase desapercibido: accessor `custodio_inactivo` en `Equipo` (`$appends`, true si `estado=ASIGNADO` y el empleado de la asignación activa tiene `estado=INACTIVO`), tarjeta de alerta roja "Custodio inactivo" en `EquiposView.vue` (clickeable, filtra con `?custodio_inactivo=1`) y badge "⚠ Empleado inactivo" junto al nombre del custodio tanto en `EquiposView.vue` como en `ReporteEquiposView.vue`. `EquipoController::resumen()` incluye el conteo `custodio_inactivo`.
+
 Las opciones de menú (`admin_opcion`) y su asignación al rol `TECNOLOGIA` (`admin_rol_opcion`) se crean desde la UI (Admin → Opciones de Menú / Admin → Roles) — no se gestionan por migración.
 
 ### Custodia (asignar / devolver)
@@ -1611,8 +1613,9 @@ Auditado con `AuditoriaService::log()` en `ASIGNAR`, `DEVOLVER`, `DAR_DE_BAJA`, 
 layouts/TecnologiaLayout.vue         # Layout azul petróleo #4d7c8a; menú desde auth.menuAgrupado (prefijo tecnologia/)
                                      # Modo mantenimiento: variable MODO_MANTENIMIENTO_TEC; incluye <ChatbotFAB />
 views/tecnologia/
-  EquiposView.vue                    # 6 tarjetas de resumen (Total/Disponibles/Asignados/Dañados/De baja/
-                                     #   Vida útil vencida), clickeables para filtrar la tabla (toggleStatCard)
+  EquiposView.vue                    # 7 tarjetas de resumen (Total/Disponibles/Asignados/Dañados/De baja/
+                                     #   Vida útil vencida/Custodio inactivo), clickeables para filtrar la
+                                     #   tabla (toggleStatCard); badge "⚠ Empleado inactivo" junto al custodio
                                      # Tabla paginada 20/pág: código, equipo (con badge naranja si
                                      #   vida_util_vencida), serie, estado, custodio actual, acciones
                                      #   (Asignar/Devolver como botón sólido; Historial/Editar/Dar de baja

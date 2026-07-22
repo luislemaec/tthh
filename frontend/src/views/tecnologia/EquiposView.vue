@@ -15,7 +15,7 @@
     </div>
 
     <!-- Tarjetas de resumen -->
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-5">
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 mb-5">
       <button v-for="c in statCards" :key="c.key" @click="toggleStatCard(c)"
         class="rounded-xl p-4 text-left border-l-4 bg-white shadow-sm transition hover:shadow-md hover:-translate-y-0.5"
         :class="[c.borde, activoStatCard(c) ? 'ring-2 ring-offset-1' : '']"
@@ -98,6 +98,9 @@
                   {{ e.asignacion_activa.empleado?.apellido_emp }} {{ e.asignacion_activa.empleado?.nombre_emp }}
                 </span>
                 <span v-else class="text-gray-300">—</span>
+                <span v-if="e.custodio_inactivo" class="block mt-0.5 text-[10px] font-semibold text-red-700 bg-red-100 px-1.5 py-0.5 rounded w-fit">
+                  ⚠ Empleado inactivo
+                </span>
               </td>
               <td class="px-4 py-3">
                 <div class="flex items-center justify-end gap-1.5 flex-wrap">
@@ -389,7 +392,7 @@ import api from '@/services/api'
 
 const equipos  = ref([])
 const tipos    = ref([])
-const filtros  = ref({ busqueda: '', tipo_equipo_id: '', estado: '', vida_util_vencida: false })
+const filtros  = ref({ busqueda: '', tipo_equipo_id: '', estado: '', vida_util_vencida: false, custodio_inactivo: false })
 
 const pagina      = ref(1)
 const totalPaginas = ref(1)
@@ -402,18 +405,19 @@ const statCards = [
   { key: 'asignado',            titulo: 'Asignados',          tipo: 'estado', estado: 'ASIGNADO',   color: '#2563eb', borde: 'border-blue-500' },
   { key: 'danado',              titulo: 'Dañados',            tipo: 'estado', estado: 'DAÑADO',    color: '#dc2626', borde: 'border-red-500' },
   { key: 'de_baja',             titulo: 'De baja',            tipo: 'estado', estado: 'DE_BAJA',   color: '#6b7280', borde: 'border-gray-400' },
-  { key: 'vida_util_vencida',   titulo: 'Vida útil vencida',  tipo: 'vencida',                     color: '#ea580c', borde: 'border-orange-500' },
+  { key: 'vida_util_vencida',   titulo: 'Vida útil vencida',  tipo: 'flag', filtroKey: 'vida_util_vencida', color: '#ea580c', borde: 'border-orange-500' },
+  { key: 'custodio_inactivo',   titulo: 'Custodio inactivo',  tipo: 'flag', filtroKey: 'custodio_inactivo', color: '#dc2626', borde: 'border-red-400' },
 ]
 
 function activoStatCard(c) {
-  return c.tipo === 'estado' ? filtros.value.estado === c.estado : filtros.value.vida_util_vencida
+  return c.tipo === 'estado' ? filtros.value.estado === c.estado : filtros.value[c.filtroKey]
 }
 
 function toggleStatCard(c) {
   if (c.tipo === 'estado') {
     filtros.value.estado = filtros.value.estado === c.estado ? '' : c.estado
   } else {
-    filtros.value.vida_util_vencida = !filtros.value.vida_util_vencida
+    filtros.value[c.filtroKey] = !filtros.value[c.filtroKey]
   }
   pagina.value = 1
   cargar()
@@ -437,6 +441,7 @@ async function cargar() {
       tipo_equipo_id: filtros.value.tipo_equipo_id || undefined,
       estado: filtros.value.estado || undefined,
       vida_util_vencida: filtros.value.vida_util_vencida ? 1 : undefined,
+      custodio_inactivo: filtros.value.custodio_inactivo ? 1 : undefined,
       page: pagina.value,
     },
   })
