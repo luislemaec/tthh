@@ -248,9 +248,15 @@
           <div v-if="resultadosBusqueda.length > 0 && !empleadoSeleccionado"
             class="mt-2 border rounded-lg divide-y max-h-48 overflow-y-auto shadow-sm">
             <button v-for="emp in resultadosBusqueda" :key="emp.id_emp" @click="seleccionarEmpleado(emp)"
-              class="w-full text-left px-4 py-2.5 hover:bg-gray-50 text-sm transition">
-              <span class="font-medium">{{ emp.apellido_emp }} {{ emp.nombre_emp }}</span>
-              <span class="text-gray-400 ml-2 text-xs">{{ emp.identificacion }}</span>
+              class="w-full text-left px-4 py-2.5 hover:bg-gray-50 text-sm transition flex items-center justify-between gap-2">
+              <span>
+                <span class="font-medium">{{ emp.apellido_emp }} {{ emp.nombre_emp }}</span>
+                <span class="text-gray-400 ml-2 text-xs">{{ emp.identificacion }}</span>
+              </span>
+              <span :class="emp.estado === 'ACTIVO' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
+                class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0">
+                {{ emp.estado }}
+              </span>
             </button>
           </div>
 
@@ -258,6 +264,9 @@
             <div>
               <p class="font-semibold text-gray-800">{{ empleadoSeleccionado.apellido_emp }} {{ empleadoSeleccionado.nombre_emp }}</p>
               <p class="text-xs text-gray-500">{{ empleadoSeleccionado.identificacion }}</p>
+              <span v-if="empleadoSeleccionado.estado !== 'ACTIVO'" class="inline-block mt-1 text-[10px] font-semibold text-red-700 bg-red-100 px-1.5 py-0.5 rounded-full">
+                ⚠ Empleado {{ empleadoSeleccionado.estado }}
+              </span>
             </div>
             <button @click="empleadoSeleccionado = null; busquedaEmp = ''" class="text-gray-400 hover:text-gray-600 text-xs">Cambiar</button>
           </div>
