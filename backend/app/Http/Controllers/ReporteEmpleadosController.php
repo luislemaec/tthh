@@ -48,6 +48,31 @@ class ReporteEmpleadosController extends Controller
                     ->where('estado', 'ACTIVO')->where('id_depto', '!=', 999)
                     ->selectRaw("COALESCE(modalidad_marcacion, 'NO ESP.') as label, COUNT(*) as total")
                     ->groupByRaw("COALESCE(modalidad_marcacion, 'NO ESP.')")->orderByDesc('total')->get(),
+                'por_antiguedad' => DB::table('dbo.ad_empleado')
+                    ->where('estado', 'ACTIVO')->where('id_depto', '!=', 999)
+                    ->whereNotNull('fecha_ingreso')
+                    ->selectRaw("
+                        CASE
+                            WHEN FLOOR(DATE_PART('year', AGE(NOW(), fecha_ingreso::date))) < 5  THEN 'Menos de 5'
+                            WHEN FLOOR(DATE_PART('year', AGE(NOW(), fecha_ingreso::date))) < 10 THEN '5 - 10'
+                            WHEN FLOOR(DATE_PART('year', AGE(NOW(), fecha_ingreso::date))) < 15 THEN '10 - 15'
+                            WHEN FLOOR(DATE_PART('year', AGE(NOW(), fecha_ingreso::date))) < 20 THEN '15 - 20'
+                            ELSE '20 o más'
+                        END as label,
+                        COUNT(*) as total,
+                        MIN(FLOOR(DATE_PART('year', AGE(NOW(), fecha_ingreso::date)))) as min_anios
+                    ")
+                    ->groupByRaw("
+                        CASE
+                            WHEN FLOOR(DATE_PART('year', AGE(NOW(), fecha_ingreso::date))) < 5  THEN 'Menos de 5'
+                            WHEN FLOOR(DATE_PART('year', AGE(NOW(), fecha_ingreso::date))) < 10 THEN '5 - 10'
+                            WHEN FLOOR(DATE_PART('year', AGE(NOW(), fecha_ingreso::date))) < 15 THEN '10 - 15'
+                            WHEN FLOOR(DATE_PART('year', AGE(NOW(), fecha_ingreso::date))) < 20 THEN '15 - 20'
+                            ELSE '20 o más'
+                        END
+                    ")
+                    ->orderBy('min_anios')
+                    ->get(),
             ],
         ]);
     }
@@ -90,6 +115,7 @@ class ReporteEmpleadosController extends Controller
                 'gp.nombre as grupo_prioritario',
                 'td.nombre as tipo_discapacidad',
                 'ec.nombre as enfermedad_catastrofica',
+                DB::raw("FLOOR(DATE_PART('year', AGE(NOW(), e.fecha_ingreso::date))) as anios_servicio"),
             ]);
 
         $estado = $request->get('estado', 'ACTIVO');
@@ -111,6 +137,16 @@ class ReporteEmpleadosController extends Controller
         if ($request->filled('tiene_enfermedad'))     $q->where('e.tiene_enfermedad_catastrofica', $request->tiene_enfermedad === '1');
         if ($request->filled('puede_vehiculo'))       $q->where('e.puede_solicitar_vehiculo', $request->puede_vehiculo === '1');
         if ($request->filled('motivo_salida'))         $q->where('e.motivo_salida', $request->motivo_salida);
+
+        if ($request->filled('antiguedad')) {
+            switch ($request->antiguedad) {
+                case 'menos5': $q->whereRaw("FLOOR(DATE_PART('year', AGE(NOW(), e.fecha_ingreso::date))) < 5"); break;
+                case '5a10':   $q->whereRaw("FLOOR(DATE_PART('year', AGE(NOW(), e.fecha_ingreso::date))) >= 5  AND FLOOR(DATE_PART('year', AGE(NOW(), e.fecha_ingreso::date))) < 10"); break;
+                case '10a15':  $q->whereRaw("FLOOR(DATE_PART('year', AGE(NOW(), e.fecha_ingreso::date))) >= 10 AND FLOOR(DATE_PART('year', AGE(NOW(), e.fecha_ingreso::date))) < 15"); break;
+                case '15a20':  $q->whereRaw("FLOOR(DATE_PART('year', AGE(NOW(), e.fecha_ingreso::date))) >= 15 AND FLOOR(DATE_PART('year', AGE(NOW(), e.fecha_ingreso::date))) < 20"); break;
+                case 'mas20':  $q->whereRaw("FLOOR(DATE_PART('year', AGE(NOW(), e.fecha_ingreso::date))) >= 20"); break;
+            }
+        }
 
         switch ($request->sercop_filter) {
             case 'vencido': $q->whereNotNull('e.fecha_vence_sercop')->where('e.fecha_vence_sercop', '<', $hoy); break;
@@ -191,7 +227,7 @@ class ReporteEmpleadosController extends Controller
             'Pers. Sustituta','Vence Doc. Sustituta',
             'N° SERCOP','Vigencia SERCOP',
             'Hijos Mayores','Hijos < 5 años',
-            'Sol. Vehículo','Fecha Ingreso',
+            'Sol. Vehículo','Fecha Ingreso','Años Servicio',
         ];
         $col = 'A';
         foreach ($headers as $h) {
@@ -234,6 +270,7 @@ class ReporteEmpleadosController extends Controller
                 $e->hijos_menores_5 ?? 0,
                 $e->puede_solicitar_vehiculo ? 'Sí' : 'No',
                 $e->fecha_ingreso ?? '',
+                $e->anios_servicio ?? '',
             ];
             $c = 'A';
             foreach ($data as $val) {

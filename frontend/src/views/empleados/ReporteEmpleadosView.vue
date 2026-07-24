@@ -67,6 +67,14 @@
           <canvas ref="chartModalidad"></canvas>
         </div>
       </div>
+
+      <!-- Antigüedad — barras horizontales (fila completa) -->
+      <div class="bg-white rounded-xl shadow p-5 md:col-span-3">
+        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Distribución por Antigüedad (años de servicio)</p>
+        <div class="relative h-36">
+          <canvas ref="chartAntiguedad"></canvas>
+        </div>
+      </div>
     </div>
 
     <!-- ── FILTROS ──────────────────────────────────────────────────── -->
@@ -234,6 +242,18 @@
               <option value="JUBILACIÓN">Jubilación</option>
             </select>
           </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Antigüedad</label>
+            <select v-model="filtros.antiguedad"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#579186] bg-gray-50 focus:bg-white outline-none">
+              <option value="">Todos</option>
+              <option value="menos5">Menos de 5 años</option>
+              <option value="5a10">5 – 10 años</option>
+              <option value="10a15">10 – 15 años</option>
+              <option value="15a20">15 – 20 años</option>
+              <option value="mas20">20 o más años</option>
+            </select>
+          </div>
         </div>
 
         <p v-if="errorBuscar" class="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-2">
@@ -284,14 +304,18 @@
               <th class="px-3 py-3 text-center text-white/80 font-semibold">Sustituta</th>
               <th class="px-3 py-3 text-center text-white/80 font-semibold">H&lt;5</th>
               <th class="px-3 py-3 text-left text-white/80 font-semibold">F. Ingreso</th>
+              <th class="px-3 py-3 text-center text-white/80 font-semibold cursor-pointer select-none hover:text-white"
+                @click="toggleSort">
+                Años Serv. {{ sortDir === 'desc' ? '↓' : sortDir === 'asc' ? '↑' : '↕' }}
+              </th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="cargando">
-              <td colspan="13" class="text-center py-12 text-gray-400">Cargando...</td>
+              <td colspan="14" class="text-center py-12 text-gray-400">Cargando...</td>
             </tr>
             <tr v-else-if="!empleados.length">
-              <td colspan="13" class="text-center py-12 text-gray-400">Sin resultados para los filtros seleccionados</td>
+              <td colspan="14" class="text-center py-12 text-gray-400">Sin resultados para los filtros seleccionados</td>
             </tr>
             <tr v-for="(e, i) in empleadosPaginados" :key="e.id_emp"
               class="border-b border-gray-100 hover:bg-green-50/40 transition">
@@ -337,6 +361,18 @@
               </td>
               <td class="px-3 py-2 text-gray-500 font-mono text-xs whitespace-nowrap">
                 {{ e.fecha_ingreso?.substring(0,10) || '—' }}
+              </td>
+              <td class="px-3 py-2 text-center">
+                <span v-if="e.anios_servicio != null"
+                  class="font-semibold text-xs px-2 py-0.5 rounded"
+                  :class="e.anios_servicio >= 20 ? 'bg-purple-100 text-purple-700' :
+                          e.anios_servicio >= 15 ? 'bg-blue-100 text-blue-700' :
+                          e.anios_servicio >= 10 ? 'bg-teal-100 text-teal-700' :
+                          e.anios_servicio >= 5  ? 'bg-green-100 text-green-700' :
+                                                   'bg-gray-100 text-gray-600'">
+                  {{ e.anios_servicio }} a.
+                </span>
+                <span v-else class="text-gray-300">—</span>
               </td>
             </tr>
           </tbody>
@@ -390,10 +426,16 @@ const filtrosAbiertos = ref(true)
 const paginaActual   = ref(1)
 const porPagina      = ref(25)
 
-const chartSexo      = ref(null)
-const chartContrato  = ref(null)
-const chartModalidad = ref(null)
-let instSexo = null, instContrato = null, instModalidad = null
+const chartSexo       = ref(null)
+const chartContrato   = ref(null)
+const chartModalidad  = ref(null)
+const chartAntiguedad = ref(null)
+let instSexo = null, instContrato = null, instModalidad = null, instAntiguedad = null
+
+const sortDir = ref(null) // null | 'desc' | 'asc'
+function toggleSort() {
+  sortDir.value = sortDir.value === 'desc' ? 'asc' : sortDir.value === 'asc' ? null : 'desc'
+}
 
 const tiposSangre = ['A+','A-','B+','B-','AB+','AB-','O+','O-']
 
@@ -406,6 +448,7 @@ const filtrosIniciales = () => ({
   con_guarderia: '', sustituta_filter: '', sercop_filter: '',
   puede_vehiculo: '',
   motivo_salida: '',
+  antiguedad: '',
 })
 const filtros = ref(filtrosIniciales())
 
@@ -415,9 +458,18 @@ const filtrosActivos = computed(() => {
 })
 
 const totalPaginas      = computed(() => Math.max(1, Math.ceil(empleados.value.length / porPagina.value)))
+const empleadosOrdenados = computed(() => {
+  if (!sortDir.value) return empleados.value
+  return [...empleados.value].sort((a, b) => {
+    const va = a.anios_servicio ?? -1
+    const vb = b.anios_servicio ?? -1
+    return sortDir.value === 'desc' ? vb - va : va - vb
+  })
+})
+
 const empleadosPaginados = computed(() => {
   const s = (paginaActual.value - 1) * porPagina.value
-  return empleados.value.slice(s, s + porPagina.value)
+  return empleadosOrdenados.value.slice(s, s + porPagina.value)
 })
 
 watch(porPagina, () => paginaActual.value = 1)
@@ -502,6 +554,28 @@ function sercop_badge(fecha) {
 
 function destruir(inst) { if (inst) { inst.destroy(); return null } return null }
 
+function crearChartBarHorizontal(canvas, datos, colores) {
+  return new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: datos.map(d => d.label),
+      datasets: [{ data: datos.map(d => d.total), backgroundColor: colores, borderRadius: 4 }],
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.x} empleado(s)` } },
+      },
+      scales: {
+        x: { beginAtZero: true, ticks: { stepSize: 1 } },
+        y: { ticks: { font: { size: 11 } } },
+      },
+    },
+  })
+}
+
 function crearChartDonut(canvas, datos, colores) {
   return new Chart(canvas, {
     type: 'doughnut',
@@ -538,13 +612,16 @@ function crearChartBar(canvas, datos, color) {
 async function renderCharts() {
   if (!resumen.value) return
   await nextTick()
-  instSexo     = destruir(instSexo)
-  instContrato = destruir(instContrato)
-  instModalidad= destruir(instModalidad)
+  instSexo      = destruir(instSexo)
+  instContrato  = destruir(instContrato)
+  instModalidad = destruir(instModalidad)
+  instAntiguedad= destruir(instAntiguedad)
   const COLORES_SEXO = ['#0b5447','#d97706','#6b7280']
-  if (chartSexo.value)      instSexo      = crearChartDonut(chartSexo.value,      resumen.value.stats.por_sexo,      COLORES_SEXO)
-  if (chartContrato.value)  instContrato  = crearChartBar(chartContrato.value,  resumen.value.stats.por_contrato,  '#2563eb')
-  if (chartModalidad.value) instModalidad = crearChartBar(chartModalidad.value, resumen.value.stats.por_modalidad, '#0b5447')
+  const COLORES_ANT  = ['#9ca3af','#4ade80','#2dd4bf','#3b82f6','#8b5cf6']
+  if (chartSexo.value)       instSexo       = crearChartDonut(chartSexo.value,           resumen.value.stats.por_sexo,       COLORES_SEXO)
+  if (chartContrato.value)   instContrato   = crearChartBar(chartContrato.value,        resumen.value.stats.por_contrato,   '#2563eb')
+  if (chartModalidad.value)  instModalidad  = crearChartBar(chartModalidad.value,       resumen.value.stats.por_modalidad,  '#0b5447')
+  if (chartAntiguedad.value) instAntiguedad = crearChartBarHorizontal(chartAntiguedad.value, resumen.value.stats.por_antiguedad, COLORES_ANT)
 }
 
 onMounted(async () => {
