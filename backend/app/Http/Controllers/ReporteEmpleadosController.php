@@ -9,6 +9,7 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 
 class ReporteEmpleadosController extends Controller
 {
@@ -82,7 +83,7 @@ class ReporteEmpleadosController extends Controller
         $empleados = $this->buildQuery($request)->get();
         $empleados = $this->enriquecerHijos($empleados);
 
-        if ($request->formato === 'excel') return $this->exportExcel($empleados);
+        if ($request->formato === 'excel') return $this->exportExcel($empleados, $request);
         if ($request->formato === 'pdf')   return $this->exportPdf($empleados, $request);
 
         return response()->json($empleados->values());
@@ -191,33 +192,24 @@ class ReporteEmpleadosController extends Controller
         ));
     }
 
-    private function exportExcel($empleados)
+    private function etiquetaTitulo(?string $antiguedad): string
     {
+        return match($antiguedad) {
+            'menos5' => 'NÓMINA DE PERSONAL — MENOS DE 5 AÑOS DE SERVICIO',
+            '5a10'   => 'NÓMINA DE PERSONAL — 5 A 10 AÑOS DE SERVICIO',
+            '10a15'  => 'NÓMINA DE PERSONAL — 10 A 15 AÑOS DE SERVICIO',
+            '15a20'  => 'NÓMINA DE PERSONAL — 15 A 20 AÑOS DE SERVICIO',
+            'mas20'  => 'NÓMINA DE PERSONAL — 20 O MÁS AÑOS DE SERVICIO',
+            default  => 'NÓMINA DE PERSONAL',
+        };
+    }
+
+    private function exportExcel($empleados, $request)
+    {
+        $titulo      = $this->etiquetaTitulo($request->antiguedad);
         $spreadsheet = new Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet()->setTitle('Personal');
+        $sheet       = $spreadsheet->getActiveSheet()->setTitle('Personal');
 
-        $headerStyle = [
-            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
-            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '0b5447']],
-            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
-        ];
-
-        // Fila 1: institución
-        $sheet->mergeCells('A1:Z1');
-        $sheet->setCellValue('A1', 'CONSEJO DE COMUNICACIÓN');
-        $sheet->getStyle('A1')->applyFromArray(array_merge($headerStyle, ['font' => ['bold' => true, 'size' => 13, 'color' => ['rgb' => 'FFFFFF']]]));
-        $sheet->getRowDimension(1)->setRowHeight(22);
-
-        // Fila 2: título
-        $sheet->mergeCells('A2:Z2');
-        $sheet->setCellValue('A2', 'NÓMINA DE PERSONAL — Generado: ' . now()->format('d/m/Y H:i'));
-        $sheet->getStyle('A2')->applyFromArray([
-            'font' => ['bold' => true, 'size' => 10, 'color' => ['rgb' => 'FFFFFF']],
-            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
-            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '1a8a6f']],
-        ]);
-
-        // Fila 4: encabezados de columna
         $headers = [
             'N°','Cédula','Apellidos','Nombres','Departamento','Cargo','Estado',
             'Tipo Contrato','Modalidad Laboral','Modalidad Marcación',
@@ -229,12 +221,35 @@ class ReporteEmpleadosController extends Controller
             'Hijos Mayores','Hijos < 5 años',
             'Sol. Vehículo','Fecha Ingreso','Años Servicio',
         ];
-        $col = 'A';
-        foreach ($headers as $h) {
+        $totalCols = count($headers);
+        $lastCol   = Coordinate::stringFromColumnIndex($totalCols);
+
+        $headerStyle = [
+            'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '0b5447']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
+        ];
+
+        // Fila 1: institución
+        $sheet->mergeCells("A1:{$lastCol}1");
+        $sheet->setCellValue('A1', 'CONSEJO DE COMUNICACIÓN');
+        $sheet->getStyle('A1')->applyFromArray(array_merge($headerStyle, ['font' => ['bold' => true, 'size' => 13, 'color' => ['rgb' => 'FFFFFF']]]));
+        $sheet->getRowDimension(1)->setRowHeight(22);
+
+        // Fila 2: título dinámico
+        $sheet->mergeCells("A2:{$lastCol}2");
+        $sheet->setCellValue('A2', strtoupper($titulo) . ' — Generado: ' . now()->format('d/m/Y H:i'));
+        $sheet->getStyle('A2')->applyFromArray([
+            'font'      => ['bold' => true, 'size' => 10, 'color' => ['rgb' => 'FFFFFF']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '1a8a6f']],
+        ]);
+
+        // Fila 4: encabezados de columna
+        foreach ($headers as $idx => $h) {
+            $col = Coordinate::stringFromColumnIndex($idx + 1);
             $sheet->setCellValue($col . '4', $h);
-            $col++;
         }
-        $lastCol = chr(ord('A') + count($headers) - 1);
         $sheet->getStyle("A4:{$lastCol}4")->applyFromArray($headerStyle);
         $sheet->getRowDimension(4)->setRowHeight(28);
 
@@ -242,7 +257,7 @@ class ReporteEmpleadosController extends Controller
         $row = 5;
         $nro = 1;
         foreach ($empleados as $e) {
-            $bg = ($nro % 2 === 0) ? 'edf7f4' : 'ffffff';
+            $bg   = ($nro % 2 === 0) ? 'edf7f4' : 'ffffff';
             $data = [
                 $nro++,
                 $e->identificacion,
@@ -272,10 +287,9 @@ class ReporteEmpleadosController extends Controller
                 $e->fecha_ingreso ?? '',
                 $e->anios_servicio ?? '',
             ];
-            $c = 'A';
-            foreach ($data as $val) {
-                $sheet->setCellValue($c . $row, $val);
-                $c++;
+            foreach ($data as $idx => $val) {
+                $col = Coordinate::stringFromColumnIndex($idx + 1);
+                $sheet->setCellValue($col . $row, $val);
             }
             $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray([
                 'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $bg]],
@@ -283,7 +297,7 @@ class ReporteEmpleadosController extends Controller
             $row++;
         }
 
-        // Totales
+        // Fila total
         $sheet->mergeCells("A{$row}:{$lastCol}{$row}");
         $sheet->setCellValue("A{$row}", 'Total: ' . ($nro - 1) . ' empleado(s)');
         $sheet->getStyle("A{$row}")->applyFromArray([
@@ -292,17 +306,20 @@ class ReporteEmpleadosController extends Controller
         ]);
 
         // Auto-width
-        for ($c = 'A'; $c <= $lastCol; $c++) {
-            $sheet->getColumnDimension($c)->setAutoSize(true);
+        for ($i = 1; $i <= $totalCols; $i++) {
+            $sheet->getColumnDimensionByColumn($i)->setAutoSize(true);
         }
 
-        $writer  = new Xlsx($spreadsheet);
-        $tmp     = tempnam(sys_get_temp_dir(), 'emp');
-        $writer->save($tmp);
+        ob_start();
+        $writer = new Xlsx($spreadsheet);
+        $writer->save('php://output');
+        $content = ob_get_clean();
 
-        return response()->download($tmp, 'nomina_personal_' . now()->format('Ymd_His') . '.xlsx', [
-            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        ])->deleteFileAfterSend(true);
+        $nombre = 'nomina_personal_' . now()->format('Ymd_His') . '.xlsx';
+        return response($content, 200, [
+            'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => "attachment; filename=\"{$nombre}\"",
+        ]);
     }
 
     private function exportPdf($empleados, $request)
@@ -310,8 +327,9 @@ class ReporteEmpleadosController extends Controller
         $logo        = base64_encode(file_get_contents(public_path('logo.png')));
         $nombreInst  = 'CONSEJO DE COMUNICACIÓN';
         $generadoPor = trim($request->user()->apellido_emp) . ' ' . trim($request->user()->nombre_emp);
+        $titulo      = $this->etiquetaTitulo($request->antiguedad);
 
-        $pdf = Pdf::loadView('reportes.reporte_empleados', compact('empleados', 'logo', 'nombreInst', 'generadoPor'))
+        $pdf = Pdf::loadView('reportes.reporte_empleados', compact('empleados', 'logo', 'nombreInst', 'generadoPor', 'titulo'))
             ->setPaper('a4', 'landscape');
 
         return $pdf->download('nomina_personal_' . now()->format('Ymd') . '.pdf');
