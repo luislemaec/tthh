@@ -309,12 +309,14 @@ class PermisosController extends Controller
             ], 403);
         }
 
-        // Verificar que es supervisor del empleado
-        $empleados = $this->empleadosDeSupervisor($supervisor->id_emp);
-        if (!$empleados->contains($permiso->id_emp)) {
-            return response()->json([
-                "message" => "No eres supervisor de este empleado"
-            ], 403);
+        // Verificar que es supervisor del empleado (TH/ADMIN pueden aprobar cualquiera)
+        if (!$this->esAdminOTH($supervisor->id_emp)) {
+            $empleados = $this->empleadosDeSupervisor($supervisor->id_emp);
+            if (!$empleados->contains($permiso->id_emp)) {
+                return response()->json([
+                    "message" => "No eres supervisor de este empleado"
+                ], 403);
+            }
         }
 
         if ($permiso->estado_permiso !== "PENDIENTE") {
@@ -396,12 +398,14 @@ class PermisosController extends Controller
             ], 403);
         }
 
-        // Verificar que es supervisor del empleado
-        $empleados = $this->empleadosDeSupervisor($supervisor->id_emp);
-        if (!$empleados->contains($permiso->id_emp)) {
-            return response()->json([
-                "message" => "No eres supervisor de este empleado"
-            ], 403);
+        // Verificar que es supervisor del empleado (TH/ADMIN pueden negar cualquiera)
+        if (!$this->esAdminOTH($supervisor->id_emp)) {
+            $empleados = $this->empleadosDeSupervisor($supervisor->id_emp);
+            if (!$empleados->contains($permiso->id_emp)) {
+                return response()->json([
+                    "message" => "No eres supervisor de este empleado"
+                ], 403);
+            }
         }
 
         if ($permiso->estado_permiso !== "PENDIENTE") {
