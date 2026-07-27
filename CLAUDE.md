@@ -302,6 +302,7 @@ Calculado en `calcularSaldoDisponible()` — usa helper `tasaVacaciones()` en Va
 - Dashboard (empleado CT con 6+ años): chip "+X días/año por antigüedad" en tarjeta saldo
 - Vista Vacaciones (empleado CT con 6+ años): badge azul "15 base + X por antigüedad"
 - **CSV carga inicial:** el `saldo` debe incluir base + adicionales ya acumulados hasta fecha de corte
+- **TOPE DE 60 DÍAS (LOSEP Art. 29) — REGLA CRÍTICA:** el saldo disponible que se muestra al empleado y que se valida al solicitar/planificar vacaciones tiene un máximo de 60 días. Si el cálculo interno supera 60, se muestra y valida como 60. El acumulado interno sigue corriendo normalmente (no se borra ni se congela), pero el empleado nunca puede ver ni solicitar más de 60 días disponibles. Implementado con `min(60, max(0, $disponibles))` en: `VacacionesController::calcularSaldoDisponible()`, `ReporteVacacionesController::calcularSaldoActual()`, `PlanificacionVacController::calcularSaldo()`. **Excepción:** `LiquidacionVacController` NO aplica el tope — usa el valor real acumulado para calcular el pago de liquidación por desvinculación.
 
 ### Acciones de Personal (`dbo.acc_accion_personal`)
 
