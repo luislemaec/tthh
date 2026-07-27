@@ -335,13 +335,18 @@ class PermisosController extends Controller
         $empleado     = Empleado::with("jornada")->find($permiso->id_emp);
         $horasJornada = $empleado?->jornada ? (float) $empleado->jornada->normal : 8.0;
 
+        // Factor proporcional sábados/domingos: 30 días calendario = 22 hábiles + 8 fin de semana
+        // Cada día hábil de permiso carga 1 + 8/22 = 1.3636 días del saldo de vacaciones
+        $factorFds = 30 / 22;
+
         if ($permiso->todo_dia === "SI") {
-            $diasDescuento = Carbon::parse($permiso->fecha_desde)
+            $diasBase      = Carbon::parse($permiso->fecha_desde)
                 ->diffInDays(Carbon::parse($permiso->fecha_hasta)) + 1;
+            $diasDescuento = round($diasBase * $factorFds, 4);
         } else {
             $horas         = Carbon::parse($permiso->hora_desde)
                 ->diffInMinutes(Carbon::parse($permiso->hora_hasta)) / 60;
-            $diasDescuento = round($horas / $horasJornada, 4);
+            $diasDescuento = round($horas / $horasJornada * $factorFds, 4);
         }
 
         // Si es descontable → reducir saldo de vacaciones
@@ -602,13 +607,16 @@ class PermisosController extends Controller
             $empleado     = Empleado::with('jornada')->find($permiso->id_emp);
             $horasJornada = $empleado?->jornada ? (float) $empleado->jornada->normal : 8.0;
 
+            $factorFds = 30 / 22;
+
             if ($permiso->todo_dia === 'SI') {
-                $diasDescuento = Carbon::parse($permiso->fecha_desde)
+                $diasBase      = Carbon::parse($permiso->fecha_desde)
                     ->diffInDays(Carbon::parse($permiso->fecha_hasta)) + 1;
+                $diasDescuento = round($diasBase * $factorFds, 4);
             } else {
                 $horas         = Carbon::parse($permiso->hora_desde)
                     ->diffInMinutes(Carbon::parse($permiso->hora_hasta)) / 60;
-                $diasDescuento = round($horas / $horasJornada, 4);
+                $diasDescuento = round($horas / $horasJornada * $factorFds, 4);
             }
 
             $cabecera = CabeceraVacacion::where('id_emp', $permiso->id_emp)->first();
