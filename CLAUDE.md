@@ -357,9 +357,16 @@ Al aprobar una solicitud de vacaciones, el supervisor debe seleccionar un emplea
 - `ENTRE JORNADA`: justifica atraso de retorno del lunch
 
 **Descuento de vacaciones:** ocurre **inmediatamente al aprobar** (no en el cuadre nocturno). Se calcula sobre las horas del permiso (`hora_desde`/`hora_hasta`), no sobre la marcación real del empleado.
+
+**FACTOR PROPORCIONAL SÁBADOS/DOMINGOS — REGLA CRÍTICA:** Los 30 días de vacaciones LOSEP se componen de 22 días hábiles + 8 días de fin de semana (4 sábados + 4 domingos). Por eso cada día hábil de permiso descontable carga **1.3636 días** del saldo (factor = 30/22). Aplica a LOSEP y Código del Trabajo, y tanto a permisos por horas como de día completo. El método `anular()` usa el mismo factor para revertir exactamente lo descontado.
 ```php
-$diasDescuento = round(diffInMinutes(hora_desde, hora_hasta) / 60 / $horasJornada, 4);
+$factorFds     = 30 / 22;  // 1.3636...
+// Permiso por horas:
+$diasDescuento = round(diffInMinutes(hora_desde, hora_hasta) / 60 / $horasJornada * $factorFds, 4);
+// Permiso día completo:
+$diasDescuento = round($diasBase * $factorFds, 4);
 ```
+Ejemplos: 1 hora → 0.1705 días | 4 horas → 0.6818 días | 1 día completo → 1.3636 días
 
 **Validación de solapamiento:** la validación al crear un permiso filtra por `tipo_horario` — un permiso ENTRADA **no bloquea** la creación de un permiso SALIDA del mismo día aunque compartan rango de fechas. Solo bloquea permisos del **mismo tipo** que se crucen en horario.
 
