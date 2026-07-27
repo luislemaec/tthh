@@ -119,7 +119,7 @@ class ProcesarCuadre extends Command
             // Lunch = 30 minutos desde que timbró salida al lunch (sin importar la hora)
             if ($rEntLunch !== null && $rSalLunch !== null) {
                 $limiteRegreso = $rSalLunch + (30 / 60);
-                $atrasoLunch   = max(0, round(($rEntLunch - $limiteRegreso) * 60));
+                $atrasoLunch   = max(0, round((min($rEntLunch, $tSalida) - $limiteRegreso) * 60));
             } else {
                 $atrasoLunch = 0;
             }
