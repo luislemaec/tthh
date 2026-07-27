@@ -192,7 +192,7 @@ class DashboardController extends Controller
             $cabecera = CabeceraVacacion::where('id_emp', $emp->id_emp)->first();
             $tomados  = (float) ($cabecera->total_dias_tomados ?? 0);
             $adicional= (float) ($cabecera->dias_adicionales   ?? 0);
-            $saldo    = max(0, round($adicional + $diasAcumulados - $tomados, 2));
+            $saldo    = min(60, max(0, round($adicional + $diasAcumulados - $tomados, 2)));
 
             // Atrasos por mes: días con atraso en cada mes del año actual
             $anio = now()->year;
