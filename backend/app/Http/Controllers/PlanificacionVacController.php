@@ -63,7 +63,7 @@ class PlanificacionVacController extends Controller
         $saldoInicial = (float)($cabecera->dias_adicionales  ?? 0);
         $tomados      = (float)($cabecera->total_dias_tomados ?? 0);
 
-        return max(0, round($saldoInicial + $diasAcumulados - $tomados, 2));
+        return min(60, max(0, round($saldoInicial + $diasAcumulados - $tomados, 2)));
     }
 
     // Calcula días calendario entre dos fechas (inclusivo)

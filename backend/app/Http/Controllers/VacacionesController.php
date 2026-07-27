@@ -55,7 +55,7 @@ class VacacionesController extends Controller
             "saldo_inicial"                => $saldoInicial,
             "acumulado_a_hoy"              => $diasAcumulados,
             "tomados"                      => $tomados,
-            "dias_disponibles"             => max(0, $disponibles),
+            "dias_disponibles"             => min(60, max(0, $disponibles)),
             "dias_anuales"                 => $info['dias_anuales'],
             "dias_adicionales_antiguedad"  => $info['dias_adicionales_antiguedad'],
         ];
