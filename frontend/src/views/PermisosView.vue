@@ -675,7 +675,7 @@ const abrirModalNuevo = async () => {
 
 const guardarPermiso = async () => {
   if (!formNuevo.value.sec_permiso)   { errorNuevo.value = "Selecciona una razon"; return }
-  if (!formNuevo.value.tipo_horario)  { errorNuevo.value = "Selecciona el tipo de permiso"; return }
+  if (formNuevo.value.todo_dia !== 'SI' && !formNuevo.value.tipo_horario)  { errorNuevo.value = "Selecciona el tipo de permiso"; return }
   guardando.value  = true
   errorNuevo.value = ""
   try {
