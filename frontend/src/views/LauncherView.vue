@@ -172,6 +172,52 @@
 
   <ChatbotFAB />
 
+  <!-- Modal pendientes por aprobar -->
+  <div v-if="modalPendientes"
+       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden">
+      <div class="px-6 py-4 flex items-center gap-3" style="background-color:#0b5447;">
+        <svg class="w-6 h-6 text-white flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+        </svg>
+        <h2 class="text-white font-bold text-base">Tiene pendientes por aprobar</h2>
+      </div>
+      <div class="px-6 py-5">
+        <p class="text-sm text-gray-500 mb-4">Los siguientes trámites están esperando su aprobación:</p>
+        <ul class="space-y-3">
+          <li v-if="pendientes.permisos > 0" class="flex items-center gap-3">
+            <span class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                  style="background-color:#0b5447;">{{ pendientes.permisos }}</span>
+            <span class="text-sm font-medium text-gray-700">Permiso{{ pendientes.permisos > 1 ? 's' : '' }} pendiente{{ pendientes.permisos > 1 ? 's' : '' }}</span>
+          </li>
+          <li v-if="pendientes.vacaciones > 0" class="flex items-center gap-3">
+            <span class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                  style="background-color:#0b5447;">{{ pendientes.vacaciones }}</span>
+            <span class="text-sm font-medium text-gray-700">Solicitud{{ pendientes.vacaciones > 1 ? 'es' : '' }} de vacaciones pendiente{{ pendientes.vacaciones > 1 ? 's' : '' }}</span>
+          </li>
+          <li v-if="pendientes.horas_extras > 0" class="flex items-center gap-3">
+            <span class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                  style="background-color:#0b5447;">{{ pendientes.horas_extras }}</span>
+            <span class="text-sm font-medium text-gray-700">Planificación{{ pendientes.horas_extras > 1 ? 'es' : '' }} de horas extras pendiente{{ pendientes.horas_extras > 1 ? 's' : '' }}</span>
+          </li>
+          <li v-if="pendientes.materiales > 0" class="flex items-center gap-3">
+            <span class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                  style="background-color:#0b5447;">{{ pendientes.materiales }}</span>
+            <span class="text-sm font-medium text-gray-700">Solicitud{{ pendientes.materiales > 1 ? 'es' : '' }} de materiales pendiente{{ pendientes.materiales > 1 ? 's' : '' }}</span>
+          </li>
+        </ul>
+        <div class="mt-6 flex justify-end">
+          <button @click="modalPendientes = false"
+            class="px-6 py-2 rounded-lg text-white text-sm font-semibold"
+            style="background-color:#0b5447;">
+            Aceptar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </template>
 
 <script setup>
@@ -187,6 +233,8 @@ const alertasStock = ref(0)
 const cardAnimClass = ref('')
 const avisos    = ref([])
 const direccion = ref('horizontal')
+const modalPendientes = ref(false)
+const pendientes = ref({ permisos: 0, vacaciones: 0, horas_extras: 0, materiales: 0 })
 
 const ANIMATIONS = [
   'anim-flip-scale-up-hor',
@@ -253,6 +301,18 @@ onMounted(async () => {
     avisos.value    = data.avisos
     direccion.value = data.direccion
   } catch {}
+
+  if (sessionStorage.getItem('show_pendientes')) {
+    sessionStorage.removeItem('show_pendientes')
+    try {
+      const { data } = await api.get('/dashboard/pendientes')
+      const total = data.permisos + data.vacaciones + data.horas_extras + data.materiales
+      if (total > 0) {
+        pendientes.value   = data
+        modalPendientes.value = true
+      }
+    } catch {}
+  }
 })
 
 function irA(ruta) {

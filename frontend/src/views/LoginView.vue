@@ -112,6 +112,7 @@ async function handleLogin() {
   error.value   = ''
   try {
     await auth.login(form.value.identificacion, form.value.password)
+    sessionStorage.setItem('show_pendientes', '1')
     router.push('/launcher')
   } catch (e) {
     error.value = e.response?.data?.message || 'Error al iniciar sesión'

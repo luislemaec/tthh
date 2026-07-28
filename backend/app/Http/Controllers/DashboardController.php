@@ -251,6 +251,53 @@ class DashboardController extends Controller
         ]);
     }
 
+    public function pendientesSupervisor(Request $request)
+    {
+        $emp = $request->user();
+
+        $esAdminOTH = DB::table('dbo.admin_usuario_rol as ur')
+            ->join('dbo.admin_rol as r', 'ur.id_rol', '=', 'r.id')
+            ->where('ur.id_emp', $emp->id_emp)
+            ->whereIn('r.descripcion', ['ADMINISTRADOR', 'TALENTO HUMANO'])
+            ->exists();
+
+        $esSupervisor = Supervisor::where('id_supervisor', $emp->id_emp)->exists();
+
+        if (!$esAdminOTH && !$esSupervisor) {
+            return response()->json(['permisos' => 0, 'vacaciones' => 0, 'horas_extras' => 0, 'materiales' => 0]);
+        }
+
+        $empleadosIds = null;
+        if (!$esAdminOTH && $esSupervisor) {
+            $empleadosIds = $this->empleadosDeSupervisor($emp->id_emp);
+        }
+
+        $qPermisos = DB::table('dbo.d2_permiso as p')
+            ->join('dbo.ad_empleado as e', 'p.id_emp', '=', 'e.id_emp')
+            ->where('p.estado_permiso', 'PENDIENTE')
+            ->where('e.id_depto', '!=', 999);
+        if ($empleadosIds) $qPermisos->whereIn('p.id_emp', $empleadosIds);
+
+        $qVacaciones = DB::table('dbo.d2_vacacion as v')
+            ->join('dbo.ad_empleado as e', 'v.id_emp', '=', 'e.id_emp')
+            ->where('v.estado_permiso', 'PENDIENTE')
+            ->where('e.id_depto', '!=', 999);
+        if ($empleadosIds) $qVacaciones->whereIn('v.id_emp', $empleadosIds);
+
+        $qHE = DB::table('dbo.nom_he_planificacion_cab')->where('estado', 'PENDIENTE');
+        if ($empleadosIds) $qHE->whereIn('id_emp', $empleadosIds);
+
+        $qMat = DB::table('adq.solicitud_material')->where('estado', 'PENDIENTE');
+        if ($empleadosIds) $qMat->whereIn('id_emp', $empleadosIds);
+
+        return response()->json([
+            'permisos'     => $qPermisos->count(),
+            'vacaciones'   => $qVacaciones->count(),
+            'horas_extras' => $qHE->count(),
+            'materiales'   => $qMat->count(),
+        ]);
+    }
+
     public function atrasosCoordinacion(Request $request)
     {
         $emp   = $request->user();
