@@ -99,6 +99,40 @@ class DashboardController extends Controller
 
             $hoy = now()->toDateString();
 
+            // Atrasos del mes sin contar los justificados por permisos aprobados
+            $idsParam  = $empleadosIds->toArray();
+            $atrasosMes = 0;
+            if (!empty($idsParam)) {
+                $phIds = implode(',', array_fill(0, count($idsParam), '?'));
+                $rowAtrasos = DB::select("
+                    SELECT COUNT(*) AS total
+                    FROM dbo.d2_cuadre_marcacion c
+                    WHERE c.id_emp IN ({$phIds})
+                      AND EXTRACT(MONTH FROM c.fecha)::int = ?
+                      AND EXTRACT(YEAR  FROM c.fecha)::int = ?
+                      AND (
+                          (c.atraso_entrada > 0 AND NOT EXISTS (
+                              SELECT 1 FROM dbo.d2_permiso p
+                              WHERE p.id_emp = c.id_emp
+                                AND p.estado_permiso = 'APROBADO'
+                                AND p.fecha_desde::date <= c.fecha::date
+                                AND p.fecha_hasta::date >= c.fecha::date
+                                AND (p.tipo_horario = 'ENTRADA' OR p.todo_dia = 'SI')
+                          ))
+                          OR
+                          (c.atraso_lunch > 0 AND NOT EXISTS (
+                              SELECT 1 FROM dbo.d2_permiso p
+                              WHERE p.id_emp = c.id_emp
+                                AND p.estado_permiso = 'APROBADO'
+                                AND p.fecha_desde::date <= c.fecha::date
+                                AND p.fecha_hasta::date >= c.fecha::date
+                                AND (p.tipo_horario = 'ENTRE JORNADA' OR p.todo_dia = 'SI')
+                          ))
+                      )
+                ", array_merge($idsParam, [now()->month, now()->year]));
+                $atrasosMes = (int) ($rowAtrasos[0]->total ?? 0);
+            }
+
             $datosSupervisor = [
                 "total_equipo"          => $empleadosIds->count(),
                 "he_pendientes"         => DB::table("dbo.nom_he_planificacion_cab")
@@ -118,6 +152,7 @@ class DashboardController extends Controller
                 "con_permiso_hoy"       => DB::table("dbo.d2_permiso")
                                             ->whereIn("id_emp", $empleadosIds)
                                             ->where("estado_permiso", "APROBADO")
+                                            ->where("todo_dia", "SI")
                                             ->whereDate("fecha_desde", "<=", $hoy)
                                             ->whereDate("fecha_hasta", ">=", $hoy)
                                             ->distinct()
@@ -129,15 +164,7 @@ class DashboardController extends Controller
                                             ->whereDate("fecha_final", ">=", $hoy)
                                             ->distinct()
                                             ->count("id_emp"),
-                "atrasos_mes"           => DB::table("dbo.d2_cuadre_marcacion")
-                                            ->whereIn("id_emp", $empleadosIds)
-                                            ->whereMonth("fecha", now()->month)
-                                            ->whereYear("fecha", now()->year)
-                                            ->where(function ($q) {
-                                                $q->where("atraso_entrada", ">", 0)
-                                                  ->orWhere("atraso_lunch", ">", 0);
-                                            })
-                                            ->count(),
+                "atrasos_mes"           => $atrasosMes,
             ];
 
             $hoyLimite = now()->addDays(60)->toDateString();
