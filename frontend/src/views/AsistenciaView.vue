@@ -109,9 +109,13 @@
               </td>
               <td class="px-3 py-2 text-center font-mono text-gray-700">{{ r.hora }}</td>
               <td class="px-3 py-2 text-center">
-                <span v-if="r.atraso > 0" class="text-red-700 font-medium">
-                  {{ minATexto(r.atraso) }}
-                </span>
+                <template v-if="r.atraso > 0">
+                  <span class="text-red-700 font-medium">{{ minATexto(r.atraso) }}</span>
+                  <div v-if="r.concepto === 'ENTRADA DEL LUNCH' && horaDebiRegresarLunch(r.fecha)"
+                       class="text-xs text-amber-600 mt-0.5">
+                    Debió: {{ horaDebiRegresarLunch(r.fecha) }}
+                  </div>
+                </template>
                 <span v-else class="text-gray-300">—</span>
               </td>
               <td class="px-3 py-2 text-center">
@@ -219,6 +223,18 @@ const minATexto = (min) => {
   if (h > 0 && m > 0) return `${h}h ${m}min`
   if (h > 0) return `${h}h`
   return `${m}min`
+}
+
+const horaDebiRegresarLunch = (fecha) => {
+  const salidaLunch = historial.value.find(
+    r => r.fecha === fecha && r.concepto === 'SALIDA AL LUNCH'
+  )
+  if (!salidaLunch) return null
+  const [h, m] = salidaLunch.hora.split(':').map(Number)
+  const totalMin = h * 60 + m + 30
+  const hh = String(Math.floor(totalMin / 60) % 24).padStart(2, '0')
+  const mm = String(totalMin % 60).padStart(2, '0')
+  return `${hh}:${mm}`
 }
 
 const cargarHistorial = async () => {
