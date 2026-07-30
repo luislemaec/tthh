@@ -35,11 +35,12 @@ class LotaipController extends Controller
     {
         $direccionInstitucional = $this->config('DIRECCION_INSTITUCIONAL');
         $ciudad                 = $this->config('UBICACION_DEFAULT');
+        $telefonoInstitucional  = $this->config('TELEFONO_INSTITUCIONAL');
 
         $empleados = $this->empleadosBase()
             ->select(
                 'e.id_emp', 'e.apellido_emp', 'e.nombre_emp',
-                'd.nombre_depto', 'e.telefono', 'e.extension'
+                'd.nombre_depto', 'e.extension'
             )
             ->get();
 
@@ -58,14 +59,14 @@ class LotaipController extends Controller
             }
         }
 
-        $datos = $empleados->values()->map(function ($e, $i) use ($emails, $direccionInstitucional, $ciudad) {
+        $datos = $empleados->values()->map(function ($e, $i) use ($emails, $direccionInstitucional, $ciudad, $telefonoInstitucional) {
             return [
                 'nro'                    => $i + 1,
                 'nombres'                => trim($e->apellido_emp) . ' ' . trim($e->nombre_emp),
                 'direccion'              => $e->nombre_depto,
                 'direccion_institucional'=> $direccionInstitucional,
                 'ciudad'                 => $ciudad,
-                'telefono'               => $e->telefono ?? '',
+                'telefono'               => $telefonoInstitucional,
                 'extension'              => $e->extension ?? '',
                 'email'                  => $emails[$e->id_emp] ?? '',
             ];
