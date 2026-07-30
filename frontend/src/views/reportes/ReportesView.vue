@@ -15,8 +15,8 @@
       </button>
     </div>
 
-    <!-- Filtros comunes -->
-    <div class="bg-white rounded-xl shadow p-4 flex flex-wrap gap-3 items-end">
+    <!-- Filtros comunes (no aplican para LOTAIP) -->
+    <div v-if="tabActivo !== 'lotaip'" class="bg-white rounded-xl shadow p-4 flex flex-wrap gap-3 items-end">
       <!-- Fecha única para marcaciones del día -->
       <template v-if="tabActivo === 'marcaciones-dia'">
         <div>
@@ -383,6 +383,120 @@
       </div>
     </div>
 
+    <!-- LOTAIP -->
+    <div v-if="tabActivo === 'lotaip'" class="space-y-4">
+
+      <!-- Sub-tabs LOTAIP -->
+      <div class="bg-white rounded-xl shadow overflow-hidden">
+        <div class="flex border-b">
+          <button
+            v-for="lt in lotaipTabs" :key="lt.id"
+            @click="cambiarLotaipTab(lt.id)"
+            :class="lotaipTab === lt.id
+              ? 'border-b-2 border-[#0b5447] text-[#0b5447] font-medium bg-[#f0faf8]'
+              : 'text-gray-500 hover:text-gray-700'"
+            class="px-5 py-3 text-sm transition whitespace-nowrap">
+            {{ lt.label }}
+          </button>
+        </div>
+
+        <!-- Barra de acciones LOTAIP -->
+        <div class="px-5 py-4 flex items-center gap-3 border-b bg-gray-50">
+          <button @click="cargarLotaip" :disabled="lotaipCargando"
+            class="bg-[#0b5447] text-white px-5 py-2 rounded-lg text-sm hover:bg-[#00372e] disabled:opacity-50 font-medium">
+            {{ lotaipCargando ? 'Cargando...' : 'Generar' }}
+          </button>
+          <button v-if="lotaipDatos.length > 0" @click="exportarLotaip" :disabled="lotaipExportando"
+            class="flex items-center gap-1.5 border border-green-600 text-green-700 px-4 py-2 rounded-lg text-sm hover:bg-green-50 disabled:opacity-50">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414A1 1 0 0119 9.414V19a2 2 0 01-2 2z"/>
+            </svg>
+            {{ lotaipExportando ? 'Generando...' : 'Exportar Excel' }}
+          </button>
+          <span v-if="lotaipDatos.length > 0" class="text-sm text-gray-400 ml-auto">
+            {{ lotaipDatos.length }} registros
+          </span>
+        </div>
+
+        <div v-if="lotaipError" class="px-5 py-3 text-sm text-red-600 bg-red-50">{{ lotaipError }}</div>
+
+        <!-- Tabla Directorio y Distributivo -->
+        <div v-if="lotaipTab === 'directorio'" class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 border-b">
+              <tr>
+                <th class="text-center px-3 py-3 text-gray-600 font-medium w-10">Nro</th>
+                <th class="text-left px-3 py-3 text-gray-600 font-medium">Apellidos y Nombres</th>
+                <th class="text-left px-3 py-3 text-gray-600 font-medium">Dirección / Área</th>
+                <th class="text-left px-3 py-3 text-gray-600 font-medium">Dirección Institucional</th>
+                <th class="text-left px-3 py-3 text-gray-600 font-medium">Ciudad</th>
+                <th class="text-center px-3 py-3 text-gray-600 font-medium">Teléfono</th>
+                <th class="text-center px-3 py-3 text-gray-600 font-medium">Ext.</th>
+                <th class="text-left px-3 py-3 text-gray-600 font-medium">Correo Electrónico</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="lotaipCargando">
+                <td colspan="8" class="text-center py-10 text-gray-400">Cargando...</td>
+              </tr>
+              <tr v-else-if="lotaipDatos.length === 0">
+                <td colspan="8" class="text-center py-10 text-gray-400">Presione "Generar" para cargar el directorio</td>
+              </tr>
+              <tr v-for="r in lotaipDatos" :key="r.nro" class="border-b hover:bg-gray-50">
+                <td class="px-3 py-2 text-center text-gray-400">{{ r.nro }}</td>
+                <td class="px-3 py-2 font-medium">{{ r.nombres }}</td>
+                <td class="px-3 py-2 text-gray-600 text-xs">{{ r.direccion }}</td>
+                <td class="px-3 py-2 text-gray-600 text-xs">{{ r.direccion_institucional }}</td>
+                <td class="px-3 py-2 text-gray-600 text-xs">{{ r.ciudad }}</td>
+                <td class="px-3 py-2 text-center text-gray-600">{{ r.telefono || '—' }}</td>
+                <td class="px-3 py-2 text-center text-gray-600">{{ r.extension || '—' }}</td>
+                <td class="px-3 py-2 text-gray-600 text-xs">{{ r.email || '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Tabla Remuneraciones e Ingresos Adicionales -->
+        <div v-if="lotaipTab === 'remuneraciones'" class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 border-b">
+              <tr>
+                <th class="text-center px-3 py-3 text-gray-600 font-medium w-10">Nro</th>
+                <th class="text-left px-3 py-3 text-gray-600 font-medium">Cargo / Denominación del Puesto</th>
+                <th class="text-left px-3 py-3 text-gray-600 font-medium">Tipo Contrato</th>
+                <th class="text-left px-3 py-3 text-gray-600 font-medium">Partida Individual</th>
+                <th class="text-center px-3 py-3 text-gray-600 font-medium">Grado</th>
+                <th class="text-right px-3 py-3 text-gray-600 font-medium">Salario Base</th>
+                <th class="text-right px-3 py-3 text-gray-600 font-medium">Rem. Anual Unificada</th>
+                <th class="text-right px-3 py-3 text-gray-600 font-medium">Décimo Tercero</th>
+                <th class="text-right px-3 py-3 text-gray-600 font-medium">Décimo Cuarto</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="lotaipCargando">
+                <td colspan="9" class="text-center py-10 text-gray-400">Cargando...</td>
+              </tr>
+              <tr v-else-if="lotaipDatos.length === 0">
+                <td colspan="9" class="text-center py-10 text-gray-400">Presione "Generar" para cargar el reporte</td>
+              </tr>
+              <tr v-for="r in lotaipDatos" :key="r.nro" class="border-b hover:bg-gray-50">
+                <td class="px-3 py-2 text-center text-gray-400">{{ r.nro }}</td>
+                <td class="px-3 py-2 font-medium">{{ r.cargo }}</td>
+                <td class="px-3 py-2 text-gray-600 text-xs">{{ r.tipo_contrato }}</td>
+                <td class="px-3 py-2 text-gray-600 text-xs">{{ r.partida_individual || '—' }}</td>
+                <td class="px-3 py-2 text-center text-gray-600">{{ r.grado || '—' }}</td>
+                <td class="px-3 py-2 text-right font-mono text-gray-700">{{ r.salario_base?.toFixed(2) }}</td>
+                <td class="px-3 py-2 text-right font-mono text-gray-700">{{ r.remuneracion_anual?.toFixed(2) }}</td>
+                <td class="px-3 py-2 text-right text-gray-300">—</td>
+                <td class="px-3 py-2 text-right text-gray-300">—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
 
@@ -403,7 +517,61 @@ const tabs = [
   { id: "sin-atrasos",      label: "Sin Atrasos" },
   { id: "movimientos",      label: "Movimientos de Personal" },
   { id: "marcaciones-dia",  label: "Marcaciones del Día" },
+  { id: "lotaip",           label: "LOTAIP" },
 ]
+
+// LOTAIP
+const lotaipTab      = ref("directorio")
+const lotaipDatos    = ref([])
+const lotaipCargando = ref(false)
+const lotaipError    = ref("")
+const lotaipExportando = ref(false)
+
+const lotaipTabs = [
+  { id: "directorio",     label: "Directorio y Distributivo" },
+  { id: "remuneraciones", label: "Remuneraciones e Ingresos Adicionales" },
+]
+
+const cargarLotaip = async () => {
+  lotaipCargando.value = true
+  lotaipError.value    = ""
+  lotaipDatos.value    = []
+  try {
+    const { data } = await api.get(`/reportes/lotaip/${lotaipTab.value}`)
+    lotaipDatos.value = data
+  } catch {
+    lotaipError.value = "Error al cargar los datos"
+  } finally {
+    lotaipCargando.value = false
+  }
+}
+
+const exportarLotaip = async () => {
+  lotaipExportando.value = true
+  try {
+    const resp = await api.get(`/reportes/lotaip/${lotaipTab.value}`, {
+      params: { formato: 'excel' },
+      responseType: 'blob',
+    })
+    const blob = new Blob([resp.data], { type: resp.headers['content-type'] || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    a.href     = url
+    a.download = `LOTAIP_${lotaipTab.value}_${new Date().toISOString().substring(0,10)}.xlsx`
+    a.click()
+    setTimeout(() => URL.revokeObjectURL(url), 60000)
+  } catch {
+    lotaipError.value = "Error al exportar"
+  } finally {
+    lotaipExportando.value = false
+  }
+}
+
+const cambiarLotaipTab = (id) => {
+  lotaipTab.value   = id
+  lotaipDatos.value = []
+  lotaipError.value = ""
+}
 
 const tiposMovimiento = [
   { value: "VACACIONES", label: "Vacaciones", clase: "text-emerald-700 font-medium", badgeClase: "bg-emerald-100 text-emerald-700" },

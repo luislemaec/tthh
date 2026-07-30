@@ -1,6 +1,7 @@
 <?php
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ReportesController;
+use App\Http\Controllers\LotaipController;
 use App\Http\Controllers\RolController;
 use App\Http\Controllers\CuadreController;
 use App\Http\Controllers\DashboardController;
@@ -248,6 +249,10 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::get("/reportes/atrasos",               [ReportesController::class, "atrasos"]);
     Route::get("/reportes/marcaciones-faltantes", [ReportesController::class, "marcacionesFaltantes"]);
     Route::get("/reportes/movimientos-personal",  [ReportesController::class, "movimientosPersonal"]);
+
+    // LOTAIP
+    Route::get("/reportes/lotaip/directorio",     [LotaipController::class, "directorio"]);
+    Route::get("/reportes/lotaip/remuneraciones", [LotaipController::class, "remuneraciones"]);
 
     // Períodos de planificación (TH admin)
     Route::get("/admin/periodos-planificacion",          [PeriodoPlanificacionController::class, "index"]);

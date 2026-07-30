@@ -77,6 +77,10 @@
               <label class="label-field">Teléfono</label>
               <input v-model="form.telefono" type="text" class="input-field" />
             </div>
+            <div>
+              <label class="label-field">Extensión</label>
+              <input v-model="form.extension" type="text" maxlength="10" class="input-field" placeholder="Ej: 101" />
+            </div>
             <div class="sm:col-span-2">
               <label class="label-field">Email</label>
               <input v-model="form.email" type="email" class="input-field" />
@@ -721,6 +725,7 @@ const form = ref({
   apellidos:      "",
   cedula:         "",
   telefono:       "",
+  extension:      "",
   email:          "",
   direccion:      "",
   sexo:               "",
@@ -780,6 +785,7 @@ const guardar = async () => {
       estado:         form.value.estado || "ACTIVO",
       cargo_empleado: form.value.cargo_empleado,
       telefono:       form.value.telefono,
+      extension:      form.value.extension || null,
       calle_y_numero: form.value.direccion,
       fecha_ingreso:  form.value.fecha_ingreso,
       fecha_salida:         form.value.fecha_salida        || null,
@@ -963,6 +969,7 @@ onMounted(async () => {
     form.value.salario         = data.sueldo || ""
     form.value.nivel           = data.nivel || ""
     form.value.telefono        = data.telefono || ""
+    form.value.extension       = data.extension || ""
     form.value.direccion       = data.calle_y_numero || ""
     form.value.tipo_contrato     = data.tipo_contrato?.trim()     || ""
     form.value.modalidad_laboral = data.modalidad_laboral?.trim() || ""

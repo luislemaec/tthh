@@ -20,7 +20,7 @@ class Empleado extends Authenticatable
         "id_emp", "identificacion", "nombre_emp", "apellido_emp",
         "id_depto", "estado", "tipo_contrato", "jornada_id", "id_jornada",
         "fecha_ingreso", "fecha_salida", "ubicacion", "modalidad_marcacion", "sueldo",
-        "nivel", "cargo_empleado", "telefono", "calle_y_numero",
+        "nivel", "cargo_empleado", "telefono", "extension", "calle_y_numero",
         "campo_supervisor", "modalidad_laboral",
         "partida_individual", "partida_presupuestaria", "estado_puesto",
         "grupo_ocupacional", "proceso_institucional",
