@@ -6,6 +6,7 @@ use App\Models\Razon;
 use App\Models\Empleado;
 use App\Models\Supervisor;
 use App\Models\CabeceraVacacion;
+use App\Models\Configuracion;
 use App\Services\AuditoriaService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -296,6 +297,36 @@ class PermisosController extends Controller
         return response()->json($permiso);
     }
 
+    // Calcula el saldo interno de vacaciones SIN aplicar el tope de 60 días.
+    // Replica la lógica de VacacionesController::calcularSaldoDisponible() pero devuelve el valor crudo.
+    private function calcularInternoVac(Empleado $emp, CabeceraVacacion $cabecera): float
+    {
+        $contrato = trim($emp->tipo_contrato ?? '');
+        if ($contrato === 'LOSEP') {
+            $tasaMensual = 2.50;
+        } elseif ($contrato === 'CODIGO DEL TRABAJO') {
+            $anios       = $emp->fecha_ingreso ? (int) Carbon::parse($emp->fecha_ingreso)->diffInYears(Carbon::today()) : 0;
+            $diasExtra   = min(max(0, $anios - 5), 15);
+            $tasaMensual = (15 + $diasExtra) / 12;
+        } else {
+            $tasaMensual = 0;
+        }
+
+        $fechaCorteConfig = Configuracion::find('FECHA_CORTE_VACACIONES');
+        $fechaCorte       = $fechaCorteConfig ? Carbon::parse($fechaCorteConfig->valor) : Carbon::today();
+        if ($emp->fecha_ingreso && Carbon::parse($emp->fecha_ingreso)->gt($fechaCorte)) {
+            $fechaCorte = Carbon::parse($emp->fecha_ingreso);
+        }
+
+        $fechaHasta     = Carbon::today();
+        $diasCalendario = max(0, $fechaCorte->diffInDays($fechaHasta));
+        $diasAcumulados = round($diasCalendario / 360 * ($tasaMensual * 12), 2);
+        $saldoInicial   = (float) ($cabecera->dias_adicionales  ?? 0);
+        $tomados        = (float) ($cabecera->total_dias_tomados ?? 0);
+
+        return $saldoInicial + $diasAcumulados - $tomados;
+    }
+
     // Aprobar permiso (solo supervisor del empleado)
     public function aprobar(Request $request, $id)
     {
@@ -353,9 +384,21 @@ class PermisosController extends Controller
         if ($permiso->descontable === "SI") {
             $cabecera = CabeceraVacacion::where("id_emp", $permiso->id_emp)->first();
             if ($cabecera) {
+                // Calcular el saldo interno real (sin tope) para saber cuánto excede los 60 días.
+                // Si el empleado tiene 70 días internos → exceso = 10 → el permiso primero consume ese
+                // exceso invisible y luego el descuento real, de modo que el saldo visible (≤60) baje correctamente.
+                $internoSaldo = $this->calcularInternoVac($empleado, $cabecera);
+                $exceso       = max(0.0, $internoSaldo - 60.0);
+                $efectivo     = round($exceso + $diasDescuento, 4);
+
                 $cabecera->dias_x_tomar_normal = max(0, (float)($cabecera->dias_x_tomar_normal ?? 0) - $diasDescuento);
-                $cabecera->total_dias_tomados  = round((float)($cabecera->total_dias_tomados  ?? 0) + $diasDescuento, 4);
+                $cabecera->total_dias_tomados  = round((float)($cabecera->total_dias_tomados  ?? 0) + $efectivo, 4);
                 $cabecera->save();
+
+                // Guardar el monto efectivo para que anular() pueda revertir exactamente lo correcto
+                DB::table('dbo.d2_permiso')
+                    ->where($permiso->getKeyName(), $permiso->getKey())
+                    ->update(['dias_descuento_efectivo' => $efectivo]);
             }
         }
 
@@ -621,8 +664,14 @@ class PermisosController extends Controller
 
             $cabecera = CabeceraVacacion::where('id_emp', $permiso->id_emp)->first();
             if ($cabecera) {
+                // Usar el monto efectivo guardado al aprobar (incluye el exceso sobre 60 que se consumió).
+                // Si el permiso es anterior a este cambio, $dias_descuento_efectivo será null → usar diasDescuento.
+                $efectivoRevertir = $permiso->dias_descuento_efectivo !== null
+                    ? (float) $permiso->dias_descuento_efectivo
+                    : $diasDescuento;
+
                 $cabecera->dias_x_tomar_normal = round((float)($cabecera->dias_x_tomar_normal ?? 0) + $diasDescuento, 4);
-                $cabecera->total_dias_tomados  = max(0, round((float)($cabecera->total_dias_tomados ?? 0) - $diasDescuento, 4));
+                $cabecera->total_dias_tomados  = max(0, round((float)($cabecera->total_dias_tomados ?? 0) - $efectivoRevertir, 4));
                 $cabecera->save();
             }
         }

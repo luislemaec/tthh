@@ -38,6 +38,7 @@ class Permiso extends Model
         "procedencia",
         "tipo_horario",
         "aprobado_en",
+        "dias_descuento_efectivo",
     ];
 
     public function empleado()

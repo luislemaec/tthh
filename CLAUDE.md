@@ -253,6 +253,7 @@ Campos relevantes:
 - `institucion_comision`: nombre de la institución destino (si `motivo_salida = COMISIÓN DE SERVICIOS`) o institución de origen (si `modalidad_laboral = Comisión de Servicios` en empleado entrante) — migración `000073`
 - `banco` / `tipo_cuenta` / `numero_cuenta`: datos bancarios del empleado para transferencias (migración `000081`); se auto-rellenan en el formulario de comisión al buscar un servidor
 - `es_externo BOOLEAN DEFAULT false`: empleados creados automáticamente desde "Dar acceso" en Funcionarios Externos (migración `000082`). Cuando `es_externo = true`: EmpleadoForm muestra banner amarillo de advertencia y EmpleadoController bloquea la edición (solo editable desde FuncionariosExternosView). `id_depto = 999` — excluidos de todas las queries de RRHH (nómina, asistencia, distributivo, vacaciones).
+- `extension VARCHAR(10) NULL`: extensión telefónica institucional del empleado — migración `000093`. Campo opcional; si está vacío sale en blanco. Visible en EmpleadoForm Tab 1 entre Teléfono y Email. Se usa en el reporte LOTAIP (Directorio y Distributivo).
 
 **Partidas disponibles** (`GET /api/empleados/partidas-vacantes`): devuelve empleados con `estado=INACTIVO` + `estado_puesto=DISPONIBLE`. En `EmpleadoForm.vue`, el campo Partida Individual tiene input libre + botón "Seleccionar libre" que abre un modal con la lista — al seleccionar una fila se auto-llenan `partida_individual` y `partida_presupuestaria`.
 
@@ -370,10 +371,16 @@ Ejemplos: 1 hora → 0.1705 días | 4 horas → 0.6818 días | 1 día completo �
 
 **Validación de solapamiento:** la validación al crear un permiso filtra por `tipo_horario` — un permiso ENTRADA **no bloquea** la creación de un permiso SALIDA del mismo día aunque compartan rango de fechas. Solo bloquea permisos del **mismo tipo** que se crucen en horario.
 
+**Tope de 60 días (LOSEP Art. 29) y descuento de permisos — REGLA CRÍTICA:** el saldo visible al empleado es máximo 60 días (`min(60, saldoInterno)`). Al aprobar un permiso descontable, el descuento se aplica **desde los 60 días visibles**, no desde el saldo interno real (que puede ser 70, 80, etc.). Implementado con campo `dias_descuento_efectivo DECIMAL(10,4) NULL` en `dbo.d2_permiso` (migración `000094`):
+- `aprobar()`: calcula `internoSaldo` (sin tope), `exceso = max(0, internoSaldo - 60)`, `efectivo = exceso + diasDescuento` → suma `efectivo` a `total_dias_tomados` y lo guarda en `dias_descuento_efectivo`
+- `anular()`: revierte usando `dias_descuento_efectivo` guardado (compatible con permisos anteriores a migración `000094` → usa `diasDescuento` si el campo es null)
+- `LiquidacionVacController` NO aplica el tope — usa el valor real acumulado (correcto para pago por cesación)
+- El saldo interno sigue acumulando sin límite; solo el display y el descuento de permisos están limitados a 60
+
 **`PATCH /api/permisos/{id}/anular`** — solo ADMINISTRADOR / TALENTO HUMANO:
 - Requiere campo `observacion_negacion` (motivo)
 - Cambia estado a `ANULADO`
-- Si `descontable = 'SI'`: revierte el descuento sumando `diasDescuento` de vuelta al saldo de vacaciones
+- Si `descontable = 'SI'`: revierte usando `dias_descuento_efectivo` del permiso (o `diasDescuento` si null)
 - Revierte el campo correspondiente en `d2_cuadre_marcacion` del día del permiso
 - Uso: permiso aprobado que el empleado no utilizó (ej. salió a su hora normal)
 
@@ -507,7 +514,7 @@ views/empleados/        # CRUD empleados, detalle, importación, distributivo
                         #       botón "Agregar período" → formulario inline con fecha_desde y fecha_hasta
                         #       badges de estado calculados en frontend con hoy()
                         #     Cuando modalidad = BIOMETRICO: solo se muestra el radio seleccionado (sin sección adicional)
-                        #   Tab 1 "Datos Personales": nombres, apellidos, cédula, teléfono, email, dirección, sexo, tipo_sangre
+                        #   Tab 1 "Datos Personales": nombres, apellidos, cédula, teléfono, extensión (opcional), email, dirección, sexo, tipo_sangre
                         #     + grupo_vulnerable, grupo_prioritario (selects de catálogos sociales)
                         #     + bloque Discapacidad (toggle → tipo CONADIS + porcentaje %)
                         #     + bloque Enfermedad Catastrófica (toggle → tipo MSP)
@@ -628,6 +635,10 @@ views/asistencia/       # Reporte de asistencia personal y admin
                         #   Confirmación al marcar SALIDA antes de las 16:30 con window.confirm()
                         #   ARTICULO_ATRASOS: se muestra con fondo #0b5447 y texto blanco (text-sm)
                         #     debajo del título "Mis Marcaciones" — más visible que el texto gris anterior
+                        #   Columna "Atraso" en tabla historial: en fila ENTRADA DEL LUNCH, si hay atraso,
+                        #     muestra "Debió: HH:MM" en ámbar — hora a la que debió regresar (SALIDA AL LUNCH + 30 min)
+                        #     Calculado en frontend con horaDebiRegresarLunch(fecha): busca la marcación
+                        #     SALIDA AL LUNCH del mismo día y le suma 30 minutos. Sin cambios de backend.
 views/horasextras/
   HorasExtrasView.vue   # 4 tabs:
                         #   MI PLANIFICACIÓN: crear/editar, PDF planificación, subir PDF firmado
@@ -640,6 +651,20 @@ views/asistencia/
                              # en views/reportes/ReportesView.vue (tab "Sin Atrasos")
                              # NO debe tener entrada de menú propia (sería duplicado) — eliminar si existe
 views/reportes/
+  LotaipView.vue             # Reporte LOTAIP Art. 7 lit. m) — ruta: reportes/lotaip (página independiente, NO tab de ReportesView)
+                             # Roles: TALENTO HUMANO, ADMINISTRADOR — agregar en Admin → Opciones de Menú con URL reportes/lotaip
+                             # 2 tabs solo con export Excel (sin PDF):
+                             #   Tab 1 "Directorio y Distributivo": Nro, Apellidos y Nombres, Dirección/Área,
+                             #     Dirección Institucional (config DIRECCION_INSTITUCIONAL), Ciudad (config UBICACION_DEFAULT),
+                             #     Teléfono (config TELEFONO_INSTITUCIONAL), Extensión, Correo Electrónico institucional
+                             #   Tab 2 "Remuneraciones": Nro, Cargo, Tipo Contrato, Partida Individual, Grado,
+                             #     Salario Base, Remuneración Anual (sueldo×12), D13 (en blanco), D14 (en blanco)
+                             # Ordenado alfabéticamente por apellido ASC (sin agrupación por departamento)
+                             # Email desde dbo.ad_empleado_mail (primer registro ACTIVO por empleado)
+                             # Controlador: LotaipController.php — rutas:
+                             #   GET /api/reportes/lotaip/directorio [?formato=excel]
+                             #   GET /api/reportes/lotaip/remuneraciones [?formato=excel]
+                             # Variables de configuración requeridas: DIRECCION_INSTITUCIONAL, UBICACION_DEFAULT, TELEFONO_INSTITUCIONAL
   ReportesView.vue           # 5 tabs: Atrasos | Marcaciones No Realizadas | Sin Atrasos | Movimientos de Personal | Marcaciones del Día
                              # Filtros comunes: fecha_desde, fecha_hasta, departamento, empleado
                              # Filtros depto/empleado se ocultan automáticamente en tab "Sin Atrasos"
