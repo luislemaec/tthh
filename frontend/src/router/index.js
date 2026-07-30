@@ -56,6 +56,7 @@ const routes = [
       { path: 'admin/periodos-planificacion', name: 'AdminPeriodosPlanificacion', component: () => import('@/views/admin/periodos/PeriodosView.vue') },
       { path: 'supervisores', name: 'Supervisores', component: () => import('@/views/supervisores/SupervisoresView.vue') },
       { path: 'reportes', name: 'Reportes', component: () => import('@/views/reportes/ReportesView.vue') },
+      { path: 'reportes/lotaip', name: 'Lotaip', component: () => import('@/views/reportes/LotaipView.vue') },
       { path: 'planificacion', name: 'Planificacion', component: () => import('@/views/planificacion/PlanificacionesView.vue') },
       { path: 'planificacion/reporte', name: 'ReportePlanificacion', component: () => import('@/views/planificacion/ReportePlanificacionView.vue') },
       { path: 'planificacion/reporte-saldo', name: 'ReporteSaldoVac', component: () => import('@/views/planificacion/ReporteSaldoVacView.vue') },
