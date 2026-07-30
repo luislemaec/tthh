@@ -18,7 +18,6 @@ class LotaipController extends Controller
             ->join('dbo.ad_departamento as d', 'e.id_depto', '=', 'd.id_depto')
             ->where('e.estado', 'ACTIVO')
             ->where('e.id_depto', '!=', 999)
-            ->orderBy('d.nombre_depto')
             ->orderBy('e.apellido_emp')
             ->orderBy('e.nombre_emp');
     }
