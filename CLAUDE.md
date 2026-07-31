@@ -47,6 +47,17 @@ Después de cualquier cambio: Push → Pull en servidor → `npm run build` (sol
 - Para backup manual: `sudo /usr/local/bin/backup_rrhh.sh`
 - Para restaurar: `gunzip -c archivo.sql.gz | psql -U postgres -h 192.168.26.38 BDD_RRHH`
 
+## Sincronización de Hora del Servidor de Aplicaciones
+
+- **Servidor AD/NTP:** `192.168.26.6` (Active Directory — fuente de tiempo de la red)
+- **Problema:** el servidor `192.168.26.19` tiende a desviarse varios minutos; como las marcaciones web usan `now()` del servidor, una desviación causa que las timbradas queden con hora incorrecta
+- **Solución:** cron cada hora sincroniza automáticamente con el AD (`sudo crontab -e` en `192.168.26.19`):
+  ```
+  0 * * * * /usr/sbin/ntpdate -u 192.168.26.6 > /dev/null 2>&1
+  ```
+- **Nota:** `chrony` está instalado pero no sincroniza (AD bloquea UDP 123); por eso se usa `ntpdate` vía cron
+- **Reloj ZKTeco:** tiene su propio reloj interno — sincronizar manualmente desde el menú Red/Fecha y Hora apuntando al NTP `192.168.26.6`, o ajustar manualmente cuando se desvíe. Las marcaciones biométricas usan la hora del reloj, no la del servidor.
+
 ### Incidente 2026-06-24 — pérdida de datos adq
 
 Las tablas `adq.orden_compra`, `adq.egreso`, `adq.kardex`, `adq.solicitud_material` quedaron vacías porque las migraciones de adquisiciones no estaban registradas en `public.migrations`. Al correr `php artisan migrate`, Laravel las ejecutó de nuevo borrando los datos. Los 482 artículos (`adq.articulo`) no se vieron afectados. **Solución aplicada:** se insertaron manualmente los registros de las 21 migraciones adq en `public.migrations` con batch=1.
@@ -1153,12 +1164,12 @@ Combinación recomendada: EMPLEADO + TRANSPORTE o EMPLEADO + CONDUCTOR.
 
 | Tabla | Descripción |
 |---|---|
-| `trans_vehiculo` | Catálogo de vehículos; estado ACTIVO/INACTIVO/MANTENIMIENTO |
+| `trans_vehiculo` | Catálogo de vehículos; estado ACTIVO/INACTIVO/MANTENIMIENTO; `kilometraje_actual` es un contador acumulativo (ver sección Kilometraje abajo) |
 | `trans_taller` | Talleres mecánicos externos; estado ACTIVO/INACTIVO |
 | `trans_tipo_mantenimiento` | Categorías: PREVENTIVO, CORRECTIVO, PREVENTIVO Y CORRECTIVO; estado ACTIVO/INACTIVO |
-| `trans_plan_preventivo_cab` | Plan preventivo cabecera: vehiculo_id, km_hito, nombre del plan |
+| `trans_plan_preventivo_cab` | Plan preventivo cabecera: vehiculo_id, km_hito (hito ABSOLUTO, no intervalo — ver sección Kilometraje), nombre del plan |
 | `trans_plan_preventivo_det` | Actividades del plan: cab_id, orden, tipo_actividad (MO/RE/CL), cantidad, actividad |
-| `trans_mantenimiento` | Requerimientos; estados PENDIENTE→ORDEN_GENERADA→EN_TALLER→FINALIZADO |
+| `trans_mantenimiento` | Requerimientos; estados PENDIENTE→ORDEN_GENERADA→EN_TALLER→FINALIZADO. `km_actual` = km del vehículo al crear (autocompletado); `km_finalizacion` = km del vehículo al finalizar (migración `000096`, obligatorio si tipo PREVENTIVO) |
 | `trans_mantenimiento_actividad` | Actividades del requerimiento de mantenimiento |
 | `trans_solicitud_mov` | Solicitudes de movilización; estados PENDIENTE→APROBADO/NEGADO→COMPLETADO. Campos adicionales: `direccion_salida`, `direccion_destino` (VARCHAR 200), `pasajeros` (TEXT) |
 | `trans_vale_combustible` | Vales de combustible; formato FR05-PRO.GA-TR.001; numero auto-secuencial |
@@ -1173,6 +1184,29 @@ Campo adicional en `ad_empleado`: `puede_solicitar_vehiculo BOOLEAN DEFAULT fals
 - "PREVENTIVO Y CORRECTIVO" contiene ambas cadenas → activa ambas secciones simultáneamente
 - El CRUD permite activar/desactivar tipos y agregar nuevos (ej. EMERGENCIA)
 
+### Kilometraje — acumulación automática y alertas de mantenimiento por km
+
+**`trans_vehiculo.kilometraje_actual` es el único contador oficial**, se acumula solo (nunca lo digita el conductor):
+- **Km inicial**: se ingresa una sola vez al crear el vehículo (`+ Nuevo vehículo`, campo "Km Actual"). Al **editar** un vehículo existente, el backend (`TransporteController::update()`) solo permite subirlo, nunca bajarlo (`min: kilometraje_actual` actual) — es la única vía de corrección manual (ej. dato inicial mal digitado), y por eso está restringida a no poder romper la cadena hacia abajo.
+- **Hoja de ruta** (`updateMov`, acción `hoja_ruta`): el campo "Km Salida" del frontend es de **solo lectura** — el backend ignora cualquier valor que llegue del cliente y siempre usa `vehiculo->kilometraje_actual` en el momento de guardar. Valida que `km_retorno >= km_salida`. Al completar, `kilometraje_actual` se actualiza a `km_retorno`.
+  - Si el km mostrado en el modal quedó desactualizado (otro viaje/mantenimiento del mismo vehículo se completó mientras el modal estaba abierto), el backend responde 422 con `km_salida_actual` y el frontend **autocorrige** el campo en vez de solo mostrar un error genérico.
+- **Mantenimiento — crear requerimiento** (`storeMtto`): `km_actual` ya no lo digita el conductor, se autocompleta con `vehiculo->kilometraje_actual` (frontend lo muestra de solo lectura).
+- **Mantenimiento — finalizar** (`updateMtto`, acción `finalizar`): `km_finalizacion` es **obligatorio si el tipo contiene "PREVENTIVO"** (sin él no hay forma de saber desde cuándo contar el próximo hito de ese plan); opcional en CORRECTIVO. Valida que no sea menor al km actual del vehículo. Al finalizar, actualiza `kilometraje_actual`.
+
+**`km_hito` es un hito ABSOLUTO y único, NO un intervalo recurrente** — ej. el plan "Mantenimiento 170.000 km" (`km_hito = 170000`) se cumple una sola vez cuando el vehículo llega a ese kilometraje real, no se repite cada 170.000km. Al crear planes (manual o CSV) el campo Km Hito debe llevar el kilometraje objetivo real de ESE mantenimiento específico, no un intervalo genérico (ej. "5000") — cargarlo mal genera alertas falsas para cualquier vehículo con más de esa cantidad de km.
+
+`GET /transporte/vehiculos` (`index()`) calcula y devuelve por cada vehículo, comparando contra sus planes ACTIVO:
+- `planes_estado[]`: `{ plan_id, nombre, km_hito, km_recorridos (= kilometraje_actual del vehículo), vencido, proximo }`
+- Un plan que ya tuvo algún `trans_mantenimiento` en estado FINALIZADO se excluye de las alertas (hito cumplido, no vuelve a aparecer).
+- `vencido` = `kilometraje_actual >= km_hito`. `proximo` = `!vencido && kilometraje_actual >= km_hito * 0.9`.
+- `mantenimiento_vencido` / `mantenimiento_proximo` (booleanos a nivel vehículo) **NO son mutuamente excluyentes** — un vehículo puede tener a la vez un plan vencido (ej. 50.000) y otro próximo (ej. 170.000); ambas banderas se calculan de forma independiente para que la tarjeta resumen y los badges de la lista cuadren.
+
+**Validaciones adicionales en `storeMtto`**:
+- Un vehículo solo puede tener **un mantenimiento abierto a la vez** (estado distinto de FINALIZADO/NEGADO). Si ya hay uno, rechaza con 422 indicando cuál es (evita que se olviden de finalizar uno y se cree otro encima).
+- El `plan_preventivo_id` enviado debe pertenecer al `vehiculo_id` seleccionado (rechaza con 422 si no coincide).
+
+**Visibilidad compartida**: `indexMtto` ya NO filtra por conductor — todos los conductores ven el listado completo de mantenimientos de todos los vehículos (antes cada uno solo veía lo que él mismo había solicitado, lo que permitía crear solicitudes duplicadas sin que nadie se diera cuenta).
+
 ### Plan Preventivo
 
 Actividades agrupadas por vehículo + km_hito + nombre. Cada actividad tiene:
@@ -1180,7 +1214,7 @@ Actividades agrupadas por vehículo + km_hito + nombre. Cada actividad tiene:
 - `cantidad`: entero ≥ 1
 - `actividad`: descripción de la tarea
 
-Importación CSV: columnas `placa,km_hito,nombre,tipo_actividad,actividad,cantidad`. Agrupa por clave compuesta `vehiculo_id|km_hito|nombre`, crea una cabecera por grupo y los detalles correspondientes.
+Importación CSV: columnas `placa,km_hito,nombre,tipo_actividad,actividad,cantidad`. Agrupa por clave compuesta `vehiculo_id|km_hito|nombre`, crea una cabecera por grupo y los detalles correspondientes. Recordar: `km_hito` debe ser el kilometraje objetivo real (ver sección Kilometraje arriba), no un intervalo genérico.
 
 ### Vales de Combustible
 
@@ -1193,9 +1227,9 @@ Formato oficial FR05-PRO.GA-TR.001. PDF media carta (`[0, 0, 396, 504]`).
 
 ### Flujos
 
-**Mantenimiento:** conductor crea requerimiento (tipo + km_actual + actividades) → TRANSPORTE genera orden de trabajo (asigna taller de la lista, N° orden, fecha) → EN_TALLER → FINALIZAR (actualiza km del vehículo). PDF disponible desde ORDEN_GENERADA.
+**Mantenimiento:** conductor crea requerimiento (tipo + actividades; km_actual se autocompleta del vehículo, no se digita) → TRANSPORTE genera orden de trabajo (asigna taller de la lista, N° orden, fecha) → EN_TALLER → FINALIZAR (km_finalizacion obligatorio si PREVENTIVO, actualiza km del vehículo). PDF disponible desde ORDEN_GENERADA. No se puede crear un nuevo requerimiento si el vehículo ya tiene uno abierto (ver sección Kilometraje).
 
-**Movilización:** empleado autorizado solicita (con lugar_salida, lugar_destino, direccion_salida, direccion_destino opcionales, y pasajeros opcional) → TRANSPORTE aprueba (asigna vehículo + conductor, valida conflicto de horario) o niega → conductor llena hoja de ruta (km_salida, km_retorno) → COMPLETADO (actualiza km del vehículo). PDF disponible desde APROBADO.
+**Movilización:** empleado autorizado solicita (con lugar_salida, lugar_destino, direccion_salida, direccion_destino opcionales, y pasajeros opcional) → TRANSPORTE aprueba (asigna vehículo + conductor, valida conflicto de horario) o niega → conductor llena hoja de ruta (km_salida de solo lectura, autocompletado; km_retorno) → COMPLETADO (actualiza km del vehículo). PDF disponible desde APROBADO.
 
 **Vale combustible:** conductor abre formulario → selecciona vehículo, gasolinera, fecha, combustibles → guarda → PDF se abre automáticamente en nueva pestaña.
 
@@ -1233,11 +1267,42 @@ Rutas bajo `/api/transporte/*`:
 ```
 views/transporte/
   VehiculosView.vue           # CRUD vehículos; solo TRANSPORTE
+                              # 3 tarjetas resumen clickeables (Total / Mantenimiento vencido / Mantenimiento
+                              #   próximo — colores rojo/ámbar) que filtran la lista (filtroMtto)
+                              # Por fila: ícono circular de alerta (rojo si vencido, ámbar si solo próximo)
+                              #   junto al badge de estado — solo se pinta si el vehículo tiene alguna alerta.
+                              #   Clic abre modal "Alertas de Mantenimiento" con el detalle de cada plan
+                              #   (nombre, km_hito, badge Vencido/Próximo) — mismo patrón de modal "Ver" del resto
+                              #   de la app. Reemplaza el diseño anterior de pills apiladas en la fila (poco
+                              #   estético con vehículos de muchos planes).
+                              # Campo "Km Actual" en Editar Vehículo: solo permite subir el valor, nunca bajarlo
+                              #   (ver sección Kilometraje) — muestra el mínimo permitido bajo el input.
   TalleresView.vue            # CRUD talleres; solo TRANSPORTE
   TiposMantenimientoView.vue  # CRUD tipos (activar/desactivar); solo TRANSPORTE
   PlanPreventivoView.vue      # CRUD plan preventivo + importar CSV; solo TRANSPORTE
+                              # Acordeón agrupado por vehículo (reemplazó la lista plana paginada con
+                              #   select de un solo vehículo a la vez) — cada vehículo es una cabecera
+                              #   colapsable con badge de cantidad de planes (gris si 0, azul si tiene),
+                              #   botón "+ Plan" que preselecciona ese vehículo en el modal de creación
+                              # Buscador de texto (placa/marca/modelo) + checkbox "Solo con planes" +
+                              #   botones "Expandir todo"/"Colapsar todo" (Set `abiertos` con los ids abiertos)
+                              # Vehículos sin ningún plan igual aparecen (con "0 planes") para detectar huecos
   MantenimientoView.vue       # Conductor crea; TRANSPORTE gestiona estados, asigna taller de lista, PDF
+                              # Km actual: solo lectura, autocompletado desde el vehículo seleccionado
+                              #   (computed kmVehiculoSeleccionado) — ya no es un input editable
+                              # Modal Finalizar: campo "Km Actual del Vehículo" (km_finalizacion) marcado
+                              #   obligatorio (*) cuando el tipo del requerimiento es PREVENTIVO
+                              #   (modalFinalizar.esPreventivo, derivado de m.tipo al abrir el modal)
+                              # Backend bloquea crear un nuevo requerimiento si el vehículo ya tiene uno
+                              #   abierto — el error llega vía errorCrear ya existente, sin cambios de UI
   MovilizacionView.vue        # Empleado solicita; TRANSPORTE aprueba/niega; conductor llena hoja de ruta
+                              # Modal Hoja de Ruta: "Km Salida" de solo lectura (bg-gray-100, disabled) —
+                              #   ya no editable por el conductor. abrirHojaRuta() es async y refresca el
+                              #   km real del vehículo (GET /transporte/vehiculos) justo al abrir el modal
+                              #   para minimizar el caso de dato desactualizado
+                              # Si el backend igual detecta km desactualizado al guardar (422 con
+                              #   km_salida_actual en el body), el frontend autocorrige formHojaRuta.km_salida
+                              #   en vez de solo mostrar el mensaje de error
   ValesCombustibleView.vue    # CONDUCTOR + TRANSPORTE; guarda y abre PDF automáticamente
 layouts/TransporteLayout.vue  # Menú dinámico desde auth.menuAgrupado filtrado a transporte/
                               # Modo mantenimiento: variable MODO_MANTENIMIENTO_TRANS = 1

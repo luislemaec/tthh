@@ -18,7 +18,7 @@ class EmpleadoController extends Controller
     // GET /api/empleados
     public function index(Request $request)
     {
-        $query = Empleado::with(["departamento", "emails"]);
+        $query = Empleado::with(["departamento", "emails"])->where("id_depto", "!=", 999);
 
         if ($request->filled("buscar")) {
             $b = $request->buscar;
