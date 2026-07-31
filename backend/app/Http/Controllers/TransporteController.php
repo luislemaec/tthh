@@ -50,33 +50,31 @@ class TransporteController extends Controller
             ->get()
             ->groupBy('vehiculo_id');
 
-        // Km del último mantenimiento FINALIZADO de cada plan (referencia para el próximo hito).
-        // Se usa MAX porque el km del vehículo ahora es monótono creciente (no se puede editar libremente).
-        $ultimos = DB::table('dbo.trans_mantenimiento')
-            ->select('plan_preventivo_id', DB::raw('MAX(COALESCE(km_finalizacion, km_actual, 0)) as km_ultimo'))
+        // km_hito es un hito ABSOLUTO y único (ej. "a los 170.000 km toca este mantenimiento",
+        // una sola vez), no un intervalo que se repite. Un plan que ya tuvo algún mantenimiento
+        // FINALIZADO se considera cumplido y deja de generar alerta.
+        $realizados = DB::table('dbo.trans_mantenimiento')
             ->whereNotNull('plan_preventivo_id')
             ->where('estado', 'FINALIZADO')
-            ->groupBy('plan_preventivo_id')
-            ->get()
-            ->keyBy('plan_preventivo_id');
+            ->pluck('plan_preventivo_id')
+            ->unique();
 
-        $vehiculos->each(function ($v) use ($planes, $ultimos) {
-            $estados = $planes->get($v->id, collect())->map(function ($p) use ($v, $ultimos) {
-                $kmReferencia = $ultimos->get($p->id)->km_ultimo ?? 0;
-                $recorridos   = max(0, $v->kilometraje_actual - $kmReferencia);
-                $vencido      = $p->km_hito > 0 && $recorridos >= $p->km_hito;
-                $proximo      = !$vencido && $p->km_hito > 0 && $recorridos >= $p->km_hito * 0.9;
+        $vehiculos->each(function ($v) use ($planes, $realizados) {
+            $estados = $planes->get($v->id, collect())
+                ->reject(fn($p) => $realizados->contains($p->id))
+                ->map(function ($p) use ($v) {
+                    $vencido = $p->km_hito > 0 && $v->kilometraje_actual >= $p->km_hito;
+                    $proximo = !$vencido && $p->km_hito > 0 && $v->kilometraje_actual >= $p->km_hito * 0.9;
 
-                return [
-                    'plan_id'       => $p->id,
-                    'nombre'        => $p->nombre,
-                    'km_hito'       => $p->km_hito,
-                    'km_referencia' => $kmReferencia,
-                    'km_recorridos' => $recorridos,
-                    'vencido'       => $vencido,
-                    'proximo'       => $proximo,
-                ];
-            })->values();
+                    return [
+                        'plan_id'       => $p->id,
+                        'nombre'        => $p->nombre,
+                        'km_hito'       => $p->km_hito,
+                        'km_recorridos' => $v->kilometraje_actual,
+                        'vencido'       => $vencido,
+                        'proximo'       => $proximo,
+                    ];
+                })->values();
 
             $v->planes_estado         = $estados;
             $v->mantenimiento_vencido = $estados->contains('vencido', true);
