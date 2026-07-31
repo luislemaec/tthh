@@ -5,9 +5,10 @@
     <div class="bg-white rounded-xl shadow p-6">
       <div class="mb-6">
         <h1 class="text-2xl font-bold text-gray-800 text-center">Control de Asistencia</h1>
-        <p class="text-center text-xl font-bold text-gray-700 mt-3">
-          {{ fechaHoy }} &nbsp;|&nbsp; {{ horaActual }}
-        </p>
+        <div class="text-center mt-3">
+          <p class="text-sm font-medium text-gray-500 uppercase tracking-wide">{{ fechaHoy }}</p>
+          <p class="text-5xl font-bold text-gray-800 mt-1 tabular-nums">{{ horaActual }}</p>
+        </div>
       </div>
 
       <!-- Botones de marcacion -->
