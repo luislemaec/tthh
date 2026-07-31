@@ -135,12 +135,11 @@ class TransporteController extends Controller
 
     public function indexMtto(Request $request)
     {
+        // El vehículo es un recurso compartido entre conductores: todos deben ver el mismo
+        // listado (no solo lo que cada uno solicitó), para saber si ya hay un mantenimiento
+        // en curso de ese vehículo antes de pedir otro.
         $query = Mantenimiento::with(['vehiculo', 'conductor', 'responsable', 'actividades', 'tipoMantenimiento', 'tallerRel'])
             ->orderBy('created_at', 'desc');
-
-        if (!$this->esTransporte($request)) {
-            $query->where('id_emp_conductor', $this->emp($request)->id_emp);
-        }
 
         return response()->json($query->get());
     }
@@ -159,6 +158,18 @@ class TransporteController extends Controller
         // Km actual ya no lo digita el conductor: siempre es el kilometraje_actual real del
         // vehículo, para que quede consistente con el mismo contador que usa movilización.
         $vehiculo = Vehiculo::findOrFail($request->vehiculo_id);
+
+        // Un vehículo solo puede tener UN mantenimiento abierto a la vez. Evita que se olviden
+        // de finalizar uno y se genere otro encima (o que dos conductores pidan lo mismo sin verse).
+        $abierto = Mantenimiento::where('vehiculo_id', $request->vehiculo_id)
+            ->whereNotIn('estado', ['FINALIZADO', 'NEGADO'])
+            ->first();
+
+        if ($abierto) {
+            return response()->json([
+                'message' => "Este vehículo ya tiene un mantenimiento en curso (#{$abierto->id}, {$abierto->tipo}, estado: {$abierto->estado}). Debe finalizarlo o negarlo antes de registrar uno nuevo.",
+            ], 422);
+        }
 
         $tipo = TipoMantenimiento::findOrFail($request->tipo_mantenimiento_id);
 
