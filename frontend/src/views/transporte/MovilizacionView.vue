@@ -455,7 +455,7 @@ function abrirNegar(s) {
   modalNegar.value = { show: true, id: s.id }
 }
 
-function abrirHojaRuta(s) {
+async function abrirHojaRuta(s) {
   formHojaRuta.value = {
     km_salida: s.vehiculo?.kilometraje_actual || 0,
     km_retorno: 0,
@@ -463,6 +463,16 @@ function abrirHojaRuta(s) {
   }
   errorHojaRuta.value = ''
   modalHojaRuta.value = { show: true, s }
+
+  // El km de la lista pudo quedar desactualizado si otro viaje/mantenimiento del mismo
+  // vehículo se completó desde que se cargó la pantalla — se refresca al abrir el modal.
+  if (s.vehiculo_id) {
+    try {
+      const { data } = await api.get('/transporte/vehiculos')
+      const actual = data.find(v => v.id === s.vehiculo_id)
+      if (actual) formHojaRuta.value.km_salida = actual.kilometraje_actual
+    } catch {}
+  }
 }
 
 async function guardarCrear() {
@@ -510,6 +520,11 @@ async function guardarHojaRuta() {
     await cargar()
   } catch (e) {
     errorHojaRuta.value = e.response?.data?.message || 'Error al completar'
+    // El vehículo se movió mientras el modal estaba abierto: autocorregir el km de salida
+    // mostrado para que el usuario solo tenga que revisar el km de retorno.
+    if (e.response?.data?.km_salida_actual != null) {
+      formHojaRuta.value.km_salida = e.response.data.km_salida_actual
+    }
   } finally { guardando.value = false }
 }
 

@@ -433,11 +433,17 @@ class TransporteController extends Controller
             // sin depender de que el conductor lo digite correctamente.
             $kmSalida = $s->vehiculo->kilometraje_actual ?? 0;
 
-            $request->validate([
-                'km_retorno' => 'required|integer|min:' . $kmSalida,
-            ], [
-                'km_retorno.min' => 'El km de retorno no puede ser menor al km actual del vehículo (' . $kmSalida . ').',
-            ]);
+            $request->validate(['km_retorno' => 'required|integer']);
+
+            // El km de salida mostrado en el frontend puede haber quedado desactualizado si otro
+            // viaje/mantenimiento de este mismo vehículo se completó mientras el modal estaba abierto.
+            // Se devuelve el valor real para que el frontend se autocorrija en vez de solo fallar.
+            if ($request->km_retorno < $kmSalida) {
+                return response()->json([
+                    'message'          => 'El kilometraje del vehículo cambió mientras completabas este formulario. Se actualizó el km de salida, verifica el km de retorno.',
+                    'km_salida_actual' => $kmSalida,
+                ], 422);
+            }
 
             $s->update([
                 'estado'               => 'COMPLETADO',
