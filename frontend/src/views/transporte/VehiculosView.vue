@@ -8,13 +8,38 @@
       </button>
     </div>
 
+    <!-- Tarjetas resumen -->
+    <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+      <button @click="filtroMtto = ''"
+        class="rounded-xl shadow px-4 py-3 text-left"
+        :class="filtroMtto === '' ? 'ring-2 ring-offset-1' : ''"
+        :style="filtroMtto === '' ? 'background-color:#eef2f6; --tw-ring-color:#1e3a5f;' : 'background-color:#ffffff;'">
+        <p class="text-2xl font-bold text-gray-800">{{ vehiculos.length }}</p>
+        <p class="text-xs text-gray-500">Total vehículos</p>
+      </button>
+      <button @click="filtroMtto = 'vencido'"
+        class="rounded-xl shadow px-4 py-3 text-left"
+        :class="filtroMtto === 'vencido' ? 'ring-2 ring-offset-1 ring-red-500' : ''"
+        style="background-color:#fef2f2;">
+        <p class="text-2xl font-bold text-red-700">{{ conteoVencidos }}</p>
+        <p class="text-xs text-red-600">⚠ Mantenimiento vencido</p>
+      </button>
+      <button @click="filtroMtto = 'proximo'"
+        class="rounded-xl shadow px-4 py-3 text-left"
+        :class="filtroMtto === 'proximo' ? 'ring-2 ring-offset-1 ring-amber-500' : ''"
+        style="background-color:#fffbeb;">
+        <p class="text-2xl font-bold text-amber-700">{{ conteoProximos }}</p>
+        <p class="text-xs text-amber-600">Mantenimiento próximo</p>
+      </button>
+    </div>
+
     <!-- Lista -->
     <div class="space-y-2">
-      <div v-if="!vehiculos.length" class="bg-white rounded-xl shadow p-8 text-center text-gray-400">
-        Sin vehículos registrados
+      <div v-if="!vehiculosFiltrados.length" class="bg-white rounded-xl shadow p-8 text-center text-gray-400">
+        Sin vehículos {{ filtroMtto ? 'con ese estado de mantenimiento' : 'registrados' }}
       </div>
 
-      <div v-for="v in vehiculos" :key="v.id"
+      <div v-for="v in vehiculosFiltrados" :key="v.id"
            class="bg-white rounded-xl shadow px-5 py-3 flex justify-between items-center gap-3">
         <div class="min-w-0">
           <p class="font-semibold text-gray-800">
@@ -26,6 +51,14 @@
             <span v-if="v.color"> · {{ v.color }}</span>
             <span v-if="v.chasis"> · Chasis: {{ v.chasis }}</span>
             <span v-if="v.numero_motor"> · Motor: {{ v.numero_motor }}</span>
+          </p>
+          <p v-if="v.mantenimiento_vencido || v.mantenimiento_proximo" class="mt-1">
+            <span v-for="p in planesAlerta(v)" :key="p.plan_id"
+              class="inline-block mr-1 px-2 py-0.5 rounded-full text-[11px] font-medium"
+              :class="p.vencido ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'">
+              {{ p.vencido ? '⚠ Vencido' : 'Próximo' }} · {{ p.nombre }}
+              ({{ p.km_recorridos.toLocaleString() }} / {{ p.km_hito.toLocaleString() }} km)
+            </span>
           </p>
         </div>
         <div class="flex items-center gap-2 flex-shrink-0">
@@ -81,7 +114,11 @@
             <div>
               <label class="block text-xs font-semibold text-gray-600 mb-1">Km Actual *</label>
               <input v-model.number="form.kilometraje_actual" type="number"
-                class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="0" min="0" />
+                class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="0"
+                :min="modal.id ? kmMinimo : 0" />
+              <p v-if="modal.id" class="text-[11px] text-gray-400 mt-0.5">
+                Solo se puede corregir hacia arriba (mínimo {{ kmMinimo.toLocaleString() }})
+              </p>
             </div>
           </div>
           <div class="grid grid-cols-2 gap-3">
@@ -124,7 +161,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import api from '@/services/api'
 
 const vehiculos = ref([])
@@ -132,6 +169,21 @@ const guardando = ref(false)
 const error = ref('')
 const modal = ref({ show: false, id: null })
 const form = ref({})
+const kmMinimo = ref(0)
+const filtroMtto = ref('') // '' | 'vencido' | 'proximo'
+
+const conteoVencidos = computed(() => vehiculos.value.filter(v => v.mantenimiento_vencido).length)
+const conteoProximos = computed(() => vehiculos.value.filter(v => v.mantenimiento_proximo).length)
+
+const vehiculosFiltrados = computed(() => {
+  if (filtroMtto.value === 'vencido') return vehiculos.value.filter(v => v.mantenimiento_vencido)
+  if (filtroMtto.value === 'proximo') return vehiculos.value.filter(v => v.mantenimiento_proximo)
+  return vehiculos.value
+})
+
+function planesAlerta(v) {
+  return (v.planes_estado || []).filter(p => p.vencido || p.proximo)
+}
 
 function estadoBadge(e) {
   if (e === 'ACTIVO') return 'bg-green-100 text-green-700'
@@ -153,6 +205,7 @@ function abrirCrear() {
 
 function abrirEditar(v) {
   form.value = { ...v }
+  kmMinimo.value = v.kilometraje_actual || 0
   modal.value = { show: true, id: v.id }
   error.value = ''
 }

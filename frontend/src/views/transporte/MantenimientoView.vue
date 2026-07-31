@@ -137,6 +137,9 @@
               <tr v-if="modalVer.m.fecha_finalizacion" class="border-b">
                 <td class="py-2 font-semibold text-gray-500">Fecha Fin</td>
                 <td class="py-2">{{ formatFechaCorta(modalVer.m.fecha_finalizacion) }}</td></tr>
+              <tr v-if="modalVer.m.km_finalizacion" class="border-b">
+                <td class="py-2 font-semibold text-gray-500">Km al finalizar</td>
+                <td class="py-2">{{ modalVer.m.km_finalizacion?.toLocaleString() }} km</td></tr>
               <tr v-if="modalVer.m.responsable" class="border-b">
                 <td class="py-2 font-semibold text-gray-500">Responsable</td>
                 <td class="py-2">{{ modalVer.m.responsable?.apellido_emp }} {{ modalVer.m.responsable?.nombre_emp }}</td></tr>
@@ -196,10 +199,11 @@
               </option>
             </select>
           </div>
-          <div>
-            <label class="block text-xs font-semibold text-gray-600 mb-1">Kilometraje actual *</label>
-            <input v-model.number="formCrear.km_actual" type="number" min="0"
-              class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Km actuales del vehículo" />
+          <div v-if="formCrear.vehiculo_id">
+            <label class="block text-xs font-semibold text-gray-600 mb-1">Kilometraje actual</label>
+            <input :value="kmVehiculoSeleccionado?.toLocaleString()" type="text" readonly disabled
+              class="w-full border rounded-lg px-3 py-2 text-sm bg-gray-100 text-gray-600" />
+            <p class="text-[11px] text-gray-400 mt-0.5">Kilometraje acumulado del vehículo — no editable</p>
           </div>
 
           <!-- Plan preventivo (solo si tipo incluye PREVENTIVO) -->
@@ -347,9 +351,16 @@
               class="w-full border rounded-lg px-3 py-2 text-sm" />
           </div>
           <div>
-            <label class="block text-xs font-semibold text-gray-600 mb-1">Km Actual del Vehículo</label>
-            <input v-model.number="formFinalizar.km_nuevo" type="number"
-              class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Dejar vacío si no cambió" min="0" />
+            <label class="block text-xs font-semibold text-gray-600 mb-1">
+              Km Actual del Vehículo <span v-if="modalFinalizar.esPreventivo">*</span>
+            </label>
+            <input v-model.number="formFinalizar.km_finalizacion" type="number"
+              class="w-full border rounded-lg px-3 py-2 text-sm"
+              :placeholder="modalFinalizar.esPreventivo ? 'Obligatorio para mantenimiento preventivo' : 'Dejar vacío si no cambió'"
+              :min="modalFinalizar.kmVehiculo || 0" />
+            <p v-if="modalFinalizar.esPreventivo" class="text-[11px] text-gray-400 mt-0.5">
+              Necesario para calcular cuándo toca el próximo mantenimiento de este plan.
+            </p>
           </div>
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1">Observaciones</label>
@@ -430,6 +441,10 @@ const planesDelVehiculo = computed(() =>
   planesPreventivos.value.filter(p => p.vehiculo_id == formCrear.value.vehiculo_id && p.estado === 'ACTIVO')
 )
 
+const kmVehiculoSeleccionado = computed(() =>
+  vehiculos.value.find(v => v.id == formCrear.value.vehiculo_id)?.kilometraje_actual ?? 0
+)
+
 function onTipoChange() {
   formCrear.value.plan_preventivo_id = ''
   formCrear.value.actividades_correctivas = []
@@ -491,7 +506,6 @@ function abrirCrear() {
   formCrear.value = {
     vehiculo_id: '',
     tipo_mantenimiento_id: '',
-    km_actual: null,
     plan_preventivo_id: '',
     actividades_correctivas: [],
     descripcion: '',
@@ -515,9 +529,14 @@ function abrirOrden(m) {
 
 function abrirFinalizar(m) {
   const hoy = new Date().toISOString().slice(0, 10)
-  formFinalizar.value = { fecha_finalizacion: hoy, km_nuevo: null, observacion_responsable: m.observacion_responsable || '' }
+  formFinalizar.value = { fecha_finalizacion: hoy, km_finalizacion: null, observacion_responsable: m.observacion_responsable || '' }
   errorFinalizar.value = ''
-  modalFinalizar.value = { show: true, id: m.id }
+  modalFinalizar.value = {
+    show: true,
+    id: m.id,
+    esPreventivo: !!m.tipo?.includes('PREVENTIVO'),
+    kmVehiculo: m.vehiculo?.kilometraje_actual || 0,
+  }
 }
 
 async function guardarCrear() {

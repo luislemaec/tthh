@@ -331,13 +331,14 @@
         <div class="space-y-3">
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-semibold text-gray-600 mb-1">Km Salida *</label>
-              <input v-model.number="formHojaRuta.km_salida" type="number" min="0"
-                class="w-full border rounded-lg px-3 py-2 text-sm" />
+              <label class="block text-xs font-semibold text-gray-600 mb-1">Km Salida</label>
+              <input :value="formHojaRuta.km_salida?.toLocaleString()" type="text" readonly disabled
+                class="w-full border rounded-lg px-3 py-2 text-sm bg-gray-100 text-gray-600" />
+              <p class="text-[11px] text-gray-400 mt-0.5">Kilometraje acumulado del vehículo — no editable</p>
             </div>
             <div>
               <label class="block text-xs font-semibold text-gray-600 mb-1">Km Retorno *</label>
-              <input v-model.number="formHojaRuta.km_retorno" type="number" min="0"
+              <input v-model.number="formHojaRuta.km_retorno" type="number" :min="formHojaRuta.km_salida"
                 class="w-full border rounded-lg px-3 py-2 text-sm" />
             </div>
           </div>

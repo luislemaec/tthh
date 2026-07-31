@@ -43,7 +43,47 @@ class TransporteController extends Controller
 
     public function index()
     {
-        return response()->json(Vehiculo::orderBy('placa')->get());
+        $vehiculos = Vehiculo::orderBy('placa')->get();
+
+        $planes = DB::table('dbo.trans_plan_preventivo_cab')
+            ->where('estado', 'ACTIVO')
+            ->get()
+            ->groupBy('vehiculo_id');
+
+        // Km del último mantenimiento FINALIZADO de cada plan (referencia para el próximo hito).
+        // Se usa MAX porque el km del vehículo ahora es monótono creciente (no se puede editar libremente).
+        $ultimos = DB::table('dbo.trans_mantenimiento')
+            ->select('plan_preventivo_id', DB::raw('MAX(COALESCE(km_finalizacion, km_actual, 0)) as km_ultimo'))
+            ->whereNotNull('plan_preventivo_id')
+            ->where('estado', 'FINALIZADO')
+            ->groupBy('plan_preventivo_id')
+            ->get()
+            ->keyBy('plan_preventivo_id');
+
+        $vehiculos->each(function ($v) use ($planes, $ultimos) {
+            $estados = $planes->get($v->id, collect())->map(function ($p) use ($v, $ultimos) {
+                $kmReferencia = $ultimos->get($p->id)->km_ultimo ?? 0;
+                $recorridos   = max(0, $v->kilometraje_actual - $kmReferencia);
+                $vencido      = $p->km_hito > 0 && $recorridos >= $p->km_hito;
+                $proximo      = !$vencido && $p->km_hito > 0 && $recorridos >= $p->km_hito * 0.9;
+
+                return [
+                    'plan_id'       => $p->id,
+                    'nombre'        => $p->nombre,
+                    'km_hito'       => $p->km_hito,
+                    'km_referencia' => $kmReferencia,
+                    'km_recorridos' => $recorridos,
+                    'vencido'       => $vencido,
+                    'proximo'       => $proximo,
+                ];
+            })->values();
+
+            $v->planes_estado         = $estados;
+            $v->mantenimiento_vencido = $estados->contains('vencido', true);
+            $v->mantenimiento_proximo = !$v->mantenimiento_vencido && $estados->contains('proximo', true);
+        });
+
+        return response()->json($vehiculos);
     }
 
     public function store(Request $request)
@@ -78,8 +118,12 @@ class TransporteController extends Controller
             'chasis'             => 'nullable|string|max:50',
             'color'              => 'nullable|string|max:30',
             'numero_motor'       => 'nullable|string|max:50',
-            'kilometraje_actual' => 'required|integer|min:0',
+            // No puede bajarse manualmente: el contador es acumulativo (hoja de ruta / mantenimiento).
+            // Solo se permite corregirlo hacia arriba (ej. dato inicial mal digitado por debajo del real).
+            'kilometraje_actual' => 'required|integer|min:' . $vehiculo->kilometraje_actual,
             'estado'             => 'required|in:ACTIVO,INACTIVO,MANTENIMIENTO',
+        ], [
+            'kilometraje_actual.min' => 'El kilometraje no puede ser menor al actual (' . $vehiculo->kilometraje_actual . '). El contador solo se corrige hacia arriba.',
         ]);
 
         $vehiculo->update($request->only([
@@ -108,12 +152,15 @@ class TransporteController extends Controller
         $request->validate([
             'vehiculo_id'           => 'required|exists:pgsql.dbo.trans_vehiculo,id',
             'tipo_mantenimiento_id' => 'required|exists:pgsql.dbo.trans_tipo_mantenimiento,id',
-            'km_actual'             => 'required|integer|min:0',
             'descripcion'           => 'nullable|string',
             'plan_preventivo_id'    => 'nullable|exists:pgsql.dbo.trans_plan_preventivo_cab,id',
             'actividades_correctivas'              => 'nullable|array',
             'actividades_correctivas.*.actividad'  => 'required_with:actividades_correctivas|string',
         ]);
+
+        // Km actual ya no lo digita el conductor: siempre es el kilometraje_actual real del
+        // vehículo, para que quede consistente con el mismo contador que usa movilización.
+        $vehiculo = Vehiculo::findOrFail($request->vehiculo_id);
 
         $tipo = TipoMantenimiento::findOrFail($request->tipo_mantenimiento_id);
 
@@ -124,11 +171,22 @@ class TransporteController extends Controller
             return response()->json(['message' => 'Debe seleccionar un plan preventivo para este tipo de mantenimiento.'], 422);
         }
 
+        if ($request->plan_preventivo_id) {
+            $planPertenece = DB::table('dbo.trans_plan_preventivo_cab')
+                ->where('id', $request->plan_preventivo_id)
+                ->where('vehiculo_id', $request->vehiculo_id)
+                ->exists();
+
+            if (!$planPertenece) {
+                return response()->json(['message' => 'El plan preventivo seleccionado no corresponde a este vehículo.'], 422);
+            }
+        }
+
         $m = Mantenimiento::create([
             'vehiculo_id'           => $request->vehiculo_id,
             'tipo'                  => $tipo->nombre,
             'tipo_mantenimiento_id' => $request->tipo_mantenimiento_id,
-            'km_actual'             => $request->km_actual,
+            'km_actual'             => $vehiculo->kilometraje_actual,
             'descripcion'           => $request->descripcion ?? $tipo->nombre,
             'plan_preventivo_id'    => $request->plan_preventivo_id,
             'id_emp_conductor'      => $this->emp($request)->id_emp,
@@ -220,15 +278,29 @@ class TransporteController extends Controller
                 $request, "Mantenimiento #{$m->id} en taller");
 
         } elseif ($accion === 'finalizar') {
-            $request->validate(['fecha_finalizacion' => 'required|date']);
+            // El km de finalización es obligatorio para PREVENTIVO: sin él no hay forma de
+            // saber desde cuándo contar el próximo hito de ese plan. En CORRECTIVO sigue
+            // siendo opcional (ese flujo ya tiene su propio registro de reparación).
+            $esPreventivo = str_contains($m->tipo, 'PREVENTIVO');
+            $kmVehiculoActual = $m->vehiculo->kilometraje_actual ?? 0;
+
+            $rules = ['fecha_finalizacion' => 'required|date'];
+            $rules['km_finalizacion'] = ($esPreventivo ? 'required' : 'nullable') . '|integer|min:' . $kmVehiculoActual;
+
+            $request->validate($rules, [
+                'km_finalizacion.required' => 'Debe indicar el kilometraje del vehículo para finalizar un mantenimiento preventivo.',
+                'km_finalizacion.min'      => 'El kilometraje no puede ser menor al km actual del vehículo (' . $kmVehiculoActual . ').',
+            ]);
+
             $m->update([
                 'estado'             => 'FINALIZADO',
                 'fecha_finalizacion' => $request->fecha_finalizacion,
                 'observacion_responsable' => $request->observacion_responsable ?? $m->observacion_responsable,
+                'km_finalizacion'    => $request->km_finalizacion ?? $m->km_finalizacion,
             ]);
-            // Actualizar km si se informó
-            if ($request->filled('km_nuevo')) {
-                $m->vehiculo->update(['kilometraje_actual' => $request->km_nuevo]);
+            // Acumular km del vehículo
+            if ($request->filled('km_finalizacion')) {
+                $m->vehiculo->update(['kilometraje_actual' => $request->km_finalizacion]);
             }
 
             AuditoriaService::log('dbo.trans_mantenimiento', $m->id, 'FINALIZAR_MANT',
@@ -358,18 +430,25 @@ class TransporteController extends Controller
                 $request, "Negación de movilización #{$s->id}: {$s->motivo}");
 
         } elseif ($accion === 'hoja_ruta') {
+            // Km de salida ya NO se recibe del cliente: siempre es el kilometraje_actual
+            // del vehículo en este momento, para que el contador acumule viaje tras viaje
+            // sin depender de que el conductor lo digite correctamente.
+            $kmSalida = $s->vehiculo->kilometraje_actual ?? 0;
+
             $request->validate([
-                'km_salida'  => 'required|integer|min:0',
-                'km_retorno' => 'required|integer|min:0',
+                'km_retorno' => 'required|integer|min:' . $kmSalida,
+            ], [
+                'km_retorno.min' => 'El km de retorno no puede ser menor al km actual del vehículo (' . $kmSalida . ').',
             ]);
+
             $s->update([
                 'estado'               => 'COMPLETADO',
-                'km_salida'            => $request->km_salida,
+                'km_salida'            => $kmSalida,
                 'km_retorno'           => $request->km_retorno,
                 'hoja_ruta_observacion'=> $request->hoja_ruta_observacion,
                 'fecha_completado'     => now(),
             ]);
-            // Actualizar km del vehículo
+            // Acumular km del vehículo
             if ($s->vehiculo_id) {
                 $s->vehiculo->update(['kilometraje_actual' => $request->km_retorno]);
             }
