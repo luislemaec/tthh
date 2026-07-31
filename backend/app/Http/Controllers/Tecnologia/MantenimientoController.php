@@ -79,7 +79,7 @@ class MantenimientoController extends Controller
         $query = Equipo::with(['tipoEquipo', 'asignacionActiva.empleado'])
             ->where('estado', '!=', 'DE_BAJA')
             ->whereNotIn('id', function ($q) use ($anio) {
-                $q->select('equipo_id')->from('dbo.ti_mantenimiento')->where('anio', $anio);
+                $q->select('equipo_id')->from('dbo.ti_mantenimiento')->where('anio', $anio)->where('tipo', 'PREVENTIVO');
             })
             ->orderBy('codigo_bien');
 
@@ -130,13 +130,13 @@ class MantenimientoController extends Controller
         $request->validate([
             'equipo_id'           => 'required|exists:pgsql.dbo.ti_equipo,id',
             'fecha_mantenimiento' => 'required|date',
-            'hora_inicio'         => 'required',
-            'hora_fin'            => 'required',
+            'hora_inicio'         => 'nullable',
+            'hora_fin'            => 'nullable',
             'tipo'                => 'nullable|in:PREVENTIVO,CORRECTIVO',
             'observaciones'       => 'nullable|string',
-            'checklist'                    => 'required|array|min:1',
-            'checklist.*.actividad_id'     => 'required|exists:pgsql.dbo.ti_actividad_mantenimiento,id',
-            'checklist.*.realizado'        => 'required|boolean',
+            'checklist'                    => 'nullable|array',
+            'checklist.*.actividad_id'     => 'required_with:checklist|exists:pgsql.dbo.ti_actividad_mantenimiento,id',
+            'checklist.*.realizado'        => 'required_with:checklist|boolean',
             'piezas'                       => 'nullable|array',
             'piezas.*.pieza_id'            => 'nullable|exists:pgsql.dbo.ti_pieza,id',
             'piezas.*.codigo'              => 'nullable|string|max:50',
@@ -144,10 +144,12 @@ class MantenimientoController extends Controller
             'piezas.*.descripcion'         => 'nullable|string|max:300',
         ]);
 
+        $tipo = $request->tipo ?? 'PREVENTIVO';
         $anio = (int) date('Y', strtotime($request->fecha_mantenimiento));
 
-        if (Mantenimiento::where('equipo_id', $request->equipo_id)->where('anio', $anio)->exists()) {
-            return response()->json(['message' => 'Este equipo ya tiene un mantenimiento registrado para ese año.'], 422);
+        if ($tipo === 'PREVENTIVO'
+            && Mantenimiento::where('equipo_id', $request->equipo_id)->where('anio', $anio)->where('tipo', 'PREVENTIVO')->exists()) {
+            return response()->json(['message' => 'Este equipo ya tiene el mantenimiento preventivo registrado para ese año.'], 422);
         }
 
         foreach ($request->input('piezas', []) as $item) {
@@ -165,21 +167,21 @@ class MantenimientoController extends Controller
             ->whereNull('fecha_devolucion')
             ->value('id_emp');
 
-        $mantenimiento = DB::transaction(function () use ($request, $anio, $idEmpCustodio) {
+        $mantenimiento = DB::transaction(function () use ($request, $tipo, $anio, $idEmpCustodio) {
             $mantenimiento = Mantenimiento::create([
                 'equipo_id'           => $request->equipo_id,
                 'anio'                => $anio,
                 'fecha_mantenimiento' => $request->fecha_mantenimiento,
                 'hora_inicio'         => $request->hora_inicio,
                 'hora_fin'            => $request->hora_fin,
-                'tipo'                => $request->tipo ?? 'PREVENTIVO',
+                'tipo'                => $tipo,
                 'id_emp_tecnico'      => $request->user()->id_emp,
                 'id_emp_custodio'     => $idEmpCustodio,
                 'observaciones'       => $request->observaciones,
                 'created_by'          => $request->user()->id_emp,
             ]);
 
-            foreach ($request->checklist as $item) {
+            foreach ($request->input('checklist', []) as $item) {
                 MantenimientoDetalle::create([
                     'mantenimiento_id' => $mantenimiento->id,
                     'actividad_id'     => $item['actividad_id'],
@@ -212,7 +214,12 @@ class MantenimientoController extends Controller
                 $pieza->update(['estado' => 'INSTALADA', 'equipo_id' => $request->equipo_id, 'updated_by' => $request->user()->id_emp]);
             }
 
-            Equipo::whereKey($request->equipo_id)->update(['ultimo_mantenimiento' => $request->fecha_mantenimiento]);
+            $equipoActual = Equipo::findOrFail($request->equipo_id);
+            $datosEquipo  = ['ultimo_mantenimiento' => $request->fecha_mantenimiento, 'updated_by' => $request->user()->id_emp];
+            if ($tipo === 'CORRECTIVO' && $equipoActual->estado === 'DAÑADO') {
+                $datosEquipo['estado'] = 'DISPONIBLE';
+            }
+            $equipoActual->update($datosEquipo);
 
             return $mantenimiento;
         });
@@ -246,7 +253,7 @@ class MantenimientoController extends Controller
         $equipos = Equipo::where('tipo_equipo_id', $request->tipo_equipo_id)
             ->where('estado', '!=', 'DE_BAJA')
             ->whereNotIn('id', function ($q) use ($anio) {
-                $q->select('equipo_id')->from('dbo.ti_mantenimiento')->where('anio', $anio);
+                $q->select('equipo_id')->from('dbo.ti_mantenimiento')->where('anio', $anio)->where('tipo', 'PREVENTIVO');
             })
             ->get();
 

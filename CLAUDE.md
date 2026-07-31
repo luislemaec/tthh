@@ -1546,12 +1546,12 @@ Quinto módulo del sistema, para la Dirección de Tecnología. Color institucion
 | `ti_equipo` | Un registro por unidad física. `estado`: `DISPONIBLE`/`ASIGNADO`/`DAÑADO`/`DE_BAJA` (custodia, gestionado por el sistema al asignar/devolver). `condicion`: `BUENO`/`REGULAR`/`MALO` (estado físico, distinto de `estado`). `vida_util_anios`, `ultimo_mantenimiento` (caché). `marca VARCHAR(150)`, `modelo VARCHAR(300)` (ampliados en migración `000089` — el inventario real de TI trae descripciones largas en "modelo") |
 | `ti_asignacion` | Historial de custodia. Solo puede existir **una fila con `fecha_devolucion IS NULL` por `equipo_id`** a la vez (regla aplicada en el controlador, no a nivel de constraint) |
 | `ti_actividad_mantenimiento` | Catálogo maestro del checklist de mantenimiento (10 ítems reales del formulario físico de TI, editable) |
-| `ti_mantenimiento` | Cabecera de cada ejecución de mantenimiento; `UNIQUE(equipo_id, anio)` — refuerza que el mantenimiento preventivo es una vez al año por equipo. Incluye `hora_inicio`/`hora_fin` (nullable — el mantenimiento externo por lote no siempre registra hora exacta), `id_emp_tecnico` (usuario que registró) e `id_emp_custodio` (snapshot del custodio en ese momento). Campos de mantenimiento externo (migración `000090`): `origen` (`INTERNO`/`EXTERNO`), `proveedor`, `proceso_contratacion`, `numero_orden_compra`, `lote_externo` — ver sección "Mantenimiento externo" abajo |
+| `ti_mantenimiento` | Cabecera de cada ejecución de mantenimiento. **El "una vez al año" solo aplica al `tipo = PREVENTIVO`**: índice único parcial `ti_mantenimiento_preventivo_anio_uq` sobre `(equipo_id, anio) WHERE tipo = 'PREVENTIVO'` (migración `000095`, reemplazó el `UNIQUE(equipo_id, anio)` original que bloqueaba erróneamente registrar una reparación el mismo año del preventivo). El `CORRECTIVO` se puede registrar las veces que haga falta. Incluye `hora_inicio`/`hora_fin` (nullable — el mantenimiento externo por lote y las reparaciones rápidas no siempre registran hora exacta), `id_emp_tecnico` (usuario que registró) e `id_emp_custodio` (snapshot del custodio en ese momento). Campos de mantenimiento externo (migración `000090`): `origen` (`INTERNO`/`EXTERNO`), `proveedor`, `proceso_contratacion`, `numero_orden_compra`, `lote_externo` — ver sección "Mantenimiento externo" abajo |
 | `ti_mantenimiento_detalle` | Snapshot SI/NO del checklist para esa ejecución (una fila por actividad del catálogo activa al momento de registrar). Solo se genera cuando `origen = INTERNO` |
 | `ti_pieza` | Catálogo de piezas/repuestos (ver sección "Piezas y repuestos" abajo). `codigo`/`serie` opcionales, `descripcion` obligatoria, `fecha_entrega` (obligatoria — fecha en que la Unidad de Bienes/Dirección Administrativa entregó la pieza a Tecnología; **Tecnología no tiene bodega propia**, las piezas llegan ya codificadas por Bienes). `estado`: `DISPONIBLE`/`INSTALADA`/`DE_BAJA`. `equipo_id` = equipo donde está instalada actualmente (null si disponible o de baja) |
 | `ti_pieza_movimiento` | Historial de instalación/retiro de piezas, mismo patrón que `ti_asignacion` pero pieza↔equipo. `mantenimiento_id` (nullable) liga el movimiento al mantenimiento en el que se hizo el cambio. Solo puede existir **una fila con `fecha_retiro IS NULL` por `pieza_id`** a la vez |
 
-Migraciones: `000088` (crea las 6 tablas + rol `TECNOLOGIA` + seeds de tipos de equipo y checklist), `000089` (amplía `ti_equipo.marca`/`modelo`, ver arriba), `000090` (agrega columnas de mantenimiento externo a `ti_mantenimiento` y hace `hora_inicio`/`hora_fin` nullable), `000092` (crea `ti_pieza` y `ti_pieza_movimiento`).
+Migraciones: `000088` (crea las 6 tablas + rol `TECNOLOGIA` + seeds de tipos de equipo y checklist), `000089` (amplía `ti_equipo.marca`/`modelo`, ver arriba), `000090` (agrega columnas de mantenimiento externo a `ti_mantenimiento` y hace `hora_inicio`/`hora_fin` nullable), `000092` (crea `ti_pieza` y `ti_pieza_movimiento`), `000095` (cambia el `UNIQUE(equipo_id, anio)` de `ti_mantenimiento` a índice único parcial solo para `tipo=PREVENTIVO`, ver arriba).
 
 `Equipo` (modelo) tiene un accessor `vida_util_vencida` (`$appends`, calculado en PHP con `fecha_ingreso + vida_util_anios <= hoy`, sin necesidad de cast ni columna nueva) — se usa para el badge/filtro/tarjeta "Vida útil vencida" en `EquiposView.vue`. `EquipoController::resumen()` incluye el conteo `vida_util_vencida` (excluye equipos `DE_BAJA`) y `index()` acepta `?vida_util_vencida=1` como filtro.
 
@@ -1568,7 +1568,7 @@ Las opciones de menú (`admin_opcion`) y su asignación al rol `TECNOLOGIA` (`ad
 
 ### Mantenimiento preventivo (checklist real)
 
-El mantenimiento se ejecuta **una vez al año por equipo** (constraint `UNIQUE(equipo_id, anio)` en `ti_mantenimiento`). El checklist es fijo (catálogo `ti_actividad_mantenimiento`, editable desde `tecnologia/actividades-mantenimiento`) y reproduce el formulario físico que ya usaba TI:
+El mantenimiento **preventivo** se ejecuta **una vez al año por equipo** (índice único parcial sobre `ti_mantenimiento` solo para `tipo=PREVENTIVO`, ver arriba — el correctivo no tiene ese límite). El checklist es fijo (catálogo `ti_actividad_mantenimiento`, editable desde `tecnologia/actividades-mantenimiento`) y reproduce el formulario físico que ya usaba TI:
 
 1. Ingreso al equipo · 2. Limpieza interna del equipo · 3. Limpieza externa del equipo · 4. Borrado archivos temporales · 5. Ingreso al equipo por la IP · 6. Actualización del antivirus · 7. Formateo del equipo · 8. Respaldo carpeta Escritorio · 9. Respaldo carpeta Mis documentos · 10. Respaldo correo electrónico institucional (PST)
 
@@ -1577,6 +1577,15 @@ Al registrar un mantenimiento se marca SI/NO por cada ítem (hora de inicio/fin 
 **Acta de mantenimiento** (`resources/views/reportes/ti_acta_mantenimiento.blade.php`, A4 portrait): incluye fecha, hora de inicio y fin, tabla del checklist con columnas SI/NO, y firmas — **"Técnico que realizó"** = usuario logueado que registró (`id_emp_tecnico`, autocapturado de `$request->user()`, no es un campo editable del formulario) y **"Responsable del equipo"** = custodio con asignación activa al momento del registro (`id_emp_custodio`, snapshot — no cambia si luego se reasigna el equipo a otra persona). PDF generado con DomPDF (`->stream()`); opcionalmente se puede subir firmado a Alfresco (carpeta `mantenimiento-ti/{año}/`), mismo patrón de `relativePath` que Certificados Laborales / Horas Extras.
 
 `MantenimientoView.vue` tiene sus propios filtros (Buscar + Tipo de equipo) sobre `pendientes`/`realizados`, iguales a los de `EquiposView.vue` — útil porque antes había que buscar equipo por equipo en la lista.
+
+### Reparación de equipos dañados (mantenimiento correctivo)
+
+Cuando un equipo está en estado `DAÑADO`, su fila en `EquiposView.vue` muestra el botón **"Registrar reparación"** (reemplazó a un simple botón "Disponible" sin registro alguno). Abre un modal pidiendo solo **fecha** y **qué se hizo** (observación libre) — sin checklist ni horas, esos son propios del preventivo. Al guardar:
+- Crea un `ti_mantenimiento` con `tipo = CORRECTIVO` (sin filas en `ti_mantenimiento_detalle`, ya que no aplica el checklist de 10 puntos).
+- El equipo pasa automáticamente de `DAÑADO` a `DISPONIBLE` (antes había que hacerlo aparte, sin dejar ningún rastro de la reparación).
+- Se genera y abre automáticamente el acta en PDF — mismo `ti_acta_mantenimiento.blade.php`, pero oculta la tabla de checklist cuando no hay `detalle` y titula la sección de observaciones como "Descripción de la Reparación" en ese caso.
+
+Esta reparación queda visible en la pestaña "Realizados" de `MantenimientoView.vue` igual que un preventivo — es la constancia de "qué se hizo para volver a poner operativo el equipo".
 
 ### Mantenimiento externo (por proveedor, en lote)
 
@@ -1655,6 +1664,9 @@ views/tecnologia/
                                      #   como botones de texto con borde — los íconos solos se descartaron
                                      #   por poco visibles). Columna "Condición" removida de la tabla
                                      #   (el campo se sigue editando desde el modal)
+                                     # Equipo DAÑADO: botón "Registrar reparación" (ver sección "Reparación
+                                     #   de equipos dañados" arriba) — modal fecha + qué se hizo, genera acta
+                                     #   como mantenimiento correctivo y pasa el equipo a DISPONIBLE
                                      # Historial de custodia: línea de tiempo visual (timeline)
                                      # Importar CSV con plantilla de 9 columnas (ver sección arriba)
                                      # Todos los modales (crear/editar, Asignar, Devolver, Importar CSV)

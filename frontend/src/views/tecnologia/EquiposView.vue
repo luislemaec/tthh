@@ -112,9 +112,9 @@
                     class="text-xs text-white font-medium px-3 py-1 rounded-lg bg-amber-600 hover:bg-amber-700">
                     Devolver
                   </button>
-                  <button v-if="e.estado === 'DAÑADO'" @click="marcarDisponible(e)"
+                  <button v-if="e.estado === 'DAÑADO'" @click="abrirReparacion(e)"
                     class="text-xs text-white font-medium px-3 py-1 rounded-lg bg-green-600 hover:bg-green-700">
-                    Disponible
+                    Registrar reparación
                   </button>
                   <button @click="abrirHistorial(e)"
                     class="text-xs text-gray-600 hover:text-gray-900 font-medium border border-gray-300 px-3 py-1 rounded-lg hover:bg-gray-50">
@@ -326,6 +326,41 @@
       </div>
     </div>
 
+    <!-- Modal Registrar Reparación -->
+    <div v-if="modalReparacion.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+        <div class="px-6 py-4 flex items-start justify-between" style="background-color:#4d7c8a;">
+          <div>
+            <h2 class="text-lg font-bold text-white">Registrar Reparación</h2>
+            <p class="text-white/80 text-xs mt-0.5">{{ modalReparacion.equipo?.codigo_bien }}</p>
+          </div>
+          <button @click="modalReparacion.show = false" class="text-white/80 hover:text-white text-xl leading-none">&times;</button>
+        </div>
+        <div class="p-6">
+          <p class="text-xs text-gray-500 mb-3">
+            Queda registrada como un mantenimiento correctivo (con su propia acta en PDF) y el equipo pasa
+            automáticamente a <strong>Disponible</strong> al guardar.
+          </p>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Fecha *</label>
+          <input v-model="formReparacion.fecha_mantenimiento" type="date" class="w-full border rounded-lg px-3 py-2 text-sm" />
+
+          <label class="block text-xs font-semibold text-gray-600 mb-1 mt-3">¿Qué se hizo? *</label>
+          <textarea v-model="formReparacion.observaciones" rows="3" placeholder="Ej. Se reemplazó la fuente de poder dañada."
+            class="w-full border rounded-lg px-3 py-2 text-sm"></textarea>
+
+          <p v-if="error" class="text-red-600 text-sm mt-3">{{ error }}</p>
+          <div class="flex justify-end gap-2 mt-5">
+            <button @click="modalReparacion.show = false" class="px-4 py-2 text-sm text-gray-600 border rounded-lg">Cancelar</button>
+            <button @click="confirmarReparacion" :disabled="guardando || !formReparacion.observaciones"
+              class="px-5 py-2 text-sm text-white rounded-lg hover:opacity-90 disabled:opacity-50"
+              style="background-color:#4d7c8a;">
+              {{ guardando ? 'Guardando...' : 'Guardar y generar acta' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Modal Historial (timeline) -->
     <div v-if="modalHistorial.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
@@ -523,9 +558,39 @@ async function marcarBaja(e) {
   await Promise.all([cargar(), cargarResumen()])
 }
 
-async function marcarDisponible(e) {
-  await api.patch(`/tecnologia/equipos/${e.id}/disponible`)
-  await Promise.all([cargar(), cargarResumen()])
+// ─── Registrar reparación (equipo DAÑADO -> DISPONIBLE) ────────────────────
+const modalReparacion = ref({ show: false, equipo: null })
+const formReparacion   = ref({ fecha_mantenimiento: '', observaciones: '' })
+
+function abrirReparacion(e) {
+  modalReparacion.value = { show: true, equipo: e }
+  formReparacion.value = { fecha_mantenimiento: new Date().toISOString().substring(0, 10), observaciones: '' }
+  error.value = ''
+}
+
+async function confirmarReparacion() {
+  error.value = ''
+  guardando.value = true
+  try {
+    const { data } = await api.post('/tecnologia/mantenimiento', {
+      equipo_id: modalReparacion.value.equipo.id,
+      fecha_mantenimiento: formReparacion.value.fecha_mantenimiento,
+      tipo: 'CORRECTIVO',
+      observaciones: formReparacion.value.observaciones,
+    })
+    modalReparacion.value.show = false
+    await Promise.all([cargar(), cargarResumen()])
+
+    const resp = await api.get(`/tecnologia/mantenimiento/${data.id}/pdf`, { responseType: 'blob' })
+    const blob = new Blob([resp.data], { type: 'application/pdf' })
+    const url  = URL.createObjectURL(blob)
+    window.open(url, '_blank')
+    setTimeout(() => URL.revokeObjectURL(url), 60000)
+  } catch (e) {
+    error.value = e.response?.data?.message || Object.values(e.response?.data?.errors || {})[0]?.[0] || 'Error al guardar'
+  } finally {
+    guardando.value = false
+  }
 }
 
 // ─── Asignar ──────────────────────────────────────────────────────────────
