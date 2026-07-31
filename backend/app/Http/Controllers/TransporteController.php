@@ -76,9 +76,13 @@ class TransporteController extends Controller
                     ];
                 })->values();
 
+            // Un mismo vehículo puede tener varios planes: unos ya vencidos y otros recién
+            // próximos (ej. hito de 50.000 vencido y el de 170.000 próximo a la vez). Por eso
+            // NO son mutuamente excluyentes — si no, la tarjeta resumen y los badges de la
+            // lista quedaban contando cosas distintas.
             $v->planes_estado         = $estados;
             $v->mantenimiento_vencido = $estados->contains('vencido', true);
-            $v->mantenimiento_proximo = !$v->mantenimiento_vencido && $estados->contains('proximo', true);
+            $v->mantenimiento_proximo = $estados->contains('proximo', true);
         });
 
         return response()->json($vehiculos);

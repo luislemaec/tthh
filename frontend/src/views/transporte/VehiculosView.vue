@@ -52,16 +52,17 @@
             <span v-if="v.chasis"> · Chasis: {{ v.chasis }}</span>
             <span v-if="v.numero_motor"> · Motor: {{ v.numero_motor }}</span>
           </p>
-          <p v-if="v.mantenimiento_vencido || v.mantenimiento_proximo" class="mt-1">
-            <span v-for="p in planesAlerta(v)" :key="p.plan_id"
-              class="inline-block mr-1 px-2 py-0.5 rounded-full text-[11px] font-medium"
-              :class="p.vencido ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'">
-              {{ p.vencido ? '⚠ Vencido' : 'Próximo' }} · {{ p.nombre }}
-              ({{ p.km_recorridos.toLocaleString() }} / {{ p.km_hito.toLocaleString() }} km)
-            </span>
-          </p>
         </div>
         <div class="flex items-center gap-2 flex-shrink-0">
+          <button v-if="v.mantenimiento_vencido || v.mantenimiento_proximo" @click="abrirAlertas(v)"
+            :title="v.mantenimiento_vencido ? 'Tiene mantenimiento vencido — clic para ver detalle' : 'Tiene mantenimiento próximo — clic para ver detalle'"
+            class="flex items-center justify-center w-7 h-7 rounded-full hover:opacity-80 transition"
+            :class="v.mantenimiento_vencido ? 'bg-red-100' : 'bg-amber-100'">
+            <svg class="w-4 h-4" :class="v.mantenimiento_vencido ? 'text-red-600' : 'text-amber-600'"
+              fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l6.28 11.18c.75 1.334-.213 2.987-1.742 2.987H3.72c-1.53 0-2.493-1.653-1.743-2.987l6.28-11.18zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-.25-6.25a.75.75 0 00-1.5 0v3.5a.75.75 0 001.5 0v-3.5z" clip-rule="evenodd" />
+            </svg>
+          </button>
           <span :class="estadoBadge(v.estado)" class="px-2 py-0.5 rounded-full text-xs font-medium">
             {{ v.estado }}
           </span>
@@ -69,6 +70,40 @@
             class="text-xs text-gray-600 hover:text-gray-900 font-medium border border-gray-300 px-3 py-1 rounded-lg">
             Editar
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Alertas de Mantenimiento -->
+    <div v-if="modalAlertas.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[85vh]">
+        <div class="flex items-center justify-between px-6 py-4 flex-shrink-0" style="background-color:#1e3a5f;">
+          <div>
+            <h2 class="text-lg font-bold text-white">{{ modalAlertas.vehiculo?.placa }}</h2>
+            <p class="text-xs text-blue-200 mt-0.5">
+              {{ modalAlertas.vehiculo?.marca }} {{ modalAlertas.vehiculo?.modelo }} ·
+              {{ modalAlertas.vehiculo?.kilometraje_actual?.toLocaleString() }} km actuales
+            </p>
+          </div>
+          <button @click="modalAlertas.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
+        </div>
+        <div class="p-6 overflow-y-auto space-y-2">
+          <div v-for="p in planesAlerta(modalAlertas.vehiculo)" :key="p.plan_id"
+            class="rounded-lg px-4 py-2.5 flex justify-between items-center gap-3"
+            :class="p.vencido ? 'bg-red-50' : 'bg-amber-50'">
+            <div class="min-w-0">
+              <p class="text-sm font-medium text-gray-800">{{ p.nombre }}</p>
+              <p class="text-xs text-gray-500 mt-0.5">Hito: {{ p.km_hito.toLocaleString() }} km</p>
+            </div>
+            <span class="flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-medium"
+              :class="p.vencido ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'">
+              {{ p.vencido ? '⚠ Vencido' : 'Próximo' }}
+            </span>
+          </div>
+          <div class="flex justify-end mt-2">
+            <button @click="modalAlertas.show = false"
+              class="px-4 py-2 text-sm border rounded-lg text-gray-600 hover:text-gray-800">Cerrar</button>
+          </div>
         </div>
       </div>
     </div>
@@ -168,6 +203,7 @@ const vehiculos = ref([])
 const guardando = ref(false)
 const error = ref('')
 const modal = ref({ show: false, id: null })
+const modalAlertas = ref({ show: false, vehiculo: null })
 const form = ref({})
 const kmMinimo = ref(0)
 const filtroMtto = ref('') // '' | 'vencido' | 'proximo'
@@ -182,7 +218,11 @@ const vehiculosFiltrados = computed(() => {
 })
 
 function planesAlerta(v) {
-  return (v.planes_estado || []).filter(p => p.vencido || p.proximo)
+  return (v?.planes_estado || []).filter(p => p.vencido || p.proximo)
+}
+
+function abrirAlertas(v) {
+  modalAlertas.value = { show: true, vehiculo: v }
 }
 
 function estadoBadge(e) {
