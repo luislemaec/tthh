@@ -47,12 +47,12 @@
 
   // Reglas por tipo de acción
   $declaracionSI = in_array($tipo, ['INGRESO', 'DESTITUCION', 'CESACION DE FUNCIONES']);
-  $showActual    = $tipo !== 'INGRESO';
-  $showPropuesta = !in_array($tipo, ['DESTITUCION', 'CESACION DE FUNCIONES', 'VACACIONES']);
-  $fillPosesion  = $tipo !== 'INGRESO';
+  $showActual    = !in_array($tipo, ['INGRESO', 'REINGRESO']);
+  $showPropuesta = !in_array($tipo, ['DESTITUCION', 'CESACION DE FUNCIONES', 'VACACIONES', 'COMISION DE SERVICIOS']);
+  $fillPosesion  = !in_array($tipo, ['INGRESO', 'COMISION DE SERVICIOS', 'REINGRESO']);
   $ubicacion     = strtoupper($config['UBICACION_DEFAULT'] ?? 'QUITO');
-  // Para INGRESO la unidad propuesta es el propio departamento del empleado (no hay titular)
-  $deptPropuestoFinal = $tipo === 'INGRESO' ? $deptActual : $deptPropuesto;
+  // INGRESO y REINGRESO: la unidad propuesta es el propio departamento del empleado (no hay titular)
+  $deptPropuestoFinal = in_array($tipo, ['INGRESO', 'REINGRESO']) ? $deptActual : $deptPropuesto;
 @endphp
 
 {{-- ==================== PÁGINA 1 ==================== --}}
@@ -191,7 +191,7 @@
   </table>
   <div style="font-size:7.5pt; border-top:1px solid #ccc; margin-top:2px; padding-top:2px;">
     EN CASO DE REQUERIR ESPECIFICACIÓN DE LO SELECCIONADO:
-    <span style="border-bottom:1px solid #000; display:inline-block; width:55%;">&nbsp;</span>
+    <span style="border-bottom:1px solid #000; display:inline-block; width:55%;">{{ $accion->especificacion ?? '' }}</span>
   </div>
   <div style="font-size:7.5pt; margin-top:2px;">
     <b>* PRESENTÓ LA DECLARACIÓN JURADA</b> (número 2 del art. 3 RLOSEP) &nbsp;

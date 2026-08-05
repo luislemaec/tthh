@@ -131,13 +131,14 @@ class AccionPersonalController extends Controller
     // POST /api/acciones-personal  → crea en BORRADOR sin número
     public function store(Request $request)
     {
-        $tiposSinPropuesta  = ['DESTITUCION', 'CESACION DE FUNCIONES', 'VACACIONES'];
-        $tiposConFechaFin   = ['SUBROGACION', 'VACACIONES'];
+        $tiposSinPropuesta  = ['DESTITUCION', 'CESACION DE FUNCIONES', 'VACACIONES', 'COMISION DE SERVICIOS'];
+        $tiposSinActual     = ['INGRESO', 'REINGRESO'];
+        $tiposConFechaFin   = ['SUBROGACION', 'VACACIONES', 'COMISION DE SERVICIOS'];
         $conPropuesta       = !in_array($request->tipo_accion, $tiposSinPropuesta);
         $fechaFinRequerida  = in_array($request->tipo_accion, $tiposConFechaFin);
 
         $request->validate([
-            "tipo_accion"            => "required|in:ENCARGO,SUBROGACION,INGRESO,VACACIONES,DESTITUCION,CESACION DE FUNCIONES",
+            "tipo_accion"            => "required|in:ENCARGO,SUBROGACION,INGRESO,VACACIONES,DESTITUCION,CESACION DE FUNCIONES,COMISION DE SERVICIOS,REINGRESO",
             "fecha_elaboracion"      => "required|date",
             "id_emp"                 => "required|string",
             "fecha_inicio"           => "required|date",
@@ -152,9 +153,9 @@ class AccionPersonalController extends Controller
         ]);
 
         $emp          = Empleado::findOrFail($request->id_emp);
-        $esIngreso    = $request->tipo_accion === 'INGRESO';
+        $sinActual    = in_array($request->tipo_accion, ['INGRESO', 'REINGRESO']);
         $propuestoRem = (float) $request->propuesto_remuneracion;
-        $actualRem    = $esIngreso ? 0.0 : (float) ($emp->sueldo ?? 0);
+        $actualRem    = $sinActual ? 0.0 : (float) ($emp->sueldo ?? 0);
         $diferencial  = max(0, $propuestoRem - $actualRem);
 
         // Firmantes: usar los del form o pre-llenar desde configuración
@@ -172,14 +173,14 @@ class AccionPersonalController extends Controller
             "fecha_inicio"              => $request->fecha_inicio,
             "fecha_fin"                 => $request->fecha_fin ?? null,
             "motivacion"                => $request->motivacion,
-            "actual_cargo"              => $esIngreso ? null : $emp->cargo_empleado,
-            "actual_grupo_ocup"         => $esIngreso ? null : $emp->grupo_ocupacional,
-            "actual_grado"              => $esIngreso ? null : $emp->nivel,
+            "actual_cargo"              => $sinActual ? null : $emp->cargo_empleado,
+            "actual_grupo_ocup"         => $sinActual ? null : $emp->grupo_ocupacional,
+            "actual_grado"              => $sinActual ? null : $emp->nivel,
             "actual_remuneracion"       => $actualRem,
-            "actual_partida"            => $esIngreso ? null : ($emp->partida_presupuestaria
+            "actual_partida"            => $sinActual ? null : ($emp->partida_presupuestaria
                 ? ($emp->partida_presupuestaria . ($emp->partida_individual ? "-{$emp->partida_individual}" : ""))
                 : null),
-            "actual_proceso_inst"       => $esIngreso ? null : $emp->proceso_institucional,
+            "actual_proceso_inst"       => $sinActual ? null : $emp->proceso_institucional,
             "propuesto_cargo"           => $request->propuesto_cargo,
             "propuesto_grupo_ocup"      => $request->propuesto_grupo_ocup,
             "propuesto_grado"           => $request->propuesto_grado,
@@ -194,6 +195,7 @@ class AccionPersonalController extends Controller
             "firmante_autoridad_nombre" => strtoupper(trim($request->firmante_autoridad_nombre ?? $cfgF['FIRMANTE_AUTORIDAD_NOMBRE'] ?? '')),
             "firmante_autoridad_cargo"  => strtoupper(trim($request->firmante_autoridad_cargo  ?? $cfgF['FIRMANTE_AUTORIDAD_CARGO']  ?? '')),
             "medio"                     => in_array($request->medio, ['DIGITAL', 'MANUAL']) ? $request->medio : 'DIGITAL',
+            "especificacion"            => $request->especificacion ? strtoupper(trim($request->especificacion)) : null,
         ]);
 
         return response()->json($accion->load(["empleado", "titular"]), 201);
@@ -239,6 +241,7 @@ class AccionPersonalController extends Controller
             'firmante_autoridad_nombre' => 'nullable|string|max:200',
             'firmante_autoridad_cargo' => 'nullable|string|max:200',
             'medio'                    => 'nullable|in:DIGITAL,MANUAL',
+            'especificacion'           => 'nullable|string|max:300',
         ]);
 
         $accion = AccionPersonal::findOrFail($id);
@@ -255,6 +258,7 @@ class AccionPersonalController extends Controller
             'firmante_autoridad_nombre' => strtoupper(trim($request->firmante_autoridad_nombre ?? '')),
             'firmante_autoridad_cargo' => strtoupper(trim($request->firmante_autoridad_cargo  ?? '')),
             'medio'                    => in_array($request->medio, ['DIGITAL', 'MANUAL']) ? $request->medio : $accion->medio,
+            'especificacion'           => $request->has('especificacion') ? ($request->especificacion ? strtoupper(trim($request->especificacion)) : null) : $accion->especificacion,
             'updated_at'               => now(),
         ]);
 

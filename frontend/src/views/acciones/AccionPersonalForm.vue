@@ -22,6 +22,8 @@
               <option value="VACACIONES">Vacaciones</option>
               <option value="DESTITUCION">Destitución</option>
               <option value="CESACION DE FUNCIONES">Cesación de Funciones</option>
+              <option value="COMISION DE SERVICIOS">Comisión de Servicios</option>
+              <option value="REINGRESO">Reingreso</option>
             </select>
           </div>
           <div>
@@ -86,8 +88,8 @@
           </div>
         </div>
 
-        <!-- INGRESO: solo muestra nombre/CI, no situación actual -->
-        <div v-if="empleadoSeleccionado && form.tipo_accion === 'INGRESO'" class="bg-green-50 border border-green-200 rounded-lg p-4">
+        <!-- INGRESO / REINGRESO: solo muestra nombre/CI, no situación actual -->
+        <div v-if="empleadoSeleccionado && sinActual" class="bg-green-50 border border-green-200 rounded-lg p-4">
           <div class="flex items-center justify-between">
             <div>
               <p class="text-sm font-semibold text-green-800">{{ empleadoSeleccionado.apellido_emp }}, {{ empleadoSeleccionado.nombre_emp }}</p>
@@ -98,7 +100,7 @@
         </div>
 
         <!-- Otros tipos: muestra situación actual completa -->
-        <div v-else-if="empleadoSeleccionado" class="bg-gray-50 rounded-lg p-4">
+        <div v-else-if="empleadoSeleccionado && !sinActual" class="bg-gray-50 rounded-lg p-4">
           <div class="flex items-center justify-between mb-3">
             <p class="text-sm font-semibold text-gray-700">Situación Actual — cargada automáticamente</p>
             <button type="button" @click="limpiarEmpleado" class="text-red-400 hover:text-red-600 text-xs">✕ Quitar</button>
@@ -206,6 +208,20 @@
         <TipTapEditor v-model="form.motivacion" minHeight="180px" />
       </div>
 
+      <!-- Especificación (visible cuando aplica) -->
+      <div v-if="conEspecificacion" class="bg-white rounded-xl shadow p-6 space-y-3">
+        <h2 class="text-lg font-semibold text-gray-700 border-b pb-2">Especificación</h2>
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">
+            En caso de requerir especificación de lo seleccionado
+          </label>
+          <input v-model="form.especificacion" type="text"
+            style="text-transform:uppercase"
+            placeholder="Ej: COMISIÓN DE SERVICIOS SIN REMUNERACIÓN"
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+        </div>
+      </div>
+
       <!-- Firmantes -->
       <div class="bg-white rounded-xl shadow p-6 space-y-4">
         <h2 class="text-lg font-semibold text-gray-700 border-b pb-2">Responsables de Aprobación</h2>
@@ -275,10 +291,12 @@ import TipTapEditor from "@/components/TipTapEditor.vue"
 const router = useRouter()
 
 // Reglas por tipo
-const TIPOS_CON_PROPUESTA = ['ENCARGO', 'SUBROGACION', 'INGRESO']
-const TIPOS_CON_TITULAR   = ['ENCARGO', 'SUBROGACION']
-const TIPOS_CON_FECHA_FIN = ['ENCARGO', 'SUBROGACION', 'VACACIONES']
-const TIPOS_FECHA_FIN_REQ = ['SUBROGACION', 'VACACIONES']
+const TIPOS_CON_PROPUESTA    = ['ENCARGO', 'SUBROGACION', 'INGRESO', 'REINGRESO']
+const TIPOS_SIN_ACTUAL       = ['INGRESO', 'REINGRESO']
+const TIPOS_CON_TITULAR      = ['ENCARGO', 'SUBROGACION']
+const TIPOS_CON_FECHA_FIN    = ['ENCARGO', 'SUBROGACION', 'VACACIONES', 'COMISION DE SERVICIOS']
+const TIPOS_FECHA_FIN_REQ    = ['SUBROGACION', 'VACACIONES', 'COMISION DE SERVICIOS']
+const TIPOS_CON_ESPECIFICACION = ['COMISION DE SERVICIOS', 'REINGRESO']
 
 const form = ref({
   tipo_accion:               "",
@@ -299,6 +317,7 @@ const form = ref({
   firmante_autoridad_nombre: "",
   firmante_autoridad_cargo:  "",
   medio:                     "DIGITAL",
+  especificacion:            "",
 })
 
 const hastaNuevaOrden      = ref(false)
@@ -315,10 +334,12 @@ let busquedaTimer          = null
 let titularTimer           = null
 
 // Computed: reglas por tipo
-const conPropuesta     = computed(() => TIPOS_CON_PROPUESTA.includes(form.value.tipo_accion))
-const conTitular       = computed(() => TIPOS_CON_TITULAR.includes(form.value.tipo_accion))
-const conFechaFin      = computed(() => TIPOS_CON_FECHA_FIN.includes(form.value.tipo_accion))
+const conPropuesta      = computed(() => TIPOS_CON_PROPUESTA.includes(form.value.tipo_accion))
+const sinActual         = computed(() => TIPOS_SIN_ACTUAL.includes(form.value.tipo_accion))
+const conTitular        = computed(() => TIPOS_CON_TITULAR.includes(form.value.tipo_accion))
+const conFechaFin       = computed(() => TIPOS_CON_FECHA_FIN.includes(form.value.tipo_accion))
 const fechaFinRequerida = computed(() => TIPOS_FECHA_FIN_REQ.includes(form.value.tipo_accion))
+const conEspecificacion = computed(() => TIPOS_CON_ESPECIFICACION.includes(form.value.tipo_accion))
 
 // Labels dinámicos
 const labelFechaInicio = computed(() => {
@@ -326,6 +347,8 @@ const labelFechaInicio = computed(() => {
     case 'INGRESO':               return 'Fecha de Posesión *'
     case 'DESTITUCION':           return 'Fecha de Destitución *'
     case 'CESACION DE FUNCIONES': return 'Fecha de Cesación *'
+    case 'COMISION DE SERVICIOS': return 'Fecha de Inicio de Comisión *'
+    case 'REINGRESO':             return 'Fecha de Reingreso *'
     default:                      return 'Vigente desde *'
   }
 })
@@ -340,15 +363,17 @@ const tituloEmpleado = computed(() => {
     case 'DESTITUCION':
     case 'CESACION DE FUNCIONES': return 'Servidor público afectado'
     case 'VACACIONES':            return 'Empleado que sale de vacaciones'
+    case 'COMISION DE SERVICIOS': return 'Servidor en comisión'
+    case 'REINGRESO':             return 'Servidor que regresa'
     default:                      return 'Empleado que recibe el encargo / subrogación'
   }
 })
 
-const tituloPropuesta = computed(() =>
-  form.value.tipo_accion === 'INGRESO'
-    ? 'Situación Propuesta (cargo de ingreso)'
-    : 'Situación Propuesta (cargo a encargar/subrogar)'
-)
+const tituloPropuesta = computed(() => {
+  if (form.value.tipo_accion === 'INGRESO')   return 'Situación Propuesta (cargo de ingreso)'
+  if (form.value.tipo_accion === 'REINGRESO') return 'Situación Propuesta (cargo de reingreso)'
+  return 'Situación Propuesta (cargo a encargar/subrogar)'
+})
 
 // Monto proporcional: solo con diferencial > 0 y ambas fechas
 const montoProporacional = computed(() => {
@@ -380,6 +405,9 @@ watch(() => form.value.tipo_accion, () => {
     busquedaTitular.value     = ""
     resultadosTitular.value   = []
   }
+  if (!TIPOS_CON_ESPECIFICACION.includes(form.value.tipo_accion)) {
+    form.value.especificacion = ""
+  }
 })
 
 watch(hastaNuevaOrden, (val) => {
@@ -404,8 +432,8 @@ const seleccionarEmpleado = (e) => {
   busquedaEmp.value   = ""
   resultadosEmp.value = []
 
-  // INGRESO: auto-llenar propuesta desde la ficha del empleado
-  if (form.value.tipo_accion === 'INGRESO') {
+  // INGRESO / REINGRESO: auto-llenar propuesta desde la ficha del empleado
+  if (TIPOS_SIN_ACTUAL.includes(form.value.tipo_accion)) {
     form.value.propuesto_cargo        = e.cargo_empleado         || ""
     form.value.propuesto_grupo_ocup   = e.grupo_ocupacional      || ""
     form.value.propuesto_grado        = e.nivel                  || ""
