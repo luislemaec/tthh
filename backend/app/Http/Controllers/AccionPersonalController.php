@@ -193,6 +193,7 @@ class AccionPersonalController extends Controller
             "firmante_th_cargo"         => strtoupper(trim($request->firmante_th_cargo        ?? $cfgF['FIRMANTE_TH_CARGO']         ?? '')),
             "firmante_autoridad_nombre" => strtoupper(trim($request->firmante_autoridad_nombre ?? $cfgF['FIRMANTE_AUTORIDAD_NOMBRE'] ?? '')),
             "firmante_autoridad_cargo"  => strtoupper(trim($request->firmante_autoridad_cargo  ?? $cfgF['FIRMANTE_AUTORIDAD_CARGO']  ?? '')),
+            "medio"                     => in_array($request->medio, ['DIGITAL', 'MANUAL']) ? $request->medio : 'DIGITAL',
         ]);
 
         return response()->json($accion->load(["empleado", "titular"]), 201);
@@ -237,6 +238,7 @@ class AccionPersonalController extends Controller
             'firmante_th_cargo'        => 'nullable|string|max:200',
             'firmante_autoridad_nombre' => 'nullable|string|max:200',
             'firmante_autoridad_cargo' => 'nullable|string|max:200',
+            'medio'                    => 'nullable|in:DIGITAL,MANUAL',
         ]);
 
         $accion = AccionPersonal::findOrFail($id);
@@ -252,6 +254,7 @@ class AccionPersonalController extends Controller
             'firmante_th_cargo'        => strtoupper(trim($request->firmante_th_cargo        ?? '')),
             'firmante_autoridad_nombre' => strtoupper(trim($request->firmante_autoridad_nombre ?? '')),
             'firmante_autoridad_cargo' => strtoupper(trim($request->firmante_autoridad_cargo  ?? '')),
+            'medio'                    => in_array($request->medio, ['DIGITAL', 'MANUAL']) ? $request->medio : $accion->medio,
             'updated_at'               => now(),
         ]);
 
@@ -291,6 +294,7 @@ class AccionPersonalController extends Controller
             "FIRMANTE_TH_CARGO",
             "FIRMANTE_AUTORIDAD_NOMBRE",
             "FIRMANTE_AUTORIDAD_CARGO",
+            "UBICACION_DEFAULT",
         ])->pluck("valor", "concepto");
 
         // Firmantes: primero desde la acción, fallback a configuración global

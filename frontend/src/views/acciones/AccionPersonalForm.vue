@@ -235,6 +235,14 @@
               style="text-transform:uppercase"
               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Medio</label>
+            <select v-model="form.medio"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
+              <option value="DIGITAL">DIGITAL</option>
+              <option value="MANUAL">MANUAL</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -290,6 +298,7 @@ const form = ref({
   firmante_th_cargo:         "",
   firmante_autoridad_nombre: "",
   firmante_autoridad_cargo:  "",
+  medio:                     "DIGITAL",
 })
 
 const hastaNuevaOrden      = ref(false)

@@ -227,6 +227,14 @@
               style="text-transform:uppercase"
               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Medio</label>
+            <select v-model="modalEditar.medio"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
+              <option value="DIGITAL">DIGITAL</option>
+              <option value="MANUAL">MANUAL</option>
+            </select>
+          </div>
         </div>
       </div>
       <div class="flex justify-end gap-3 pt-2">
@@ -256,6 +264,7 @@ const modalEditar    = ref({
   fecha_elaboracion: "", motivacion: "",
   firmante_th_nombre: "", firmante_th_cargo: "",
   firmante_autoridad_nombre: "", firmante_autoridad_cargo: "",
+  medio: "DIGITAL",
 })
 
 const fmtFecha = (f) => {
@@ -353,6 +362,7 @@ const abrirEditarBorrador = (a) => {
     firmante_th_cargo:         a.firmante_th_cargo         ?? "",
     firmante_autoridad_nombre: a.firmante_autoridad_nombre ?? "",
     firmante_autoridad_cargo:  a.firmante_autoridad_cargo  ?? "",
+    medio:                     a.medio ?? "DIGITAL",
   }
 }
 
@@ -366,6 +376,7 @@ const guardarBorrador = async () => {
       firmante_th_cargo:         modalEditar.value.firmante_th_cargo,
       firmante_autoridad_nombre: modalEditar.value.firmante_autoridad_nombre,
       firmante_autoridad_cargo:  modalEditar.value.firmante_autoridad_cargo,
+      medio:                     modalEditar.value.medio,
     })
     modalEditar.value.show = false
     cargar()
