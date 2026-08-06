@@ -43,6 +43,7 @@
           <thead class="bg-gray-50 border-b">
             <tr>
               <th class="text-center px-3 py-3 text-gray-600 font-medium w-10">Nro</th>
+              <th class="text-left px-3 py-3 text-gray-600 font-medium">Cédula</th>
               <th class="text-left px-3 py-3 text-gray-600 font-medium">Apellidos y Nombres</th>
               <th class="text-left px-3 py-3 text-gray-600 font-medium">Dirección / Área</th>
               <th class="text-left px-3 py-3 text-gray-600 font-medium">Dirección Institucional</th>
@@ -54,13 +55,14 @@
           </thead>
           <tbody>
             <tr v-if="cargando">
-              <td colspan="8" class="text-center py-10 text-gray-400">Cargando...</td>
+              <td colspan="9" class="text-center py-10 text-gray-400">Cargando...</td>
             </tr>
             <tr v-else-if="datos.length === 0">
-              <td colspan="8" class="text-center py-10 text-gray-400">Presione "Generar" para cargar el directorio</td>
+              <td colspan="9" class="text-center py-10 text-gray-400">Presione "Generar" para cargar el directorio</td>
             </tr>
             <tr v-for="r in datos" :key="r.nro" class="border-b hover:bg-gray-50">
               <td class="px-3 py-2 text-center text-gray-400">{{ r.nro }}</td>
+              <td class="px-3 py-2 font-mono text-xs text-gray-600">{{ r.cedula }}</td>
               <td class="px-3 py-2 font-medium">{{ r.nombres }}</td>
               <td class="px-3 py-2 text-gray-600 text-xs">{{ r.direccion }}</td>
               <td class="px-3 py-2 text-gray-600 text-xs">{{ r.direccion_institucional }}</td>
@@ -79,6 +81,7 @@
           <thead class="bg-gray-50 border-b">
             <tr>
               <th class="text-center px-3 py-3 text-gray-600 font-medium w-10">Nro</th>
+              <th class="text-left px-3 py-3 text-gray-600 font-medium">Cédula</th>
               <th class="text-left px-3 py-3 text-gray-600 font-medium">Cargo / Denominación del Puesto</th>
               <th class="text-left px-3 py-3 text-gray-600 font-medium">Tipo Contrato</th>
               <th class="text-left px-3 py-3 text-gray-600 font-medium">Partida Individual</th>
@@ -91,13 +94,14 @@
           </thead>
           <tbody>
             <tr v-if="cargando">
-              <td colspan="9" class="text-center py-10 text-gray-400">Cargando...</td>
+              <td colspan="10" class="text-center py-10 text-gray-400">Cargando...</td>
             </tr>
             <tr v-else-if="datos.length === 0">
-              <td colspan="9" class="text-center py-10 text-gray-400">Presione "Generar" para cargar el reporte</td>
+              <td colspan="10" class="text-center py-10 text-gray-400">Presione "Generar" para cargar el reporte</td>
             </tr>
             <tr v-for="r in datos" :key="r.nro" class="border-b hover:bg-gray-50">
               <td class="px-3 py-2 text-center text-gray-400">{{ r.nro }}</td>
+              <td class="px-3 py-2 font-mono text-xs text-gray-600">{{ r.cedula }}</td>
               <td class="px-3 py-2 font-medium">{{ r.cargo }}</td>
               <td class="px-3 py-2 text-gray-600 text-xs">{{ r.tipo_contrato }}</td>
               <td class="px-3 py-2 text-gray-600 text-xs">{{ r.partida_individual || '—' }}</td>

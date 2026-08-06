@@ -318,29 +318,47 @@ Calculado en `calcularSaldoDisponible()` — usa helper `tasaVacaciones()` en Va
 
 ### Acciones de Personal (`dbo.acc_accion_personal`)
 
-| Tipo | fecha_fin | Sit. Propuesta | Buscador Titular | Decl. Jurada | Auto-cierra |
-|---|---|---|---|---|---|
-| INGRESO | No aplica | Requerida (auto-llena) | No | Sí | No |
-| ENCARGO | Opcional | Requerida | Sí | No | No |
-| SUBROGACION | Requerida | Requerida | Sí | No | Sí (al vencer) |
-| VACACIONES | Requerida | No aplica | No | No | Sí (al vencer) |
-| DESTITUCION | No aplica | No aplica | No | Sí | No |
-| CESACION | No aplica | No aplica | No | Sí | No |
+| Tipo | fecha_fin | Sit. Actual | Sit. Propuesta | Buscador Titular | Decl. Jurada | Auto-cierra |
+|---|---|---|---|---|---|---|
+| INGRESO | No aplica | No aplica | Requerida (auto-llena) | No | Sí | No |
+| ENCARGO | Opcional | Empleado | Requerida | Sí | No | No |
+| SUBROGACION | Requerida | Empleado | Requerida | Sí | No | Sí (al vencer) |
+| VACACIONES | Requerida | Empleado | No aplica | No | No | Sí (al vencer) |
+| DESTITUCION | No aplica | Empleado | No aplica | No | Sí | No |
+| CESACION DE FUNCIONES | No aplica | Empleado | No aplica | No | Sí | No |
+| COMISION DE SERVICIOS | Requerida | Empleado | No aplica | No | No | No |
+| REINGRESO | No aplica | No aplica | Empleado (auto-llena) | No | No | No |
 
 Auto-cierre corre en cada `index()` para SUBROGACION y VACACIONES con `fecha_fin < hoy`.
+
+**Flujo de estado del empleado en comisión — REGLA CRÍTICA:**
+- **COMISION DE SERVICIOS (sale):** el empleado debe estar `ACTIVO` al crear la acción. Después de crear y procesar la acción, TH pasa al empleado a `INACTIVO` en su ficha con `motivo_salida = COMISIÓN DE SERVICIOS`.
+- **REINGRESO (retorna):** TH primero reactiva al empleado en su ficha (`ACTIVO`, `motivo_reactivacion = RETORNO DE COMISIÓN DE SERVICIOS`). Después crea la acción de REINGRESO. El buscador filtra empleados ACTIVOS — si el empleado sigue INACTIVO no aparece en la búsqueda.
+
+**Campo `especificacion` — migración `000097`:** `VARCHAR(300) NULL` en `dbo.acc_accion_personal`. Visible en el formulario solo para `COMISION DE SERVICIOS` y `REINGRESO`. TH escribe libremente el detalle que va en la línea "EN CASO DE REQUERIR ESPECIFICACIÓN DE LO SELECCIONADO" del PDF. Ejemplos: `COMISIÓN DE SERVICIOS SIN REMUNERACIÓN` / `REINTEGRO DE COMISIÓN DE SERVICIOS SIN REMUNERACIÓN`. También editable desde el modal "Editar Borrador".
+
+**Campo `medio` — migración `000095`:** `VARCHAR(10) NULL DEFAULT 'DIGITAL'`. Select DIGITAL/MANUAL en el formulario y modal editar borrador. Se muestra en la sección "USO EXCLUSIVO PARA TALENTO HUMANO" del PDF.
+
+**Reglas por tipo en el PDF (`accion_personal.blade.php`):**
+- `$showActual`: false para INGRESO y REINGRESO; true para el resto
+- `$showPropuesta`: false para DESTITUCION, CESACION DE FUNCIONES, VACACIONES, COMISION DE SERVICIOS; true para el resto
+- `$fillPosesion`: false para INGRESO, COMISION DE SERVICIOS, REINGRESO; true para el resto
+- `$declaracionSI`: true solo para INGRESO, DESTITUCION, CESACION DE FUNCIONES
+- `$deptPropuestoFinal`: INGRESO y REINGRESO usan `$deptActual` (no hay titular); resto usa `$deptPropuesto`
+- **BORRADOR**: banda roja con fondo `#b91c1c` y texto blanco en la parte superior del PDF (en flujo normal, no `position:fixed` para evitar solapamiento con DomPDF). Desaparece al procesar.
 
 **Estados del flujo:** `BORRADOR → ACTIVO` (estado final). TH ACCIONES PERSONAL crea en BORRADOR; `procesar()` pasa a ACTIVO y asigna `numero_accion`. `numero_accion` es nullable — se asigna al procesar, no al crear.
 
 **Métodos del controlador:**
 - `procesar($id)` — `PATCH /api/acciones-personal/{id}/procesar` — cambia estado a ACTIVO, asigna número de acción, sube PDF firmado a Alfresco
-- `editarBorrador($id)` — `PATCH /api/acciones-personal/{id}/editar-borrador` — permite modificar motivación, fecha de elaboración y firmantes mientras está en BORRADOR
+- `editarBorrador($id)` — `PATCH /api/acciones-personal/{id}/editar-borrador` — permite modificar motivación, fecha de elaboración, firmantes, medio y especificación mientras está en BORRADOR
 
 **PDFs y reportes:**
 - `accion_personal.blade.php` — PDF individual; usa `{!! !!}` (no `{{ }}`) para entidades HTML como `&nbsp;` en checkboxes y para el campo `motivacion` cuando contiene HTML de TipTap
 - `acc_lista.blade.php` — PDF de listado de acciones con filtros
 - Excel export disponible (requiere `phpoffice/phpspreadsheet` instalado en servidor: `composer require phpoffice/phpspreadsheet`)
 - PDF firmado se sube a Alfresco en `acciones-personal/{año}/`
-- **Vista previa en BORRADOR**: el endpoint `GET /api/acciones-personal/{id}/pdf` funciona en cualquier estado. El PDF muestra `— BORRADOR — BORRADOR — BORRADOR —` en gris encima del encabezado cuando `$accion->estado === 'BORRADOR'`; esa línea desaparece al procesar.
+- **Vista previa en BORRADOR**: el endpoint `GET /api/acciones-personal/{id}/pdf` funciona en cualquier estado. El PDF muestra una banda roja "** BORRADOR - NO VALIDO **" cuando `$accion->estado === 'BORRADOR'`; desaparece al procesar.
 
 **Campo `motivacion` con HTML (TipTap):** el editor TipTap en el formulario guarda HTML (`<p>`, `<strong>`, etc.). El blade detecta si el contenido es HTML con `str_contains($motivacion, '<p>')` y lo renderiza con `{!! !!}`; si es texto plano (registros anteriores) usa `{{ }}` con `white-space:pre-wrap`.
 

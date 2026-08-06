@@ -38,7 +38,7 @@ class LotaipController extends Controller
 
         $empleados = $this->empleadosBase()
             ->select(
-                'e.id_emp', 'e.apellido_emp', 'e.nombre_emp',
+                'e.id_emp', 'e.identificacion', 'e.apellido_emp', 'e.nombre_emp',
                 'd.nombre_depto', 'e.extension'
             )
             ->get();
@@ -61,6 +61,7 @@ class LotaipController extends Controller
         $datos = $empleados->values()->map(function ($e, $i) use ($emails, $direccionInstitucional, $ciudad, $telefonoInstitucional) {
             return [
                 'nro'                    => $i + 1,
+                'cedula'                 => $e->identificacion ?? '',
                 'nombres'                => trim($e->apellido_emp) . ' ' . trim($e->nombre_emp),
                 'direccion'              => $e->nombre_depto,
                 'direccion_institucional'=> $direccionInstitucional,
@@ -82,7 +83,7 @@ class LotaipController extends Controller
     {
         $empleados = $this->empleadosBase()
             ->select(
-                'e.cargo_empleado', 'e.tipo_contrato', 'e.partida_individual',
+                'e.identificacion', 'e.cargo_empleado', 'e.tipo_contrato', 'e.partida_individual',
                 'e.nivel', 'e.sueldo'
             )
             ->get();
@@ -90,6 +91,7 @@ class LotaipController extends Controller
         $datos = $empleados->values()->map(function ($e, $i) {
             return [
                 'nro'                    => $i + 1,
+                'cedula'                 => $e->identificacion ?? '',
                 'cargo'                  => $e->cargo_empleado ?? '',
                 'tipo_contrato'          => $e->tipo_contrato  ?? '',
                 'partida_individual'     => $e->partida_individual ?? '',
