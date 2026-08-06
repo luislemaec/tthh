@@ -777,32 +777,31 @@ const guardar = async () => {
   guardando.value = true
   error.value = ""
 
-  // Validación manual (evita bloqueo silencioso de HTML5 en campos required dentro de tabs ocultos)
-  const erroresValidacion = []
-  if (!form.value.nombres?.trim())              erroresValidacion.push({ tab: 'personal', msg: 'Nombres' })
-  if (!form.value.apellidos?.trim())             erroresValidacion.push({ tab: 'personal', msg: 'Apellidos' })
-  if (!form.value.cedula?.trim())                erroresValidacion.push({ tab: 'personal', msg: 'Cédula / Pasaporte' })
-  if (!form.value.departamento_id)               erroresValidacion.push({ tab: 'cargo',    msg: 'Departamento' })
-  if (!form.value.cargo_empleado?.trim())        erroresValidacion.push({ tab: 'cargo',    msg: 'Cargo' })
-  if (!form.value.tipo_contrato)                 erroresValidacion.push({ tab: 'cargo',    msg: 'Tipo de Contrato' })
-  if (!form.value.modalidad_laboral)             erroresValidacion.push({ tab: 'cargo',    msg: 'Modalidad Laboral' })
-  if (!form.value.id_jornada)                    erroresValidacion.push({ tab: 'cargo',    msg: 'Jornada Laboral' })
-  if (!form.value.fecha_ingreso)                 erroresValidacion.push({ tab: 'cargo',    msg: 'Fecha de Ingreso' })
-  if (!form.value.salario && form.value.salario !== 0) erroresValidacion.push({ tab: 'cargo', msg: 'Salario Base' })
-  if (!form.value.grupo_ocupacional?.trim())     erroresValidacion.push({ tab: 'puesto',   msg: 'Grupo Ocupacional' })
-  if (!form.value.nivel)                         erroresValidacion.push({ tab: 'puesto',   msg: 'Grado' })
-  if (!form.value.proceso_institucional)         erroresValidacion.push({ tab: 'puesto',   msg: 'Proceso Institucional' })
-  if (!form.value.partida_individual?.trim())    erroresValidacion.push({ tab: 'puesto',   msg: 'Partida Individual' })
-  if (!form.value.partida_presupuestaria?.trim()) erroresValidacion.push({ tab: 'puesto',  msg: 'Estructura Programática' })
-
-  if (erroresValidacion.length > 0) {
-    tabActivo.value = erroresValidacion[0].tab
-    error.value = 'Complete los campos requeridos: ' + erroresValidacion.map(e => e.msg).join(', ')
-    guardando.value = false
-    return
-  }
-
   try {
+    // Validación manual (evita bloqueo silencioso de HTML5 en campos required dentro de tabs ocultos)
+    const erroresValidacion = []
+    if (!form.value.nombres?.trim())              erroresValidacion.push({ tab: 'personal', msg: 'Nombres' })
+    if (!form.value.apellidos?.trim())             erroresValidacion.push({ tab: 'personal', msg: 'Apellidos' })
+    if (!form.value.cedula?.trim())                erroresValidacion.push({ tab: 'personal', msg: 'Cédula / Pasaporte' })
+    if (!form.value.departamento_id)               erroresValidacion.push({ tab: 'cargo',    msg: 'Departamento' })
+    if (!form.value.cargo_empleado?.trim())        erroresValidacion.push({ tab: 'cargo',    msg: 'Cargo' })
+    if (!form.value.tipo_contrato)                 erroresValidacion.push({ tab: 'cargo',    msg: 'Tipo de Contrato' })
+    if (!form.value.modalidad_laboral)             erroresValidacion.push({ tab: 'cargo',    msg: 'Modalidad Laboral' })
+    if (!form.value.id_jornada)                    erroresValidacion.push({ tab: 'cargo',    msg: 'Jornada Laboral' })
+    if (!form.value.fecha_ingreso)                 erroresValidacion.push({ tab: 'cargo',    msg: 'Fecha de Ingreso' })
+    if (!form.value.salario && form.value.salario !== 0) erroresValidacion.push({ tab: 'cargo', msg: 'Salario Base' })
+    if (!form.value.grupo_ocupacional?.trim())                erroresValidacion.push({ tab: 'puesto', msg: 'Grupo Ocupacional' })
+    if (!form.value.nivel)                                    erroresValidacion.push({ tab: 'puesto', msg: 'Grado' })
+    if (!form.value.proceso_institucional)                    erroresValidacion.push({ tab: 'puesto', msg: 'Proceso Institucional' })
+    if (!String(form.value.partida_individual    ?? '').trim()) erroresValidacion.push({ tab: 'puesto', msg: 'Partida Individual' })
+    if (!String(form.value.partida_presupuestaria ?? '').trim()) erroresValidacion.push({ tab: 'puesto', msg: 'Estructura Programática' })
+
+    if (erroresValidacion.length > 0) {
+      tabActivo.value = erroresValidacion[0].tab
+      error.value = 'Complete los campos requeridos: ' + erroresValidacion.map(e => e.msg).join(', ')
+      return
+    }
+
     const payload = {
       identificacion: form.value.cedula,
       nombre_emp:     form.value.nombres,
