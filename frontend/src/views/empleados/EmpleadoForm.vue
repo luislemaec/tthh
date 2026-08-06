@@ -293,7 +293,7 @@
               <input v-model="form.cargo_empleado" type="text" placeholder="Ej: Analista de Sistemas" class="input-field" />
             </div>
             <div>
-              <label class="label-field">Tipo de Contrato</label>
+              <label class="label-field">Tipo de Contrato *</label>
               <select v-model="form.tipo_contrato" class="input-field">
                 <option value="">Seleccionar...</option>
                 <option value="LOSEP">LOSEP</option>
@@ -308,7 +308,7 @@
               </select>
             </div>
             <div>
-              <label class="label-field">Jornada Laboral</label>
+              <label class="label-field">Jornada Laboral *</label>
               <select v-model="form.id_jornada" class="input-field">
                 <option value="">Seleccionar...</option>
                 <option v-for="j in jornadas" :key="j.id_jornada" :value="j.id_jornada">
@@ -784,7 +784,9 @@ const guardar = async () => {
   if (!form.value.cedula?.trim())                erroresValidacion.push({ tab: 'personal', msg: 'Cédula / Pasaporte' })
   if (!form.value.departamento_id)               erroresValidacion.push({ tab: 'cargo',    msg: 'Departamento' })
   if (!form.value.cargo_empleado?.trim())        erroresValidacion.push({ tab: 'cargo',    msg: 'Cargo' })
+  if (!form.value.tipo_contrato)                 erroresValidacion.push({ tab: 'cargo',    msg: 'Tipo de Contrato' })
   if (!form.value.modalidad_laboral)             erroresValidacion.push({ tab: 'cargo',    msg: 'Modalidad Laboral' })
+  if (!form.value.id_jornada)                    erroresValidacion.push({ tab: 'cargo',    msg: 'Jornada Laboral' })
   if (!form.value.fecha_ingreso)                 erroresValidacion.push({ tab: 'cargo',    msg: 'Fecha de Ingreso' })
   if (!form.value.salario && form.value.salario !== 0) erroresValidacion.push({ tab: 'cargo', msg: 'Salario Base' })
   if (!form.value.grupo_ocupacional?.trim())     erroresValidacion.push({ tab: 'puesto',   msg: 'Grupo Ocupacional' })
