@@ -120,12 +120,12 @@ class LotaipController extends Controller
 
         $verde = '0b5447';
         $headers = [
-            'Nro', 'Apellidos y Nombres', 'Dirección / Área',
+            'Nro', 'Cédula', 'Apellidos y Nombres', 'Dirección / Área',
             'Dirección Institucional', 'Ciudad',
             'Teléfono Institucional', 'Extensión', 'Correo Electrónico',
         ];
-        $cols = ['A','B','C','D','E','F','G','H'];
-        $widths = [6, 35, 30, 35, 18, 22, 12, 35];
+        $cols = ['A','B','C','D','E','F','G','H','I'];
+        $widths = [6, 14, 35, 30, 35, 18, 22, 12, 35];
 
         foreach ($cols as $k => $col) {
             $cell = $col . '1';
@@ -144,7 +144,7 @@ class LotaipController extends Controller
             $r = $i + 2;
             $bg = ($i % 2 === 0) ? 'FFF9FAFB' : 'FFFFFFFF';
             $values = [
-                $row['nro'], $row['nombres'], $row['direccion'],
+                $row['nro'], $row['cedula'], $row['nombres'], $row['direccion'],
                 $row['direccion_institucional'], $row['ciudad'],
                 $row['telefono'], $row['extension'], $row['email'],
             ];
@@ -159,7 +159,7 @@ class LotaipController extends Controller
             $sheet->getStyle('A' . $r)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         }
 
-        $sheet->getStyle('A1:H1')->getAlignment()->setWrapText(false);
+        $sheet->getStyle('A1:I1')->getAlignment()->setWrapText(false);
 
         return $this->streamExcel($spreadsheet, 'LOTAIP_Directorio_' . date('Ymd') . '.xlsx');
     }
@@ -174,12 +174,12 @@ class LotaipController extends Controller
 
         $verde = '0b5447';
         $headers = [
-            'Nro', 'Cargo / Denominación del Puesto', 'Tipo de Contrato',
+            'Nro', 'Cédula', 'Cargo / Denominación del Puesto', 'Tipo de Contrato',
             'Partida Individual', 'Grado', 'Salario Base',
             'Remuneración Anual Unificada', 'Décimo Tercero', 'Décimo Cuarto',
         ];
-        $cols   = ['A','B','C','D','E','F','G','H','I'];
-        $widths = [6, 38, 22, 18, 8, 16, 28, 16, 16];
+        $cols   = ['A','B','C','D','E','F','G','H','I','J'];
+        $widths = [6, 14, 38, 22, 18, 8, 16, 28, 16, 16];
 
         foreach ($cols as $k => $col) {
             $cell = $col . '1';
@@ -198,7 +198,7 @@ class LotaipController extends Controller
             $r = $i + 2;
             $bg = ($i % 2 === 0) ? 'FFF9FAFB' : 'FFFFFFFF';
             $values = [
-                $row['nro'], $row['cargo'], $row['tipo_contrato'],
+                $row['nro'], $row['cedula'], $row['cargo'], $row['tipo_contrato'],
                 $row['partida_individual'], $row['grado'],
                 $row['salario_base'], $row['remuneracion_anual'],
                 $row['decimo_tercero'], $row['decimo_cuarto'],
@@ -213,7 +213,7 @@ class LotaipController extends Controller
             }
             $sheet->getStyle('A' . $r)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
             // Números con 2 decimales
-            foreach (['F', 'G'] as $col) {
+            foreach (['G', 'H'] as $col) {
                 $sheet->getStyle($col . $r)
                     ->getNumberFormat()
                     ->setFormatCode('#,##0.00');
