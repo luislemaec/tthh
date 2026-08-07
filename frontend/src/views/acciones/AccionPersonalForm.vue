@@ -531,7 +531,7 @@ const guardar = async () => {
 
 onMounted(async () => {
   try {
-    const { data } = await api.get("/configuracion/firmantes")
+    const { data } = await api.get("/admin/configuracion/firmantes")
     form.value.firmante_th_nombre        = data.firmante_th_nombre        || ""
     form.value.firmante_th_cargo         = data.firmante_th_cargo         || ""
     form.value.firmante_autoridad_nombre = data.firmante_autoridad_nombre || ""

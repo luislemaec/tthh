@@ -371,7 +371,7 @@ Flujo de firmantes:
 - Al **editar borrador**: el modal muestra los firmantes guardados en la acción; `index()` los puebla desde config para acciones BORRADOR que tengan los campos vacíos (registros previos a migración `000087`)
 - En el **PDF**: usa los firmantes de la acción con fallback a `d2_configuracion` y luego a los parámetros anteriores (`DIRECTOR_TALENTO_HUMANO` / `APROBADOR_ACCION_PERSONAL`)
 - Todos los valores se guardan en MAYÚSCULAS (`strtoupper`)
-- Endpoint config para pre-llenar formulario nuevo: `GET /api/configuracion/firmantes` → `{ firmante_th_nombre, firmante_th_cargo, firmante_autoridad_nombre, firmante_autoridad_cargo }`
+- Endpoint config para pre-llenar formulario nuevo: `GET /api/admin/configuracion/firmantes` → `{ firmante_th_nombre, firmante_th_cargo, firmante_autoridad_nombre, firmante_autoridad_cargo }`
 
 ### Vacaciones — backup al aprobar
 
