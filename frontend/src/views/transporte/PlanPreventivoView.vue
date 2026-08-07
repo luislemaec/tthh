@@ -106,6 +106,10 @@
                 class="text-xs text-gray-600 hover:text-gray-900 font-medium border border-gray-300 px-3 py-1 rounded-lg bg-white">
                 Editar
               </button>
+              <button @click="abrirDuplicar(p)"
+                class="text-xs text-blue-700 hover:text-blue-900 font-medium border border-blue-200 px-3 py-1 rounded-lg bg-white">
+                Duplicar
+              </button>
             </div>
           </div>
         </div>
@@ -362,6 +366,23 @@ function abrirEditar(p) {
     })),
   }
   modal.value = { show: true, id: p.id }
+  error.value = ''
+}
+
+function abrirDuplicar(p) {
+  // Copia el vehículo y las actividades para no volver a digitar todo — km_hito y nombre
+  // quedan vacíos a propósito para forzar a indicar el nuevo hito (es un plan NUEVO, no una edición).
+  form.value = {
+    vehiculo_id: p.vehiculo_id,
+    km_hito:     null,
+    nombre:      '',
+    actividades: (p.actividades || []).map(a => ({
+      tipo_actividad: a.tipo_actividad || 'MO',
+      cantidad:       a.cantidad || 1,
+      actividad:      a.actividad,
+    })),
+  }
+  modal.value = { show: true, id: null }
   error.value = ''
 }
 
