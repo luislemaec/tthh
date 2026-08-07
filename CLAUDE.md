@@ -335,14 +335,14 @@ Auto-cierre corre en cada `index()` para SUBROGACION y VACACIONES con `fecha_fin
 - **COMISION DE SERVICIOS (sale):** el empleado debe estar `ACTIVO` al crear la acción. Después de crear y procesar la acción, TH pasa al empleado a `INACTIVO` en su ficha con `motivo_salida = COMISIÓN DE SERVICIOS`.
 - **REINGRESO (retorna):** TH primero reactiva al empleado en su ficha (`ACTIVO`, `motivo_reactivacion = RETORNO DE COMISIÓN DE SERVICIOS`). Después crea la acción de REINGRESO. El buscador filtra empleados ACTIVOS — si el empleado sigue INACTIVO no aparece en la búsqueda.
 
-**Campo `especificacion` — migración `000097`:** `VARCHAR(300) NULL` en `dbo.acc_accion_personal`. Visible en el formulario solo para `COMISION DE SERVICIOS` y `REINGRESO`. TH escribe libremente el detalle que va en la línea "EN CASO DE REQUERIR ESPECIFICACIÓN DE LO SELECCIONADO" del PDF. Ejemplos: `COMISIÓN DE SERVICIOS SIN REMUNERACIÓN` / `REINTEGRO DE COMISIÓN DE SERVICIOS SIN REMUNERACIÓN`. También editable desde el modal "Editar Borrador".
+**Campo `especificacion` — migración `000097`:** `VARCHAR(300) NULL` en `dbo.acc_accion_personal`. Visible en el formulario solo para `COMISION DE SERVICIOS`, `REINGRESO` y `CESACION DE FUNCIONES`. TH escribe libremente el detalle que va en la línea "EN CASO DE REQUERIR ESPECIFICACIÓN DE LO SELECCIONADO" del PDF. Ejemplos: `COMISIÓN DE SERVICIOS SIN REMUNERACIÓN` / `REINTEGRO DE COMISIÓN DE SERVICIOS SIN REMUNERACIÓN`. También editable desde el modal "Editar Borrador".
 
 **Campo `medio` — migración `000095`:** `VARCHAR(10) NULL DEFAULT 'DIGITAL'`. Select DIGITAL/MANUAL en el formulario y modal editar borrador. Se muestra en la sección "USO EXCLUSIVO PARA TALENTO HUMANO" del PDF.
 
 **Reglas por tipo en el PDF (`accion_personal.blade.php`):**
 - `$showActual`: false para INGRESO y REINGRESO; true para el resto
 - `$showPropuesta`: false para DESTITUCION, CESACION DE FUNCIONES, VACACIONES, COMISION DE SERVICIOS; true para el resto
-- `$fillPosesion`: false para INGRESO, COMISION DE SERVICIOS, REINGRESO; true para el resto
+- `$fillPosesion`: false para INGRESO, COMISION DE SERVICIOS, REINGRESO, CESACION DE FUNCIONES; true para el resto
 - `$declaracionSI`: true solo para INGRESO, DESTITUCION, CESACION DE FUNCIONES
 - `$deptPropuestoFinal`: INGRESO y REINGRESO usan `$deptActual` (no hay titular); resto usa `$deptPropuesto`
 - **BORRADOR**: banda roja con fondo `#b91c1c` y texto blanco en la parte superior del PDF (en flujo normal, no `position:fixed` para evitar solapamiento con DomPDF). Desaparece al procesar.
@@ -564,6 +564,20 @@ views/empleados/        # CRUD empleados, detalle, importación, distributivo
                         #   Tab 4 "Asistencia": modalidad_marcacion (radio cards: PRESENCIAL/TEMPORAL/TELETRABAJO), puede_solicitar_vehiculo
                         #   Botones Guardar/Cancelar al final del formulario (no fijos — no tapan el sidebar)
                         #   Foto compacta fuera de las pestañas (solo en edición)
+                        # Validación de campos requeridos — IMPORTANTE:
+                        #   NO usar `required` en inputs dentro de tabs con `v-show`: el navegador intenta
+                        #   hacer focus en campos ocultos, falla silenciosamente y bloquea el submit sin
+                        #   mostrar ningún error al usuario ("An invalid form control with name='' is not
+                        #   focusable" en consola). Solución: quitar `required` del HTML y validar
+                        #   manualmente al inicio de `guardar()` dentro del bloque `try` (para que el
+                        #   `finally` siempre libere el botón). Si hay errores: cambiar `tabActivo` al
+                        #   primer tab con error y mostrar mensaje en `error.value`.
+                        #   Campos requeridos actuales: Tab Personal (nombres, apellidos, cédula),
+                        #   Tab Cargo (departamento, cargo, tipo_contrato, modalidad_laboral, id_jornada,
+                        #   fecha_ingreso, salario), Tab Puesto (grupo_ocupacional, nivel,
+                        #   proceso_institucional, partida_individual, partida_presupuestaria).
+                        #   Usar `String(val ?? '').trim()` para campos que pueden llegar como número
+                        #   desde la BD (partida_individual, partida_presupuestaria).
                         # Endpoints hijos: GET|POST /empleados/{id}/hijos, DELETE /empleados/{id}/hijos/{hijoId}
                         # Endpoints sustituta: POST|GET|DELETE /empleados/{id}/sustituta-doc (Alfresco, carpeta empleados/{cedula_APELLIDO}/)
                         # GET /empleados/catalogos-sociales → { grupos_vulnerables, grupos_prioritarios, tipos_discapacidad, enfermedades_catastroficas }

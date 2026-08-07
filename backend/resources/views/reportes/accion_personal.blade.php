@@ -49,7 +49,7 @@
   $declaracionSI = in_array($tipo, ['INGRESO', 'DESTITUCION', 'CESACION DE FUNCIONES']);
   $showActual    = !in_array($tipo, ['INGRESO', 'REINGRESO']);
   $showPropuesta = !in_array($tipo, ['DESTITUCION', 'CESACION DE FUNCIONES', 'VACACIONES', 'COMISION DE SERVICIOS']);
-  $fillPosesion  = !in_array($tipo, ['INGRESO', 'COMISION DE SERVICIOS', 'REINGRESO']);
+  $fillPosesion  = !in_array($tipo, ['INGRESO', 'COMISION DE SERVICIOS', 'REINGRESO', 'CESACION DE FUNCIONES']);
   $ubicacion     = strtoupper($config['UBICACION_DEFAULT'] ?? 'QUITO');
   // INGRESO y REINGRESO: la unidad propuesta es el propio departamento del empleado (no hay titular)
   $deptPropuestoFinal = in_array($tipo, ['INGRESO', 'REINGRESO']) ? $deptActual : $deptPropuesto;

@@ -235,7 +235,7 @@
               <option value="MANUAL">MANUAL</option>
             </select>
           </div>
-          <div v-if="['COMISION DE SERVICIOS','REINGRESO'].includes(modalEditar.tipo_accion)" class="sm:col-span-2">
+          <div v-if="['COMISION DE SERVICIOS','REINGRESO','CESACION DE FUNCIONES'].includes(modalEditar.tipo_accion)" class="sm:col-span-2">
             <label class="block text-xs font-medium text-gray-500 mb-1">Especificación</label>
             <input v-model="modalEditar.especificacion" type="text"
               style="text-transform:uppercase"
