@@ -105,12 +105,18 @@ class TransporteController extends Controller
             'placa', 'marca', 'modelo', 'anio', 'chasis', 'color', 'numero_motor', 'kilometraje_actual',
         ]));
 
+        AuditoriaService::log('dbo.trans_vehiculo', $vehiculo->id, 'CREAR_VEHICULO',
+            null,
+            ['placa' => $vehiculo->placa, 'kilometraje_actual' => $vehiculo->kilometraje_actual],
+            $request, "Vehículo {$vehiculo->placa} creado con {$vehiculo->kilometraje_actual} km");
+
         return response()->json($vehiculo, 201);
     }
 
     public function update(Request $request, $id)
     {
         $vehiculo = Vehiculo::findOrFail($id);
+        $anterior = $vehiculo->only(['kilometraje_actual', 'estado']);
 
         $request->validate([
             'placa'              => 'required|string|max:10|unique:pgsql.dbo.trans_vehiculo,placa,' . $id,
@@ -131,6 +137,13 @@ class TransporteController extends Controller
         $vehiculo->update($request->only([
             'placa', 'marca', 'modelo', 'anio', 'chasis', 'color', 'numero_motor', 'kilometraje_actual', 'estado',
         ]));
+
+        if ($anterior['kilometraje_actual'] != $vehiculo->kilometraje_actual || $anterior['estado'] != $vehiculo->estado) {
+            AuditoriaService::log('dbo.trans_vehiculo', $vehiculo->id, 'ACTUALIZAR_VEHICULO',
+                $anterior,
+                $vehiculo->only(['kilometraje_actual', 'estado']),
+                $request, "Vehículo {$vehiculo->placa} actualizado");
+        }
 
         return response()->json($vehiculo);
     }
@@ -318,8 +331,8 @@ class TransporteController extends Controller
             }
 
             AuditoriaService::log('dbo.trans_mantenimiento', $m->id, 'FINALIZAR_MANT',
-                ['estado' => 'EN_TALLER'],
-                ['estado' => 'FINALIZADO', 'fecha_finalizacion' => $request->fecha_finalizacion],
+                ['estado' => 'EN_TALLER', 'kilometraje_actual' => $kmVehiculoActual],
+                ['estado' => 'FINALIZADO', 'fecha_finalizacion' => $request->fecha_finalizacion, 'km_finalizacion' => $request->km_finalizacion],
                 $request, "Finalización de mantenimiento #{$m->id}");
         }
 
@@ -470,7 +483,13 @@ class TransporteController extends Controller
             ]);
             // Acumular km del vehículo
             if ($s->vehiculo_id) {
+                $placaVehiculo = $s->vehiculo->placa;
                 $s->vehiculo->update(['kilometraje_actual' => $request->km_retorno]);
+
+                AuditoriaService::log('dbo.trans_vehiculo', $s->vehiculo_id, 'HOJA_RUTA',
+                    ['kilometraje_actual' => $kmSalida],
+                    ['kilometraje_actual' => $request->km_retorno],
+                    $request, "Hoja de ruta solicitud #{$s->id}, vehículo {$placaVehiculo}: {$kmSalida} → {$request->km_retorno} km");
             }
         }
 

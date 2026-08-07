@@ -860,7 +860,7 @@ Implementada para trazabilidad ante la Contraloría General del Estado. Todas la
 | `Adquisiciones/EgresoController` | CONFIRMAR_EGRESO, REVERSAR_EGRESO |
 | `Adquisiciones/SolicitudMaterialController` | APROBAR, NEGAR, DESPACHAR |
 | `Adquisiciones/AjusteController` | AJUSTE_POSITIVO / AJUSTE_NEGATIVO |
-| `TransporteController` | APROBAR_MOV, NEGAR_MOV, ORDEN_TRABAJO, NEGAR_MANT, EN_TALLER, FINALIZAR_MANT |
+| `TransporteController` | APROBAR_MOV, NEGAR_MOV, HOJA_RUTA, ORDEN_TRABAJO, NEGAR_MANT, EN_TALLER, FINALIZAR_MANT, CREAR_VEHICULO, ACTUALIZAR_VEHICULO |
 
 ### Endpoint y vista
 
