@@ -318,18 +318,20 @@ Calculado en `calcularSaldoDisponible()` — usa helper `tasaVacaciones()` en Va
 
 ### Acciones de Personal (`dbo.acc_accion_personal`)
 
-| Tipo | fecha_fin | Sit. Actual | Sit. Propuesta | Buscador Titular | Decl. Jurada | Auto-cierra |
-|---|---|---|---|---|---|---|
-| INGRESO | No aplica | No aplica | Requerida (auto-llena) | No | Sí | No |
-| ENCARGO | Opcional | Empleado | Requerida | Sí | No | No |
-| SUBROGACION | Requerida | Empleado | Requerida | Sí | No | Sí (al vencer) |
-| VACACIONES | Requerida | Empleado | No aplica | No | No | Sí (al vencer) |
-| DESTITUCION | No aplica | Empleado | No aplica | No | Sí | No |
-| CESACION DE FUNCIONES | No aplica | Empleado | No aplica | No | Sí | No |
-| COMISION DE SERVICIOS | Requerida | Empleado | No aplica | No | No | No |
-| REINGRESO | No aplica | No aplica | Empleado (auto-llena) | No | No | No |
+| Tipo | Estado empleado al crear | Sit. Actual | Sit. Propuesta | Posesión | Decl. Jurada | Especificación | Después |
+|---|---|---|---|---|---|---|---|
+| INGRESO | ACTIVO | No aplica | Auto-llena del empleado | Se llena | Sí | No | Sigue ACTIVO |
+| ENCARGO | ACTIVO | Del empleado | Llenar manual | Se llena | No | No | Sigue ACTIVO |
+| SUBROGACION | ACTIVO | Del empleado | Llenar manual | Se llena | No | No | Sigue ACTIVO; auto-cierra al vencer |
+| VACACIONES | ACTIVO | Del empleado | No aplica | Se llena | No | No | Sigue ACTIVO; auto-cierra al vencer |
+| DESTITUCION | **INACTIVO** | Del empleado | No aplica | Se llena | Sí | No | Ya estaba INACTIVO |
+| CESACION DE FUNCIONES | ACTIVO | Del empleado | No aplica | Vacía | Sí | Sí | TH decide: ACTIVO (cambio puesto) o INACTIVO (renuncia/salida) |
+| COMISION DE SERVICIOS | ACTIVO | Del empleado | No aplica | Vacía | No | Sí | TH lo pasa a INACTIVO |
+| REINGRESO | ACTIVO *(TH reactiva primero)* | No aplica | Auto-llena del empleado | Vacía | No | Sí | Sigue ACTIVO |
 
 Auto-cierre corre en cada `index()` para SUBROGACION y VACACIONES con `fecha_fin < hoy`.
+
+**Búsqueda de empleado en el formulario:** `DESTITUCION` busca empleados INACTIVOS (TH los desactiva antes de crear la acción). Todos los demás tipos buscan empleados ACTIVOS.
 
 **Flujo de estado del empleado en comisión — REGLA CRÍTICA:**
 - **COMISION DE SERVICIOS (sale):** el empleado debe estar `ACTIVO` al crear la acción. Después de crear y procesar la acción, TH pasa al empleado a `INACTIVO` en su ficha con `motivo_salida = COMISIÓN DE SERVICIOS`.
@@ -342,7 +344,7 @@ Auto-cierre corre en cada `index()` para SUBROGACION y VACACIONES con `fecha_fin
 **Reglas por tipo en el PDF (`accion_personal.blade.php`):**
 - `$showActual`: false para INGRESO y REINGRESO; true para el resto
 - `$showPropuesta`: false para DESTITUCION, CESACION DE FUNCIONES, VACACIONES, COMISION DE SERVICIOS; true para el resto
-- `$fillPosesion`: false para INGRESO, COMISION DE SERVICIOS, REINGRESO, CESACION DE FUNCIONES; true para el resto
+- `$fillPosesion`: false para COMISION DE SERVICIOS, REINGRESO, CESACION DE FUNCIONES; true para el resto (incluye INGRESO)
 - `$declaracionSI`: true solo para INGRESO, DESTITUCION, CESACION DE FUNCIONES
 - `$deptPropuestoFinal`: INGRESO y REINGRESO usan `$deptActual` (no hay titular); resto usa `$deptPropuesto`
 - **BORRADOR**: banda roja con fondo `#b91c1c` y texto blanco en la parte superior del PDF (en flujo normal, no `position:fixed` para evitar solapamiento con DomPDF). Desaparece al procesar.

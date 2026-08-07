@@ -49,7 +49,7 @@
   $declaracionSI = in_array($tipo, ['INGRESO', 'DESTITUCION', 'CESACION DE FUNCIONES']);
   $showActual    = !in_array($tipo, ['INGRESO', 'REINGRESO']);
   $showPropuesta = !in_array($tipo, ['DESTITUCION', 'CESACION DE FUNCIONES', 'VACACIONES', 'COMISION DE SERVICIOS']);
-  $fillPosesion  = !in_array($tipo, ['INGRESO', 'COMISION DE SERVICIOS', 'REINGRESO', 'CESACION DE FUNCIONES']);
+  $fillPosesion  = !in_array($tipo, ['COMISION DE SERVICIOS', 'REINGRESO', 'CESACION DE FUNCIONES']);
   $ubicacion     = strtoupper($config['UBICACION_DEFAULT'] ?? 'QUITO');
   // INGRESO y REINGRESO: la unidad propuesta es el propio departamento del empleado (no hay titular)
   $deptPropuestoFinal = in_array($tipo, ['INGRESO', 'REINGRESO']) ? $deptActual : $deptPropuesto;
@@ -330,16 +330,21 @@
       <td style="width:50%; border-right:1px solid #000; padding:0; vertical-align:top;">
         <div class="gray" style="text-align:center; font-weight:bold; font-size:7.5pt; padding:2px; border-bottom:1px solid #000;">ACEPTACIÓN Y/O RECEPCIÓN DEL SERVIDOR PÚBLICO</div>
         <div style="padding:5px 6px;">
+          @if($tipo !== 'INGRESO')
           <div style="min-height:55px;"></div>
           <div style="font-size:7.5pt;">FIRMA <span style="border-bottom:1px solid #000; display:inline-block; width:74%;">&nbsp;</span></div>
           <div style="font-size:7.5pt; margin-top:2px;">NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:68%;">{{ strtoupper(($accion->empleado->apellido_emp ?? '') . ', ' . ($accion->empleado->nombre_emp ?? '')) }}</span></div>
           <div style="font-size:7.5pt; margin-top:2px;">FECHA: <span style="border-bottom:1px solid #000; display:inline-block; width:71%;">CONSTA EN FIRMA ELECTRÓNICA</span></div>
           <div style="font-size:7.5pt; margin-top:2px;">HORA: <span style="border-bottom:1px solid #000; display:inline-block; width:73%;">CONSTA EN FIRMA ELECTRÓNICA</span></div>
+          @else
+          <div style="min-height:95px;"></div>
+          @endif
         </div>
       </td>
       <td style="width:50%; padding:0; vertical-align:top;">
         <div class="gray" style="text-align:center; font-weight:bold; font-size:7.5pt; padding:2px; border-bottom:1px solid #000;">EN CASO DE NEGATIVA DE LA RECEPCIÓN (TESTIGO)</div>
         <div style="padding:5px 6px;">
+          @if($tipo !== 'INGRESO')
           <div style="min-height:55px;"></div>
           <div style="font-size:7.5pt;">FIRMA: <span style="border-bottom:1px solid #000; display:inline-block; width:73%;">&nbsp;</span></div>
           <div style="font-size:7.5pt; margin-top:2px;">NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:68%;">&nbsp;</span></div>
@@ -348,6 +353,9 @@
             <b>RAZÓN:</b> En presencia del testigo se deja constancia de que la o el servidor
             público tiene la negativa de recibir la comunicación de registro de esta acción de personal.
           </div>
+          @else
+          <div style="min-height:95px;"></div>
+          @endif
         </div>
       </td>
     </tr>
