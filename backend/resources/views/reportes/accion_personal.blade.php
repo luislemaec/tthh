@@ -21,7 +21,7 @@
   .sit-lbl { font-weight: bold; font-size: 7.5pt; width: 46%; padding: 1px 4px;
              border-right: 1px solid #000; border-bottom: 1px solid #ddd; vertical-align: top; }
   .sit-val { font-size: 7.5pt; padding: 1px 4px; border-bottom: 1px solid #ddd;
-             word-wrap: break-word; overflow: hidden; }
+             word-wrap: break-word; word-break: break-all; overflow: hidden; }
 
   .pg2 { page-break-before: always; }
 
