@@ -230,7 +230,7 @@
         <tr><td class="sit-lbl">REMUNERACIÓN MENSUAL:</td><td class="sit-val">{{ $showActual ? '$'.number_format($accion->actual_remuneracion ?? 0, 2) : '' }}</td></tr>
         <tr>
           <td class="sit-lbl" style="border-bottom:none;">PARTIDA INDIVIDUAL:</td>
-          <td style="font-size:6.5pt; word-break:break-all; padding:1px 4px; border-bottom:none; vertical-align:top;">{{ $showActual ? ($accion->actual_partida ?? '') : '' }}</td>
+          <td style="font-size:6.5pt; padding:1px 4px; border-bottom:none; vertical-align:top; word-wrap:break-word;">{{ $showActual ? implode(' ', str_split($accion->actual_partida ?? '', 22)) : '' }}</td>
         </tr>
       </table>
     </td>
@@ -247,7 +247,7 @@
         <tr><td class="sit-lbl">REMUNERACIÓN MENSUAL:</td><td class="sit-val">{{ $showPropuesta ? '$'.number_format($accion->propuesto_remuneracion ?? 0, 2) : '' }}</td></tr>
         <tr>
           <td class="sit-lbl" style="border-bottom:none;">PARTIDA INDIVIDUAL:</td>
-          <td style="font-size:6.5pt; word-break:break-all; padding:1px 4px; border-bottom:none; vertical-align:top;">{{ $showPropuesta ? ($accion->propuesto_partida ?? '') : '' }}</td>
+          <td style="font-size:6.5pt; padding:1px 4px; border-bottom:none; vertical-align:top; word-wrap:break-word;">{{ $showPropuesta ? implode(' ', str_split($accion->propuesto_partida ?? '', 22)) : '' }}</td>
         </tr>
       </table>
     </td>
