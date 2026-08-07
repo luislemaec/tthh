@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: Arial, sans-serif; font-size: 8.5pt; color: #000; }
+  body { font-family: Arial, sans-serif; font-size: 8.5pt; color: #000; padding: 0 8mm; }
   .page { width: 100%; }
 
   .lbl  { font-weight: bold; font-size: 7.5pt; }
@@ -70,7 +70,7 @@
   <tr>
     <td style="width:40%; border:1px solid #000; text-align:center; padding:6px; vertical-align:middle;">
       @if($logo)
-        <img src="{{ $logo }}" style="max-height:124px; max-width:95%;">
+        <img src="{{ $logo }}" style="max-height:75px; max-width:95%;">
       @else
         <div style="font-size:9pt; color:#777; padding:8px;">(LOGO INSTITUCIONAL)</div>
       @endif
