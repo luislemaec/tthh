@@ -25,7 +25,7 @@
 
   .pg2 { page-break-before: always; }
 
-  @page { margin: 10mm 12mm 8mm 12mm; size: a4 portrait; }
+  @page { margin: 10mm 15mm 8mm 15mm; size: a4 portrait; }
 </style>
 </head>
 <body>
