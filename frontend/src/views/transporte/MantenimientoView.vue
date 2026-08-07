@@ -156,7 +156,9 @@
                   :class="a.tipo === 'PREVENTIVO' ? 'bg-blue-500' : 'bg-orange-500'">
                   {{ a.orden }}
                 </span>
-                <span>{{ a.actividad }}
+                <span>
+                  <span v-if="a.cantidad" class="font-semibold">{{ a.cantidad }}x</span>
+                  {{ a.actividad }}
                   <span class="text-xs text-gray-400 ml-1">[{{ a.tipo }}]</span>
                 </span>
               </li>

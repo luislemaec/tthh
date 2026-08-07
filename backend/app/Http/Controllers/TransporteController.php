@@ -215,6 +215,7 @@ class TransporteController extends Controller
                     'tipo_actividad'   => $det->tipo_actividad,
                     'actividad'        => $det->actividad,
                     'orden'            => $det->orden,
+                    'cantidad'         => $det->cantidad,
                 ]);
             }
         }
