@@ -25,7 +25,7 @@
 
   .pg2 { page-break-before: always; }
 
-  @page { margin: 10mm 15mm 8mm 15mm; size: a4 portrait; }
+  @page { margin: 14mm 18mm 10mm 18mm; size: a4 portrait; }
 </style>
 </head>
 <body>
@@ -59,9 +59,9 @@
 <div class="page">
 
 @if($accion->estado === 'BORRADOR')
-<div style="background:#b91c1c; color:#fff; text-align:center; font-size:9pt;
-            font-weight:bold; letter-spacing:5px; padding:4px 0; margin-bottom:6px;">
-  ** BORRADOR - NO VALIDO - BORRADOR - NO VALIDO - BORRADOR **
+<div style="border:2px solid #000; color:#000; text-align:center; font-size:9pt;
+            font-weight:bold; letter-spacing:3px; padding:3px 0; margin-bottom:4px;">
+  ** BORRADOR — NO VÁLIDO — BORRADOR — NO VÁLIDO — BORRADOR **
 </div>
 @endif
 
@@ -330,31 +330,25 @@
       <td style="width:50%; border-right:1px solid #000; padding:0; vertical-align:top;">
         <div class="gray" style="text-align:center; font-weight:bold; font-size:7.5pt; padding:2px; border-bottom:1px solid #000;">ACEPTACIÓN Y/O RECEPCIÓN DEL SERVIDOR PÚBLICO</div>
         <div style="padding:5px 6px;">
-          @if($tipo !== 'INGRESO')
           <div style="min-height:55px;"></div>
           <div style="font-size:7.5pt;">FIRMA <span style="border-bottom:1px solid #000; display:inline-block; width:74%;">&nbsp;</span></div>
-          <div style="font-size:7.5pt; margin-top:2px;">NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:68%;">{{ strtoupper(($accion->empleado->apellido_emp ?? '') . ', ' . ($accion->empleado->nombre_emp ?? '')) }}</span></div>
-          <div style="font-size:7.5pt; margin-top:2px;">FECHA: <span style="border-bottom:1px solid #000; display:inline-block; width:71%;">CONSTA EN FIRMA ELECTRÓNICA</span></div>
-          <div style="font-size:7.5pt; margin-top:2px;">HORA: <span style="border-bottom:1px solid #000; display:inline-block; width:73%;">CONSTA EN FIRMA ELECTRÓNICA</span></div>
-          @else
-          <div style="min-height:95px;"></div>
-          @endif
+          <div style="font-size:7.5pt; margin-top:2px;">NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:68%;">{{ $tipo !== 'INGRESO' ? strtoupper(($accion->empleado->apellido_emp ?? '') . ', ' . ($accion->empleado->nombre_emp ?? '')) : '' }}</span></div>
+          <div style="font-size:7.5pt; margin-top:2px;">FECHA: <span style="border-bottom:1px solid #000; display:inline-block; width:71%;">{{ $tipo !== 'INGRESO' ? 'CONSTA EN FIRMA ELECTRÓNICA' : '' }}</span></div>
+          <div style="font-size:7.5pt; margin-top:2px;">HORA: <span style="border-bottom:1px solid #000; display:inline-block; width:73%;">{{ $tipo !== 'INGRESO' ? 'CONSTA EN FIRMA ELECTRÓNICA' : '' }}</span></div>
         </div>
       </td>
       <td style="width:50%; padding:0; vertical-align:top;">
         <div class="gray" style="text-align:center; font-weight:bold; font-size:7.5pt; padding:2px; border-bottom:1px solid #000;">EN CASO DE NEGATIVA DE LA RECEPCIÓN (TESTIGO)</div>
         <div style="padding:5px 6px;">
-          @if($tipo !== 'INGRESO')
           <div style="min-height:55px;"></div>
           <div style="font-size:7.5pt;">FIRMA: <span style="border-bottom:1px solid #000; display:inline-block; width:73%;">&nbsp;</span></div>
           <div style="font-size:7.5pt; margin-top:2px;">NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:68%;">&nbsp;</span></div>
           <div style="font-size:7.5pt; margin-top:2px;">FECHA: <span style="border-bottom:1px solid #000; display:inline-block; width:71%;">&nbsp;</span></div>
+          @if($tipo !== 'INGRESO')
           <div style="font-size:7.5pt; margin-top:4px;">
             <b>RAZÓN:</b> En presencia del testigo se deja constancia de que la o el servidor
             público tiene la negativa de recibir la comunicación de registro de esta acción de personal.
           </div>
-          @else
-          <div style="min-height:95px;"></div>
           @endif
         </div>
       </td>
