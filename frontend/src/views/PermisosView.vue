@@ -280,7 +280,7 @@
           </div>
           <div>
             <dt class="text-gray-500">Fecha de solicitud</dt>
-            <dd class="font-medium">{{ permisoSeleccionado?.fecha_hora?.substring(0, 16)?.replace('T', ' ') }}</dd>
+            <dd class="font-medium">{{ permisoSeleccionado?.fecha_hora?.substring(0, 10) }}</dd>
           </div>
           <div>
             <dt class="text-gray-500">
