@@ -90,6 +90,10 @@
               </p>
             </div>
             <div class="flex items-center gap-2 flex-shrink-0">
+              <span v-if="p.ejecutado" title="Ya se registró un mantenimiento finalizado para este hito"
+                class="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                ✓ Ejecutado
+              </span>
               <span :class="p.estado === 'ACTIVO' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
                 class="px-2 py-0.5 rounded-full text-xs font-medium">
                 {{ p.estado }}

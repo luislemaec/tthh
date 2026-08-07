@@ -18,7 +18,26 @@ class PlanPreventivoController extends Controller
             $query->where('vehiculo_id', $request->vehiculo_id);
         }
 
-        return response()->json($query->get());
+        $planes = $query->get();
+
+        // km_hito es un hito único: un plan que ya tuvo un mantenimiento FINALIZADO no se
+        // puede volver a ejecutar (ver TransporteController::storeMtto). Se expone aquí para
+        // que el frontend lo muestre como "Ya ejecutado" antes de intentar crear otro.
+        $ejecutados = DB::table('dbo.trans_mantenimiento')
+            ->select('plan_preventivo_id', DB::raw('MAX(fecha_finalizacion) as fecha_ejecutado'))
+            ->whereNotNull('plan_preventivo_id')
+            ->where('estado', 'FINALIZADO')
+            ->groupBy('plan_preventivo_id')
+            ->get()
+            ->keyBy('plan_preventivo_id');
+
+        $planes->each(function ($p) use ($ejecutados) {
+            $reg = $ejecutados->get($p->id);
+            $p->ejecutado = (bool) $reg;
+            $p->fecha_ejecutado = $reg->fecha_ejecutado ?? null;
+        });
+
+        return response()->json($planes);
     }
 
     public function store(Request $request)

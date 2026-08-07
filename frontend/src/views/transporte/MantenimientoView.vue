@@ -213,8 +213,9 @@
             <label class="block text-xs font-semibold text-gray-600 mb-1">Plan preventivo *</label>
             <select v-model="formCrear.plan_preventivo_id" class="w-full border rounded-lg px-3 py-2 text-sm">
               <option value="">Seleccione un plan...</option>
-              <option v-for="p in planesDelVehiculo" :key="p.id" :value="p.id">
+              <option v-for="p in planesDelVehiculo" :key="p.id" :value="p.id" :disabled="p.ejecutado">
                 {{ p.nombre }} · {{ p.km_hito?.toLocaleString() }} km ({{ p.actividades?.length || 0 }} actividades)
+                {{ p.ejecutado ? ' — Ya ejecutado' : '' }}
               </option>
             </select>
             <p v-if="!planesDelVehiculo.length && formCrear.vehiculo_id"

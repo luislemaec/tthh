@@ -206,6 +206,16 @@ class TransporteController extends Controller
             if (!$planPertenece) {
                 return response()->json(['message' => 'El plan preventivo seleccionado no corresponde a este vehículo.'], 422);
             }
+
+            // km_hito es un hito único: si este plan ya tuvo un mantenimiento FINALIZADO,
+            // no se puede volver a ejecutar (para eso se crean planes separados por cada hito).
+            $yaEjecutado = Mantenimiento::where('plan_preventivo_id', $request->plan_preventivo_id)
+                ->where('estado', 'FINALIZADO')
+                ->exists();
+
+            if ($yaEjecutado) {
+                return response()->json(['message' => 'Este plan preventivo ya fue ejecutado anteriormente. No se puede repetir un hito ya cumplido.'], 422);
+            }
         }
 
         $m = Mantenimiento::create([
