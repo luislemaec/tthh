@@ -99,21 +99,56 @@
           </div>
         </div>
 
-        <!-- Otros tipos: muestra situación actual completa -->
+        <!-- Otros tipos: situación actual editable -->
         <div v-else-if="empleadoSeleccionado && !sinActual" class="bg-gray-50 rounded-lg p-4">
-          <div class="flex items-center justify-between mb-3">
-            <p class="text-sm font-semibold text-gray-700">Situación Actual — cargada automáticamente</p>
+          <div class="flex items-center justify-between mb-1">
+            <div>
+              <p class="text-sm font-semibold text-gray-700">Situación Actual</p>
+              <p v-if="cargandoUltimaAccion" class="text-xs text-gray-400 mt-0.5">Buscando última acción...</p>
+              <p v-else-if="fuenteActual === 'accion'" class="text-xs text-green-700 mt-0.5">✓ Datos tomados de la última acción de personal registrada</p>
+              <p v-else class="text-xs text-amber-700 mt-0.5">⚠ No se encontró acción previa — datos tomados de la ficha actual. Verifique y corrija si es necesario.</p>
+            </div>
             <button type="button" @click="limpiarEmpleado" class="text-red-400 hover:text-red-600 text-xs">✕ Quitar</button>
           </div>
-          <dl class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
-            <div><dt class="text-gray-500 text-xs">Empleado</dt><dd class="font-medium">{{ empleadoSeleccionado.apellido_emp }}, {{ empleadoSeleccionado.nombre_emp }}</dd></div>
-            <div><dt class="text-gray-500 text-xs">Cargo actual</dt><dd class="font-medium">{{ empleadoSeleccionado.cargo_empleado || '—' }}</dd></div>
-            <div><dt class="text-gray-500 text-xs">Grupo ocupacional</dt><dd class="font-medium">{{ empleadoSeleccionado.grupo_ocupacional || '—' }}</dd></div>
-            <div><dt class="text-gray-500 text-xs">Grado</dt><dd class="font-medium">{{ empleadoSeleccionado.nivel || '—' }}</dd></div>
-            <div><dt class="text-gray-500 text-xs">Remuneración</dt><dd class="font-medium">${{ Number(empleadoSeleccionado.sueldo || 0).toFixed(2) }}</dd></div>
-            <div><dt class="text-gray-500 text-xs">Proceso institucional</dt><dd class="font-medium">{{ empleadoSeleccionado.proceso_institucional || '—' }}</dd></div>
-            <div class="sm:col-span-3"><dt class="text-gray-500 text-xs">Partida presupuestaria</dt><dd class="font-mono text-xs font-medium">{{ empleadoSeleccionado.partida_presupuestaria ? (empleadoSeleccionado.partida_presupuestaria + (empleadoSeleccionado.partida_individual ? `-${empleadoSeleccionado.partida_individual}` : '')) : '—' }}</dd></div>
-          </dl>
+          <p class="text-xs text-gray-500 mb-3">Empleado: <strong>{{ empleadoSeleccionado.apellido_emp }}, {{ empleadoSeleccionado.nombre_emp }}</strong> — CI: {{ empleadoSeleccionado.identificacion }}</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="sm:col-span-2">
+              <label class="block text-xs font-medium text-gray-600 mb-1">Denominación del Puesto</label>
+              <input v-model="actualOverride.cargo" type="text" style="text-transform:uppercase"
+                class="w-full border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186] bg-white" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Grupo Ocupacional</label>
+              <input v-model="actualOverride.grupo_ocup" type="text" style="text-transform:uppercase"
+                class="w-full border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186] bg-white" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Grado</label>
+              <input v-model="actualOverride.grado" type="number" min="1"
+                class="w-full border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186] bg-white" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Remuneración Mensual</label>
+              <input v-model="actualOverride.remuneracion" type="number" step="0.01" min="0"
+                @input="calcularDiferencial"
+                class="w-full border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186] bg-white" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Proceso Institucional</label>
+              <select v-model="actualOverride.proceso_inst"
+                class="w-full border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186] bg-white">
+                <option value="">—</option>
+                <option value="SUSTANTIVO">SUSTANTIVO</option>
+                <option value="ADJETIVO">ADJETIVO</option>
+                <option value="GOBERNANTE">GOBERNANTE</option>
+              </select>
+            </div>
+            <div class="sm:col-span-2">
+              <label class="block text-xs font-medium text-gray-600 mb-1">Partida Presupuestaria</label>
+              <input v-model="actualOverride.partida" type="text"
+                class="w-full border rounded-lg px-3 py-1.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#579186] bg-white" />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -327,6 +362,9 @@ const empleadoSeleccionado = ref(null)
 const busquedaTitular      = ref("")
 const resultadosTitular    = ref([])
 const titularSeleccionado  = ref(null)
+const cargandoUltimaAccion = ref(false)
+const fuenteActual         = ref(null) // 'accion' | 'ficha' | null
+const actualOverride       = ref({ cargo: '', grupo_ocup: '', grado: '', remuneracion: '', proceso_inst: '', partida: '' })
 const diferencial          = ref(null)
 const guardando            = ref(false)
 const error                = ref("")
@@ -426,7 +464,7 @@ const buscarEmpleados = () => {
   }, 300)
 }
 
-const seleccionarEmpleado = (e) => {
+const seleccionarEmpleado = async (e) => {
   empleadoSeleccionado.value = e
   form.value.id_emp = e.id_emp
   busquedaEmp.value   = ""
@@ -442,6 +480,51 @@ const seleccionarEmpleado = (e) => {
       ? (e.partida_presupuestaria + (e.partida_individual ? `-${e.partida_individual}` : ""))
       : ""
     form.value.propuesto_proceso_inst = e.proceso_institucional  || ""
+  } else {
+    // Para tipos con situación actual: intentar cargar desde la última acción procesada
+    cargandoUltimaAccion.value = true
+    fuenteActual.value = null
+    try {
+      const { data } = await api.get(`/acciones-personal/ultima-activa/${e.id_emp}`)
+      if (data) {
+        actualOverride.value = {
+          cargo:        data.actual_cargo        || "",
+          grupo_ocup:   data.actual_grupo_ocup   || "",
+          grado:        data.actual_grado        || "",
+          remuneracion: data.actual_remuneracion || "",
+          proceso_inst: data.actual_proceso_inst || "",
+          partida:      data.actual_partida      || "",
+        }
+        fuenteActual.value = 'accion'
+      } else {
+        // Sin acción previa: usar datos actuales de la ficha
+        actualOverride.value = {
+          cargo:        e.cargo_empleado        || "",
+          grupo_ocup:   e.grupo_ocupacional     || "",
+          grado:        e.nivel                 || "",
+          remuneracion: e.sueldo                || "",
+          proceso_inst: e.proceso_institucional || "",
+          partida:      e.partida_presupuestaria
+            ? (e.partida_presupuestaria + (e.partida_individual ? `-${e.partida_individual}` : ""))
+            : "",
+        }
+        fuenteActual.value = 'ficha'
+      }
+    } catch (_) {
+      actualOverride.value = {
+        cargo:        e.cargo_empleado        || "",
+        grupo_ocup:   e.grupo_ocupacional     || "",
+        grado:        e.nivel                 || "",
+        remuneracion: e.sueldo                || "",
+        proceso_inst: e.proceso_institucional || "",
+        partida:      e.partida_presupuestaria
+          ? (e.partida_presupuestaria + (e.partida_individual ? `-${e.partida_individual}` : ""))
+          : "",
+      }
+      fuenteActual.value = 'ficha'
+    } finally {
+      cargandoUltimaAccion.value = false
+    }
   }
 
   calcularDiferencial()
@@ -451,6 +534,8 @@ const limpiarEmpleado = () => {
   empleadoSeleccionado.value = null
   form.value.id_emp = ""
   diferencial.value = null
+  fuenteActual.value = null
+  actualOverride.value = { cargo: '', grupo_ocup: '', grado: '', remuneracion: '', proceso_inst: '', partida: '' }
 }
 
 const buscarTitular = () => {
@@ -498,7 +583,9 @@ const calcularDiferencial = () => {
     return
   }
   const propuesto = parseFloat(form.value.propuesto_remuneracion) || 0
-  const actual    = parseFloat(empleadoSeleccionado.value.sueldo) || 0
+  const actual    = sinActual.value
+    ? 0
+    : (parseFloat(actualOverride.value.remuneracion) || parseFloat(empleadoSeleccionado.value.sueldo) || 0)
   diferencial.value = Math.max(0, propuesto - actual)
 }
 
@@ -516,6 +603,13 @@ const guardar = async () => {
       propuesto_remuneracion: conPropuesta.value ? form.value.propuesto_remuneracion : 0,
       propuesto_partida:      conPropuesta.value ? form.value.propuesto_partida      : null,
       propuesto_proceso_inst: conPropuesta.value ? form.value.propuesto_proceso_inst : null,
+      // Situación actual editable (solo para tipos con actual; el backend ignora estos si sinActual)
+      actual_cargo:        actualOverride.value.cargo        || null,
+      actual_grupo_ocup:   actualOverride.value.grupo_ocup   || null,
+      actual_grado:        actualOverride.value.grado        || null,
+      actual_remuneracion: actualOverride.value.remuneracion || null,
+      actual_proceso_inst: actualOverride.value.proceso_inst || null,
+      actual_partida:      actualOverride.value.partida      || null,
     }
     await api.post("/acciones-personal", payload)
     router.push("/acciones-personal")

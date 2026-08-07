@@ -593,6 +593,37 @@
 
     </form>
 
+    <!-- Modal: Advertencia acción de personal -->
+    <div v-if="modalAdvertenciaAccion" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-lg w-full max-w-md overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#0b5447;">
+          <h2 class="text-lg font-semibold text-white">Cambios en datos de cargo</h2>
+          <button @click="modalAdvertenciaAccion = false; resolverAdvertencia(false)" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
+        </div>
+        <div class="p-6 space-y-4">
+          <p class="text-sm text-gray-700">
+            Ha modificado campos clave del empleado (departamento, cargo, salario o tipo de contrato).
+          </p>
+          <p class="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+            Si este cambio corresponde a una <strong>acción de personal</strong> (encargo, cesación, ingreso, comisión, etc.), recuerde registrarla en <strong>Acciones de Personal</strong> antes o después de actualizar la ficha.
+          </p>
+          <div class="flex justify-end gap-3 pt-2">
+            <button type="button"
+              @click="modalAdvertenciaAccion = false; resolverAdvertencia(false)"
+              class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">
+              Cancelar
+            </button>
+            <button type="button"
+              @click="modalAdvertenciaAccion = false; resolverAdvertencia(true)"
+              class="px-4 py-2 rounded-lg text-sm text-white font-medium"
+              style="background-color:#0b5447;">
+              Continuar guardando
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Modal: Seleccionar partida disponible -->
     <div v-if="modalPartidas.show"
       class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -655,6 +686,9 @@ const error         = ref("")
 const fotoUrl       = ref(null)
 const subiendoFoto  = ref(false)
 const tabActivo     = ref('personal')
+const modalAdvertenciaAccion  = ref(false)
+const resolverAdvertencia     = ref(null) // función para resolver la promesa del modal
+const datosOriginales         = ref(null) // snapshot de campos clave al cargar edición
 
 const storageUrl = (path) => path ? `${import.meta.env.VITE_API_URL}/storage-file/${path}` : null
 const departamentos        = ref([])
@@ -854,6 +888,25 @@ const guardar = async () => {
       num_hijos_mayores:             form.value.num_hijos_mayores || 0,
     }
 
+    // Advertencia si cambiaron campos clave en edición (cargo, sueldo, dpto, tipo_contrato)
+    if (esEdicion.value && datosOriginales.value) {
+      const orig = datosOriginales.value
+      const cambiosClave = [
+        orig.departamento_id != form.value.departamento_id  && 'Departamento',
+        orig.cargo_empleado  !== (form.value.cargo_empleado || '') && 'Cargo',
+        String(orig.salario) !== String(form.value.salario) && 'Salario',
+        orig.tipo_contrato   !== (form.value.tipo_contrato || '') && 'Tipo de Contrato',
+      ].filter(Boolean)
+
+      if (cambiosClave.length > 0) {
+        const confirmar = await new Promise(resolve => {
+          resolverAdvertencia.value = resolve
+          modalAdvertenciaAccion.value = true
+        })
+        if (!confirmar) return
+      }
+    }
+
     if (esEdicion.value) {
       await api.put("/empleados/" + route.params.id, payload)
       // Sincronizar hijos nuevos (los que no tienen id aún)
@@ -1032,6 +1085,14 @@ onMounted(async () => {
     form.value.num_hijos_mayores             = data.num_hijos_mayores             ?? 0
     form.value.hijos                         = (data.hijos || []).map(h => ({ ...h }))
     fotoUrl.value = storageUrl(data.foto)
+
+    // Snapshot de campos clave para detectar cambios al guardar
+    datosOriginales.value = {
+      departamento_id:  data.id_depto,
+      cargo_empleado:   data.cargo_empleado || "",
+      salario:          data.sueldo || "",
+      tipo_contrato:    data.tipo_contrato?.trim() || "",
+    }
 
     // Cargar períodos de teletrabajo
     try {

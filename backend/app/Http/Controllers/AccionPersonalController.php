@@ -87,6 +87,34 @@ class AccionPersonalController extends Controller
         return $query;
     }
 
+    // GET /api/acciones-personal/ultima-activa/{id_emp}
+    public function ultimaActiva($id_emp)
+    {
+        // Busca la última acción ACTIVO del empleado (excluye VACACIONES, ENCARGO, SUBROGACION
+        // porque no cambian la posición permanente del servidor)
+        $accion = DB::table('dbo.acc_accion_personal')
+            ->where('id_emp', $id_emp)
+            ->where('estado', 'ACTIVO')
+            ->whereNotIn('tipo_accion', ['VACACIONES', 'ENCARGO', 'SUBROGACION'])
+            ->orderByDesc('fecha_elaboracion')
+            ->orderByDesc('id')
+            ->first();
+
+        if (!$accion) return response()->json(null);
+
+        $sinActual = in_array($accion->tipo_accion, ['INGRESO', 'REINGRESO']);
+
+        return response()->json([
+            'tipo_accion'         => $accion->tipo_accion,
+            'actual_cargo'        => $sinActual ? $accion->propuesto_cargo       : $accion->actual_cargo,
+            'actual_grupo_ocup'   => $sinActual ? $accion->propuesto_grupo_ocup  : $accion->actual_grupo_ocup,
+            'actual_grado'        => $sinActual ? $accion->propuesto_grado       : $accion->actual_grado,
+            'actual_remuneracion' => $sinActual ? $accion->propuesto_remuneracion: $accion->actual_remuneracion,
+            'actual_partida'      => $sinActual ? $accion->propuesto_partida     : $accion->actual_partida,
+            'actual_proceso_inst' => $sinActual ? $accion->propuesto_proceso_inst: $accion->actual_proceso_inst,
+        ]);
+    }
+
     // GET /api/acciones-personal
     public function index(Request $request)
     {
@@ -155,7 +183,7 @@ class AccionPersonalController extends Controller
         $emp          = Empleado::findOrFail($request->id_emp);
         $sinActual    = in_array($request->tipo_accion, ['INGRESO', 'REINGRESO']);
         $propuestoRem = (float) $request->propuesto_remuneracion;
-        $actualRem    = $sinActual ? 0.0 : (float) ($emp->sueldo ?? 0);
+        $actualRem    = $sinActual ? 0.0 : (float) ($request->actual_remuneracion ?? $emp->sueldo ?? 0);
         $diferencial  = max(0, $propuestoRem - $actualRem);
 
         // Firmantes: usar los del form o pre-llenar desde configuración
@@ -173,14 +201,14 @@ class AccionPersonalController extends Controller
             "fecha_inicio"              => $request->fecha_inicio,
             "fecha_fin"                 => $request->fecha_fin ?? null,
             "motivacion"                => $request->motivacion,
-            "actual_cargo"              => $sinActual ? null : $emp->cargo_empleado,
-            "actual_grupo_ocup"         => $sinActual ? null : $emp->grupo_ocupacional,
-            "actual_grado"              => $sinActual ? null : $emp->nivel,
-            "actual_remuneracion"       => $actualRem,
-            "actual_partida"            => $sinActual ? null : ($emp->partida_presupuestaria
+            "actual_cargo"              => $sinActual ? null : ($request->actual_cargo       ?? $emp->cargo_empleado),
+            "actual_grupo_ocup"         => $sinActual ? null : ($request->actual_grupo_ocup  ?? $emp->grupo_ocupacional),
+            "actual_grado"              => $sinActual ? null : ($request->actual_grado        ?? $emp->nivel),
+            "actual_remuneracion"       => $sinActual ? 0.0  : (float) ($request->actual_remuneracion ?? $emp->sueldo ?? 0),
+            "actual_partida"            => $sinActual ? null : ($request->actual_partida      ?? ($emp->partida_presupuestaria
                 ? ($emp->partida_presupuestaria . ($emp->partida_individual ? "-{$emp->partida_individual}" : ""))
-                : null),
-            "actual_proceso_inst"       => $sinActual ? null : $emp->proceso_institucional,
+                : null)),
+            "actual_proceso_inst"       => $sinActual ? null : ($request->actual_proceso_inst ?? $emp->proceso_institucional),
             "propuesto_cargo"           => $request->propuesto_cargo,
             "propuesto_grupo_ocup"      => $request->propuesto_grupo_ocup,
             "propuesto_grado"           => $request->propuesto_grado,
