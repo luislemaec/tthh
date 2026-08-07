@@ -418,7 +418,7 @@ const buscarEmpleados = () => {
   clearTimeout(busquedaTimer)
   if (busquedaEmp.value.length < 2) { resultadosEmp.value = []; return }
   busquedaTimer = setTimeout(async () => {
-    const requiereInactivo = ['DESTITUCION', 'CESACION DE FUNCIONES'].includes(form.value.tipo_accion)
+    const requiereInactivo = ['DESTITUCION'].includes(form.value.tipo_accion)
     const { data } = await api.get("/empleados", {
       params: { buscar: busquedaEmp.value, estado: requiereInactivo ? "INACTIVO" : "ACTIVO", per_page: 8 }
     })
