@@ -1204,7 +1204,7 @@ Combinación recomendada: EMPLEADO + TRANSPORTE o EMPLEADO + CONDUCTOR.
 | `trans_plan_preventivo_cab` | Plan preventivo cabecera: vehiculo_id, km_hito (hito ABSOLUTO, no intervalo — ver sección Kilometraje), nombre del plan |
 | `trans_plan_preventivo_det` | Actividades del plan: cab_id, orden, tipo_actividad (MO/RE/CL), cantidad, actividad |
 | `trans_mantenimiento` | Requerimientos; estados PENDIENTE→ORDEN_GENERADA→EN_TALLER→FINALIZADO. `km_actual` = km del vehículo al crear (autocompletado); `km_finalizacion` = km del vehículo al finalizar (migración `000096`, obligatorio si tipo PREVENTIVO) |
-| `trans_mantenimiento_actividad` | Actividades del requerimiento de mantenimiento |
+| `trans_mantenimiento_actividad` | Actividades del requerimiento de mantenimiento. `cantidad` (migración `000097`) — copiada desde `trans_plan_preventivo_det.cantidad` al crear el requerimiento; solo aplica a actividades PREVENTIVO (las CORRECTIVO no tienen cantidad, se registran como texto libre) |
 | `trans_solicitud_mov` | Solicitudes de movilización; estados PENDIENTE→APROBADO/NEGADO→COMPLETADO. Campos adicionales: `direccion_salida`, `direccion_destino` (VARCHAR 200), `pasajeros` (TEXT) |
 | `trans_vale_combustible` | Vales de combustible; formato FR05-PRO.GA-TR.001; numero auto-secuencial |
 
@@ -1238,6 +1238,7 @@ Campo adicional en `ad_empleado`: `puede_solicitar_vehiculo BOOLEAN DEFAULT fals
 **Validaciones adicionales en `storeMtto`**:
 - Un vehículo solo puede tener **un mantenimiento abierto a la vez** (estado distinto de FINALIZADO/NEGADO). Si ya hay uno, rechaza con 422 indicando cuál es (evita que se olviden de finalizar uno y se cree otro encima).
 - El `plan_preventivo_id` enviado debe pertenecer al `vehiculo_id` seleccionado (rechaza con 422 si no coincide).
+- **Un plan no se puede volver a ejecutar**: si el `plan_preventivo_id` ya tiene algún `trans_mantenimiento` en estado FINALIZADO, rechaza con 422 ("ya fue ejecutado anteriormente"). Es coherente con que `km_hito` es un hito único — para repetir un mantenimiento similar a otro kilometraje se crea un plan nuevo (ver botón "Duplicar" abajo), no se reutiliza el mismo.
 
 **Visibilidad compartida**: `indexMtto` ya NO filtra por conductor — todos los conductores ven el listado completo de mantenimientos de todos los vehículos (antes cada uno solo veía lo que él mismo había solicitado, lo que permitía crear solicitudes duplicadas sin que nadie se diera cuenta).
 
@@ -1249,6 +1250,10 @@ Actividades agrupadas por vehículo + km_hito + nombre. Cada actividad tiene:
 - `actividad`: descripción de la tarea
 
 Importación CSV: columnas `placa,km_hito,nombre,tipo_actividad,actividad,cantidad`. Agrupa por clave compuesta `vehiculo_id|km_hito|nombre`, crea una cabecera por grupo y los detalles correspondientes. Recordar: `km_hito` debe ser el kilometraje objetivo real (ver sección Kilometraje arriba), no un intervalo genérico.
+
+`GET /transporte/plan-preventivo` (`PlanPreventivoController::index()`) agrega por cada plan `ejecutado` (bool) y `fecha_ejecutado` — true si ya existe algún `trans_mantenimiento` FINALIZADO con ese `plan_preventivo_id`. Se usa para: deshabilitar esa opción en el select de "Nuevo requerimiento" (`MantenimientoView.vue`, con texto "— Ya ejecutado") y mostrar el badge azul "✓ Ejecutado" en el acordeón de `PlanPreventivoView.vue`.
+
+**Botón "Duplicar"** (`PlanPreventivoView.vue`, junto a Ver/Editar de cada plan): abre el modal de "Nuevo Plan" pre-llenado con el mismo `vehiculo_id` y todas las actividades copiadas (tipo, cantidad, descripción) — pero **`km_hito` y `nombre` quedan vacíos a propósito** para forzar a indicar el nuevo hito antes de guardar (evita duplicar sin querer el mismo hito ya existente). Crea un plan nuevo, no modifica el original. Pensado para cuando el checklist se repite casi igual entre hitos de un mismo vehículo (ej. 80.000 / 85.000 / 90.000 km).
 
 ### Vales de Combustible
 
@@ -1292,7 +1297,7 @@ Rutas bajo `/api/transporte/*`:
 
 ### PDFs (`resources/views/reportes/`)
 
-- `trans_orden_trabajo.blade.php` — portrait letter; secciones: vehículo, requerimiento, actividades, orden, firmas (conductor/responsable/taller)
+- `trans_orden_trabajo.blade.php` — portrait letter; secciones: vehículo, requerimiento, actividades (incluye columna "Cant.", `—` si la actividad no tiene cantidad), orden, firmas (conductor/responsable/taller)
 - `trans_orden_movilizacion.blade.php` — portrait letter; secciones: solicitud, vehículo+conductor, hoja de ruta (solo si COMPLETADO), firmas
 - `trans_vale_combustible.blade.php` — **media carta** `[0,0,396,504]`; formato FR05-PRO.GA-TR.001; tabla combustibles, km/vehículo/fecha, firmas
 
@@ -1321,14 +1326,22 @@ views/transporte/
                               # Buscador de texto (placa/marca/modelo) + checkbox "Solo con planes" +
                               #   botones "Expandir todo"/"Colapsar todo" (Set `abiertos` con los ids abiertos)
                               # Vehículos sin ningún plan igual aparecen (con "0 planes") para detectar huecos
+                              # Badge azul "✓ Ejecutado" por plan cuando `p.ejecutado` (ver sección Plan Preventivo)
+                              # Botón "Duplicar" por plan: copia vehículo + actividades a un plan nuevo,
+                              #   deja km_hito y nombre vacíos (ver sección Plan Preventivo arriba)
   MantenimientoView.vue       # Conductor crea; TRANSPORTE gestiona estados, asigna taller de lista, PDF
                               # Km actual: solo lectura, autocompletado desde el vehículo seleccionado
                               #   (computed kmVehiculoSeleccionado) — ya no es un input editable
+                              # Select de plan preventivo: opciones con p.ejecutado deshabilitadas y con
+                              #   texto "— Ya ejecutado" al final del nombre
+                              # Modal Ver: cada actividad muestra "Nx" antes de la descripción si tiene
+                              #   cantidad (a.cantidad) — solo aplica a actividades PREVENTIVO
                               # Modal Finalizar: campo "Km Actual del Vehículo" (km_finalizacion) marcado
                               #   obligatorio (*) cuando el tipo del requerimiento es PREVENTIVO
                               #   (modalFinalizar.esPreventivo, derivado de m.tipo al abrir el modal)
                               # Backend bloquea crear un nuevo requerimiento si el vehículo ya tiene uno
-                              #   abierto — el error llega vía errorCrear ya existente, sin cambios de UI
+                              #   abierto, o si el plan elegido ya fue ejecutado — el error llega vía
+                              #   errorCrear ya existente, sin cambios de UI
   MovilizacionView.vue        # Empleado solicita; TRANSPORTE aprueba/niega; conductor llena hoja de ruta
                               # Modal Hoja de Ruta: "Km Salida" de solo lectura (bg-gray-100, disabled) —
                               #   ya no editable por el conductor. abrirHojaRuta() es async y refresca el
@@ -1645,12 +1658,14 @@ Quinto módulo del sistema, para la Dirección de Tecnología. Color institucion
 | `ti_equipo` | Un registro por unidad física. `estado`: `DISPONIBLE`/`ASIGNADO`/`DAÑADO`/`DE_BAJA` (custodia, gestionado por el sistema al asignar/devolver). `condicion`: `BUENO`/`REGULAR`/`MALO` (estado físico, distinto de `estado`). `vida_util_anios`, `ultimo_mantenimiento` (caché). `marca VARCHAR(150)`, `modelo VARCHAR(300)` (ampliados en migración `000089` — el inventario real de TI trae descripciones largas en "modelo") |
 | `ti_asignacion` | Historial de custodia. Solo puede existir **una fila con `fecha_devolucion IS NULL` por `equipo_id`** a la vez (regla aplicada en el controlador, no a nivel de constraint) |
 | `ti_actividad_mantenimiento` | Catálogo maestro del checklist de mantenimiento (10 ítems reales del formulario físico de TI, editable) |
-| `ti_mantenimiento` | Cabecera de cada ejecución de mantenimiento. **El "una vez al año" solo aplica al `tipo = PREVENTIVO`**: índice único parcial `ti_mantenimiento_preventivo_anio_uq` sobre `(equipo_id, anio) WHERE tipo = 'PREVENTIVO'` (migración `000095`, reemplazó el `UNIQUE(equipo_id, anio)` original que bloqueaba erróneamente registrar una reparación el mismo año del preventivo). El `CORRECTIVO` se puede registrar las veces que haga falta. Incluye `hora_inicio`/`hora_fin` (nullable — el mantenimiento externo por lote y las reparaciones rápidas no siempre registran hora exacta), `id_emp_tecnico` (usuario que registró) e `id_emp_custodio` (snapshot del custodio en ese momento). Campos de mantenimiento externo (migración `000090`): `origen` (`INTERNO`/`EXTERNO`), `proveedor`, `proceso_contratacion`, `numero_orden_compra`, `lote_externo` — ver sección "Mantenimiento externo" abajo |
+| `ti_mantenimiento` | Cabecera de cada ejecución de mantenimiento. **El "una vez al año" solo aplica al `tipo = PREVENTIVO`**: índice único parcial `ti_mantenimiento_preventivo_anio_uq` sobre `(equipo_id, anio) WHERE tipo = 'PREVENTIVO'` (migración `000098`, reemplazó el `UNIQUE(equipo_id, anio)` original que bloqueaba erróneamente registrar una reparación el mismo año del preventivo). El `CORRECTIVO` se puede registrar las veces que haga falta. Incluye `hora_inicio`/`hora_fin` (nullable — el mantenimiento externo por lote y las reparaciones rápidas no siempre registran hora exacta), `id_emp_tecnico` (usuario que registró) e `id_emp_custodio` (snapshot del custodio en ese momento). Campos de mantenimiento externo (migración `000090`): `origen` (`INTERNO`/`EXTERNO`), `proveedor`, `proceso_contratacion`, `numero_orden_compra`, `lote_externo` — ver sección "Mantenimiento externo" abajo |
 | `ti_mantenimiento_detalle` | Snapshot SI/NO del checklist para esa ejecución (una fila por actividad del catálogo activa al momento de registrar). Solo se genera cuando `origen = INTERNO` |
 | `ti_pieza` | Catálogo de piezas/repuestos (ver sección "Piezas y repuestos" abajo). `codigo`/`serie` opcionales, `descripcion` obligatoria, `fecha_entrega` (obligatoria — fecha en que la Unidad de Bienes/Dirección Administrativa entregó la pieza a Tecnología; **Tecnología no tiene bodega propia**, las piezas llegan ya codificadas por Bienes). `estado`: `DISPONIBLE`/`INSTALADA`/`DE_BAJA`. `equipo_id` = equipo donde está instalada actualmente (null si disponible o de baja) |
 | `ti_pieza_movimiento` | Historial de instalación/retiro de piezas, mismo patrón que `ti_asignacion` pero pieza↔equipo. `mantenimiento_id` (nullable) liga el movimiento al mantenimiento en el que se hizo el cambio. Solo puede existir **una fila con `fecha_retiro IS NULL` por `pieza_id`** a la vez |
 
-Migraciones: `000088` (crea las 6 tablas + rol `TECNOLOGIA` + seeds de tipos de equipo y checklist), `000089` (amplía `ti_equipo.marca`/`modelo`, ver arriba), `000090` (agrega columnas de mantenimiento externo a `ti_mantenimiento` y hace `hora_inicio`/`hora_fin` nullable), `000092` (crea `ti_pieza` y `ti_pieza_movimiento`), `000095` (cambia el `UNIQUE(equipo_id, anio)` de `ti_mantenimiento` a índice único parcial solo para `tipo=PREVENTIVO`, ver arriba).
+Migraciones: `000088` (crea las 6 tablas + rol `TECNOLOGIA` + seeds de tipos de equipo y checklist), `000089` (amplía `ti_equipo.marca`/`modelo`, ver arriba), `000090` (agrega columnas de mantenimiento externo a `ti_mantenimiento` y hace `hora_inicio`/`hora_fin` nullable), `000092` (crea `ti_pieza` y `ti_pieza_movimiento`), `000098` (cambia el `UNIQUE(equipo_id, anio)` de `ti_mantenimiento` a índice único parcial solo para `tipo=PREVENTIVO`, ver arriba), `000099` (agrega `motivo_baja`/`detalle_baja`/`fecha_baja` a `ti_equipo`).
+
+> **Nota sobre numeración de migraciones:** hubo una colisión de números (`000095`/`000097` usados dos veces por trabajo en paralelo) — las migraciones de este módulo siguen la secuencia `000088`...`000090`, `000092`, `000098`, `000099`. Antes de crear una migración nueva, verificar el número máximo real recorriendo todos los archivos (no solo los últimos alfabéticamente), ya que los nombres empiezan con fecha y pueden desordenar el orden numérico esperado.
 
 `Equipo` (modelo) tiene un accessor `vida_util_vencida` (`$appends`, calculado en PHP con `fecha_ingreso + vida_util_anios <= hoy`, sin necesidad de cast ni columna nueva) — se usa para el badge/filtro/tarjeta "Vida útil vencida" en `EquiposView.vue`. `EquipoController::resumen()` incluye el conteo `vida_util_vencida` (excluye equipos `DE_BAJA`) y `index()` acepta `?vida_util_vencida=1` como filtro.
 
@@ -1663,7 +1678,8 @@ Las opciones de menú (`admin_opcion`) y su asignación al rol `TECNOLOGIA` (`ad
 - **Asignar**: solo si `equipo.estado = DISPONIBLE`. El buscador de empleado consulta el mismo catálogo `dbo.ad_empleado` que usa Talento Humano (no hay lista separada). Crea fila en `ti_asignacion`, pasa el equipo a `ASIGNADO`.
 - **Devolver**: solo si `equipo.estado = ASIGNADO`. Pide fecha de devolución (editable, no forzada a "hoy" — permite registrar devoluciones retroactivas), motivo (`REASIGNACION`/`SALIDA_EMPLEADO`/`DAÑO`/`OTRO`) y observación. Si el motivo es `DAÑO` el equipo pasa a `DAÑADO`; en cualquier otro caso vuelve a `DISPONIBLE`. La asignación anterior no se borra, queda cerrada en el historial.
 - **Historial**: botón por equipo abre un modal con la línea de tiempo (timeline visual) de todas las asignaciones — activa (punto verde) e históricas (punto gris), con motivo de devolución.
-- **Dar de baja / Marcar disponible**: transición manual de estado, solo permitida cuando el equipo no está `ASIGNADO`.
+- **Dar de baja**: solo permitida cuando el equipo no está `ASIGNADO`. Pide motivo (`DAÑO_IRREPARABLE`/`OBSOLETO`/`ROBO_PERDIDA`/`FIN_VIDA_UTIL`/`OTRO`), detalle de qué acciones se tomaron (obligatorio) y fecha (editable, default hoy) — campos `motivo_baja`/`detalle_baja`/`fecha_baja` en `ti_equipo` (migración `000099`). Se muestran como nota roja bajo el nombre del equipo mientras esté `DE_BAJA`.
+- **Reactivar**: botón visible solo cuando `estado = DE_BAJA` (ej. equipo dado de baja por error) — lo regresa a `DISPONIBLE` sin pedir nada más (confirmación simple). Los campos de la última baja (`motivo_baja`/`detalle_baja`/`fecha_baja`) no se borran al reactivar, quedan como registro histórico de la última vez que se dio de baja.
 
 ### Mantenimiento preventivo (checklist real)
 
@@ -1766,6 +1782,10 @@ views/tecnologia/
                                      # Equipo DAÑADO: botón "Registrar reparación" (ver sección "Reparación
                                      #   de equipos dañados" arriba) — modal fecha + qué se hizo, genera acta
                                      #   como mantenimiento correctivo y pasa el equipo a DISPONIBLE
+                                     # "Dar de baja": modal fecha + motivo + qué acciones se tomaron (obligatorio)
+                                     #   Equipo DE_BAJA: botón "Reactivar" → confirmación simple, vuelve a DISPONIBLE
+                                     #   (por si se dio de baja por error); nota roja bajo el equipo con el
+                                     #   motivo/fecha de la última baja mientras esté en ese estado
                                      # Historial de custodia: línea de tiempo visual (timeline)
                                      # Importar CSV con plantilla de 9 columnas (ver sección arriba)
                                      # Todos los modales (crear/editar, Asignar, Devolver, Importar CSV)

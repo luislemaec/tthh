@@ -215,12 +215,25 @@ class EquipoController extends Controller
             return response()->json(['message' => 'Debe devolver el equipo antes de darlo de baja.'], 422);
         }
 
+        $request->validate([
+            'motivo_baja'  => 'required|in:DAÑO_IRREPARABLE,OBSOLETO,ROBO_PERDIDA,FIN_VIDA_UTIL,OTRO',
+            'detalle_baja' => 'required|string',
+            'fecha_baja'   => 'nullable|date',
+        ]);
+
         $estadoAnterior = $equipo->estado;
-        $equipo->update(['estado' => 'DE_BAJA', 'updated_by' => $request->user()->id_emp]);
+        $equipo->update([
+            'estado'       => 'DE_BAJA',
+            'motivo_baja'  => $request->motivo_baja,
+            'detalle_baja' => $request->detalle_baja,
+            'fecha_baja'   => $request->fecha_baja ?? now()->toDateString(),
+            'updated_by'   => $request->user()->id_emp,
+        ]);
 
         AuditoriaService::log('dbo.ti_equipo', $equipo->id, 'DAR_DE_BAJA',
-            ['estado' => $estadoAnterior], ['estado' => 'DE_BAJA'],
-            $request, "Baja de equipo {$equipo->codigo_bien}");
+            ['estado' => $estadoAnterior],
+            ['estado' => 'DE_BAJA', 'motivo_baja' => $request->motivo_baja, 'detalle_baja' => $request->detalle_baja],
+            $request, "Baja de equipo {$equipo->codigo_bien}: {$request->motivo_baja}");
 
         return response()->json($equipo);
     }

@@ -86,6 +86,9 @@
                 <p class="text-xs text-gray-400">
                   {{ e.tipo_equipo?.nombre }}<span v-if="e.descripcion"> · {{ e.descripcion }}</span>
                 </p>
+                <p v-if="e.estado === 'DE_BAJA' && e.motivo_baja" class="text-xs text-red-500 mt-0.5">
+                  Baja: {{ motivoBajaLabel(e.motivo_baja) }} ({{ e.fecha_baja }})
+                </p>
               </td>
               <td class="px-4 py-3 text-gray-500 text-xs">{{ e.serie || '—' }}</td>
               <td class="px-4 py-3">
@@ -124,9 +127,13 @@
                     class="text-xs text-gray-600 hover:text-gray-900 font-medium border border-gray-300 px-3 py-1 rounded-lg hover:bg-gray-50">
                     Editar
                   </button>
-                  <button v-if="e.estado !== 'ASIGNADO' && e.estado !== 'DE_BAJA'" @click="marcarBaja(e)"
+                  <button v-if="e.estado !== 'ASIGNADO' && e.estado !== 'DE_BAJA'" @click="abrirBaja(e)"
                     class="text-xs text-red-600 hover:text-red-800 font-medium border border-red-200 px-3 py-1 rounded-lg hover:bg-red-50">
                     Dar de baja
+                  </button>
+                  <button v-if="e.estado === 'DE_BAJA'" @click="reactivar(e)"
+                    class="text-xs text-white font-medium px-3 py-1 rounded-lg bg-green-600 hover:bg-green-700">
+                    Reactivar
                   </button>
                 </div>
               </td>
@@ -361,6 +368,47 @@
       </div>
     </div>
 
+    <!-- Modal Dar de Baja -->
+    <div v-if="modalBaja.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+        <div class="px-6 py-4 flex items-start justify-between" style="background-color:#4d7c8a;">
+          <div>
+            <h2 class="text-lg font-bold text-white">Dar de Baja</h2>
+            <p class="text-white/80 text-xs mt-0.5">{{ modalBaja.equipo?.codigo_bien }}</p>
+          </div>
+          <button @click="modalBaja.show = false" class="text-white/80 hover:text-white text-xl leading-none">&times;</button>
+        </div>
+        <div class="p-6">
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Fecha *</label>
+          <input v-model="formBaja.fecha_baja" type="date" class="w-full border rounded-lg px-3 py-2 text-sm" />
+
+          <label class="block text-xs font-semibold text-gray-600 mb-1 mt-3">Motivo *</label>
+          <select v-model="formBaja.motivo_baja" class="w-full border rounded-lg px-3 py-2 text-sm">
+            <option value="">Seleccione...</option>
+            <option value="DAÑO_IRREPARABLE">Daño irreparable</option>
+            <option value="OBSOLETO">Obsoleto</option>
+            <option value="ROBO_PERDIDA">Robo o pérdida</option>
+            <option value="FIN_VIDA_UTIL">Fin de vida útil</option>
+            <option value="OTRO">Otro</option>
+          </select>
+
+          <label class="block text-xs font-semibold text-gray-600 mb-1 mt-3">¿Qué acciones se tomaron? *</label>
+          <textarea v-model="formBaja.detalle_baja" rows="3"
+            placeholder="Ej. Se hizo diagnóstico técnico, no es reparable, se procede a desecharlo."
+            class="w-full border rounded-lg px-3 py-2 text-sm"></textarea>
+
+          <p v-if="error" class="text-red-600 text-sm mt-3">{{ error }}</p>
+          <div class="flex justify-end gap-2 mt-5">
+            <button @click="modalBaja.show = false" class="px-4 py-2 text-sm text-gray-600 border rounded-lg">Cancelar</button>
+            <button @click="confirmarBaja" :disabled="guardando || !formBaja.motivo_baja || !formBaja.detalle_baja"
+              class="px-5 py-2 text-sm text-white rounded-lg hover:opacity-90 disabled:opacity-50 bg-red-600 hover:bg-red-700">
+              {{ guardando ? 'Guardando...' : 'Confirmar baja' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Modal Historial (timeline) -->
     <div v-if="modalHistorial.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
@@ -552,9 +600,44 @@ async function guardar() {
   }
 }
 
-async function marcarBaja(e) {
-  if (!confirm(`¿Dar de baja el equipo ${e.codigo_bien}?`)) return
-  await api.patch(`/tecnologia/equipos/${e.id}/baja`)
+// ─── Dar de baja / Reactivar ────────────────────────────────────────────
+const modalBaja = ref({ show: false, equipo: null })
+const formBaja   = ref({ fecha_baja: '', motivo_baja: '', detalle_baja: '' })
+
+const motivoBajaLabels = {
+  DAÑO_IRREPARABLE: 'Daño irreparable',
+  OBSOLETO: 'Obsoleto',
+  ROBO_PERDIDA: 'Robo o pérdida',
+  FIN_VIDA_UTIL: 'Fin de vida útil',
+  OTRO: 'Otro',
+}
+function motivoBajaLabel(m) {
+  return motivoBajaLabels[m] || m
+}
+
+function abrirBaja(e) {
+  modalBaja.value = { show: true, equipo: e }
+  formBaja.value = { fecha_baja: new Date().toISOString().substring(0, 10), motivo_baja: '', detalle_baja: '' }
+  error.value = ''
+}
+
+async function confirmarBaja() {
+  error.value = ''
+  guardando.value = true
+  try {
+    await api.patch(`/tecnologia/equipos/${modalBaja.value.equipo.id}/baja`, formBaja.value)
+    modalBaja.value.show = false
+    await Promise.all([cargar(), cargarResumen()])
+  } catch (e) {
+    error.value = e.response?.data?.message || Object.values(e.response?.data?.errors || {})[0]?.[0] || 'Error al guardar'
+  } finally {
+    guardando.value = false
+  }
+}
+
+async function reactivar(e) {
+  if (!confirm(`¿Reactivar el equipo ${e.codigo_bien}? Volverá a estado Disponible.`)) return
+  await api.patch(`/tecnologia/equipos/${e.id}/disponible`)
   await Promise.all([cargar(), cargarResumen()])
 }
 

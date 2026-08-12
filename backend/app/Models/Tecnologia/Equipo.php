@@ -13,6 +13,7 @@ class Equipo extends Model
         'codigo_bien', 'tipo_equipo_id', 'marca', 'modelo', 'descripcion', 'serie',
         'estado', 'condicion', 'fecha_ingreso', 'vida_util_anios', 'ubicacion',
         'ultimo_mantenimiento', 'observaciones', 'created_by', 'updated_by',
+        'motivo_baja', 'detalle_baja', 'fecha_baja',
     ];
 
     protected $appends = ['vida_util_vencida', 'custodio_inactivo'];
