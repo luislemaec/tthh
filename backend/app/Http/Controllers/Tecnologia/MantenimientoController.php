@@ -17,10 +17,18 @@ use Illuminate\Support\Facades\Http;
 
 class MantenimientoController extends Controller
 {
-    private string $alfrescoBase = 'http://192.168.26.38:8080/alfresco/api/-default-/public/alfresco/versions/1';
-    private string $alfrescoUser = 'admin';
-    private string $alfrescoPass = 'admin';
-    private string $alfrescoSite = 'talentohumano';
+    private string $alfrescoBase;
+    private string $alfrescoUser;
+    private string $alfrescoPass;
+    private string $alfrescoSite;
+
+    public function __construct()
+    {
+        $this->alfrescoBase = config('services.alfresco.base');
+        $this->alfrescoUser = config('services.alfresco.user');
+        $this->alfrescoPass = config('services.alfresco.pass');
+        $this->alfrescoSite = config('services.alfresco.site');
+    }
 
     public const PROCESOS_CONTRATACION = [
         'ÍNFIMA CUANTÍA', 'SUBASTA INVERSA', 'CATÁLOGO ELECTRÓNICO', 'CONTRATACIÓN DIRECTA', 'OTRO',

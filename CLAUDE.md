@@ -158,8 +158,9 @@ Variable `$generadoPor` = `trim($request->user()->apellido_emp) . ' ' . trim($re
 
 ## Alfresco (documentos firmados)
 
-- URL: `http://192.168.26.38:8080/alfresco/api/-default-/public/alfresco/versions/1`
-- Credenciales: `admin/admin`, sitio: `talentohumano`
+- **Configuración por ambiente (`.env`)**: `ALFRESCO_BASE_URL`, `ALFRESCO_USER`, `ALFRESCO_PASS`, `ALFRESCO_SITE` → `config('services.alfresco.*')` en `backend/config/services.php`. Cada uno de los 9 controladores que usa Alfresco (`AccionPersonalController`, `HorasExtrasController`, `EmpleadoController`, `Comisiones/InformeComisionController`, `ReportePlanificacionController`, `CertificadoLaboralController`, `Comisiones/ComisionController`, `PermisosController`, `Tecnologia/MantenimientoController`) lee estos valores en su propio `__construct()` hacia las propiedades `$alfrescoBase`/`$alfrescoUser`/`$alfrescoPass`/`$alfrescoSite` — ya no están hardcodeados. Defaults en `config/services.php` = valores de desarrollo (`192.168.26.38`, `admin`/`admin`, sitio `talentohumano`); en producción se sobrescriben con el `.env` real de ese servidor.
+- Desarrollo: `http://192.168.26.38:8080/alfresco/api/-default-/public/alfresco/versions/1`, `admin/admin`, sitio `talentohumano`
+- Producción: Alfresco propio en instalación (IP/credenciales pendientes de definir); antes de conectar la app en producción hay que crear manualmente el sitio `talentohumano` en esa instancia (las subcarpetas se autogeneran solas, ver `getOrCreateFolderNodeId()` abajo)
 - Guardar `entry.id` en DB tras subir; descargar con `GET /nodes/{id}/content`
 - Helpers `getDocLibNodeId()` y `getOrCreateFolderNodeId()` repetidos en cada controlador que usa Alfresco
 
