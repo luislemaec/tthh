@@ -74,7 +74,7 @@ class CalendarioController extends Controller
         return response()->json($fecha, 201);
     }
 
-    // Actualizar fecha
+    // Actualizar fecha (permite además reasignar la fecha misma, no solo tipo/factor/horas)
     public function update(Request $request, $fecha, $ubicacion)
     {
         $this->requireRole($request, self::ROLES_ADMIN);
@@ -83,6 +83,7 @@ class CalendarioController extends Controller
             ->firstOrFail();
 
         $request->validate([
+            "fecha"     => "nullable|date",
             "tipo"      => "required|string|max:10",
             "factor"    => "required|numeric",
             "color"     => "required|string|max:10",
@@ -90,12 +91,27 @@ class CalendarioController extends Controller
             "hora_hasta"=> "required|string",
         ]);
 
+        $nuevaFecha = $request->filled("fecha") ? $request->fecha : $fecha;
+
+        if ($nuevaFecha !== $fecha) {
+            $existe = ListaFecha::where("fecha", $nuevaFecha)
+                ->where("ubicacion", $ubicacion)
+                ->exists();
+
+            if ($existe) {
+                return response()->json([
+                    "message" => "Ya existe una fecha registrada para ese día y ubicación"
+                ], 422);
+            }
+        }
+
         $registro->update([
+            "fecha"     => $nuevaFecha,
             "factor"    => $request->factor,
             "tipo"      => strtoupper($request->tipo),
             "color"     => strtolower($request->color),
-            "hora_desde"=> $fecha . " " . $request->hora_desde . ":00",
-            "hora_hasta"=> $fecha . " " . $request->hora_hasta . ":00",
+            "hora_desde"=> $nuevaFecha . " " . $request->hora_desde . ":00",
+            "hora_hasta"=> $nuevaFecha . " " . $request->hora_hasta . ":00",
             "hora_25"   => $request->hora_25 ?? 0,
         ]);
 
@@ -118,14 +134,23 @@ class CalendarioController extends Controller
     public function cargarFeriadosEcuador(Request $request)
     {
         $this->requireRole($request, self::ROLES_ADMIN);
-        $anio     = $request->get("anio", date("Y"));
+        $anio     = (int) $request->get("anio", date("Y"));
         $ubicacion = $request->get("ubicacion", "Quito");
+
+        // Carnaval y Viernes Santo son fechas móviles (dependen de la Pascua) — se calculan
+        // con easter_days() en vez de dejarlas fijas, para que coincidan con el año seleccionado.
+        $pascua = new \DateTime("$anio-03-21");
+        $pascua->modify('+' . easter_days($anio) . ' days');
+
+        $carnavalLunes  = (clone $pascua)->modify('-48 days')->format('Y-m-d');
+        $carnavalMartes = (clone $pascua)->modify('-47 days')->format('Y-m-d');
+        $viernesSanto   = (clone $pascua)->modify('-2 days')->format('Y-m-d');
 
         $feriados = [
             ["fecha" => "$anio-01-01", "descripcion" => "Año Nuevo"],
-            ["fecha" => "$anio-02-27", "descripcion" => "Carnaval"],
-            ["fecha" => "$anio-02-28", "descripcion" => "Carnaval"],
-            ["fecha" => "$anio-04-14", "descripcion" => "Viernes Santo"],
+            ["fecha" => $carnavalLunes,  "descripcion" => "Carnaval"],
+            ["fecha" => $carnavalMartes, "descripcion" => "Carnaval"],
+            ["fecha" => $viernesSanto,   "descripcion" => "Viernes Santo"],
             ["fecha" => "$anio-05-01", "descripcion" => "Día del Trabajo"],
             ["fecha" => "$anio-05-24", "descripcion" => "Batalla de Pichincha"],
             ["fecha" => "$anio-08-10", "descripcion" => "Primer Grito Independencia"],

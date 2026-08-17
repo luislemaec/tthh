@@ -86,7 +86,7 @@
             <label class="block text-sm font-medium text-gray-600 mb-1">Fecha *</label>
             <input v-model="form.fecha" type="date"
               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]"
-              :disabled="form.editando" required />
+              required />
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Tipo *</label>
@@ -167,7 +167,7 @@ const tipos = [
 ]
 
 const form = ref({
-  editando: false, fecha: "", tipo: "FERIADO",
+  editando: false, fechaOriginal: "", fecha: "", tipo: "FERIADO",
   factor: 2.00, color: "red", hora_desde: "00:00",
   hora_hasta: "23:59", ubicacion: "Quito"
 })
@@ -198,12 +198,13 @@ const abrirModal = (f = null) => {
   error.value = ""
   form.value = f ? {
     editando: true,
+    fechaOriginal: f.fecha,
     fecha: f.fecha, tipo: f.tipo.trim(),
     factor: f.factor, color: f.color.trim(),
     hora_desde: f.hora_desde, hora_hasta: f.hora_hasta,
     ubicacion: f.ubicacion.trim()
   } : {
-    editando: false, fecha: "", tipo: "FERIADO",
+    editando: false, fechaOriginal: "", fecha: "", tipo: "FERIADO",
     factor: 2.00, color: "red", hora_desde: "00:00",
     hora_hasta: "23:59", ubicacion: "Quito"
   }
@@ -216,7 +217,7 @@ const guardar = async () => {
   error.value = ""
   try {
     if (form.value.editando) {
-      await api.put("/admin/calendario/" + form.value.fecha + "/" + form.value.ubicacion, form.value)
+      await api.put("/admin/calendario/" + form.value.fechaOriginal + "/" + form.value.ubicacion, form.value)
     } else {
       await api.post("/admin/calendario", form.value)
     }
