@@ -11,9 +11,12 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 
 class ReportesController extends Controller
 {
+    private const ROLES_ADMIN = ['ADMINISTRADOR', 'TALENTO HUMANO'];
+
     // Reporte 1: Atrasos desde d2_cuadre_marcacion
     public function atrasos(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate([
             'fecha_desde' => 'required|date',
             'fecha_hasta' => 'required|date',
@@ -183,6 +186,7 @@ class ReportesController extends Controller
     // Reporte 2: Marcaciones faltantes — base todos los empleados activos
     public function marcacionesFaltantes(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate([
             'fecha_desde' => 'required|date',
             'fecha_hasta' => 'required|date',
@@ -360,6 +364,7 @@ class ReportesController extends Controller
     // Reporte 3: Movimientos de Personal
     public function movimientosPersonal(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate([
             'fecha_desde' => 'required|date',
             'fecha_hasta' => 'required|date',

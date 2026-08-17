@@ -41,8 +41,11 @@ class TransporteController extends Controller
 
     // ─── VEHÍCULOS ────────────────────────────────────────────────────────────
 
-    public function index()
+    public function index(Request $request)
     {
+        if (!$this->esTransporte($request) && !$this->esConductor($request)) {
+            abort(403, 'No tiene permisos para realizar esta acción.');
+        }
         $vehiculos = Vehiculo::orderBy('placa')->get();
 
         $planes = DB::table('dbo.trans_plan_preventivo_cab')
@@ -90,6 +93,9 @@ class TransporteController extends Controller
 
     public function store(Request $request)
     {
+        if (!$this->esTransporte($request)) {
+            abort(403, 'No tiene permisos para realizar esta acción.');
+        }
         $request->validate([
             'placa'              => 'required|string|max:10|unique:pgsql.dbo.trans_vehiculo,placa',
             'marca'              => 'required|string|max:50',
@@ -115,6 +121,9 @@ class TransporteController extends Controller
 
     public function update(Request $request, $id)
     {
+        if (!$this->esTransporte($request)) {
+            abort(403, 'No tiene permisos para realizar esta acción.');
+        }
         $vehiculo = Vehiculo::findOrFail($id);
         $anterior = $vehiculo->only(['kilometraje_actual', 'estado']);
 
@@ -152,6 +161,9 @@ class TransporteController extends Controller
 
     public function indexMtto(Request $request)
     {
+        if (!$this->esTransporte($request) && !$this->esConductor($request)) {
+            abort(403, 'No tiene permisos para realizar esta acción.');
+        }
         // El vehículo es un recurso compartido entre conductores: todos deben ver el mismo
         // listado (no solo lo que cada uno solicitó), para saber si ya hay un mantenimiento
         // en curso de ese vehículo antes de pedir otro.
@@ -163,6 +175,9 @@ class TransporteController extends Controller
 
     public function storeMtto(Request $request)
     {
+        if (!$this->esTransporte($request) && !$this->esConductor($request)) {
+            abort(403, 'No tiene permisos para realizar esta acción.');
+        }
         $request->validate([
             'vehiculo_id'           => 'required|exists:pgsql.dbo.trans_vehiculo,id',
             'tipo_mantenimiento_id' => 'required|exists:pgsql.dbo.trans_tipo_mantenimiento,id',
@@ -259,6 +274,9 @@ class TransporteController extends Controller
 
     public function updateMtto(Request $request, $id)
     {
+        if (!$this->esTransporte($request)) {
+            abort(403, 'No tiene permisos para realizar esta acción.');
+        }
         $m = Mantenimiento::findOrFail($id);
 
         $accion = $request->input('accion');
@@ -349,8 +367,11 @@ class TransporteController extends Controller
         return response()->json($m->load(['vehiculo', 'conductor', 'responsable']));
     }
 
-    public function pdfMtto($id)
+    public function pdfMtto(Request $request, $id)
     {
+        if (!$this->esTransporte($request) && !$this->esConductor($request)) {
+            abort(403, 'No tiene permisos para realizar esta acción.');
+        }
         $m = Mantenimiento::with(['vehiculo', 'conductor', 'responsable', 'actividades'])->findOrFail($id);
         $logo = $this->logoBase64();
 
@@ -418,6 +439,13 @@ class TransporteController extends Controller
     {
         $s = SolicitudMov::findOrFail($id);
         $accion = $request->input('accion');
+
+        if (in_array($accion, ['aprobar', 'negar']) && !$this->esTransporte($request)) {
+            abort(403, 'No tiene permisos para realizar esta acción.');
+        }
+        if ($accion === 'hoja_ruta' && $s->id_emp_conductor !== $this->emp($request)->id_emp && !$this->esTransporte($request)) {
+            abort(403, 'Solo el conductor asignado puede completar la hoja de ruta.');
+        }
 
         if ($accion === 'aprobar') {
             $request->validate([
@@ -546,8 +574,11 @@ class TransporteController extends Controller
 
     // ─── CONDUCTORES (para selectores en frontend) ───────────────────────────
 
-    public function conductores()
+    public function conductores(Request $request)
     {
+        if (!$this->esTransporte($request)) {
+            abort(403, 'No tiene permisos para realizar esta acción.');
+        }
         $ids = DB::table('dbo.admin_usuario_rol as ur')
             ->join('dbo.admin_rol as r', 'ur.id_rol', '=', 'r.id')
             ->where('r.descripcion', 'CONDUCTOR')

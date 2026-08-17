@@ -10,8 +10,11 @@ use Illuminate\Support\Facades\DB;
 
 class AdqDashboardController extends Controller
 {
+    private const ROLES_ADQ = ['ADMINISTRADOR', 'ADQUISICIONES', 'BIENES'];
+
     public function index(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $porcentaje = (float)(DB::table('adq.configuracion')
             ->where('concepto', 'porcentaje_stock_minimo')
             ->value('valor') ?? 20);

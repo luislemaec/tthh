@@ -99,7 +99,7 @@
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-600 mb-1">Centro de Costo</label>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Siglas</label>
           <input v-model="form.centro_de_costo" type="text" placeholder="Ej: RRH"
             class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
         </div>

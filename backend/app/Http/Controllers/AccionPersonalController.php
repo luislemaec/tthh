@@ -16,6 +16,8 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 
 class AccionPersonalController extends Controller
 {
+    private const ROLES_ADMIN = ['ADMINISTRADOR', 'TALENTO HUMANO', 'TH ACCIONES PERSONAL'];
+
     private string $alfrescoBase;
     private string $alfrescoUser;
     private string $alfrescoPass;
@@ -96,8 +98,9 @@ class AccionPersonalController extends Controller
     }
 
     // GET /api/acciones-personal/ultima-activa/{id_emp}
-    public function ultimaActiva($id_emp)
+    public function ultimaActiva(Request $request, $id_emp)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         // Busca la última acción ACTIVO del empleado (excluye VACACIONES, ENCARGO, SUBROGACION
         // porque no cambian la posición permanente del servidor)
         $accion = DB::table('dbo.acc_accion_personal')
@@ -126,6 +129,7 @@ class AccionPersonalController extends Controller
     // GET /api/acciones-personal
     public function index(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         // Auto-cerrar acciones ACTIVAS con fecha_fin vencida (SUBROGACION, VACACIONES)
         AccionPersonal::whereIn("tipo_accion", ["SUBROGACION", "VACACIONES"])
             ->where("estado", "ACTIVO")
@@ -159,14 +163,16 @@ class AccionPersonalController extends Controller
     }
 
     // GET /api/acciones-personal/{id}
-    public function show($id)
+    public function show(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         return response()->json(AccionPersonal::with(["empleado", "titular"])->findOrFail($id));
     }
 
     // POST /api/acciones-personal  → crea en BORRADOR sin número
     public function store(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $tiposSinPropuesta  = ['DESTITUCION', 'CESACION DE FUNCIONES', 'VACACIONES', 'COMISION DE SERVICIOS'];
         $tiposSinActual     = ['INGRESO', 'REINGRESO'];
         $tiposConFechaFin   = ['SUBROGACION', 'VACACIONES', 'COMISION DE SERVICIOS'];
@@ -240,6 +246,7 @@ class AccionPersonalController extends Controller
     // PATCH /api/acciones-personal/{id}/procesar → asigna número y pasa a ACTIVO
     public function procesar(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $accion = AccionPersonal::findOrFail($id);
 
         if ($accion->estado !== 'BORRADOR') {
@@ -269,6 +276,7 @@ class AccionPersonalController extends Controller
     // PATCH /api/acciones-personal/{id}/editar-borrador → edita motivación, fecha elaboración y firmantes
     public function editarBorrador(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate([
             'motivacion'               => 'nullable|string',
             'fecha_elaboracion'        => 'required|date',
@@ -304,6 +312,7 @@ class AccionPersonalController extends Controller
     // PATCH /api/acciones-personal/{id}/estado
     public function cambiarEstado(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate([
             "estado"    => "required|in:ACTIVO,FINALIZADO,ANULADO",
             "fecha_fin" => "nullable|date",
@@ -320,8 +329,9 @@ class AccionPersonalController extends Controller
     }
 
     // GET /api/acciones-personal/{id}/pdf  (funciona en BORRADOR y procesadas)
-    public function pdf($id)
+    public function pdf(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $accion = AccionPersonal::with(["empleado.departamento", "titular.departamento"])->findOrFail($id);
 
         $creador = Empleado::find($accion->creado_por);
@@ -369,6 +379,7 @@ class AccionPersonalController extends Controller
     // GET /api/acciones-personal/reporte/pdf
     public function reportePdf(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $acciones = $this->queryFiltrada($request)->get();
 
         $config = Configuracion::whereIn("concepto", [
@@ -402,6 +413,7 @@ class AccionPersonalController extends Controller
     // GET /api/acciones-personal/reporte/excel
     public function reporteExcel(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $acciones = $this->queryFiltrada($request)->get();
 
         $spreadsheet = new Spreadsheet();
@@ -465,6 +477,7 @@ class AccionPersonalController extends Controller
     // GET /api/acciones-personal/historial-remuneraciones
     public function historialRemuneraciones(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $tiposPermitidos = ['INGRESO', 'ENCARGO', 'SUBROGACION', 'CESACION DE FUNCIONES', 'DESTITUCION'];
 
         $query = AccionPersonal::with(['empleado'])
@@ -623,6 +636,7 @@ class AccionPersonalController extends Controller
     // POST /api/acciones-personal/{id}/subir-firmado
     public function subirFirmado(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate(["archivo" => "required|file|mimes:pdf|max:20480"]);
         $accion = AccionPersonal::findOrFail($id);
 
@@ -659,8 +673,9 @@ class AccionPersonalController extends Controller
     }
 
     // GET /api/acciones-personal/{id}/descargar-firmado
-    public function descargarFirmado($id)
+    public function descargarFirmado(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $accion = AccionPersonal::findOrFail($id);
         if (!$accion->pdf_firmado) {
             return response()->json(["message" => "No hay PDF firmado disponible."], 404);

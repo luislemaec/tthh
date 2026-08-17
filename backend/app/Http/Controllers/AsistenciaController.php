@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\DB;
 
 class AsistenciaController extends Controller
 {
+    private const ROLES_ADMIN = ['ADMINISTRADOR', 'TALENTO HUMANO'];
+
     // Obtener estado actual del empleado autenticado
     public function miEstado(Request $request)
     {
@@ -204,6 +206,7 @@ class AsistenciaController extends Controller
     // Listar marcaciones del día para administrador
     public function listado(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $fecha = $request->get("fecha", now()->toDateString());
         $depto = $request->get("departamento_id");
         $buscar = $request->get("buscar");
@@ -232,6 +235,7 @@ class AsistenciaController extends Controller
     // Reporte de asistencia por empleado y rango de fechas
     public function reporte(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate([
             "fecha_desde" => "required|date",
             "fecha_hasta" => "required|date",

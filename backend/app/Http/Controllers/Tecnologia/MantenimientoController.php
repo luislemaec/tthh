@@ -17,6 +17,8 @@ use Illuminate\Support\Facades\Http;
 
 class MantenimientoController extends Controller
 {
+    private const ROLES_TEC = ['ADMINISTRADOR', 'TECNOLOGIA'];
+
     private string $alfrescoBase;
     private string $alfrescoUser;
     private string $alfrescoPass;
@@ -75,13 +77,15 @@ class MantenimientoController extends Controller
         return $create->json('entry.id');
     }
 
-    public function checklist()
+    public function checklist(Request $request)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         return response()->json(ActividadMantenimiento::where('estado', true)->orderBy('orden')->get());
     }
 
     public function pendientes(Request $request)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $anio = $request->input('anio', now()->year);
 
         $query = Equipo::with(['tipoEquipo', 'asignacionActiva.empleado'])
@@ -110,6 +114,7 @@ class MantenimientoController extends Controller
 
     public function realizados(Request $request)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $anio = $request->input('anio', now()->year);
 
         $query = Mantenimiento::with(['equipo.tipoEquipo', 'tecnico', 'custodio'])
@@ -135,6 +140,7 @@ class MantenimientoController extends Controller
 
     public function store(Request $request)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $request->validate([
             'equipo_id'           => 'required|exists:pgsql.dbo.ti_equipo,id',
             'fecha_mantenimiento' => 'required|date',
@@ -240,13 +246,15 @@ class MantenimientoController extends Controller
         return response()->json($mantenimiento->load(['equipo.tipoEquipo', 'tecnico', 'custodio']), 201);
     }
 
-    public function procesos()
+    public function procesos(Request $request)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         return response()->json(self::PROCESOS_CONTRATACION);
     }
 
     public function storeExterno(Request $request)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $request->validate([
             'tipo_equipo_id'       => 'required|exists:pgsql.dbo.ti_tipo_equipo,id',
             'fecha_mantenimiento'  => 'required|date',
@@ -308,8 +316,9 @@ class MantenimientoController extends Controller
         ], 201);
     }
 
-    public function pdf($id)
+    public function pdf(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $m = Mantenimiento::with(['equipo.tipoEquipo', 'tecnico', 'custodio', 'detalle.actividad'])->findOrFail($id);
         $detalle = $m->detalle->sortBy(fn ($d) => $d->actividad->orden ?? 0)->values();
         $logo = $this->logoBase64();
@@ -322,6 +331,7 @@ class MantenimientoController extends Controller
 
     public function subirFirmado($id, Request $request)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $request->validate(['archivo' => 'required|file|mimes:pdf|max:10240']);
 
         $m = Mantenimiento::with('equipo')->findOrFail($id);
@@ -347,8 +357,9 @@ class MantenimientoController extends Controller
         return response()->json(['message' => 'Acta firmada subida correctamente', 'acta_alfresco_id' => $m->acta_alfresco_id]);
     }
 
-    public function descargarFirmado($id)
+    public function descargarFirmado(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $m = Mantenimiento::findOrFail($id);
 
         if (!$m->acta_alfresco_id) {
@@ -368,8 +379,9 @@ class MantenimientoController extends Controller
         ]);
     }
 
-    public function pdfExterno($lote)
+    public function pdfExterno(Request $request, $lote)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $registros = Mantenimiento::with(['equipo.tipoEquipo'])
             ->where('lote_externo', $lote)
             ->orderBy('id')
@@ -388,6 +400,7 @@ class MantenimientoController extends Controller
 
     public function subirFirmadoExterno($lote, Request $request)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $request->validate(['archivo' => 'required|file|mimes:pdf|max:10240']);
 
         $registros = Mantenimiento::where('lote_externo', $lote)->get();
@@ -418,8 +431,9 @@ class MantenimientoController extends Controller
         return response()->json(['message' => 'Acta firmada subida correctamente', 'acta_alfresco_id' => $upload->json('entry.id')]);
     }
 
-    public function descargarFirmadoExterno($lote)
+    public function descargarFirmadoExterno(Request $request, $lote)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $m = Mantenimiento::where('lote_externo', $lote)->first();
         if (!$m) abort(404);
 

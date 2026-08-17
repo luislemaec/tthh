@@ -7,18 +7,23 @@ use Illuminate\Http\Request;
 
 class ActividadMantenimientoController extends Controller
 {
-    public function index()
+    private const ROLES_TEC = ['ADMINISTRADOR', 'TECNOLOGIA'];
+
+    public function index(Request $request)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         return response()->json(ActividadMantenimiento::orderBy('orden')->get());
     }
 
-    public function activas()
+    public function activas(Request $request)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         return response()->json(ActividadMantenimiento::where('estado', true)->orderBy('orden')->get());
     }
 
     public function store(Request $request)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $request->validate([
             'nombre' => 'required|string|max:150',
             'orden'  => 'required|integer|min:1',
@@ -35,6 +40,7 @@ class ActividadMantenimientoController extends Controller
 
     public function update(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $actividad = ActividadMantenimiento::findOrFail($id);
 
         $request->validate([

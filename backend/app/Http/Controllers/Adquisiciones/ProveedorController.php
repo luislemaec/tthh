@@ -8,8 +8,11 @@ use Illuminate\Http\Request;
 
 class ProveedorController extends Controller
 {
-    public function index()
+    private const ROLES_ADQ = ['ADMINISTRADOR', 'ADQUISICIONES', 'BIENES'];
+
+    public function index(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         return response()->json(
             Proveedor::with('catalogo')->orderBy('nombre')->get()
         );
@@ -17,6 +20,7 @@ class ProveedorController extends Controller
 
     public function store(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $request->validate([
             'ruc'      => 'required|string|max:20|unique:pgsql.adq.proveedor,ruc',
             'nombre'   => 'required|string|max:200',
@@ -47,13 +51,15 @@ class ProveedorController extends Controller
         return response()->json($proveedor->load('catalogo'), 201);
     }
 
-    public function show($id)
+    public function show(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         return response()->json(Proveedor::with('catalogo')->findOrFail($id));
     }
 
     public function update(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $proveedor = Proveedor::findOrFail($id);
 
         $request->validate([
@@ -84,15 +90,17 @@ class ProveedorController extends Controller
         return response()->json($proveedor->load('catalogo'));
     }
 
-    public function inactivar($id)
+    public function inactivar(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $proveedor = Proveedor::findOrFail($id);
         $proveedor->update(['estado' => 'INACTIVO']);
         return response()->json(['message' => 'Proveedor inactivado.']);
     }
 
-    public function activar($id)
+    public function activar(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $proveedor = Proveedor::findOrFail($id);
         $proveedor->update(['estado' => 'ACTIVO']);
         return response()->json(['message' => 'Proveedor activado.']);

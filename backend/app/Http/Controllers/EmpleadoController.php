@@ -15,6 +15,8 @@ use Illuminate\Support\Facades\Storage;
 
 class EmpleadoController extends Controller
 {
+    private const ROLES_ADMIN = ['ADMINISTRADOR', 'TALENTO HUMANO'];
+
     // GET /api/empleados
     public function index(Request $request)
     {
@@ -85,6 +87,7 @@ class EmpleadoController extends Controller
     // POST /api/empleados
     public function store(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate([
             "identificacion"         => "required|string|max:15|unique:dbo.ad_empleado,identificacion",
             "nombre_emp"             => "required|string|max:240",
@@ -213,6 +216,7 @@ class EmpleadoController extends Controller
     // PUT /api/empleados/{id}
     public function update(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $emp = Empleado::findOrFail($id);
 
         if ($emp->es_externo) {
@@ -373,8 +377,9 @@ class EmpleadoController extends Controller
     }
 
     // DELETE /api/empleados/{id}
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $emp = Empleado::findOrFail($id);
         $emp->update(["estado" => "INACTIVO"]);
         return response()->json(["message" => "Empleado desactivado correctamente."]);

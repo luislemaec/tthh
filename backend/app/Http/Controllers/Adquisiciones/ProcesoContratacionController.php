@@ -7,13 +7,17 @@ use Illuminate\Support\Facades\DB;
 
 class ProcesoContratacionController extends Controller
 {
-    public function index()
+    private const ROLES_ADQ = ['ADMINISTRADOR', 'ADQUISICIONES', 'BIENES'];
+
+    public function index(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         return response()->json(DB::table('adq.proceso_contratacion')->orderBy('id')->get());
     }
 
-    public function activos()
+    public function activos(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         return response()->json(
             DB::table('adq.proceso_contratacion')->where('activo', true)->orderBy('nombre')->pluck('nombre')
         );
@@ -21,6 +25,7 @@ class ProcesoContratacionController extends Controller
 
     public function store(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $request->validate(['nombre' => 'required|string|max:100']);
         $nombre = strtoupper(trim($request->nombre));
 
@@ -34,6 +39,7 @@ class ProcesoContratacionController extends Controller
 
     public function update(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $request->validate(['nombre' => 'required|string|max:100']);
         $nombre = strtoupper(trim($request->nombre));
 
@@ -41,8 +47,9 @@ class ProcesoContratacionController extends Controller
         return response()->json(DB::table('adq.proceso_contratacion')->find($id));
     }
 
-    public function toggle($id)
+    public function toggle(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $row = DB::table('adq.proceso_contratacion')->findOrFail($id);
         DB::table('adq.proceso_contratacion')->where('id', $id)->update(['activo' => !$row->activo]);
         return response()->json(DB::table('adq.proceso_contratacion')->find($id));

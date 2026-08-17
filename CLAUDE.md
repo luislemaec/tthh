@@ -92,6 +92,45 @@ Roles: `ADMINISTRADOR`, `TALENTO HUMANO`, `TH ACCIONES PERSONAL`, `TH NOMINA`, `
 - Frontend: `auth.tieneRol('NOMBRE')` desde Pinia store
 - Menú filtrado por rol desde `dbo.admin_opcion`
 
+### Auditoría de seguridad — control de acceso por rol en el backend (2026-08-17)
+
+**Hallazgo:** como el backend no usa policies/gates de Laravel, el control de acceso dependía casi enteramente de que el frontend ocultara el botón/menú según el rol. Cualquier endpoint sin un chequeo de rol explícito *dentro del método del controlador* era accesible por **cualquier usuario autenticado** (con o sin rol) llamando directamente a la API — el sistema fallaba "abierto" por defecto, no "cerrado". El caso más grave detectado: `RolController::asignarRolEmpleado` no tenía ningún control, por lo que en teoría cualquier empleado podía asignarse a sí mismo el rol `ADMINISTRADOR`.
+
+**Corrección — helper reutilizable** en `backend/app/Http/Controllers/Controller.php`:
+```php
+protected function tieneAlgunRol(Request $request, array $roles): bool  // solo consulta
+protected function requireRole(Request $request, array $roles): void   // aborta 403 si no cumple
+```
+Patrón aplicado al inicio de cada método que debía restringirse:
+```php
+private const ROLES_ADMIN = ['ADMINISTRADOR', 'TALENTO HUMANO'];
+// ...
+public function store(Request $request) {
+    $this->requireRole($request, self::ROLES_ADMIN);
+    ...
+}
+```
+`TransporteController` y `Adquisiciones/SolicitudMaterialController` ya tenían helpers propios equivalentes (`esTransporte()`, `esConductor()`, `esRol()`) — se respetó ese patrón existente en vez de duplicar con el helper genérico.
+
+**Estado por módulo:**
+
+| Módulo | Estado | Notas |
+|---|---|---|
+| Talento Humano | ✅ Cerrado | `RolController`, `SupervisorController`, `EmpleadoController` (solo store/update/destroy), `AccionPersonalController`, `RolPagoController`, `AsistenciaController` (listado/reporte), `CuadreController`, `ReportesController`, catálogos `Admin/*` (Departamento, Razon, Turno, ModalidadLaboral, Aviso, AportesIess, Calendario, Configuracion) |
+| Adquisiciones | ✅ Cerrado | 11 de 12 controladores no tenían ningún control; `SolicitudMaterialController` ya estaba bien diseñado (roles + validación de propiedad), no se tocó |
+| Transportes | ✅ Cerrado | Incluye corrección de propiedad en `TransporteController::updateMov` (acción `hoja_ruta`): antes cualquier conductor podía completar la hoja de ruta de un viaje asignado a otro conductor, corrompiendo el kilometraje del vehículo |
+| Tecnología | ✅ Cerrado | Los 6 controladores (`TipoEquipoController`, `ActividadMantenimientoController`, `PiezaController`, `ReporteEquipoController`, `EquipoController`, `MantenimientoController`) no tenían ningún control |
+| Comisiones de Servicios | ⏳ Parcial | `InformeComisionController`, `TarifaViaticosController`, `CoeficientePaisController` sin protección. `ComisionController`, `LiquidacionController`, `FuncionarioExternoController`, `AnticipController` tienen protección parcial preexistente, no verificada método por método (6 roles financieros con flujo de aprobación en cadena — requiere lectura cuidadosa, no apurada). `Admin/ProvinciaCiudadController` sin revisar |
+
+**Excepciones intencionales** — endpoints de lectura que se dejaron abiertos a propósito porque otros módulos/roles los consumen para búsquedas o dropdowns (verificado contra el uso real en el frontend antes de decidir):
+- `EmpleadoController::index/show` — usado por Tecnología, Nómina, Certificados, Comisiones, Supervisores, Adquisiciones, etc.
+- `Admin/DepartamentoController::index`, `Admin/RazonController::index` — usados en formularios de toda la app (permisos, vacaciones, reportes)
+- `Adquisiciones/ArticuloController::index/show` — usado por `SolicitudesView.vue` (cualquier empleado pidiendo materiales)
+- `Admin/AvisoController::activos()` — usado por el launcher de todos los usuarios
+- `Transportes/TipoMantenimientoController` y `PlanPreventivoController` (solo lectura) — abiertos también a `CONDUCTOR`, que los necesita para crear un requerimiento de mantenimiento
+
+**Importante — sin pruebas funcionales en vivo:** estos cambios se aplicaron revisando el código y, antes de cada restricción, confirmando en el frontend qué pantallas/roles consumen ese endpoint (para no romper accesos legítimos). No se ejecutó `php -l` (no había PHP CLI disponible en el entorno de trabajo) ni se probó manualmente con usuarios reales de cada rol. Antes de dar por cerrado cualquiera de estos módulos en producción: correr `php -l` sobre los archivos tocados y hacer una pasada manual con al menos un usuario de cada rol afectado, especialmente `SUPERVISOR`/`CONDUCTOR` en Transportes por la lógica de propiedad agregada en `updateMov`.
+
 ## Base de Datos
 
 - Schema `dbo` → Talento Humano | Schema `adq` → Adquisiciones (misma BD PostgreSQL)
@@ -1281,6 +1320,7 @@ Controladores en `app/Http/Controllers/Transporte/`:
 - `TipoMantenimientoController` — CRUD tipos
 - `PlanPreventivoController` — CRUD plan + importar CSV
 - `ValeController` — vales combustible + PDF
+- `ReporteTransporteController` — reportes de vales/movilización/mantenimiento (ver sección Reportes abajo)
 
 Rutas bajo `/api/transporte/*`:
 - `GET/POST /vehiculos`, `PUT /vehiculos/{id}`
@@ -1292,15 +1332,27 @@ Rutas bajo `/api/transporte/*`:
 - `GET /notificaciones-pendientes` — solo TRANSPORTE; devuelve `{ pendientes, ultima_at, items[] }`
 - `GET/POST /vales-combustible`, `GET /vales-combustible/{id}/pdf`
 - `GET /conductores` — lista empleados con rol CONDUCTOR
+- `GET /reportes/vales-combustible`, `GET /reportes/movilizacion`, `GET /reportes/mantenimiento` — todos `?formato=pdf|excel` opcional; solo TRANSPORTE/ADMINISTRADOR
 
 `PUT /mantenimiento/{id}` con campo `accion`: `orden` / `en_taller` / `finalizar`.
 `PUT /movilizacion/{id}` con campo `accion`: `aprobar` / `negar` / `hoja_ruta`.
+
+### Reportes
+
+Antes de esto el módulo no tenía ningún reporte. `ReporteTransporteController` (`app/Http/Controllers/Transporte/`) agrega 3, todos con filtro `fecha_desde`/`fecha_hasta` obligatorio y respuesta JSON `{ datos: [...], resumen: {...} }` (sin `formato`) o descarga Excel/PDF (`?formato=excel|pdf`) — mismo patrón que `ReportesController` (TH) y `ReporteAdqController` (Adquisiciones), color institucional del módulo `#1e3a5f` en vez del verde de TH/Adquisiciones.
+
+- **`vales(Request)`** — filtros opcionales `vehiculo_id`, `id_emp_conductor`, `estado` (EMITIDO/ANULADO). `resumen`: `total_vales`, `total_anulados`, `total_valor` (excluye ANULADO), `total_glns_extra/super/diesel` (excluye ANULADO).
+- **`movilizacion(Request)`** — filtros opcionales `vehiculo_id`, `id_emp_conductor`, `id_emp_solicitante` (búsqueda ILIKE libre, no dropdown — cualquier empleado puede ser solicitante), `estado`. Calcula `km_recorridos` por fila (`km_retorno - km_salida`, solo si `estado = COMPLETADO`). `resumen`: conteos por estado + `km_totales` + `promedio_km`.
+- **`mantenimiento(Request)`** — filtra por `DATE(created_at)` (fecha de creación del requerimiento, no `fecha_orden` porque no todos los estados la tienen). Filtros opcionales `vehiculo_id`, `tipo_mantenimiento_id`, `estado`, `taller_id` (join a `adq.proveedor`, no a `trans_taller` — ver nota de unificación de talleres arriba). `resumen`: `preventivos`/`correctivos` con `str_contains($r->tipo, ...)` (mismo patrón dual-count que el resto del módulo — "PREVENTIVO Y CORRECTIVO" cuenta en ambos), `finalizados`, `en_proceso`, `negados`.
+
+Blades: `trans_reporte_vales.blade.php`, `trans_reporte_movilizacion.blade.php`, `trans_reporte_mantenimiento.blade.php` — landscape A4, mismo esqueleto que `reporte_atrasos.blade.php` (TH) con fila de resumen/totales entre el encabezado y la tabla.
 
 ### PDFs (`resources/views/reportes/`)
 
 - `trans_orden_trabajo.blade.php` — portrait letter; secciones: vehículo, requerimiento, actividades (incluye columna "Cant.", `—` si la actividad no tiene cantidad), orden, firmas (conductor/responsable/taller)
 - `trans_orden_movilizacion.blade.php` — portrait letter; secciones: solicitud, vehículo+conductor, hoja de ruta (solo si COMPLETADO), firmas
 - `trans_vale_combustible.blade.php` — **media carta** `[0,0,396,504]`; formato FR05-PRO.GA-TR.001; tabla combustibles, km/vehículo/fecha, firmas
+- `trans_reporte_vales.blade.php` / `trans_reporte_movilizacion.blade.php` / `trans_reporte_mantenimiento.blade.php` — landscape A4, listados con filtros + fila de totales (ver sección Reportes arriba)
 
 ### Vistas Frontend
 
@@ -1352,6 +1404,14 @@ views/transporte/
                               #   km_salida_actual en el body), el frontend autocorrige formHojaRuta.km_salida
                               #   en vez de solo mostrar el mensaje de error
   ValesCombustibleView.vue    # CONDUCTOR + TRANSPORTE; guarda y abre PDF automáticamente
+  ReportesView.vue            # Reportes de Vales/Movilización/Mantenimiento; solo TRANSPORTE/ADMINISTRADOR
+                              # 3 tabs (mismo patrón que views/reportes/ReportesView.vue de TH), color #1e3a5f
+                              # Filtros comunes fecha_desde/fecha_hasta + vehículo; por tab: conductor
+                              #   (dropdown desde /transporte/conductores), estado, y en movilización
+                              #   además solicitante (buscador libre) y en mantenimiento tipo + taller
+                              # Tarjetas de resumen arriba de la tabla (total_valor, km_totales, conteos
+                              #   por estado, etc.) — vienen del backend en `resumen`, no se calculan en frontend
+                              # Botones Excel/PDF visibles solo si hay datos cargados
 layouts/TransporteLayout.vue  # Menú dinámico desde auth.menuAgrupado filtrado a transporte/
                               # Modo mantenimiento: variable MODO_MANTENIMIENTO_TRANS = 1
                               #   ADMINISTRADOR / TRANSPORTE → banner naranja, siguen trabajando
@@ -1377,6 +1437,7 @@ layouts/TransporteLayout.vue  # Menú dinámico desde auth.menuAgrupado filtrado
 | `transporte/mantenimiento` | TRANSPORTE, CONDUCTOR |
 | `transporte/movilizacion` | TRANSPORTE, CONDUCTOR |
 | `transporte/vales-combustible` | TRANSPORTE, CONDUCTOR |
+| `transporte/reportes` | TRANSPORTE |
 
 ---
 

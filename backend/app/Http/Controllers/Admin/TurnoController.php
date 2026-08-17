@@ -8,6 +8,8 @@ use Illuminate\Http\Request;
 
 class TurnoController extends Controller
 {
+    private const ROLES_ADMIN = ['ADMINISTRADOR', 'TALENTO HUMANO'];
+
     public function index()
     {
         return response()->json(
@@ -17,6 +19,7 @@ class TurnoController extends Controller
 
     public function store(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate([
             "descripcion"    => "required|string|max:30",
             "horas_normales" => "nullable|numeric",
@@ -46,6 +49,7 @@ class TurnoController extends Controller
 
     public function update(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $turno = CabTurno::findOrFail($id);
         $request->validate([
             "descripcion" => "required|string|max:30",
@@ -61,8 +65,9 @@ class TurnoController extends Controller
         return response()->json($turno->load("horarios"));
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $turno = CabTurno::findOrFail($id);
         Turno::where("id_turno", $id)->delete();
         $turno->delete();
@@ -71,6 +76,7 @@ class TurnoController extends Controller
 
     public function guardarHorarios(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate([
             "horarios"              => "required|array",
             "horarios.*.concepto"   => "required|string",

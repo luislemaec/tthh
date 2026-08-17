@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\DB;
 
 class EquipoController extends Controller
 {
+    private const ROLES_TEC = ['ADMINISTRADOR', 'TECNOLOGIA'];
+
     private function vidaUtilVencidaRaw(): string
     {
         return "fecha_ingreso IS NOT NULL AND vida_util_anios IS NOT NULL
@@ -21,6 +23,7 @@ class EquipoController extends Controller
 
     public function index(Request $request)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $query = Equipo::with(['tipoEquipo', 'asignacionActiva.empleado'])->orderBy('codigo_bien');
 
         if ($request->filled('tipo_equipo_id')) {
@@ -50,8 +53,9 @@ class EquipoController extends Controller
         return response()->json($query->paginate(20));
     }
 
-    public function resumen()
+    public function resumen(Request $request)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $porEstado = Equipo::select('estado', DB::raw('COUNT(*) as total'))
             ->groupBy('estado')
             ->pluck('total', 'estado');
@@ -77,6 +81,7 @@ class EquipoController extends Controller
 
     public function store(Request $request)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $request->validate([
             'codigo_bien'     => 'required|string|max:50|unique:pgsql.dbo.ti_equipo,codigo_bien',
             'tipo_equipo_id'  => 'nullable|exists:pgsql.dbo.ti_tipo_equipo,id',
@@ -104,6 +109,7 @@ class EquipoController extends Controller
 
     public function update(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $equipo = Equipo::findOrFail($id);
 
         $request->validate([
@@ -133,6 +139,7 @@ class EquipoController extends Controller
 
     public function asignar(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $equipo = Equipo::findOrFail($id);
 
         if ($equipo->estado !== 'DISPONIBLE') {
@@ -163,6 +170,7 @@ class EquipoController extends Controller
 
     public function devolver(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $equipo = Equipo::findOrFail($id);
 
         if ($equipo->estado !== 'ASIGNADO') {
@@ -195,8 +203,9 @@ class EquipoController extends Controller
         return response()->json($equipo->fresh(['tipoEquipo', 'asignacionActiva.empleado']));
     }
 
-    public function historial($id)
+    public function historial(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $equipo = Equipo::findOrFail($id);
 
         return response()->json(
@@ -209,6 +218,7 @@ class EquipoController extends Controller
 
     public function marcarBaja(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $equipo = Equipo::findOrFail($id);
 
         if ($equipo->estado === 'ASIGNADO') {
@@ -240,6 +250,7 @@ class EquipoController extends Controller
 
     public function marcarDisponible(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $equipo = Equipo::findOrFail($id);
 
         if ($equipo->estado === 'ASIGNADO') {
@@ -258,6 +269,7 @@ class EquipoController extends Controller
 
     public function importarCsv(Request $request)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $request->validate(['archivo' => 'required|file|mimes:csv,txt|max:2048']);
 
         $path = $request->file('archivo')->getRealPath();

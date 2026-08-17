@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Auth;
 
 class ModalidadLaboralController extends Controller
 {
+    private const ROLES_ADMIN = ['ADMINISTRADOR', 'TALENTO HUMANO'];
+
     public function index()
     {
         return response()->json(ModalidadLaboral::orderBy('orden')->orderBy('nombre')->get());
@@ -15,6 +17,7 @@ class ModalidadLaboralController extends Controller
 
     public function store(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate([
             'nombre' => 'required|string|max:100|unique:pgsql.dbo.d2_modalidad_laboral,nombre',
         ]);
@@ -38,6 +41,7 @@ class ModalidadLaboralController extends Controller
 
     public function update(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $m = ModalidadLaboral::findOrFail($id);
 
         $request->validate([

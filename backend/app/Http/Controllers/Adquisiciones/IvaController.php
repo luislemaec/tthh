@@ -8,13 +8,17 @@ use Illuminate\Support\Facades\DB;
 
 class IvaController extends Controller
 {
-    public function index()
+    private const ROLES_ADQ = ['ADMINISTRADOR', 'ADQUISICIONES', 'BIENES'];
+
+    public function index(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         return response()->json(Iva::orderBy('porcentaje')->get());
     }
 
     public function store(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $request->validate([
             'descripcion'    => 'required|string|max:50',
             'porcentaje'     => 'required|numeric|min:0|max:100',
@@ -31,6 +35,7 @@ class IvaController extends Controller
 
     public function update(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $request->validate([
             'descripcion'    => 'required|string|max:50',
             'porcentaje'     => 'required|numeric|min:0|max:100',
@@ -45,8 +50,9 @@ class IvaController extends Controller
         return response()->json($iva);
     }
 
-    public function toggle($id)
+    public function toggle(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $iva = Iva::findOrFail($id);
         $iva->update(['activo' => !$iva->activo]);
         return response()->json($iva);

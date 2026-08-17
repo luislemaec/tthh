@@ -8,9 +8,13 @@ use Illuminate\Http\Request;
 
 class ConfiguracionController extends Controller
 {
+    private const ROLES_ADMIN = ['ADMINISTRADOR', 'TALENTO HUMANO'];
+    private const ROLES_ACCIONES = ['ADMINISTRADOR', 'TALENTO HUMANO', 'TH ACCIONES PERSONAL'];
+
     // Listar todos los parámetros
-    public function index()
+    public function index(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         return response()->json(
             Configuracion::orderBy("concepto")->get()
         );
@@ -19,6 +23,7 @@ class ConfiguracionController extends Controller
     // Actualizar valor de un parámetro
     public function update(Request $request, $concepto)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate([
             "valor"       => "required|string|max:150",
             "descripcion" => "nullable|string|max:300",
@@ -44,6 +49,7 @@ class ConfiguracionController extends Controller
     // Crear nuevo parámetro
     public function store(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate([
             "concepto"    => "required|string|max:120",
             "valor"       => "required|string|max:150",
@@ -71,15 +77,17 @@ class ConfiguracionController extends Controller
     }
 
     // Eliminar parámetro
-    public function destroy($concepto)
+    public function destroy(Request $request, $concepto)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         Configuracion::findOrFail($concepto)->delete();
         return response()->json(["message" => "Parámetro eliminado correctamente"]);
     }
 
     // Firmantes de acciones de personal (para pre-llenar el formulario)
-    public function firmantes()
+    public function firmantes(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ACCIONES);
         $cfg = Configuracion::whereIn("concepto", [
             "FIRMANTE_TH_NOMBRE", "FIRMANTE_TH_CARGO",
             "FIRMANTE_AUTORIDAD_NOMBRE", "FIRMANTE_AUTORIDAD_CARGO",
@@ -94,8 +102,9 @@ class ConfiguracionController extends Controller
     }
 
     // Cargar parámetros base
-    public function cargarParametrosBase()
+    public function cargarParametrosBase(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $parametros = [
             ["concepto" => "Tiempo castigo lunch",   "valor" => "30"],
             ["concepto" => "FLOREQUISA CONSUMO",      "valor" => "NO"],

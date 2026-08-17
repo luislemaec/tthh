@@ -518,6 +518,11 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get('movilizacion/{id}/pdf', [TransporteController::class, 'pdfMov']);
 
         Route::get('conductores', [TransporteController::class, 'conductores']);
+
+        // Reportes
+        Route::get('reportes/vales-combustible', [\App\Http\Controllers\Transporte\ReporteTransporteController::class, 'vales']);
+        Route::get('reportes/movilizacion',      [\App\Http\Controllers\Transporte\ReporteTransporteController::class, 'movilizacion']);
+        Route::get('reportes/mantenimiento',     [\App\Http\Controllers\Transporte\ReporteTransporteController::class, 'mantenimiento']);
     });
 
     // Inventario Tecnológico

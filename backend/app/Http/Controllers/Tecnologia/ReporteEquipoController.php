@@ -13,6 +13,8 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class ReporteEquipoController extends Controller
 {
+    private const ROLES_TEC = ['ADMINISTRADOR', 'TECNOLOGIA'];
+
     private const VIDA_UTIL_VENCIDA_RAW = "fecha_ingreso IS NOT NULL AND vida_util_anios IS NOT NULL
         AND (fecha_ingreso + (vida_util_anios || ' years')::interval) <= CURRENT_DATE";
 
@@ -45,8 +47,9 @@ class ReporteEquipoController extends Controller
         return $query;
     }
 
-    public function filtros()
+    public function filtros(Request $request)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         return response()->json([
             'marcas'  => Equipo::whereNotNull('marca')->where('marca', '!=', '')->distinct()->orderBy('marca')->pluck('marca'),
             'modelos' => Equipo::whereNotNull('modelo')->where('modelo', '!=', '')->distinct()->orderBy('modelo')->pluck('modelo'),
@@ -55,6 +58,7 @@ class ReporteEquipoController extends Controller
 
     public function index(Request $request)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $equipos = $this->construirQuery($request)->get();
 
         if ($request->formato === 'excel') {

@@ -9,6 +9,9 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class ValeController extends Controller
 {
+    private const ROLES_VALES = ['ADMINISTRADOR', 'TRANSPORTE', 'CONDUCTOR'];
+    private const ROLES_TRANSPORTE = ['ADMINISTRADOR', 'TRANSPORTE'];
+
     private function emp(Request $request)
     {
         return $request->user();
@@ -16,6 +19,7 @@ class ValeController extends Controller
 
     public function index(Request $request)
     {
+        $this->requireRole($request, self::ROLES_VALES);
         $emp = $this->emp($request);
 
         $query = ValeCombustible::with(['conductor', 'vehiculo'])
@@ -36,6 +40,7 @@ class ValeController extends Controller
 
     public function store(Request $request)
     {
+        $this->requireRole($request, self::ROLES_VALES);
         $request->validate([
             'gasolinera'  => 'required|string|max:200',
             'vehiculo_id' => 'required|exists:pgsql.dbo.trans_vehiculo,id',
@@ -83,8 +88,9 @@ class ValeController extends Controller
         return response()->json($vale->load(['conductor', 'vehiculo']), 201);
     }
 
-    public function anular($id)
+    public function anular(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_TRANSPORTE);
         $vale = ValeCombustible::findOrFail($id);
 
         if ($vale->estado !== 'EMITIDO') {
@@ -96,8 +102,9 @@ class ValeController extends Controller
         return response()->json($vale);
     }
 
-    public function pdf($id)
+    public function pdf(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_VALES);
         $vale = ValeCombustible::with(['conductor', 'vehiculo'])->findOrFail($id);
         $logo = $this->logoBase64();
 

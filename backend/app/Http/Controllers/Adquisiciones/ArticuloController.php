@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Storage;
 
 class ArticuloController extends Controller
 {
+    private const ROLES_ADQ = ['ADMINISTRADOR', 'ADQUISICIONES', 'BIENES'];
+
     public function index(Request $request)
     {
         $porcentaje = (float)(DB::table('adq.configuracion')
@@ -37,6 +39,7 @@ class ArticuloController extends Controller
 
     public function store(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $request->validate([
             'codigo'        => 'required|string|max:30|unique:pgsql.adq.articulo,codigo',
             'nombre'        => 'required|string|max:200',
@@ -68,6 +71,7 @@ class ArticuloController extends Controller
 
     public function update(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $articulo = Articulo::findOrFail($id);
 
         $request->validate([
@@ -95,6 +99,7 @@ class ArticuloController extends Controller
 
     public function subirImagen(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $request->validate(['imagen' => 'required|image|max:2048']);
         $articulo = Articulo::findOrFail($id);
 
@@ -108,14 +113,16 @@ class ArticuloController extends Controller
         return response()->json(['imagen_url' => Storage::disk('public')->url($path)]);
     }
 
-    public function inactivar($id)
+    public function inactivar(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         Articulo::findOrFail($id)->update(['estado' => 'INACTIVO']);
         return response()->json(['message' => 'Artículo inactivado.']);
     }
 
-    public function alertas()
+    public function alertas(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $porcentaje = (float)(DB::table('adq.configuracion')
             ->where('concepto', 'porcentaje_stock_minimo')
             ->value('valor') ?? 20);
@@ -133,6 +140,7 @@ class ArticuloController extends Controller
 
     public function buscarCatalogo(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $q = $request->get('q', '');
         $items = DB::table('adq.catalogo_inventario')
             ->where(function ($query) use ($q) {
@@ -145,14 +153,16 @@ class ArticuloController extends Controller
         return response()->json($items);
     }
 
-    public function configuracion()
+    public function configuracion(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $config = DB::table('adq.configuracion')->get()->keyBy('concepto');
         return response()->json($config);
     }
 
     public function actualizarConfiguracion(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $request->validate([
             'porcentaje_stock_minimo' => 'required|numeric|min:1|max:100',
         ]);

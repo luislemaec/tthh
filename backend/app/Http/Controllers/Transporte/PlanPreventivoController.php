@@ -10,8 +10,12 @@ use Illuminate\Support\Facades\DB;
 
 class PlanPreventivoController extends Controller
 {
+    private const ROLES_LECTURA = ['ADMINISTRADOR', 'TRANSPORTE', 'CONDUCTOR'];
+    private const ROLES_TRANSPORTE = ['ADMINISTRADOR', 'TRANSPORTE'];
+
     public function index(Request $request)
     {
+        $this->requireRole($request, self::ROLES_LECTURA);
         $query = PlanPreventivoCab::with(['vehiculo', 'actividades'])->orderBy('km_hito');
 
         if ($request->filled('vehiculo_id')) {
@@ -42,6 +46,7 @@ class PlanPreventivoController extends Controller
 
     public function store(Request $request)
     {
+        $this->requireRole($request, self::ROLES_TRANSPORTE);
         $request->validate([
             'vehiculo_id'  => 'required|exists:pgsql.dbo.trans_vehiculo,id',
             'km_hito'      => 'required|integer|min:1',
@@ -74,6 +79,7 @@ class PlanPreventivoController extends Controller
 
     public function update(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_TRANSPORTE);
         $cab = PlanPreventivoCab::findOrFail($id);
 
         $request->validate([
@@ -109,6 +115,7 @@ class PlanPreventivoController extends Controller
 
     public function importarCsv(Request $request)
     {
+        $this->requireRole($request, self::ROLES_TRANSPORTE);
         $request->validate(['archivo' => 'required|file|mimes:csv,txt|max:2048']);
 
         $handle = fopen($request->file('archivo')->getRealPath(), 'r');

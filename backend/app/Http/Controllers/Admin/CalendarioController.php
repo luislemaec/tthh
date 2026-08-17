@@ -7,9 +7,12 @@ use Illuminate\Http\Request;
 
 class CalendarioController extends Controller
 {
+    private const ROLES_ADMIN = ['ADMINISTRADOR', 'TALENTO HUMANO'];
+
     // Listar fechas por año
     public function index(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $anio = $request->get("anio", date("Y"));
 
         $fechas = ListaFecha::whereYear("fecha", $anio)
@@ -34,6 +37,7 @@ class CalendarioController extends Controller
     // Crear nueva fecha
     public function store(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate([
             "fecha"     => "required|date",
             "tipo"      => "required|string|max:10",
@@ -73,6 +77,7 @@ class CalendarioController extends Controller
     // Actualizar fecha
     public function update(Request $request, $fecha, $ubicacion)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $registro = ListaFecha::where("fecha", $fecha)
             ->where("ubicacion", $ubicacion)
             ->firstOrFail();
@@ -98,8 +103,9 @@ class CalendarioController extends Controller
     }
 
     // Eliminar fecha
-    public function destroy($fecha, $ubicacion)
+    public function destroy(Request $request, $fecha, $ubicacion)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         ListaFecha::where("fecha", $fecha)
             ->where("ubicacion", $ubicacion)
             ->firstOrFail()
@@ -111,6 +117,7 @@ class CalendarioController extends Controller
     // Cargar feriados nacionales de Ecuador automáticamente
     public function cargarFeriadosEcuador(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $anio     = $request->get("anio", date("Y"));
         $ubicacion = $request->get("ubicacion", "Quito");
 

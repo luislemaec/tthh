@@ -8,9 +8,12 @@ use Illuminate\Http\Request;
 
 class SupervisorController extends Controller
 {
+    private const ROLES_ADMIN = ['ADMINISTRADOR', 'TALENTO HUMANO'];
+
     // Listar supervisores por area
-    public function index()
+    public function index(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         return response()->json(
             Supervisor::with(["departamento", "supervisor.departamento"])
                 ->orderBy("id_depto")
@@ -21,6 +24,7 @@ class SupervisorController extends Controller
     // Asignar supervisor a un area
     public function store(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate([
             "id_depto"      => "required|integer",
             "id_supervisor" => "required|string",
@@ -43,15 +47,17 @@ class SupervisorController extends Controller
     }
 
     // Eliminar supervisor de un area
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         Supervisor::findOrFail($id)->delete();
         return response()->json(["message" => "Supervisor eliminado del area correctamente"]);
     }
 
     // Obtener supervisor de un empleado con logica padre-hijo
-    public function supervisorDeEmpleado($id_emp)
+    public function supervisorDeEmpleado(Request $request, $id_emp)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $empleado = Empleado::with("departamento")->findOrFail($id_emp);
         $depto    = $empleado->departamento;
         $intentos = 0;
@@ -79,8 +85,9 @@ class SupervisorController extends Controller
     }
 
     // Listar departamentos con y sin supervisor
-    public function departamentosConSupervisor()
+    public function departamentosConSupervisor(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $deptos = Departamento::with([
             "supervisorArea.supervisor"
         ])->orderBy("nombre_depto")->get();

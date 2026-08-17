@@ -107,6 +107,7 @@ const routes = [
       { path: 'tipos-mantenimiento', name: 'TransTiposMantenimiento', component: () => import('@/views/transporte/TiposMantenimientoView.vue') },
       { path: 'plan-preventivo',    name: 'TransPlanPreventivo',     component: () => import('@/views/transporte/PlanPreventivoView.vue') },
       { path: 'vales-combustible',  name: 'TransValesCombustible',   component: () => import('@/views/transporte/ValesCombustibleView.vue') },
+      { path: 'reportes',           name: 'TransReportes',           component: () => import('@/views/transporte/ReportesView.vue') },
     ],
   },
   // ── Inventario Tecnológico ─────────────────────────────────────────────────

@@ -7,13 +7,17 @@ use Illuminate\Http\Request;
 
 class TallerController extends Controller
 {
-    public function index()
+    private const ROLES_TRANSPORTE = ['ADMINISTRADOR', 'TRANSPORTE'];
+
+    public function index(Request $request)
     {
+        $this->requireRole($request, self::ROLES_TRANSPORTE);
         return response()->json(Proveedor::orderBy('nombre')->get());
     }
 
-    public function activos()
+    public function activos(Request $request)
     {
+        $this->requireRole($request, self::ROLES_TRANSPORTE);
         return response()->json(
             Proveedor::where('es_taller', true)->where('estado', 'ACTIVO')->orderBy('nombre')->get()
         );
@@ -21,6 +25,7 @@ class TallerController extends Controller
 
     public function store(Request $request)
     {
+        $this->requireRole($request, self::ROLES_TRANSPORTE);
         $request->validate([
             'nombre'              => 'required|string|max:100',
             'ruc'                 => 'nullable|string|max:20|unique:pgsql.adq.proveedor,ruc',
@@ -49,6 +54,7 @@ class TallerController extends Controller
 
     public function update(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_TRANSPORTE);
         $proveedor = Proveedor::findOrFail($id);
 
         $request->validate([

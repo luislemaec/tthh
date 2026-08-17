@@ -7,8 +7,11 @@ use Illuminate\Support\Facades\DB;
 
 class CatalogoInventarioController extends Controller
 {
+    private const ROLES_ADQ = ['ADMINISTRADOR', 'ADQUISICIONES', 'BIENES'];
+
     public function index(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $q = $request->get('q', '');
         $nivel1 = $request->get('nivel1', '');
 
@@ -39,6 +42,7 @@ class CatalogoInventarioController extends Controller
 
     public function store(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $request->validate([
             'nivel1'  => 'required|string|size:2',
             'nivel2'  => 'required|string|size:6|unique:pgsql.adq.catalogo_inventario,nivel2',
@@ -58,6 +62,7 @@ class CatalogoInventarioController extends Controller
 
     public function update(Request $request, $nivel2)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $request->validate([
             'nivel1'  => 'required|string|size:2',
             'descripcion' => 'required|string|max:300',
@@ -73,8 +78,9 @@ class CatalogoInventarioController extends Controller
         return response()->json(['message' => 'Ítem actualizado.']);
     }
 
-    public function destroy($nivel2)
+    public function destroy(Request $request, $nivel2)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $enUso = DB::table('adq.articulo')->where('nivel2', $nivel2)->exists();
         if ($enUso) {
             return response()->json(['message' => 'No se puede eliminar: hay artículos vinculados a este ítem.'], 422);
@@ -83,8 +89,9 @@ class CatalogoInventarioController extends Controller
         return response()->json(['message' => 'Ítem eliminado.']);
     }
 
-    public function nivel1s()
+    public function nivel1s(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $items = DB::table('adq.catalogo_nivel1')
             ->orderBy('nivel1')
             ->get(['nivel1', 'descripcion']);

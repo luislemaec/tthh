@@ -9,13 +9,17 @@ use Illuminate\Support\Facades\DB;
 
 class RolController extends Controller
 {
-    public function index()
+    private const ROLES_ADMIN = ['ADMINISTRADOR', 'TALENTO HUMANO'];
+
+    public function index(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         return response()->json(AdminRol::where('estado', true)->get());
     }
 
-    public function show($id)
+    public function show(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $opciones = DB::table('dbo.admin_rol_opcion')
             ->where('id_rol', $id)->get();
         $rol = AdminRol::findOrFail($id);
@@ -25,6 +29,7 @@ class RolController extends Controller
 
     public function store(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate(['descripcion' => 'required|string|max:50']);
         $rol = AdminRol::create([
             'descripcion' => strtoupper($request->descripcion),
@@ -35,18 +40,22 @@ class RolController extends Controller
 
     public function update(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $rol = AdminRol::findOrFail($id);
         $rol->update($request->only('descripcion','estado'));
         return response()->json($rol);
     }
-	 public function destroy($id)
+
+    public function destroy(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         AdminRol::findOrFail($id)->update(['estado' => false]);
         return response()->json(['message' => 'Rol desactivado']);
     }
 
-    public function opciones()
+    public function opciones(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         return response()->json(
             DB::table('dbo.admin_opcion')
                 ->where('estado', true)
@@ -58,6 +67,7 @@ class RolController extends Controller
 
     public function asignarOpciones(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate(['opciones' => 'required|array']);
         DB::table('dbo.admin_rol_opcion')->where('id_rol', $id)->delete();
         $rows = collect($request->opciones)->map(fn($op) => [
@@ -66,8 +76,10 @@ class RolController extends Controller
         DB::table('dbo.admin_rol_opcion')->insert($rows);
         return response()->json(['message' => 'Opciones asignadas']);
     }
-	  public function asignarRolEmpleado(Request $request, $id_emp)
+
+    public function asignarRolEmpleado(Request $request, $id_emp)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate([
             'id_rol'         => 'required|integer',
             'identificacion' => 'required|string',
@@ -90,8 +102,9 @@ class RolController extends Controller
         return response()->json(['message' => 'Rol asignado']);
     }
 
-    public function rolesEmpleado($id_emp)
+    public function rolesEmpleado(Request $request, $id_emp)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $roles = \App\Models\AdminUsuarioRol::with("rol")
             ->where("id_emp", $id_emp)
             ->get();
@@ -100,6 +113,7 @@ class RolController extends Controller
 
     public function quitarRolEmpleado(Request $request, $id_emp, $id_rol)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $rol = AdminRol::find($id_rol);
         AdminUsuarioRol::where('id_emp', $id_emp)
             ->where('id_rol', $id_rol)->delete();

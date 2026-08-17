@@ -8,9 +8,12 @@ use Illuminate\Support\Facades\DB;
 
 class CuadreController extends Controller
 {
+    private const ROLES_ADMIN = ['ADMINISTRADOR', 'TALENTO HUMANO'];
+
     // Disparar el cuadre manualmente desde el portal
     public function procesar(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate([
             'fecha' => 'nullable|date',
         ]);
@@ -30,6 +33,7 @@ class CuadreController extends Controller
     // Listar resultados del cuadre para una fecha
     public function listado(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $fecha  = $request->get('fecha', Carbon::today()->toDateString());
         $depto  = $request->get('departamento_id');
         $buscar = $request->get('buscar');

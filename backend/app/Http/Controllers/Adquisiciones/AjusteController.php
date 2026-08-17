@@ -9,8 +9,11 @@ use Illuminate\Support\Facades\DB;
 
 class AjusteController extends Controller
 {
+    private const ROLES_ADQ = ['ADMINISTRADOR', 'ADQUISICIONES', 'BIENES'];
+
     public function index(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $query = DB::table('adq.kardex as k')
             ->join('adq.articulo as a', 'a.id', '=', 'k.articulo_id')
             ->whereIn('k.tipo_movimiento', ['AJUSTE_POSITIVO', 'AJUSTE_NEGATIVO'])
@@ -42,6 +45,7 @@ class AjusteController extends Controller
 
     public function store(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $request->validate([
             'articulo_id'     => 'required|exists:pgsql.adq.articulo,id',
             'cantidad_fisica' => 'required|numeric|min:0',
@@ -119,6 +123,7 @@ class AjusteController extends Controller
 
     public function importarStock(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $request->validate(['archivo' => 'required|file|mimes:csv,txt']);
 
         $lineas = array_filter(

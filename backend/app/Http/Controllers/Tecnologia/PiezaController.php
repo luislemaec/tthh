@@ -9,8 +9,11 @@ use Illuminate\Http\Request;
 
 class PiezaController extends Controller
 {
+    private const ROLES_TEC = ['ADMINISTRADOR', 'TECNOLOGIA'];
+
     public function index(Request $request)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $query = Pieza::with('equipo')->orderBy('descripcion');
 
         if ($request->filled('estado')) {
@@ -30,6 +33,7 @@ class PiezaController extends Controller
 
     public function store(Request $request)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $request->validate([
             'codigo'        => 'nullable|string|max:50',
             'serie'         => 'nullable|string|max:100',
@@ -48,6 +52,7 @@ class PiezaController extends Controller
 
     public function update(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $pieza = Pieza::findOrFail($id);
 
         $request->validate([
@@ -68,6 +73,7 @@ class PiezaController extends Controller
 
     public function instalar(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $pieza = Pieza::findOrFail($id);
 
         if ($pieza->estado !== 'DISPONIBLE') {
@@ -102,6 +108,7 @@ class PiezaController extends Controller
 
     public function retirar(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $pieza = Pieza::findOrFail($id);
 
         if ($pieza->estado !== 'INSTALADA') {
@@ -136,6 +143,7 @@ class PiezaController extends Controller
 
     public function marcarBaja(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $pieza = Pieza::findOrFail($id);
 
         if ($pieza->estado === 'INSTALADA') {
@@ -152,6 +160,7 @@ class PiezaController extends Controller
 
     public function marcarDisponible(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $pieza = Pieza::findOrFail($id);
 
         if ($pieza->estado === 'INSTALADA') {
@@ -166,8 +175,9 @@ class PiezaController extends Controller
         return response()->json($pieza);
     }
 
-    public function historial($id)
+    public function historial(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $pieza = Pieza::findOrFail($id);
 
         return response()->json(
@@ -178,8 +188,9 @@ class PiezaController extends Controller
         );
     }
 
-    public function porEquipo($equipoId)
+    public function porEquipo(Request $request, $equipoId)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         return response()->json(
             PiezaMovimiento::with('pieza')
                 ->where('equipo_id', $equipoId)
