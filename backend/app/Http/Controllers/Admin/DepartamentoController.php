@@ -12,6 +12,7 @@ class DepartamentoController extends Controller
     public function index()
     {
         $deps = Departamento::with('padre')
+            ->where('id_depto', '!=', 999)
             ->orderBy('padre_id')
             ->orderBy('nombre_depto')
             ->get();

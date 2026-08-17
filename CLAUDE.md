@@ -31,7 +31,9 @@ composer dev
 
 ## Deployment
 
-Después de cualquier cambio: Push → Pull en servidor → `npm run build` (solo si hay cambios frontend) → `php artisan migrate` (solo si hay nuevas migraciones).
+Después de cualquier cambio: Push → Pull en servidor → `npm run build` (solo si hay cambios frontend) → `php artisan migrate` (solo si hay nuevas migraciones) → `php artisan config:clear` (solo si cambió `config/services.php`, `.env` o cualquier archivo de `config/`).
+
+> **IMPORTANTE — `config:clear` después de cambios a `config/*.php` o `.env`:** si el servidor tiene la configuración cacheada (`php artisan config:cache`, común en producción) desde *antes* de desplegar un cambio a un archivo de config, Laravel sigue leyendo el caché viejo — el cambio nuevo no se ve, aunque el código ya esté actualizado. Incidente real (2026-08-17): al mover la configuración de Alfresco de estar hardcodeada a `config('services.alfresco.*')` (ver sección Alfresco), 9 controladores quedaron con un `__construct()` que asigna ese valor a una propiedad `string` no-nullable. Con el caché viejo, `config('services.alfresco.base')` devolvía `null` → `TypeError` fatal en el constructor → **toda la clase quedaba inutilizable con error 500**, incluyendo métodos que ni siquiera usan Alfresco (ej. `EmpleadoController::index()` fallaba por esto). Se resolvió corriendo `php artisan config:clear` en el servidor.
 
 > **IMPORTANTE — `php artisan migrate` en producción:** Solo ejecuta migraciones NUEVAS (pendientes). NUNCA correr `migrate:rollback`, `migrate:fresh` o `migrate:reset` en producción — borra datos. Si una migración ya ejecutada no aparece en la tabla `public.migrations`, insertarla manualmente antes de correr `migrate`.
 
