@@ -35,7 +35,6 @@
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Fecha</th>
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Día</th>
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Tipo</th>
-            <th class="text-left px-6 py-3 text-gray-600 font-medium">Factor</th>
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Hora Desde</th>
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Hora Hasta</th>
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Ubicacion</th>
@@ -44,10 +43,10 @@
         </thead>
         <tbody>
           <tr v-if="cargando">
-            <td colspan="8" class="text-center py-8 text-gray-400">Cargando...</td>
+            <td colspan="7" class="text-center py-8 text-gray-400">Cargando...</td>
           </tr>
           <tr v-else-if="fechas.length === 0">
-            <td colspan="8" class="text-center py-8 text-gray-400">No hay fechas registradas para este año.</td>
+            <td colspan="7" class="text-center py-8 text-gray-400">No hay fechas registradas para este año.</td>
           </tr>
           <tr v-for="f in fechas" :key="f.fecha" class="border-b hover:bg-gray-50">
             <td class="px-6 py-3 font-medium">{{ f.fecha }}</td>
@@ -58,7 +57,6 @@
                 {{ f.tipo }}
               </span>
             </td>
-            <td class="px-6 py-3 text-gray-600">{{ f.factor }}</td>
             <td class="px-6 py-3 text-gray-600">{{ f.hora_desde }}</td>
             <td class="px-6 py-3 text-gray-600">{{ f.hora_hasta }}</td>
             <td class="px-6 py-3 text-gray-600">{{ f.ubicacion }}</td>
@@ -98,23 +96,16 @@
             </select>
           </div>
         </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-sm font-medium text-gray-600 mb-1">Factor *</label>
-            <input v-model="form.factor" type="number" step="0.01" min="1"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-600 mb-1">Color</label>
-            <select v-model="form.color"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
-              <option value="red">Rojo (Feriado)</option>
-              <option value="blue">Azul (Especial)</option>
-              <option value="gray">Gris (Fin Semana)</option>
-              <option value="green">Verde</option>
-              <option value="orange">Naranja</option>
-            </select>
-          </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Color</label>
+          <select v-model="form.color"
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
+            <option value="red">Rojo (Feriado)</option>
+            <option value="blue">Azul (Especial)</option>
+            <option value="gray">Gris (Fin Semana)</option>
+            <option value="green">Verde</option>
+            <option value="orange">Naranja</option>
+          </select>
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
