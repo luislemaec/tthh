@@ -342,12 +342,30 @@ const menuGruposArray = computed(() =>
   Object.entries(menuFiltrado.value).map(([label, items]) => ({ label, items }))
 )
 
+// Entre varias opciones de menú cuya URL coincide con la ruta actual (ej. "empleados" y
+// "empleados/reporte" al estar en /empleados/reporte), solo debe marcarse como activa la
+// más específica (la de URL más larga) — no todas las que coincidan como prefijo.
+const mejorCoincidencia = computed(() => {
+  const currentPath = route.path.replace(/^\//, '')
+  let mejor = null
+  for (const items of Object.values(menuFiltrado.value || {})) {
+    for (const item of items) {
+      const coincide = currentPath === item.url || currentPath.startsWith(item.url + '/')
+      if (coincide && (!mejor || item.url.length > mejor.length)) {
+        mejor = item.url
+      }
+    }
+  }
+  return mejor
+})
+
+const isActive = (url) => url === mejorCoincidencia.value
+
 const categoriasAbiertas = ref({})
 
 const abrirCategoriaActiva = () => {
-  const currentPath = route.path.replace(/^\//, '')
   for (const [categoria, items] of Object.entries(menuFiltrado.value || {})) {
-    const tieneActivo = items.some(item => currentPath.startsWith(item.url))
+    const tieneActivo = items.some(item => isActive(item.url))
     if (tieneActivo) {
       categoriasAbiertas.value[categoria] = true
     } else if (!(categoria in categoriasAbiertas.value)) {
@@ -359,8 +377,6 @@ const abrirCategoriaActiva = () => {
 const toggleCategoria = (categoria) => {
   categoriasAbiertas.value[categoria] = !categoriasAbiertas.value[categoria]
 }
-
-const isActive = (url) => route.path.replace(/^\//, '').startsWith(url)
 
 watch(() => route.path, () => { dropdownAbierto.value = null })
 watch(() => route.path, abrirCategoriaActiva)
