@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 
 class AportesIessController extends Controller
 {
-    private const ROLES_NOMINA = ['ADMINISTRADOR', 'TH NOMINA'];
+    private const ROLES_NOMINA = ['ADMINISTRADOR', 'TH NOMINA', 'TALENTO HUMANO'];
 
     // GET /api/admin/aportes-iess
     public function index(Request $request)
