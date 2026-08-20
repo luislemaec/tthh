@@ -334,13 +334,11 @@ const stats = ref({
 const ICONO_PERMISO    = 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'
 const ICONO_VACACIONES = 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z'
 const ICONO_HE         = 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'
-const ICONO_MATERIAL   = 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2'
 
 const pendientes = computed(() => [
-  { label: 'Permisos por aprobar',      valor: stats.value.permisos_pendientes,                          icono: ICONO_PERMISO },
-  { label: 'Vacaciones por aprobar',    valor: stats.value.vacaciones_pendientes,                        icono: ICONO_VACACIONES },
-  { label: 'Horas extras por aprobar',  valor: stats.value.datos_supervisor?.he_pendientes ?? 0,         icono: ICONO_HE },
-  { label: 'Materiales por despachar',  valor: stats.value.datos_supervisor?.materiales_pendientes ?? 0, icono: ICONO_MATERIAL },
+  { label: 'Permisos por aprobar',      valor: stats.value.permisos_pendientes,                  icono: ICONO_PERMISO },
+  { label: 'Vacaciones por aprobar',    valor: stats.value.vacaciones_pendientes,                 icono: ICONO_VACACIONES },
+  { label: 'Horas extras por aprobar',  valor: stats.value.datos_supervisor?.he_pendientes ?? 0, icono: ICONO_HE },
 ])
 
 const ausentesHoy = computed(() => {
