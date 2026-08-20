@@ -21,7 +21,7 @@
         :style="tabActivo === 'mia' ? 'background-color:#0b5447' : ''">Mis Permisos</button>
       <button @click="cambiarTab('equipo')"
         :class="['flex-1 py-2.5 text-sm font-semibold transition', tabActivo === 'equipo' ? 'text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100']"
-        :style="tabActivo === 'equipo' ? 'background-color:#0b5447' : ''">Permisos Equipo</button>
+        :style="tabActivo === 'equipo' ? 'background-color:#0b5447' : ''">{{ miRol.es_admin_th ? 'Permisos Institucionales' : 'Permisos Equipo' }}</button>
     </div>
 
     <!-- Filtros -->
