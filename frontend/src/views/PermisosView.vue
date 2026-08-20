@@ -499,7 +499,7 @@
     <div v-if="modalEstadistica" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-3xl space-y-4">
         <div class="flex justify-between items-center">
-          <h2 class="text-lg font-semibold text-gray-700">📊 Estadística por Supervisor</h2>
+          <h2 class="text-lg font-semibold text-gray-700">📊 Estadística</h2>
           <button @click="modalEstadistica = false" class="text-gray-400 hover:text-gray-600 text-xl">✕</button>
         </div>
         <div class="flex gap-3 items-end">
