@@ -11,7 +11,7 @@
         class="px-6 py-3 text-sm transition">Mi Planificación</button>
       <button @click="tabActivo = 'equipo'"
         :class="tabActivo === 'equipo' ? 'border-b-2 border-[#0b5447] text-[#0b5447] font-medium' : 'text-gray-500 hover:text-gray-700'"
-        class="px-6 py-3 text-sm transition">Planificaciones del Equipo</button>
+        class="px-6 py-3 text-sm transition">Planificaciones aprobadas</button>
     </div>
 
     <!-- ── VISTA EMPLEADO ────────────────────────────────────────────────── -->
