@@ -359,6 +359,18 @@ Calculado en `calcularSaldoDisponible()` — usa helper `tasaVacaciones()` en Va
 - Vista Vacaciones (empleado CT con 6+ años): badge azul "15 base + X por antigüedad"
 - **CSV carga inicial:** el `saldo` debe incluir base + adicionales ya acumulados hasta fecha de corte
 - **TOPE DE 60 DÍAS (LOSEP Art. 29) — REGLA CRÍTICA:** el saldo disponible que se muestra al empleado y que se valida al solicitar/planificar vacaciones tiene un máximo de 60 días. Si el cálculo interno supera 60, se muestra y valida como 60. El acumulado interno sigue corriendo normalmente (no se borra ni se congela), pero el empleado nunca puede ver ni solicitar más de 60 días disponibles. Implementado con `min(60, max(0, $disponibles))` en: `VacacionesController::calcularSaldoDisponible()`, `ReporteVacacionesController::calcularSaldoActual()`, `PlanificacionVacController::calcularSaldo()`. **Excepción:** `LiquidacionVacController` NO aplica el tope — usa el valor real acumulado para calcular el pago de liquidación por desvinculación.
+- **Saldo negativo y flujo "informe favorable" (migración `000100`) — REGLA CRÍTICA para Nombramiento Definitivo:**
+  - `calcularSaldoDisponible()` devuelve dos valores: `dias_disponibles` (`min(60, max(0, ...))`, nunca negativo — para planificación y permisos) y `dias_disponibles_real` (`min(60, ...)`, puede ser negativo — para mostrar en UI y validar nuevas solicitudes de vacaciones). También devuelve `modalidad_laboral` del empleado.
+  - **Bug fix race condition (2026-08-20):** `store()` descuenta los días de solicitudes en estado PENDIENTE antes de comparar contra el saldo, evitando que dos solicitudes creadas simultáneamente pasen la validación con el mismo saldo.
+  - **Bloqueo por saldo insuficiente:** si `saldo_real − dias_pendientes < dias_solicitados`:
+    - Empleados con `modalidad_laboral = 'Nombramiento Definitivo'`: se permite crear la solicitud pero se marca `requiere_informe = true`. El saldo puede quedar negativo.
+    - Todos los demás: se bloquea con 422. No pueden solicitar más días de los disponibles.
+  - **Permisos descontables:** NO se bloquean aunque el saldo sea negativo (el descuento sigue acumulando sobre `total_dias_tomados`).
+  - **Saldo en rojo en la UI:** `VacacionesView.vue` muestra `dias_disponibles_real` en rojo cuando el empleado es Nombramiento Definitivo y el valor es negativo. No puede solicitar más vacaciones hasta que el saldo vuelva a positivo (el mismo bloqueo en `store()` aplica).
+  - **Flujo informe TH:** solicitudes con `requiere_informe = true` muestran badge naranja "Requiere informe TH" en la tabla. TH/Admin puede marcar el informe desde un modal (botones Favorable / Desfavorable). Mientras `informe_estado ≠ 'FAVORABLE'`, el supervisor no puede aprobar la solicitud (backend retorna 422). Si el informe es DESFAVORABLE, la solicitud pasa automáticamente a NEGADO.
+  - **Tabla `dbo.d2_vacacion`** — columnas nuevas (migración `000100`): `requiere_informe BOOLEAN DEFAULT false`, `informe_estado VARCHAR(20) NULL`, `informe_fecha DATE NULL`, `informe_por VARCHAR(20) NULL`.
+  - **Ruta nueva:** `PATCH /api/vacaciones/{id}/marcar-informe` → `VacacionesController::marcarInforme()` (solo ADMINISTRADOR / TALENTO HUMANO).
+  - Todo registrado en `nom_auditoria_log`: `SOLICITUD_CON_EXCESO` al crear, `INFORME_FAVORABLE` / `INFORME_DESFAVORABLE` al marcar.
 
 ### Acciones de Personal (`dbo.acc_accion_personal`)
 

@@ -14,7 +14,7 @@
                class="w-20 h-20 object-contain" />
         </div>
         <h1 class="text-2xl font-bold text-gray-800">CONSEJO DE COMUNICACIÓN</h1>
-        <p class="text-gray-500 text-sm mt-1">Sistema Integral Tecnológico- SIT</p>
+        <p class="text-gray-500 text-sm mt-1">Sistema Integración Tecnológico- SIT</p>
       </div>
 
       <!-- Formulario -->
@@ -89,7 +89,7 @@
       </form>
 
       <p class="text-center text-xs text-gray-400 mt-6">
-        © {{ new Date().getFullYear() }} CONSEJO — Talento Humano
+        © {{ new Date().getFullYear() }} CONSEJO DE COMUNICACIÓN
       </p>
     </div>
   </div>

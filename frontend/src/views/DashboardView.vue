@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-6">
-    <h1 class="text-2xl font-bold text-gray-800">Dashboard</h1>
+    <h1 class="text-2xl font-bold text-gray-800">Datos Informativos</h1>
 
     <!-- ── EMPLEADO SIN ROL ESPECIAL ─────────────────────────────────────── -->
     <template v-if="esEmpleadoSolo">
@@ -57,7 +57,7 @@
             </div>
             <div class="flex-1 min-w-0">
               <p class="text-xs text-white/70 uppercase tracking-wide truncate">
-                {{ enCurso ? 'Vacaciones en curso' : 'Próximo período' }}
+                {{ enCurso ? 'Vacaciones en curso' : 'Próximo período de vacaciones' }}
               </p>
               <p class="text-sm font-bold leading-tight">Per. {{ proximoPeriodo.numero_periodo }} · {{ proximoPeriodo.dias }} días</p>
             </div>
