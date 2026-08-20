@@ -519,7 +519,7 @@
         <table class="w-full text-sm">
           <thead class="bg-gray-50 border-b">
             <tr>
-              <th class="text-left px-4 py-3 text-gray-600">Supervisor</th>
+              <th class="text-left px-4 py-3 text-gray-600">Jefe área</th>
               <th class="text-center px-4 py-3 text-green-600">Aprobados</th>
               <th class="text-center px-4 py-3 text-red-500">Negados</th>
               <th class="text-center px-4 py-3 text-gray-500">Eliminados</th>
