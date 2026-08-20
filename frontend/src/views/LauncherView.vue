@@ -54,7 +54,7 @@
         </div>
         <div class="text-center">
           <p class="font-bold text-gray-800 text-sm">Talento Humano</p>
-          <p class="text-gray-500 text-xs mt-0.5">Empleados, asistencia, vacaciones</p>
+          <p class="text-gray-500 text-xs mt-0.5">Control y Gestión</p>
         </div>
       </button>
 

@@ -470,9 +470,10 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::get("/vacaciones",                   [VacacionesController::class, "index"]);
     Route::post("/vacaciones",                  [VacacionesController::class, "store"]);
     Route::get("/vacaciones/{id}/empleados-depto", [VacacionesController::class, "empleadosDepto"]);
-    Route::patch("/vacaciones/{id}/aprobar",    [VacacionesController::class, "aprobar"]);
-    Route::patch("/vacaciones/{id}/negar",      [VacacionesController::class, "negar"]);
-    Route::delete("/vacaciones/{id}",           [VacacionesController::class, "destroy"]);
+    Route::patch("/vacaciones/{id}/aprobar",         [VacacionesController::class, "aprobar"]);
+    Route::patch("/vacaciones/{id}/negar",           [VacacionesController::class, "negar"]);
+    Route::patch("/vacaciones/{id}/marcar-informe",  [VacacionesController::class, "marcarInforme"]);
+    Route::delete("/vacaciones/{id}",               [VacacionesController::class, "destroy"]);
 
     // Transporte — catálogos
     Route::prefix('transporte')->group(function () {

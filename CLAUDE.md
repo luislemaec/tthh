@@ -124,6 +124,8 @@ public function store(Request $request) {
 | Tecnología | ✅ Cerrado | Los 6 controladores (`TipoEquipoController`, `ActividadMantenimientoController`, `PiezaController`, `ReporteEquipoController`, `EquipoController`, `MantenimientoController`) no tenían ningún control |
 | Comisiones de Servicios | ⏳ Parcial | `InformeComisionController`, `TarifaViaticosController`, `CoeficientePaisController` sin protección. `ComisionController`, `LiquidacionController`, `FuncionarioExternoController`, `AnticipController` tienen protección parcial preexistente, no verificada método por método (6 roles financieros con flujo de aprobación en cadena — requiere lectura cuidadosa, no apurada). `Admin/ProvinciaCiudadController` sin revisar |
 
+**Ajuste post-cierre (2026-08-17):** `Admin/AportesIessController` se cerró inicialmente solo a `ADMINISTRADOR`/`TH NOMINA` (mismo criterio que Rol de Pagos/Nómina), pero en la práctica también lo usa `TALENTO HUMANO` — se amplió `ROLES_NOMINA` para incluir los 3 roles. Si algún otro catálogo cerrado en esta auditoría queda inaccesible para un rol que antes sí lo usaba, es probable que sea el mismo tipo de ajuste (el criterio se basó en el patrón del código, no siempre en el uso real).
+
 **Excepciones intencionales** — endpoints de lectura que se dejaron abiertos a propósito porque otros módulos/roles los consumen para búsquedas o dropdowns (verificado contra el uso real en el frontend antes de decidir):
 - `EmpleadoController::index/show` — usado por Tecnología, Nómina, Certificados, Comisiones, Supervisores, Adquisiciones, etc.
 - `Admin/DepartamentoController::index`, `Admin/RazonController::index` — usados en formularios de toda la app (permisos, vacaciones, reportes)
@@ -137,7 +139,7 @@ public function store(Request $request) {
 
 - Schema `dbo` → Talento Humano | Schema `adq` → Adquisiciones (misma BD PostgreSQL)
 - Empleados: PK = `id_emp` (string); estados `ACTIVO`/`INACTIVO` (nunca eliminar)
-- Depto 999 excluido de todas las consultas (placeholder de sistema)
+- Depto 999 excluido de todas las consultas (placeholder de sistema). `Admin/DepartamentoController::index()` no lo excluía (aparecía "ADMINISTRACIÓN DEL SISTEMA" en el listado de Departamentos y en cualquier dropdown que consume ese mismo endpoint) — corregido 2026-08-17.
 - `dbo.d2_configuracion` → parámetros globales (clave/valor/descripcion). Campos de auditoría: `created_at`, `created_by`, `updated_at`, `updated_by`. La query siempre usa `LOWER(concepto)` porque los conceptos se guardan en MAYÚSCULAS. Migración `000030` agregó `descripcion`, migración `000031` agregó auditoría.
 - `dbo.ad_departamento` → numeración manual recomendada: padres en múltiplos de 10 (10,50,60,70,80,90), hijos en +1 a +9 del padre. Al crear desde la app, el campo ID es opcional; si se omite genera el siguiente correlativo (excluyendo 999). Campos de auditoría implementados (migración `000032`): `created_at`, `created_by`, `updated_at`, `updated_by`.
 - `dbo.ad_empleado` → campos de auditoría implementados (migración `000032`): `created_at`, `created_by`, `updated_at`, `updated_by`. Campos adicionales: `puede_solicitar_vehiculo BOOLEAN DEFAULT false`, `sexo VARCHAR(10) NULL` (MASCULINO/FEMENINO), `tipo_sangre VARCHAR(5) NULL` (A+, A-, B+, B-, AB+, AB-, O+, O-) — migración `000063`. Campos SERCOP: `num_sercop VARCHAR(50) NULL`, `fecha_vence_sercop DATE NULL` — migración `000065`. Campos sociales — migración `000070`: `grupo_vulnerable_id`, `grupo_prioritario_id`, `tiene_discapacidad`, `tipo_discapacidad_id`, `porcentaje_discapacidad`, `tiene_enfermedad_catastrofica`, `enfermedad_catastrofica_id`, `tiene_persona_sustituta`, `sustituta_alfresco_id`, `sustituta_nombre_archivo`, `sustituta_fecha_caducidad`, `num_hijos_mayores`. Campos de baja/comisión — migración `000073`: `motivo_salida VARCHAR(50) NULL`, `motivo_reactivacion VARCHAR(50) NULL`, `institucion_comision VARCHAR(200) NULL`.
@@ -821,12 +823,37 @@ views/admin/            # Roles, departamentos, turnos, configuración, IESS, av
                         # OpcionesView.vue (admin/opciones): tiene filtro de búsqueda en tiempo real
                         #   — input por descripción/URL/categoría, select por categoría, select activos/inactivos
                         #   — computed opcionesFiltradas; contador de resultados visibles
+                        # CalendarioView.vue (admin/calendario) — tabla dbo.d2_lista_fecha, CRUD de feriados/fechas especiales
+                        #   Botón "Cargar Feriados Ecuador" → Admin/CalendarioController::cargarFeriadosEcuador():
+                        #     9 feriados de fecha fija hardcodeados + Carnaval (2 días) y Viernes Santo calculados
+                        #     dinámicamente con easter_days() (función nativa de PHP) a partir del Domingo de Pascua
+                        #     del año seleccionado — antes estaban con fecha fija (27-28 feb / 14 abr) y solo
+                        #     coincidían para un año puntual (fix 2026-08-17)
+                        #   La fecha de un registro ya cargado SÍ se puede editar directo (antes había que
+                        #   eliminar y volver a crear) — el frontend guarda `fechaOriginal` aparte del campo
+                        #   `fecha` editable, porque la URL de actualización necesita la fecha original para
+                        #   encontrar el registro
+                        #   Campo `factor` (columna real en `d2_lista_fecha`, quedaba en 2.00 en la carga
+                        #   automática): confirmado que **ningún cálculo del sistema lo usa** — `HorasExtrasController`
+                        #   solo verifica si la fecha existe en la tabla, nunca lee `factor`. Se ocultó del
+                        #   modal y de la tabla en el frontend (sigue mandándose 2.00 fijo por detrás para no
+                        #   arriesgar la columna en BD); si en el futuro se necesita un recargo real por tipo
+                        #   de fecha, ahí sí habría que conectarlo a algún cálculo real primero.
 layouts/MainLayout.vue  # Layout del módulo RRHH (menú colapsado, se abre el grupo activo)
                         # Modo mantenimiento: lee GET /api/modo-mantenimiento?modulo=TH
                         #   Variable en d2_configuracion: MODO_MANTENIMIENTO_TH = 1 (activo) / 0
                         #   Empleados → pantalla verde bloqueante con botón "Cerrar Sesión"
                         #   ADMINISTRADOR / TALENTO HUMANO → banner naranja, pueden seguir trabajando
                         # Incluye <ChatbotFAB /> como elemento raíz adicional (Vue 3 fragment)
+                        # FIX 2026-08-17 — resaltado de menú activo (`isActive`): antes usaba
+                        #   `route.path.startsWith(item.url)` por ítem de forma aislada, así que si la URL de
+                        #   una opción de menú era prefijo literal de otra (ej. "empleados" y "empleados/reporte",
+                        #   o "planificacion" y "planificacion/reporte"), AMBAS quedaban marcadas como activas
+                        #   a la vez al estar en la más específica. Ahora se calcula, entre TODAS las opciones
+                        #   del menú visible, cuál coincide de forma más específica (URL más larga que calce
+                        #   con la ruta actual — computed `mejorCoincidencia`) y solo esa se marca activa.
+                        #   Aplica automáticamente a cualquier par de menús con esta relación en toda la app,
+                        #   no solo a los casos puntuales detectados.
 ```
 
 ### Estándar de modales (OBLIGATORIO en todos los modales nuevos)

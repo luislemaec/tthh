@@ -28,6 +28,12 @@ class Vacacion extends Model
         "aprobado_por",
         "updated_at",
         "updated_by",
+        "backup_id",
+        "backup_nombre",
+        "requiere_informe",
+        "informe_estado",
+        "informe_fecha",
+        "informe_por",
     ];
 
     public function empleado()
