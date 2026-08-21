@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-6">
-    <h1 class="text-2xl font-bold text-gray-800">LOTAIP</h1>
+    <h1 class="text-2xl font-bold text-gray-800">Reporte LOTAIP</h1>
 
     <!-- Sub-tabs -->
     <div class="bg-white rounded-xl shadow overflow-hidden">
