@@ -68,7 +68,7 @@
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-sm font-medium text-gray-600 mb-1">Tipo de Razón</label>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Tipo de Razón *</label>
             <select v-model="form.tipo_razon"
               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
               <option value="">Seleccionar...</option>
@@ -141,6 +141,7 @@ const abrirModal = (r = null) => {
 
 const guardar = async () => {
   if (!form.value.descripcion) { error.value = 'La descripción es requerida.'; return }
+  if (!form.value.tipo_razon)  { error.value = 'El tipo de razón es requerido.'; return }
   guardando.value = true
   error.value = ''
   try {
