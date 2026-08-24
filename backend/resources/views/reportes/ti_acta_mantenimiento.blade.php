@@ -41,11 +41,13 @@
     </td>
     <td style="text-align:center; vertical-align:middle;">
       <div style="font-size:10pt; font-weight:bold; text-transform:uppercase;">{{ $nombreInst }}</div>
-      <div class="title" style="margin-top:4px;">ACTA DE MANTENIMIENTO — EQUIPO TECNOLÓGICO</div>
+      <div class="title" style="margin-top:4px;">ACTA DE MANTENIMIENTO {{ $m->tipo === 'CORRECTIVO' ? 'CORRECTIVO' : 'PREVENTIVO' }} — EQUIPO TECNOLÓGICO</div>
       <div class="subtitle">
         Fecha: {{ \Carbon\Carbon::parse($m->fecha_mantenimiento)->format('d/m/Y') }}
-        &nbsp;&nbsp;|&nbsp;&nbsp;
-        Hora: {{ substr($m->hora_inicio,0,5) }} - {{ substr($m->hora_fin,0,5) }}
+        @if($m->hora_inicio && $m->hora_fin)
+          &nbsp;&nbsp;|&nbsp;&nbsp;
+          Hora: {{ substr($m->hora_inicio,0,5) }} - {{ substr($m->hora_fin,0,5) }}
+        @endif
       </div>
     </td>
   </tr>
@@ -67,6 +69,7 @@
   </tr>
 </table>
 
+@if($detalle->count() > 0)
 <div class="section-title">Checklist de Actividades</div>
 <table class="checklist" style="margin-bottom:6px; font-size:8.5pt;">
   <thead>
@@ -88,9 +91,10 @@
     @endforeach
   </tbody>
 </table>
+@endif
 
 @if($m->observaciones)
-<div class="section-title">Observaciones</div>
+<div class="section-title">{{ $detalle->count() === 0 ? 'Descripción de la Reparación' : 'Observaciones' }}</div>
 <table class="info-table" style="margin-bottom:6px;">
   <tr><td colspan="4">{{ $m->observaciones }}</td></tr>
 </table>

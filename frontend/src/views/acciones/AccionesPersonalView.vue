@@ -227,6 +227,21 @@
               style="text-transform:uppercase"
               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Medio</label>
+            <select v-model="modalEditar.medio"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
+              <option value="DIGITAL">DIGITAL</option>
+              <option value="MANUAL">MANUAL</option>
+            </select>
+          </div>
+          <div v-if="['COMISION DE SERVICIOS','REINGRESO','CESACION DE FUNCIONES'].includes(modalEditar.tipo_accion)" class="sm:col-span-2">
+            <label class="block text-xs font-medium text-gray-500 mb-1">Especificación</label>
+            <input v-model="modalEditar.especificacion" type="text"
+              style="text-transform:uppercase"
+              placeholder="Ej: COMISIÓN DE SERVICIOS SIN REMUNERACIÓN"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+          </div>
         </div>
       </div>
       <div class="flex justify-end gap-3 pt-2">
@@ -256,6 +271,7 @@ const modalEditar    = ref({
   fecha_elaboracion: "", motivacion: "",
   firmante_th_nombre: "", firmante_th_cargo: "",
   firmante_autoridad_nombre: "", firmante_autoridad_cargo: "",
+  medio: "DIGITAL", especificacion: "", tipo_accion: "",
 })
 
 const fmtFecha = (f) => {
@@ -353,6 +369,9 @@ const abrirEditarBorrador = (a) => {
     firmante_th_cargo:         a.firmante_th_cargo         ?? "",
     firmante_autoridad_nombre: a.firmante_autoridad_nombre ?? "",
     firmante_autoridad_cargo:  a.firmante_autoridad_cargo  ?? "",
+    medio:                     a.medio ?? "DIGITAL",
+    especificacion:            a.especificacion ?? "",
+    tipo_accion:               a.tipo_accion ?? "",
   }
 }
 
@@ -366,6 +385,8 @@ const guardarBorrador = async () => {
       firmante_th_cargo:         modalEditar.value.firmante_th_cargo,
       firmante_autoridad_nombre: modalEditar.value.firmante_autoridad_nombre,
       firmante_autoridad_cargo:  modalEditar.value.firmante_autoridad_cargo,
+      medio:                     modalEditar.value.medio,
+      especificacion:            modalEditar.value.especificacion || null,
     })
     modalEditar.value.show = false
     cargar()

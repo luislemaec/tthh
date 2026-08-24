@@ -7,18 +7,24 @@ use Illuminate\Http\Request;
 
 class TipoMantenimientoController extends Controller
 {
-    public function index()
+    private const ROLES_LECTURA = ['ADMINISTRADOR', 'TRANSPORTE', 'CONDUCTOR'];
+    private const ROLES_TRANSPORTE = ['ADMINISTRADOR', 'TRANSPORTE'];
+
+    public function index(Request $request)
     {
+        $this->requireRole($request, self::ROLES_LECTURA);
         return response()->json(TipoMantenimiento::orderBy('nombre')->get());
     }
 
-    public function activos()
+    public function activos(Request $request)
     {
+        $this->requireRole($request, self::ROLES_LECTURA);
         return response()->json(TipoMantenimiento::where('estado', 'ACTIVO')->orderBy('nombre')->get());
     }
 
     public function store(Request $request)
     {
+        $this->requireRole($request, self::ROLES_TRANSPORTE);
         $request->validate([
             'nombre' => 'required|in:PREVENTIVO,CORRECTIVO,PREVENTIVO Y CORRECTIVO',
         ]);
@@ -33,6 +39,7 @@ class TipoMantenimientoController extends Controller
 
     public function update(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_TRANSPORTE);
         $tipo = TipoMantenimiento::findOrFail($id);
 
         $request->validate([

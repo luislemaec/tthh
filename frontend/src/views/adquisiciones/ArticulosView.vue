@@ -189,8 +189,9 @@
     <!-- Modal crear/editar -->
     <div v-if="modal.show" class="fixed inset-0 bg-black/50 flex items-start justify-center z-50 p-4 overflow-y-auto">
       <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl my-4 overflow-hidden">
-        <div class="px-6 py-4" style="background-color:#4a5e3a;">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#0b5447;">
           <h2 class="text-lg font-bold text-white">{{ modal.editando ? 'Editar' : 'Nuevo' }} Artículo</h2>
+          <button @click="modal.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6">
 
@@ -338,8 +339,9 @@
     <!-- Modal importar stock CSV -->
     <div v-if="modalImport.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden">
-        <div class="px-6 py-4" style="background-color:#4a5e3a;">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#0b5447;">
           <h2 class="text-lg font-bold text-white">Importar Stock desde CSV</h2>
+          <button @click="cerrarImport" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6 space-y-4">
           <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800 space-y-1">
@@ -388,8 +390,9 @@
     <!-- Modal configuración porcentaje -->
     <div v-if="modalConfig.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
-        <div class="px-6 py-4" style="background-color:#4a5e3a;">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#0b5447;">
           <h2 class="text-lg font-bold text-white">Configurar Stock Mínimo</h2>
+          <button @click="modalConfig.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6">
         <p class="text-sm text-gray-600 mb-4">

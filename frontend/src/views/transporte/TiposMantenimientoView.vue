@@ -34,10 +34,11 @@
     <!-- Modal crear/editar -->
     <div v-if="modal.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
-        <div class="px-6 py-4" style="background-color:#1e3a5f;">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#1e3a5f;">
           <h2 class="text-lg font-bold text-white">
             {{ modal.id ? 'Editar Tipo' : 'Nuevo Tipo de Mantenimiento' }}
           </h2>
+          <button @click="modal.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6">
         <div class="space-y-3">

@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    'alfresco' => [
+        'base' => env('ALFRESCO_BASE_URL', 'http://192.168.26.38:8080/alfresco/api/-default-/public/alfresco/versions/1'),
+        'user' => env('ALFRESCO_USER', 'admin'),
+        'pass' => env('ALFRESCO_PASS', 'admin'),
+        'site' => env('ALFRESCO_SITE', 'talentohumano'),
+    ],
+
 ];

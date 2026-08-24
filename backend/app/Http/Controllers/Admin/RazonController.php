@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Auth;
 
 class RazonController extends Controller
 {
+    private const ROLES_ADMIN = ['ADMINISTRADOR', 'TALENTO HUMANO'];
+
     public function index()
     {
         return response()->json(Razon::orderBy('descripcion')->get());
@@ -15,6 +17,7 @@ class RazonController extends Controller
 
     public function store(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate([
             'descripcion' => 'required|string|max:30',
             'descontable' => 'required|in:SI,NO',
@@ -46,6 +49,7 @@ class RazonController extends Controller
 
     public function update(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $razon = Razon::findOrFail($id);
         $request->validate([
             'descripcion' => 'required|string|max:30',
@@ -67,8 +71,9 @@ class RazonController extends Controller
         return response()->json($razon);
     }
 
-    public function inactivar($id)
+    public function inactivar(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $razon = Razon::findOrFail($id);
         $user  = Auth::user()->id_emp ?? Auth::id();
 

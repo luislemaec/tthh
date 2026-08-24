@@ -118,8 +118,9 @@
       <div class="bg-white rounded-xl shadow-xl w-full max-w-7xl my-4 overflow-hidden">
 
         <!-- Título -->
-        <div class="px-6 py-4" style="background-color:#4a5e3a;">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#0b5447;">
           <h2 class="text-lg font-bold text-white">{{ modalForm.editando ? 'Editar Ingreso #' + modalForm.id : 'Nuevo Ingreso de Bienes' }}</h2>
+          <button @click="modalForm.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
 
         <div class="p-6">
@@ -363,11 +364,12 @@
 
     <!-- ══ MODAL VER DETALLE ══ -->
     <div v-if="modalDetalle.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto">
-        <div class="flex justify-between items-start mb-4">
-          <h2 class="text-lg font-bold">Ingreso #{{ modalDetalle.orden?.id }}</h2>
-          <button @click="modalDetalle.show = false" class="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#0b5447;">
+          <h2 class="text-lg font-bold text-white">Ingreso #{{ modalDetalle.orden?.id }}</h2>
+          <button @click="modalDetalle.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
+        <div class="p-6 overflow-y-auto">
 
         <div class="grid grid-cols-2 gap-x-6 gap-y-1 text-sm mb-4">
           <div><span class="text-gray-500">Tipo:</span>
@@ -435,14 +437,16 @@
             </tfoot>
           </table>
         </div>
+        </div><!-- /p-6 overflow-y-auto -->
       </div>
     </div>
 
     <!-- ══ MODAL CAJA CHICA ══ -->
     <div v-if="modalCajaChica.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden">
-        <div class="px-6 py-4" style="background-color:#4a5e3a;">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#0b5447;">
           <h2 class="text-lg font-bold text-white">Confirmar Ingreso — Caja Chica</h2>
+          <button @click="modalCajaChica.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6">
 
@@ -512,8 +516,9 @@
     <!-- ══ MODAL REVERSO ══ -->
     <div v-if="modalReverso.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
-        <div class="px-6 py-4" style="background-color:#dc2626;">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#dc2626;">
           <h2 class="text-lg font-bold text-white">Reversar Ingreso</h2>
+          <button @click="modalReverso.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6">
         <p class="text-sm text-gray-500 mb-4">El stock y precio promedio de los artículos serán revertidos al estado anterior.</p>

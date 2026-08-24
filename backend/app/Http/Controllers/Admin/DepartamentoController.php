@@ -7,9 +7,12 @@ use Illuminate\Http\Request;
 
 class DepartamentoController extends Controller
 {
+    private const ROLES_ADMIN = ['ADMINISTRADOR', 'TALENTO HUMANO'];
+
     public function index()
     {
         $deps = Departamento::with('padre')
+            ->where('id_depto', '!=', 999)
             ->orderBy('padre_id')
             ->orderBy('nombre_depto')
             ->get();
@@ -18,6 +21,7 @@ class DepartamentoController extends Controller
 
     public function store(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate([
             'id_depto'     => 'nullable|integer|unique:pgsql.dbo.ad_departamento,id_depto',
             'nombre_depto' => 'required|string|max:120',
@@ -51,6 +55,7 @@ class DepartamentoController extends Controller
 
     public function update(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $dep = Departamento::findOrFail($id);
         $request->validate([
             'nombre_depto' => 'required|string|max:120',
@@ -73,8 +78,9 @@ class DepartamentoController extends Controller
         return response()->json($dep->load('padre'));
     }
 
-    public function inactivar($id)
+    public function inactivar(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $dep = Departamento::findOrFail($id);
 
         // Verificar que no tenga empleados activos
@@ -96,8 +102,9 @@ class DepartamentoController extends Controller
         return response()->json(['message' => 'Departamento inactivado correctamente.']);
     }
 
-    public function activar($id)
+    public function activar(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $dep = Departamento::findOrFail($id);
         $dep->update(['estado' => 'ACTIVO']);
         return response()->json(['message' => 'Departamento activado correctamente.']);

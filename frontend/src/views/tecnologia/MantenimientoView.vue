@@ -78,7 +78,7 @@
         <div class="min-w-0">
           <p class="font-semibold text-gray-800">
             {{ e.codigo_bien }}
-            <span class="text-gray-500 font-normal ml-2">{{ e.marca }} {{ e.modelo }}</span>
+            <span class="text-gray-500 font-normal ml-2">{{ e.marca }} {{ e.descripcion }}</span>
           </p>
           <p class="text-xs text-gray-500 mt-0.5">
             {{ e.tipo_equipo?.nombre }}
@@ -105,7 +105,7 @@
           <div class="min-w-0">
             <p class="font-semibold text-gray-800">
               {{ grupo.m.equipo?.codigo_bien }}
-              <span class="text-gray-500 font-normal ml-2">{{ grupo.m.equipo?.marca }} {{ grupo.m.equipo?.modelo }}</span>
+              <span class="text-gray-500 font-normal ml-2">{{ grupo.m.equipo?.marca }} {{ grupo.m.equipo?.descripcion }}</span>
             </p>
             <p class="text-xs text-gray-500 mt-0.5">
               {{ grupo.m.fecha_mantenimiento }} · {{ grupo.m.hora_inicio?.substring(0,5) }} - {{ grupo.m.hora_fin?.substring(0,5) }}
@@ -170,7 +170,7 @@
             <h2 class="text-lg font-bold text-white">Registrar Mantenimiento</h2>
             <p class="text-white/80 text-xs mt-0.5">{{ modal.equipo?.codigo_bien }} — {{ modal.equipo?.marca }} {{ modal.equipo?.modelo }}</p>
           </div>
-          <button @click="modal.show = false" class="text-white/80 hover:text-white text-xl leading-none">&times;</button>
+          <button @click="modal.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6 max-h-[75vh] overflow-y-auto">
           <p class="text-xs text-gray-500 mb-3">
@@ -227,6 +227,44 @@
           </div>
 
           <div class="mt-4">
+            <div class="flex items-center justify-between mb-2">
+              <label class="block text-xs font-semibold text-gray-600">Piezas Cambiadas</label>
+              <button type="button" @click="agregarPiezaNueva"
+                class="text-xs font-medium border px-2.5 py-1 rounded-lg hover:bg-gray-50" style="color:#4d7c8a; border-color:#4d7c8a;">
+                + Pieza nueva
+              </button>
+            </div>
+
+            <input v-model="busquedaPieza" @input="buscarPiezaDisponible" type="text"
+              placeholder="Buscar pieza disponible por código, serie o descripción..."
+              class="w-full border rounded-lg px-3 py-2 text-xs mb-1" />
+            <div v-if="resultadosPieza.length" class="border rounded-lg divide-y max-h-32 overflow-y-auto text-xs mb-2 shadow-sm">
+              <button v-for="rp in resultadosPieza" :key="rp.id" type="button" @click="agregarPiezaExistente(rp)"
+                class="w-full text-left px-3 py-2 hover:bg-gray-50">
+                {{ rp.descripcion }} <span class="text-gray-400">{{ rp.codigo }} {{ rp.serie }}</span>
+              </button>
+            </div>
+
+            <div v-if="!piezasForm.length" class="text-xs text-gray-400">Sin piezas agregadas</div>
+            <div v-for="(pz, i) in piezasForm" :key="i" class="flex items-center gap-2 border rounded-lg px-3 py-2 mb-2">
+              <div class="flex-1">
+                <template v-if="pz.tipo === 'existente'">
+                  <span class="text-sm font-medium">{{ pz.descripcion }}</span>
+                  <span class="text-gray-400 text-xs ml-2">{{ pz.codigo }} {{ pz.serie }}</span>
+                </template>
+                <template v-else>
+                  <div class="grid grid-cols-3 gap-2">
+                    <input v-model="pz.descripcion" placeholder="Descripción *" class="border rounded px-2 py-1 text-xs" />
+                    <input v-model="pz.codigo" placeholder="Código" class="border rounded px-2 py-1 text-xs" />
+                    <input v-model="pz.serie" placeholder="Serie" class="border rounded px-2 py-1 text-xs" />
+                  </div>
+                </template>
+              </div>
+              <button type="button" @click="piezasForm.splice(i, 1)" class="text-red-500 hover:text-red-700 text-xs font-medium flex-shrink-0">Quitar</button>
+            </div>
+          </div>
+
+          <div class="mt-4">
             <label class="block text-xs font-semibold text-gray-600 mb-1">Observaciones</label>
             <textarea v-model="form.observaciones" rows="2" class="w-full border rounded-lg px-3 py-2 text-sm"></textarea>
           </div>
@@ -249,7 +287,7 @@
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
         <div class="px-6 py-4 flex items-center justify-between" style="background-color:#4d7c8a;">
           <h2 class="text-lg font-bold text-white">Subir Acta Firmada</h2>
-          <button @click="modalFirmado.show = false" class="text-white/80 hover:text-white text-xl leading-none">&times;</button>
+          <button @click="modalFirmado.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6">
           <input type="file" accept="application/pdf" @change="e => modalFirmado.archivo = e.target.files[0]"
@@ -272,7 +310,7 @@
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
         <div class="px-6 py-4 flex items-center justify-between" style="background-color:#4d7c8a;">
           <h2 class="text-lg font-bold text-white">Registrar Mantenimiento Externo</h2>
-          <button @click="modalExterno.show = false" class="text-white/80 hover:text-white text-xl leading-none">&times;</button>
+          <button @click="modalExterno.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6">
           <p class="text-xs text-gray-500 mb-3">
@@ -468,7 +506,37 @@ function abrirRegistro(equipo) {
     hora_inicio: '', hora_fin: '', tipo: 'PREVENTIVO', observaciones: '',
   }
   checklistForm.value = checklistCatalogo.value.map(a => ({ actividad_id: a.id, nombre: a.nombre, realizado: false }))
+  piezasForm.value = []
+  busquedaPieza.value = ''
+  resultadosPieza.value = []
   error.value = ''
+}
+
+// ─── Piezas cambiadas ─────────────────────────────────────────────────────
+const piezasForm       = ref([])
+const busquedaPieza     = ref('')
+const resultadosPieza   = ref([])
+let   busquedaPiezaTimer = null
+
+function buscarPiezaDisponible() {
+  clearTimeout(busquedaPiezaTimer)
+  if (busquedaPieza.value.length < 2) { resultadosPieza.value = []; return }
+  busquedaPiezaTimer = setTimeout(async () => {
+    try {
+      const { data } = await api.get('/tecnologia/piezas', { params: { estado: 'DISPONIBLE', busqueda: busquedaPieza.value } })
+      resultadosPieza.value = data.data ?? data
+    } catch { resultadosPieza.value = [] }
+  }, 300)
+}
+
+function agregarPiezaExistente(p) {
+  piezasForm.value.push({ tipo: 'existente', pieza_id: p.id, descripcion: p.descripcion, codigo: p.codigo, serie: p.serie })
+  busquedaPieza.value = ''
+  resultadosPieza.value = []
+}
+
+function agregarPiezaNueva() {
+  piezasForm.value.push({ tipo: 'nueva', descripcion: '', codigo: '', serie: '' })
 }
 
 async function guardar() {
@@ -483,6 +551,9 @@ async function guardar() {
       tipo: form.value.tipo,
       observaciones: form.value.observaciones,
       checklist: checklistForm.value.map(c => ({ actividad_id: c.actividad_id, realizado: c.realizado })),
+      piezas: piezasForm.value.map(pz => pz.tipo === 'existente'
+        ? { pieza_id: pz.pieza_id }
+        : { codigo: pz.codigo, serie: pz.serie, descripcion: pz.descripcion }),
     })
     modal.value.show = false
     await cargar()

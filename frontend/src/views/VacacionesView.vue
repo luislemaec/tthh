@@ -15,7 +15,7 @@
         :style="tabActivo === 'mia' ? 'background-color:#0b5447' : ''">Mis Vacaciones</button>
       <button @click="cambiarTab('equipo')"
         :class="['flex-1 py-2.5 text-sm font-semibold transition', tabActivo === 'equipo' ? 'text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100']"
-        :style="tabActivo === 'equipo' ? 'background-color:#0b5447' : ''">Vacaciones Equipo</button>
+        :style="tabActivo === 'equipo' ? 'background-color:#0b5447' : ''">{{ miRol.es_admin_th ? 'Vacaciones Institucionales' : 'Vacaciones Equipo' }}</button>
     </div>
 
     <!-- Empleado inactivo -->
@@ -30,8 +30,12 @@
       </div>
       <div class="flex gap-6">
         <div class="text-center">
-          <p class="text-3xl font-bold text-[#0b5447]">{{ saldo.saldo_calculado.dias_disponibles ?? 0 }}</p>
-          <p class="text-xs text-gray-500 mt-1">Días disponibles</p>
+          <p :class="esNombramiento && saldoReal < 0 ? 'text-3xl font-bold text-red-600' : 'text-3xl font-bold text-[#0b5447]'">
+            {{ esNombramiento ? saldoReal : (saldo.saldo_calculado.dias_disponibles ?? 0) }}
+          </p>
+          <p class="text-xs mt-1" :class="esNombramiento && saldoReal < 0 ? 'text-red-500' : 'text-gray-500'">
+            Días disponibles<template v-if="esNombramiento && saldoReal < 0"> (negativo)</template>
+          </p>
         </div>
         <div class="text-center">
           <p class="text-3xl font-bold text-gray-400">{{ saldo.saldo_calculado.tomados ?? 0 }}</p>
@@ -117,6 +121,10 @@
                 class="px-2 py-1 rounded-full text-xs font-medium">
                 {{ v.estado_permiso }}
               </span>
+              <span v-if="v.requiere_informe && v.estado_permiso === 'PENDIENTE' && v.informe_estado !== 'FAVORABLE'"
+                class="ml-1 px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
+                Requiere informe TH
+              </span>
             </td>
             <td class="px-4 py-3 text-sm text-gray-600">
               <template v-if="v.aprobador">
@@ -129,8 +137,16 @@
                 <button @click="verVacacion(v)"
                   class="text-[#0b5447] hover:underline text-xs font-medium">Ver</button>
                 <template v-if="esSupervisorOAdmin && tabActivo === 'equipo' && v.estado_permiso === 'PENDIENTE'">
-                  <button @click="abrirModalBackup(v.secuencial_clave)"
-                    class="text-green-600 hover:underline text-xs font-medium">Aprobar</button>
+                  <button v-if="miRol.es_admin_th && v.requiere_informe"
+                    @click="abrirModalInforme(v)"
+                    class="text-orange-600 hover:underline text-xs font-medium">Informe</button>
+                  <button @click="v.requiere_informe && v.informe_estado !== 'FAVORABLE' ? null : abrirModalBackup(v.secuencial_clave)"
+                    :class="v.requiere_informe && v.informe_estado !== 'FAVORABLE'
+                      ? 'text-gray-300 cursor-not-allowed text-xs font-medium'
+                      : 'text-green-600 hover:underline text-xs font-medium'"
+                    :title="v.requiere_informe && v.informe_estado !== 'FAVORABLE' ? 'Requiere informe favorable de TH' : ''">
+                    Aprobar
+                  </button>
                   <button @click="abrirModalNegar(v)"
                     class="text-red-500 hover:underline text-xs font-medium">Negar</button>
                   <button @click="abrirModalEliminar(v)"
@@ -206,8 +222,12 @@
 
     <!-- Modal Ver -->
     <div v-if="modalVer" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-lg space-y-4">
-        <h2 class="text-lg font-semibold text-gray-700">Detalle de Vacación</h2>
+      <div class="bg-white rounded-xl shadow-lg w-full max-w-lg overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#0b5447;">
+          <h2 class="text-lg font-semibold text-white">Detalle de Vacación</h2>
+          <button @click="modalVer = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
+        </div>
+        <div class="p-6 space-y-4">
         <dl class="grid grid-cols-2 gap-3 text-sm">
           <div>
             <dt class="text-gray-500">Empleado</dt>
@@ -216,6 +236,14 @@
           <div>
             <dt class="text-gray-500">Departamento</dt>
             <dd class="font-medium">{{ seleccionado?.empleado?.departamento?.nombre_depto }}</dd>
+          </div>
+          <div>
+            <dt class="text-gray-500">Fecha de solicitud</dt>
+            <dd class="font-medium">{{ seleccionado?.fecha_hora?.substring(0, 16)?.replace('T', ' ') }}</dd>
+          </div>
+          <div>
+            <dt class="text-gray-500">Fecha de aprobación</dt>
+            <dd class="font-medium">{{ seleccionado?.aprobado_en?.substring(0, 16)?.replace('T', ' ') || '—' }}</dd>
           </div>
           <div>
             <dt class="text-gray-500">Fecha Inicio</dt>
@@ -260,6 +288,7 @@
         <div class="flex justify-end pt-2">
           <button @click="modalVer = false"
             class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cerrar</button>
+        </div>
         </div>
       </div>
     </div>
@@ -337,6 +366,37 @@
         </div>
       </div>
     </div>
+    <!-- Modal Informe TH -->
+    <div v-if="modalInforme" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-lg w-full max-w-md overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#0b5447;">
+          <h2 class="text-lg font-semibold text-white">Informe de Vacaciones</h2>
+          <button @click="modalInforme = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
+        </div>
+        <div class="p-6 space-y-4">
+          <p class="text-sm text-gray-600">
+            El empleado <strong>{{ vacInforme?.nombre_emp }}</strong> solicita
+            <strong>{{ diasVac(vacInforme?.fecha_inicial, vacInforme?.fecha_final) }} días</strong>
+            ({{ vacInforme?.fecha_inicial?.substring(0,10) }} al {{ vacInforme?.fecha_final?.substring(0,10) }})
+            con saldo insuficiente. Registra el resultado del informe de Talento Humano.
+          </p>
+          <div v-if="errorInforme" class="text-red-600 text-sm bg-red-50 rounded p-2">{{ errorInforme }}</div>
+          <div class="flex justify-end gap-3 pt-2">
+            <button @click="modalInforme = false"
+              class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
+            <button @click="confirmarInforme('DESFAVORABLE')" :disabled="guardandoInforme"
+              class="px-4 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 disabled:opacity-50">
+              Desfavorable (Negar)
+            </button>
+            <button @click="confirmarInforme('FAVORABLE')" :disabled="guardandoInforme"
+              class="px-4 py-2 rounded-lg text-white text-sm disabled:opacity-50"
+              style="background-color:#0b5447;">
+              Favorable
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -370,6 +430,10 @@ const motivoNegacion      = ref("")
 const motivoEliminacion   = ref("")
 const errorEliminar       = ref("")
 const errorNuevo          = ref("")
+const modalInforme        = ref(false)
+const vacInforme          = ref(null)
+const guardandoInforme    = ref(false)
+const errorInforme        = ref("")
 
 const filtros = ref({ estado: "", fecha_desde: "", fecha_hasta: "" })
 
@@ -383,6 +447,14 @@ const formNuevo = ref({
 
 const esSupervisorOAdmin = computed(() =>
   miRol.value.es_supervisor || miRol.value.es_admin_th
+)
+
+const esNombramiento = computed(() =>
+  (saldo.value?.modalidad_laboral ?? '').trim() === 'Nombramiento Definitivo'
+)
+
+const saldoReal = computed(() =>
+  saldo.value?.saldo_calculado?.dias_disponibles_real ?? 0
 )
 
 const colorEstado = (estado) => {
@@ -552,6 +624,29 @@ const confirmarEliminar = async () => {
     cargar()
   } catch (e) {
     alert(e.response?.data?.message || "Error al eliminar")
+  }
+}
+
+const abrirModalInforme = (v) => {
+  vacInforme.value    = v
+  errorInforme.value  = ""
+  modalInforme.value  = true
+}
+
+const confirmarInforme = async (estado) => {
+  guardandoInforme.value = true
+  errorInforme.value     = ""
+  try {
+    await api.patch("/vacaciones/" + vacInforme.value.secuencial_clave + "/marcar-informe", {
+      informe_estado: estado
+    })
+    modalInforme.value = false
+    cargar()
+    cargarSaldo()
+  } catch (e) {
+    errorInforme.value = e.response?.data?.message || "Error al registrar el informe"
+  } finally {
+    guardandoInforme.value = false
   }
 }
 

@@ -9,5 +9,5 @@ class MantenimientoActividad extends Model
     protected $table      = 'dbo.trans_mantenimiento_actividad';
     public    $timestamps = false;
 
-    protected $fillable = ['mantenimiento_id', 'tipo', 'tipo_actividad', 'actividad', 'orden'];
+    protected $fillable = ['mantenimiento_id', 'tipo', 'tipo_actividad', 'actividad', 'orden', 'cantidad'];
 }

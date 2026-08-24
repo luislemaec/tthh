@@ -7,8 +7,11 @@ use Illuminate\Support\Facades\DB;
 
 class UnidadMedidaController extends Controller
 {
-    public function index()
+    private const ROLES_ADQ = ['ADMINISTRADOR', 'ADQUISICIONES', 'BIENES'];
+
+    public function index(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $unidades = DB::table('adq.unidad_medida')
             ->orderBy('nombre')
             ->get(['id', 'nombre', 'abreviatura', 'activo']);
@@ -17,6 +20,7 @@ class UnidadMedidaController extends Controller
 
     public function store(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $request->validate([
             'nombre'      => 'required|string|max:60',
             'abreviatura' => 'required|string|max:15',
@@ -38,6 +42,7 @@ class UnidadMedidaController extends Controller
 
     public function update(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $request->validate([
             'nombre'      => 'required|string|max:60',
             'abreviatura' => 'required|string|max:15',
@@ -52,8 +57,9 @@ class UnidadMedidaController extends Controller
         return response()->json(DB::table('adq.unidad_medida')->find($id));
     }
 
-    public function toggle($id)
+    public function toggle(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $unidad = DB::table('adq.unidad_medida')->find($id);
         if (!$unidad) return response()->json(['message' => 'No encontrado.'], 404);
 

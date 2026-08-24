@@ -99,6 +99,40 @@ class DashboardController extends Controller
 
             $hoy = now()->toDateString();
 
+            // Atrasos del mes sin contar los justificados por permisos aprobados
+            $idsParam  = $empleadosIds->toArray();
+            $atrasosMes = 0;
+            if (!empty($idsParam)) {
+                $phIds = implode(',', array_fill(0, count($idsParam), '?'));
+                $rowAtrasos = DB::select("
+                    SELECT COUNT(*) AS total
+                    FROM dbo.d2_cuadre_marcacion c
+                    WHERE c.id_emp IN ({$phIds})
+                      AND EXTRACT(MONTH FROM c.fecha)::int = ?
+                      AND EXTRACT(YEAR  FROM c.fecha)::int = ?
+                      AND (
+                          (c.atraso_entrada > 0 AND NOT EXISTS (
+                              SELECT 1 FROM dbo.d2_permiso p
+                              WHERE p.id_emp = c.id_emp
+                                AND p.estado_permiso = 'APROBADO'
+                                AND p.fecha_desde::date <= c.fecha::date
+                                AND p.fecha_hasta::date >= c.fecha::date
+                                AND (p.tipo_horario = 'ENTRADA' OR p.todo_dia = 'SI')
+                          ))
+                          OR
+                          (c.atraso_lunch > 0 AND NOT EXISTS (
+                              SELECT 1 FROM dbo.d2_permiso p
+                              WHERE p.id_emp = c.id_emp
+                                AND p.estado_permiso = 'APROBADO'
+                                AND p.fecha_desde::date <= c.fecha::date
+                                AND p.fecha_hasta::date >= c.fecha::date
+                                AND (p.tipo_horario = 'ENTRE JORNADA' OR p.todo_dia = 'SI')
+                          ))
+                      )
+                ", array_merge($idsParam, [now()->month, now()->year]));
+                $atrasosMes = (int) ($rowAtrasos[0]->total ?? 0);
+            }
+
             $datosSupervisor = [
                 "total_equipo"          => $empleadosIds->count(),
                 "he_pendientes"         => DB::table("dbo.nom_he_planificacion_cab")
@@ -118,6 +152,7 @@ class DashboardController extends Controller
                 "con_permiso_hoy"       => DB::table("dbo.d2_permiso")
                                             ->whereIn("id_emp", $empleadosIds)
                                             ->where("estado_permiso", "APROBADO")
+                                            ->where("todo_dia", "SI")
                                             ->whereDate("fecha_desde", "<=", $hoy)
                                             ->whereDate("fecha_hasta", ">=", $hoy)
                                             ->distinct()
@@ -129,15 +164,7 @@ class DashboardController extends Controller
                                             ->whereDate("fecha_final", ">=", $hoy)
                                             ->distinct()
                                             ->count("id_emp"),
-                "atrasos_mes"           => DB::table("dbo.d2_cuadre_marcacion")
-                                            ->whereIn("id_emp", $empleadosIds)
-                                            ->whereMonth("fecha", now()->month)
-                                            ->whereYear("fecha", now()->year)
-                                            ->where(function ($q) {
-                                                $q->where("atraso_entrada", ">", 0)
-                                                  ->orWhere("atraso_lunch", ">", 0);
-                                            })
-                                            ->count(),
+                "atrasos_mes"           => $atrasosMes,
             ];
 
             $hoyLimite = now()->addDays(60)->toDateString();
@@ -192,7 +219,7 @@ class DashboardController extends Controller
             $cabecera = CabeceraVacacion::where('id_emp', $emp->id_emp)->first();
             $tomados  = (float) ($cabecera->total_dias_tomados ?? 0);
             $adicional= (float) ($cabecera->dias_adicionales   ?? 0);
-            $saldo    = max(0, round($adicional + $diasAcumulados - $tomados, 2));
+            $saldo    = min(60, max(0, round($adicional + $diasAcumulados - $tomados, 2)));
 
             // Atrasos por mes: días con atraso en cada mes del año actual
             $anio = now()->year;
@@ -248,6 +275,53 @@ class DashboardController extends Controller
             "es_admin_th"           => $esAdminOTH,
             "datos_supervisor"      => $datosSupervisor,
             "datos_empleado"        => $datosEmpleado,
+        ]);
+    }
+
+    public function pendientesSupervisor(Request $request)
+    {
+        $emp = $request->user();
+
+        $esAdminOTH = DB::table('dbo.admin_usuario_rol as ur')
+            ->join('dbo.admin_rol as r', 'ur.id_rol', '=', 'r.id')
+            ->where('ur.id_emp', $emp->id_emp)
+            ->whereIn('r.descripcion', ['ADMINISTRADOR', 'TALENTO HUMANO'])
+            ->exists();
+
+        $esSupervisor = Supervisor::where('id_supervisor', $emp->id_emp)->exists();
+
+        if (!$esAdminOTH && !$esSupervisor) {
+            return response()->json(['permisos' => 0, 'vacaciones' => 0, 'horas_extras' => 0, 'materiales' => 0]);
+        }
+
+        $empleadosIds = null;
+        if (!$esAdminOTH && $esSupervisor) {
+            $empleadosIds = $this->empleadosDeSupervisor($emp->id_emp);
+        }
+
+        $qPermisos = DB::table('dbo.d2_permiso as p')
+            ->join('dbo.ad_empleado as e', 'p.id_emp', '=', 'e.id_emp')
+            ->where('p.estado_permiso', 'PENDIENTE')
+            ->where('e.id_depto', '!=', 999);
+        if ($empleadosIds) $qPermisos->whereIn('p.id_emp', $empleadosIds);
+
+        $qVacaciones = DB::table('dbo.d2_vacacion as v')
+            ->join('dbo.ad_empleado as e', 'v.id_emp', '=', 'e.id_emp')
+            ->where('v.estado_permiso', 'PENDIENTE')
+            ->where('e.id_depto', '!=', 999);
+        if ($empleadosIds) $qVacaciones->whereIn('v.id_emp', $empleadosIds);
+
+        $qHE = DB::table('dbo.nom_he_planificacion_cab')->where('estado', 'PENDIENTE');
+        if ($empleadosIds) $qHE->whereIn('id_emp', $empleadosIds);
+
+        $qMat = DB::table('adq.solicitud_material')->where('estado', 'PENDIENTE');
+        if ($empleadosIds) $qMat->whereIn('id_emp', $empleadosIds);
+
+        return response()->json([
+            'permisos'     => $qPermisos->count(),
+            'vacaciones'   => $qVacaciones->count(),
+            'horas_extras' => $qHE->count(),
+            'materiales'   => $qMat->count(),
         ]);
     }
 

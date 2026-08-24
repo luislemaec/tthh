@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: Arial, sans-serif; font-size: 8.5pt; color: #000; }
+  body { font-family: Arial, sans-serif; font-size: 8.5pt; color: #000; padding: 0 8mm; }
   .page { width: 100%; }
 
   .lbl  { font-weight: bold; font-size: 7.5pt; }
@@ -21,11 +21,11 @@
   .sit-lbl { font-weight: bold; font-size: 7.5pt; width: 46%; padding: 1px 4px;
              border-right: 1px solid #000; border-bottom: 1px solid #ddd; vertical-align: top; }
   .sit-val { font-size: 7.5pt; padding: 1px 4px; border-bottom: 1px solid #ddd;
-             word-wrap: break-word; overflow: hidden; }
+             word-wrap: break-word; word-break: break-all; overflow: hidden; }
 
   .pg2 { page-break-before: always; }
 
-  @page { margin: 10mm 12mm 8mm 12mm; size: letter portrait; }
+  @page { margin: 15mm 22mm 12mm 22mm; size: a4 portrait; }
 </style>
 </head>
 <body>
@@ -47,16 +47,22 @@
 
   // Reglas por tipo de acción
   $declaracionSI = in_array($tipo, ['INGRESO', 'DESTITUCION', 'CESACION DE FUNCIONES']);
-  $showActual    = $tipo !== 'INGRESO';
-  $showPropuesta = !in_array($tipo, ['DESTITUCION', 'CESACION DE FUNCIONES', 'VACACIONES']);
-  $fillPosesion  = $tipo === 'INGRESO';
+  $showActual    = !in_array($tipo, ['INGRESO', 'REINGRESO']);
+  $showPropuesta = !in_array($tipo, ['DESTITUCION', 'CESACION DE FUNCIONES', 'VACACIONES', 'COMISION DE SERVICIOS']);
+  $fillPosesion  = !in_array($tipo, ['COMISION DE SERVICIOS', 'REINGRESO', 'CESACION DE FUNCIONES']);
+  $ubicacion     = strtoupper($config['UBICACION_DEFAULT'] ?? 'QUITO');
+  // INGRESO y REINGRESO: la unidad propuesta es el propio departamento del empleado (no hay titular)
+  $deptPropuestoFinal = in_array($tipo, ['INGRESO', 'REINGRESO']) ? $deptActual : $deptPropuesto;
 @endphp
 
 {{-- ==================== PÁGINA 1 ==================== --}}
 <div class="page">
 
 @if($accion->estado === 'BORRADOR')
-<p style="text-align:center; font-size:9pt; font-weight:bold; color:#b0b0b0; letter-spacing:6px; margin:0 0 4px 0;">— BORRADOR — BORRADOR — BORRADOR —</p>
+<div style="border:2px solid #000; color:#000; text-align:center; font-size:9pt;
+            font-weight:bold; letter-spacing:3px; padding:3px 0; margin-bottom:4px;">
+  ** BORRADOR — NO VÁLIDO — BORRADOR — NO VÁLIDO — BORRADOR **
+</div>
 @endif
 
 {{-- ENCABEZADO --}}
@@ -64,7 +70,7 @@
   <tr>
     <td style="width:40%; border:1px solid #000; text-align:center; padding:6px; vertical-align:middle;">
       @if($logo)
-        <img src="{{ $logo }}" style="max-height:124px; max-width:95%;">
+        <img src="{{ $logo }}" style="max-height:75px; max-width:95%;">
       @else
         <div style="font-size:9pt; color:#777; padding:8px;">(LOGO INSTITUCIONAL)</div>
       @endif
@@ -185,7 +191,7 @@
   </table>
   <div style="font-size:7.5pt; border-top:1px solid #ccc; margin-top:2px; padding-top:2px;">
     EN CASO DE REQUERIR ESPECIFICACIÓN DE LO SELECCIONADO:
-    <span style="border-bottom:1px solid #000; display:inline-block; width:55%;">&nbsp;</span>
+    <span style="border-bottom:1px solid #000; display:inline-block; width:55%;">{{ $accion->especificacion ?? '' }}</span>
   </div>
   <div style="font-size:7.5pt; margin-top:2px;">
     <b>* PRESENTÓ LA DECLARACIÓN JURADA</b> (número 2 del art. 3 RLOSEP) &nbsp;
@@ -217,14 +223,14 @@
         <tr><td class="sit-lbl">PROCESO INSTITUCIONAL:</td><td class="sit-val">{{ $showActual ? ($accion->actual_proceso_inst ?? '') : '' }}</td></tr>
         <tr><td class="sit-lbl">NIVEL DE GESTIÓN:</td><td class="sit-val">&nbsp;</td></tr>
         <tr><td class="sit-lbl">UNIDAD ADMINISTRATIVA:</td><td class="sit-val">{{ $showActual ? $deptActual : '' }}</td></tr>
-        <tr><td class="sit-lbl">LUGAR DE TRABAJO:</td><td class="sit-val">{{ $showActual ? 'Quito' : '' }}</td></tr>
+        <tr><td class="sit-lbl">LUGAR DE TRABAJO:</td><td class="sit-val">{{ $showActual ? $ubicacion : '' }}</td></tr>
         <tr><td class="sit-lbl">DENOMINACIÓN DEL PUESTO:</td><td class="sit-val">{{ $showActual ? ($accion->actual_cargo ?? '') : '' }}</td></tr>
         <tr><td class="sit-lbl">GRUPO OCUPACIONAL:</td><td class="sit-val">{{ $showActual ? ($accion->actual_grupo_ocup ?? '') : '' }}</td></tr>
         <tr><td class="sit-lbl">GRADO:</td><td class="sit-val">{{ $showActual ? ($accion->actual_grado ?? '') : '' }}</td></tr>
         <tr><td class="sit-lbl">REMUNERACIÓN MENSUAL:</td><td class="sit-val">{{ $showActual ? '$'.number_format($accion->actual_remuneracion ?? 0, 2) : '' }}</td></tr>
         <tr>
           <td class="sit-lbl" style="border-bottom:none;">PARTIDA INDIVIDUAL:</td>
-          <td style="font-size:6.5pt; word-break:break-all; padding:1px 4px; border-bottom:none; vertical-align:top;">{{ $showActual ? ($accion->actual_partida ?? '') : '' }}</td>
+          <td style="font-size:6.5pt; padding:1px 4px; border-bottom:none; vertical-align:top; word-wrap:break-word;">{{ $showActual ? implode(' ', str_split($accion->actual_partida ?? '', 22)) : '' }}</td>
         </tr>
       </table>
     </td>
@@ -233,15 +239,15 @@
       <table style="width:100%; border-collapse:collapse; table-layout:fixed;">
         <tr><td class="sit-lbl">PROCESO INSTITUCIONAL:</td><td class="sit-val">{{ $showPropuesta ? ($accion->propuesto_proceso_inst ?? '') : '' }}</td></tr>
         <tr><td class="sit-lbl">NIVEL DE GESTIÓN:</td><td class="sit-val">&nbsp;</td></tr>
-        <tr><td class="sit-lbl">UNIDAD ADMINISTRATIVA:</td><td class="sit-val">{{ $showPropuesta ? $deptPropuesto : '' }}</td></tr>
-        <tr><td class="sit-lbl">LUGAR DE TRABAJO:</td><td class="sit-val">{{ $showPropuesta ? 'Quito' : '' }}</td></tr>
+        <tr><td class="sit-lbl">UNIDAD ADMINISTRATIVA:</td><td class="sit-val">{{ $showPropuesta ? $deptPropuestoFinal : '' }}</td></tr>
+        <tr><td class="sit-lbl">LUGAR DE TRABAJO:</td><td class="sit-val">{{ $showPropuesta ? $ubicacion : '' }}</td></tr>
         <tr><td class="sit-lbl">DENOMINACIÓN DEL PUESTO:</td><td class="sit-val">{{ $showPropuesta ? ($accion->propuesto_cargo ?? '') : '' }}</td></tr>
         <tr><td class="sit-lbl">GRUPO OCUPACIONAL:</td><td class="sit-val">{{ $showPropuesta ? ($accion->propuesto_grupo_ocup ?? '') : '' }}</td></tr>
         <tr><td class="sit-lbl">GRADO:</td><td class="sit-val">{{ $showPropuesta ? ($accion->propuesto_grado ?? '') : '' }}</td></tr>
         <tr><td class="sit-lbl">REMUNERACIÓN MENSUAL:</td><td class="sit-val">{{ $showPropuesta ? '$'.number_format($accion->propuesto_remuneracion ?? 0, 2) : '' }}</td></tr>
         <tr>
           <td class="sit-lbl" style="border-bottom:none;">PARTIDA INDIVIDUAL:</td>
-          <td style="font-size:6.5pt; word-break:break-all; padding:1px 4px; border-bottom:none; vertical-align:top;">{{ $showPropuesta ? ($accion->propuesto_partida ?? '') : '' }}</td>
+          <td style="font-size:6.5pt; padding:1px 4px; border-bottom:none; vertical-align:top; word-wrap:break-word;">{{ $showPropuesta ? implode(' ', str_split($accion->propuesto_partida ?? '', 22)) : '' }}</td>
         </tr>
       </table>
     </td>
@@ -256,7 +262,7 @@
       <td style="width:55%; padding:4px 6px; vertical-align:top; font-size:7.5pt; border-right:1px solid #000;">
         YO, <span style="border-bottom:1px solid #000; display:inline-block; width:58%;">{{ $fillPosesion ? strtoupper(($accion->empleado->apellido_emp ?? '') . ' ' . ($accion->empleado->nombre_emp ?? '')) : '' }}</span><br>
         JURO LEALTAD AL ESTADO ECUATORIANO.<br>
-        LUGAR: <span style="border-bottom:1px solid #000; display:inline-block; width:26%;">{{ $fillPosesion ? 'Quito' : '' }}</span>
+        LUGAR: <span style="border-bottom:1px solid #000; display:inline-block; width:26%;">{{ $fillPosesion ? $ubicacion : '' }}</span>
         &nbsp; FECHA: <span style="border-bottom:1px solid #000; display:inline-block; width:26%;">{{ $fillPosesion ? $fechaElabStr : '' }}</span><br><br>
         <div style="font-size:7pt;">** (EN CASO DE GANADOR DE CONCURSO DE MÉRITOS Y OPOSICIÓN)</div>
         <table style="border-collapse:collapse; margin-top:3px; width:75%;">
@@ -326,9 +332,9 @@
         <div style="padding:5px 6px;">
           <div style="min-height:55px;"></div>
           <div style="font-size:7.5pt;">FIRMA <span style="border-bottom:1px solid #000; display:inline-block; width:74%;">&nbsp;</span></div>
-          <div style="font-size:7.5pt; margin-top:2px;">NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:68%;">{{ strtoupper(($accion->empleado->apellido_emp ?? '') . ', ' . ($accion->empleado->nombre_emp ?? '')) }}</span></div>
-          <div style="font-size:7.5pt; margin-top:2px;">FECHA: <span style="border-bottom:1px solid #000; display:inline-block; width:71%;">CONSTA EN FIRMA ELECTRÓNICA</span></div>
-          <div style="font-size:7.5pt; margin-top:2px;">HORA: <span style="border-bottom:1px solid #000; display:inline-block; width:73%;">CONSTA EN FIRMA ELECTRÓNICA</span></div>
+          <div style="font-size:7.5pt; margin-top:2px;">NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:68%;">{{ $tipo !== 'INGRESO' ? strtoupper(($accion->empleado->apellido_emp ?? '') . ', ' . ($accion->empleado->nombre_emp ?? '')) : '' }}</span></div>
+          <div style="font-size:7.5pt; margin-top:2px;">FECHA: <span style="border-bottom:1px solid #000; display:inline-block; width:71%;">{{ $tipo !== 'INGRESO' ? 'CONSTA EN FIRMA ELECTRÓNICA' : '' }}</span></div>
+          <div style="font-size:7.5pt; margin-top:2px;">HORA: <span style="border-bottom:1px solid #000; display:inline-block; width:73%;">{{ $tipo !== 'INGRESO' ? 'CONSTA EN FIRMA ELECTRÓNICA' : '' }}</span></div>
         </div>
       </td>
       <td style="width:50%; padding:0; vertical-align:top;">
@@ -338,10 +344,12 @@
           <div style="font-size:7.5pt;">FIRMA: <span style="border-bottom:1px solid #000; display:inline-block; width:73%;">&nbsp;</span></div>
           <div style="font-size:7.5pt; margin-top:2px;">NOMBRE: <span style="border-bottom:1px solid #000; display:inline-block; width:68%;">&nbsp;</span></div>
           <div style="font-size:7.5pt; margin-top:2px;">FECHA: <span style="border-bottom:1px solid #000; display:inline-block; width:71%;">&nbsp;</span></div>
+          @if($tipo !== 'INGRESO')
           <div style="font-size:7.5pt; margin-top:4px;">
             <b>RAZÓN:</b> En presencia del testigo se deja constancia de que la o el servidor
             público tiene la negativa de recibir la comunicación de registro de esta acción de personal.
           </div>
+          @endif
         </div>
       </td>
     </tr>
@@ -415,7 +423,7 @@
   </table>
 
   <div style="font-size:8pt; margin-bottom:8px;">
-    ** MEDIO: <span style="border-bottom:1px solid #000; display:inline-block; width:38%;">DIGITAL</span>
+    ** MEDIO: <span style="border-bottom:1px solid #000; display:inline-block; width:38%;">{{ $accion->medio ?? 'DIGITAL' }}</span>
   </div>
 
   <div style="border-bottom:1px solid #000; margin-bottom:5px; width:55%;">&nbsp;</div>

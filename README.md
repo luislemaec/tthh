@@ -1,3 +1,3 @@
 # rrhh
 
-Aplicación de gestión de talento humano
+Gestión Sistema Integral de Tecnología - GSIT

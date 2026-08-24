@@ -11,9 +11,12 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 
 class ReportesController extends Controller
 {
+    private const ROLES_ADMIN = ['ADMINISTRADOR', 'TALENTO HUMANO'];
+
     // Reporte 1: Atrasos desde d2_cuadre_marcacion
     public function atrasos(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate([
             'fecha_desde' => 'required|date',
             'fecha_hasta' => 'required|date',
@@ -183,6 +186,7 @@ class ReportesController extends Controller
     // Reporte 2: Marcaciones faltantes — base todos los empleados activos
     public function marcacionesFaltantes(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate([
             'fecha_desde' => 'required|date',
             'fecha_hasta' => 'required|date',
@@ -236,9 +240,20 @@ class ReportesController extends Controller
             ->groupBy('nro_documento')
             ->map(fn($rows) => $rows->keyBy('fecha'));
 
+        // Vacaciones aprobadas en el rango para etiquetar filas
+        $vacaciones = DB::table('dbo.d2_vacacion')
+            ->whereIn('id_emp', $ids)
+            ->where('estado_permiso', 'APROBADO')
+            ->where('fecha_inicial', '<=', $request->fecha_hasta)
+            ->where('fecha_final',   '>=', $request->fecha_desde)
+            ->select('id_emp', DB::raw('DATE(fecha_inicial) as fecha_inicial'), DB::raw('DATE(fecha_final) as fecha_final'))
+            ->get()
+            ->groupBy('id_emp');
+
         // Cruzar empleados × fechas
         $resultado = [];
         foreach ($empleados as $emp) {
+            $vacsEmp = $vacaciones[$emp->id_emp] ?? collect();
             foreach ($fechas as $fecha) {
                 $marc = $marcaciones[$emp->id_emp][$fecha] ?? null;
                 $entrada  = $marc ? (int)$marc->tiene_entrada  : 0;
@@ -249,6 +264,15 @@ class ReportesController extends Controller
                 // Solo incluir si falta al menos una marcación
                 if ($entrada >= 1 && $salLunch >= 1 && $entLunch >= 1 && $salida >= 1) continue;
 
+                // Verificar si el empleado tiene vacaciones aprobadas que cubran esta fecha
+                $enVacaciones = false;
+                foreach ($vacsEmp as $vac) {
+                    if ($fecha >= $vac->fecha_inicial && $fecha <= $vac->fecha_final) {
+                        $enVacaciones = true;
+                        break;
+                    }
+                }
+
                 $resultado[] = [
                     'fecha'          => $fecha,
                     'id_emp'         => $emp->id_emp,
@@ -258,6 +282,7 @@ class ReportesController extends Controller
                     'tiene_sal_lunch'=> $salLunch,
                     'tiene_ent_lunch'=> $entLunch,
                     'tiene_salida'   => $salida,
+                    'motivo'         => $enVacaciones ? 'VACACIONES' : null,
                 ];
             }
         }
@@ -296,17 +321,18 @@ class ReportesController extends Controller
         $sheet->getStyle('A5:G5')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF0B5447');
         $sheet->getStyle('A5:G5')->getFont()->getColor()->setARGB('FFFFFFFF');
 
-        $estado = fn($v) => $v ? '✓' : 'No registró';
+        $celda = fn($v, $motivo) => $v ? '✓' : ($motivo === 'VACACIONES' ? 'Vacaciones' : 'No registró');
         $fila = 6;
         foreach ($datos as $r) {
+            $mot = $r['motivo'] ?? null;
             $sheet->fromArray([
                 $r['fecha'],
                 $r['nombre_completo'],
                 $r['nombre_depto'],
-                $estado($r['tiene_entrada']),
-                $estado($r['tiene_sal_lunch']),
-                $estado($r['tiene_ent_lunch']),
-                $estado($r['tiene_salida']),
+                $celda($r['tiene_entrada'],   $mot),
+                $celda($r['tiene_sal_lunch'], $mot),
+                $celda($r['tiene_ent_lunch'], $mot),
+                $celda($r['tiene_salida'],    $mot),
             ], null, "A{$fila}");
             if ($fila % 2 === 0) {
                 $sheet->getStyle("A{$fila}:G{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFF4FBF8');
@@ -338,6 +364,7 @@ class ReportesController extends Controller
     // Reporte 3: Movimientos de Personal
     public function movimientosPersonal(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate([
             'fecha_desde' => 'required|date',
             'fecha_hasta' => 'required|date',

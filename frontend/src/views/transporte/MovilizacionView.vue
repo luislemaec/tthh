@@ -92,7 +92,7 @@
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
         <div class="px-6 py-4 flex justify-between items-center flex-shrink-0" style="background-color:#1e3a5f;">
           <h2 class="text-lg font-bold text-white">Solicitud #{{ modalVer.s?.id }}</h2>
-          <button @click="modalVer.show = false" class="text-white/70 hover:text-white text-xl leading-none">&times;</button>
+          <button @click="modalVer.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6 overflow-y-auto">
         <template v-if="modalVer.s">
@@ -163,8 +163,9 @@
     <!-- Modal Nueva Solicitud -->
     <div v-if="modalCrear.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
-        <div class="px-6 py-4 flex-shrink-0" style="background-color:#1e3a5f;">
+        <div class="flex items-center justify-between px-6 py-4 flex-shrink-0" style="background-color:#1e3a5f;">
           <h2 class="text-lg font-bold text-white">Nueva Solicitud de Movilización</h2>
+          <button @click="modalCrear.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6 overflow-y-auto">
         <div class="space-y-3">
@@ -242,12 +243,15 @@
     <!-- Modal Aprobar -->
     <div v-if="modalAprobar.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-        <div class="px-6 py-4" style="background-color:#1e3a5f;">
-          <h2 class="text-lg font-bold text-white">Aprobar Solicitud #{{ modalAprobar.s?.id }}</h2>
-          <p class="text-xs text-blue-200 mt-0.5">
-            {{ modalAprobar.s?.solicitante?.apellido_emp }} · {{ formatFechaCorta(modalAprobar.s?.fecha_movilizacion) }}
-            · {{ modalAprobar.s?.hora_salida?.slice(0,5) }}–{{ modalAprobar.s?.hora_retorno?.slice(0,5) }}
-          </p>
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#1e3a5f;">
+          <div>
+            <h2 class="text-lg font-bold text-white">Aprobar Solicitud #{{ modalAprobar.s?.id }}</h2>
+            <p class="text-xs text-blue-200 mt-0.5">
+              {{ modalAprobar.s?.solicitante?.apellido_emp }} · {{ formatFechaCorta(modalAprobar.s?.fecha_movilizacion) }}
+              · {{ modalAprobar.s?.hora_salida?.slice(0,5) }}–{{ modalAprobar.s?.hora_retorno?.slice(0,5) }}
+            </p>
+          </div>
+          <button @click="modalAprobar.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6">
         <div class="space-y-3">
@@ -291,8 +295,9 @@
     <!-- Modal Negar -->
     <div v-if="modalNegar.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-        <div class="px-6 py-4" style="background-color:#1e3a5f;">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#1e3a5f;">
           <h2 class="text-lg font-bold text-white">Negar Solicitud #{{ modalNegar.id }}</h2>
+          <button @click="modalNegar.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6">
         <div>
@@ -315,21 +320,25 @@
     <!-- Modal Hoja de Ruta -->
     <div v-if="modalHojaRuta.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-        <div class="px-6 py-4" style="background-color:#1e3a5f;">
-          <h2 class="text-lg font-bold text-white">Hoja de Ruta</h2>
-          <p class="text-xs text-blue-200 mt-0.5">Solicitud #{{ modalHojaRuta.s?.id }} — {{ modalHojaRuta.s?.lugar_destino }}</p>
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#1e3a5f;">
+          <div>
+            <h2 class="text-lg font-bold text-white">Hoja de Ruta</h2>
+            <p class="text-xs text-blue-200 mt-0.5">Solicitud #{{ modalHojaRuta.s?.id }} — {{ modalHojaRuta.s?.lugar_destino }}</p>
+          </div>
+          <button @click="modalHojaRuta.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6">
         <div class="space-y-3">
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-semibold text-gray-600 mb-1">Km Salida *</label>
-              <input v-model.number="formHojaRuta.km_salida" type="number" min="0"
-                class="w-full border rounded-lg px-3 py-2 text-sm" />
+              <label class="block text-xs font-semibold text-gray-600 mb-1">Km Salida</label>
+              <input :value="formHojaRuta.km_salida?.toLocaleString()" type="text" readonly disabled
+                class="w-full border rounded-lg px-3 py-2 text-sm bg-gray-100 text-gray-600" />
+              <p class="text-[11px] text-gray-400 mt-0.5">Kilometraje acumulado del vehículo — no editable</p>
             </div>
             <div>
               <label class="block text-xs font-semibold text-gray-600 mb-1">Km Retorno *</label>
-              <input v-model.number="formHojaRuta.km_retorno" type="number" min="0"
+              <input v-model.number="formHojaRuta.km_retorno" type="number" :min="formHojaRuta.km_salida"
                 class="w-full border rounded-lg px-3 py-2 text-sm" />
             </div>
           </div>
@@ -446,7 +455,7 @@ function abrirNegar(s) {
   modalNegar.value = { show: true, id: s.id }
 }
 
-function abrirHojaRuta(s) {
+async function abrirHojaRuta(s) {
   formHojaRuta.value = {
     km_salida: s.vehiculo?.kilometraje_actual || 0,
     km_retorno: 0,
@@ -454,6 +463,16 @@ function abrirHojaRuta(s) {
   }
   errorHojaRuta.value = ''
   modalHojaRuta.value = { show: true, s }
+
+  // El km de la lista pudo quedar desactualizado si otro viaje/mantenimiento del mismo
+  // vehículo se completó desde que se cargó la pantalla — se refresca al abrir el modal.
+  if (s.vehiculo_id) {
+    try {
+      const { data } = await api.get('/transporte/vehiculos')
+      const actual = data.find(v => v.id === s.vehiculo_id)
+      if (actual) formHojaRuta.value.km_salida = actual.kilometraje_actual
+    } catch {}
+  }
 }
 
 async function guardarCrear() {
@@ -501,6 +520,11 @@ async function guardarHojaRuta() {
     await cargar()
   } catch (e) {
     errorHojaRuta.value = e.response?.data?.message || 'Error al completar'
+    // El vehículo se movió mientras el modal estaba abierto: autocorregir el km de salida
+    // mostrado para que el usuario solo tenga que revisar el km de retorno.
+    if (e.response?.data?.km_salida_actual != null) {
+      formHojaRuta.value.km_salida = e.response.data.km_salida_actual
+    }
   } finally { guardando.value = false }
 }
 

@@ -63,8 +63,9 @@
     <div v-if="modal.show"
       class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
-        <div class="px-6 py-4" style="background-color:#0b5447;">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#0b5447;">
           <h2 class="text-lg font-bold text-white">{{ modal.titulo }}</h2>
+          <button type="button" @click="cerrarModal" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6">
         <form @submit.prevent="guardarJornada" class="space-y-4">

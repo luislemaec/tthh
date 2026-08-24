@@ -20,6 +20,7 @@ class AccionPersonal extends Model
         "diferencial", "estado", "creado_por", "pdf_firmado",
         "firmante_th_nombre", "firmante_th_cargo",
         "firmante_autoridad_nombre", "firmante_autoridad_cargo",
+        "medio", "especificacion",
     ];
 
     protected $casts = [

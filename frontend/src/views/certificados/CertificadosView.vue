@@ -149,9 +149,10 @@
     <!-- Modal confirmación -->
     <div v-if="modalVisible"
       class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-md">
-        <div class="px-6 py-4 border-b">
-          <h3 class="font-semibold text-gray-800">Confirmar emisión de certificado</h3>
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#0b5447;">
+          <h2 class="text-lg font-bold text-white">Confirmar emisión de certificado</h2>
+          <button @click="modalVisible = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="px-6 py-5 space-y-3">
           <p class="text-sm text-gray-600">Se generará un certificado laboral para:</p>

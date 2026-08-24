@@ -11,6 +11,7 @@ td { padding: 4px; border-bottom: 1px solid #e5e7eb; }
 tr:nth-child(even) td { background-color: #f4fbf8; }
 .ok    { color: #16a34a; font-weight: bold; }
 .falta { background:#fee2e2; color:#991b1b; padding:1px 5px; border-radius:3px; font-size:6.5pt; }
+.vacac { background:#d1fae5; color:#065f46; padding:1px 5px; border-radius:3px; font-size:6.5pt; }
 .center { text-align: center; }
 .bold   { font-weight: bold; }
 .footer { margin-top: 12px; text-align: right; font-size: 7pt; color: #555; }
@@ -51,20 +52,25 @@ tr:nth-child(even) td { background-color: #f4fbf8; }
       <td>{{ $r['fecha'] }}</td>
       <td class="bold">{{ $r['nombre_completo'] }}</td>
       <td style="color:#555;">{{ $r['nombre_depto'] }}</td>
+      @php $esVac = ($r['motivo'] ?? null) === 'VACACIONES'; @endphp
       <td class="center">
         @if($r['tiene_entrada']) <span class="ok">✓</span>
+        @elseif($esVac) <span class="vacac">Vacaciones</span>
         @else <span class="falta">No registró</span> @endif
       </td>
       <td class="center">
         @if($r['tiene_sal_lunch']) <span class="ok">✓</span>
+        @elseif($esVac) <span class="vacac">Vacaciones</span>
         @else <span class="falta">No registró</span> @endif
       </td>
       <td class="center">
         @if($r['tiene_ent_lunch']) <span class="ok">✓</span>
+        @elseif($esVac) <span class="vacac">Vacaciones</span>
         @else <span class="falta">No registró</span> @endif
       </td>
       <td class="center">
         @if($r['tiene_salida']) <span class="ok">✓</span>
+        @elseif($esVac) <span class="vacac">Vacaciones</span>
         @else <span class="falta">No registró</span> @endif
       </td>
     </tr>

@@ -10,19 +10,43 @@ use Illuminate\Support\Facades\DB;
 
 class PlanPreventivoController extends Controller
 {
+    private const ROLES_LECTURA = ['ADMINISTRADOR', 'TRANSPORTE', 'CONDUCTOR'];
+    private const ROLES_TRANSPORTE = ['ADMINISTRADOR', 'TRANSPORTE'];
+
     public function index(Request $request)
     {
+        $this->requireRole($request, self::ROLES_LECTURA);
         $query = PlanPreventivoCab::with(['vehiculo', 'actividades'])->orderBy('km_hito');
 
         if ($request->filled('vehiculo_id')) {
             $query->where('vehiculo_id', $request->vehiculo_id);
         }
 
-        return response()->json($query->get());
+        $planes = $query->get();
+
+        // km_hito es un hito único: un plan que ya tuvo un mantenimiento FINALIZADO no se
+        // puede volver a ejecutar (ver TransporteController::storeMtto). Se expone aquí para
+        // que el frontend lo muestre como "Ya ejecutado" antes de intentar crear otro.
+        $ejecutados = DB::table('dbo.trans_mantenimiento')
+            ->select('plan_preventivo_id', DB::raw('MAX(fecha_finalizacion) as fecha_ejecutado'))
+            ->whereNotNull('plan_preventivo_id')
+            ->where('estado', 'FINALIZADO')
+            ->groupBy('plan_preventivo_id')
+            ->get()
+            ->keyBy('plan_preventivo_id');
+
+        $planes->each(function ($p) use ($ejecutados) {
+            $reg = $ejecutados->get($p->id);
+            $p->ejecutado = (bool) $reg;
+            $p->fecha_ejecutado = $reg->fecha_ejecutado ?? null;
+        });
+
+        return response()->json($planes);
     }
 
     public function store(Request $request)
     {
+        $this->requireRole($request, self::ROLES_TRANSPORTE);
         $request->validate([
             'vehiculo_id'  => 'required|exists:pgsql.dbo.trans_vehiculo,id',
             'km_hito'      => 'required|integer|min:1',
@@ -55,6 +79,7 @@ class PlanPreventivoController extends Controller
 
     public function update(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_TRANSPORTE);
         $cab = PlanPreventivoCab::findOrFail($id);
 
         $request->validate([
@@ -90,6 +115,7 @@ class PlanPreventivoController extends Controller
 
     public function importarCsv(Request $request)
     {
+        $this->requireRole($request, self::ROLES_TRANSPORTE);
         $request->validate(['archivo' => 'required|file|mimes:csv,txt|max:2048']);
 
         $handle = fopen($request->file('archivo')->getRealPath(), 'r');

@@ -63,19 +63,23 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="label-field">Nombres *</label>
-              <input v-model="form.nombres" type="text" required class="input-field" />
+              <input v-model="form.nombres" type="text" class="input-field" />
             </div>
             <div>
               <label class="label-field">Apellidos *</label>
-              <input v-model="form.apellidos" type="text" required class="input-field" />
+              <input v-model="form.apellidos" type="text" class="input-field" />
             </div>
             <div>
               <label class="label-field">Cédula / Pasaporte *</label>
-              <input v-model="form.cedula" type="text" required maxlength="20" class="input-field" />
+              <input v-model="form.cedula" type="text" maxlength="20" class="input-field" />
             </div>
             <div>
               <label class="label-field">Teléfono</label>
               <input v-model="form.telefono" type="text" class="input-field" />
+            </div>
+            <div>
+              <label class="label-field">Extensión</label>
+              <input v-model="form.extension" type="text" maxlength="10" class="input-field" placeholder="Ej: 101" />
             </div>
             <div class="sm:col-span-2">
               <label class="label-field">Email</label>
@@ -277,7 +281,7 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="label-field">Departamento *</label>
-              <select v-model="form.departamento_id" required class="input-field">
+              <select v-model="form.departamento_id" class="input-field">
                 <option value="">Seleccionar...</option>
                 <option v-for="d in departamentos" :key="d.id_depto" :value="d.id_depto">
                   {{ d.nombre_depto }}
@@ -286,10 +290,10 @@
             </div>
             <div>
               <label class="label-field">Cargo *</label>
-              <input v-model="form.cargo_empleado" type="text" placeholder="Ej: Analista de Sistemas" required class="input-field" />
+              <input v-model="form.cargo_empleado" type="text" placeholder="Ej: Analista de Sistemas" class="input-field" />
             </div>
             <div>
-              <label class="label-field">Tipo de Contrato</label>
+              <label class="label-field">Tipo de Contrato *</label>
               <select v-model="form.tipo_contrato" class="input-field">
                 <option value="">Seleccionar...</option>
                 <option value="LOSEP">LOSEP</option>
@@ -298,13 +302,13 @@
             </div>
             <div>
               <label class="label-field">Modalidad Laboral *</label>
-              <select v-model="form.modalidad_laboral" required class="input-field">
+              <select v-model="form.modalidad_laboral" class="input-field">
                 <option value="">Seleccionar...</option>
                 <option v-for="m in modalidadesLaborales" :key="m.id" :value="m.nombre">{{ m.nombre }}</option>
               </select>
             </div>
             <div>
-              <label class="label-field">Jornada Laboral</label>
+              <label class="label-field">Jornada Laboral *</label>
               <select v-model="form.id_jornada" class="input-field">
                 <option value="">Seleccionar...</option>
                 <option v-for="j in jornadas" :key="j.id_jornada" :value="j.id_jornada">
@@ -321,7 +325,7 @@
             </div>
             <div>
               <label class="label-field">Fecha de Ingreso *</label>
-              <input v-model="form.fecha_ingreso" type="date" required class="input-field" />
+              <input v-model="form.fecha_ingreso" type="date" class="input-field" />
             </div>
             <div v-if="form.estado === 'INACTIVO'">
               <label class="label-field">Fecha de Salida</label>
@@ -363,7 +367,7 @@
               <label class="label-field">Salario Base *</label>
               <div class="relative">
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-medium">$</span>
-                <input v-model="form.salario" type="number" step="0.01" min="0" required
+                <input v-model="form.salario" type="number" step="0.01" min="0"
                   class="input-field" style="padding-left: 1.75rem;" />
               </div>
             </div>
@@ -379,15 +383,15 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="label-field">Grupo Ocupacional *</label>
-              <input v-model="form.grupo_ocupacional" type="text" placeholder="Ej: SERVIDOR PUBLICO 7" required class="input-field" />
+              <input v-model="form.grupo_ocupacional" type="text" placeholder="Ej: SERVIDOR PUBLICO 7" class="input-field" />
             </div>
             <div>
               <label class="label-field">Grado *</label>
-              <input v-model="form.nivel" type="number" min="1" required class="input-field" />
+              <input v-model="form.nivel" type="number" min="1" class="input-field" />
             </div>
             <div>
               <label class="label-field">Proceso Institucional *</label>
-              <select v-model="form.proceso_institucional" required class="input-field">
+              <select v-model="form.proceso_institucional" class="input-field">
                 <option value="">Seleccionar...</option>
                 <option value="SUSTANTIVO">SUSTANTIVO</option>
                 <option value="ADJETIVO">ADJETIVO</option>
@@ -405,7 +409,7 @@
             <div class="sm:col-span-2">
               <label class="label-field">Partida Individual *</label>
               <div class="flex gap-2">
-                <input v-model="form.partida_individual" type="text" required
+                <input v-model="form.partida_individual" type="text"
                   placeholder="Escriba una nueva o use el botón para seleccionar una libre"
                   class="input-field flex-1" />
                 <button type="button" @click="modalPartidas.show = true"
@@ -439,7 +443,7 @@
             </div>
             <div class="sm:col-span-2">
               <label class="label-field">Estructura Programática *</label>
-              <input v-model="form.partida_presupuestaria" type="text" placeholder="Ej: 202622000000000..." required
+              <input v-model="form.partida_presupuestaria" type="text" placeholder="Ej: 202622000000000..."
                 class="input-field font-mono text-xs" />
             </div>
             <div>
@@ -589,6 +593,37 @@
 
     </form>
 
+    <!-- Modal: Advertencia acción de personal -->
+    <div v-if="modalAdvertenciaAccion" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-lg w-full max-w-md overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#0b5447;">
+          <h2 class="text-lg font-semibold text-white">Cambios en datos de cargo</h2>
+          <button @click="modalAdvertenciaAccion = false; resolverAdvertencia(false)" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
+        </div>
+        <div class="p-6 space-y-4">
+          <p class="text-sm text-gray-700">
+            Ha modificado campos clave del empleado (departamento, cargo, salario o tipo de contrato).
+          </p>
+          <p class="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+            Si este cambio corresponde a una <strong>acción de personal</strong> (encargo, cesación, ingreso, comisión, etc.), recuerde registrarla en <strong>Acciones de Personal</strong> antes o después de actualizar la ficha.
+          </p>
+          <div class="flex justify-end gap-3 pt-2">
+            <button type="button"
+              @click="modalAdvertenciaAccion = false; resolverAdvertencia(false)"
+              class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">
+              Cancelar
+            </button>
+            <button type="button"
+              @click="modalAdvertenciaAccion = false; resolverAdvertencia(true)"
+              class="px-4 py-2 rounded-lg text-sm text-white font-medium"
+              style="background-color:#0b5447;">
+              Continuar guardando
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Modal: Seleccionar partida disponible -->
     <div v-if="modalPartidas.show"
       class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -651,6 +686,9 @@ const error         = ref("")
 const fotoUrl       = ref(null)
 const subiendoFoto  = ref(false)
 const tabActivo     = ref('personal')
+const modalAdvertenciaAccion  = ref(false)
+const resolverAdvertencia     = ref(null) // función para resolver la promesa del modal
+const datosOriginales         = ref(null) // snapshot de campos clave al cargar edición
 
 const storageUrl = (path) => path ? `${import.meta.env.VITE_API_URL}/storage-file/${path}` : null
 const departamentos        = ref([])
@@ -721,6 +759,7 @@ const form = ref({
   apellidos:      "",
   cedula:         "",
   telefono:       "",
+  extension:      "",
   email:          "",
   direccion:      "",
   sexo:               "",
@@ -771,7 +810,32 @@ const form = ref({
 const guardar = async () => {
   guardando.value = true
   error.value = ""
+
   try {
+    // Validación manual (evita bloqueo silencioso de HTML5 en campos required dentro de tabs ocultos)
+    const erroresValidacion = []
+    if (!form.value.nombres?.trim())              erroresValidacion.push({ tab: 'personal', msg: 'Nombres' })
+    if (!form.value.apellidos?.trim())             erroresValidacion.push({ tab: 'personal', msg: 'Apellidos' })
+    if (!form.value.cedula?.trim())                erroresValidacion.push({ tab: 'personal', msg: 'Cédula / Pasaporte' })
+    if (!form.value.departamento_id)               erroresValidacion.push({ tab: 'cargo',    msg: 'Departamento' })
+    if (!form.value.cargo_empleado?.trim())        erroresValidacion.push({ tab: 'cargo',    msg: 'Cargo' })
+    if (!form.value.tipo_contrato)                 erroresValidacion.push({ tab: 'cargo',    msg: 'Tipo de Contrato' })
+    if (!form.value.modalidad_laboral)             erroresValidacion.push({ tab: 'cargo',    msg: 'Modalidad Laboral' })
+    if (!form.value.id_jornada)                    erroresValidacion.push({ tab: 'cargo',    msg: 'Jornada Laboral' })
+    if (!form.value.fecha_ingreso)                 erroresValidacion.push({ tab: 'cargo',    msg: 'Fecha de Ingreso' })
+    if (!form.value.salario && form.value.salario !== 0) erroresValidacion.push({ tab: 'cargo', msg: 'Salario Base' })
+    if (!form.value.grupo_ocupacional?.trim())                erroresValidacion.push({ tab: 'puesto', msg: 'Grupo Ocupacional' })
+    if (!form.value.nivel)                                    erroresValidacion.push({ tab: 'puesto', msg: 'Grado' })
+    if (!form.value.proceso_institucional)                    erroresValidacion.push({ tab: 'puesto', msg: 'Proceso Institucional' })
+    if (!String(form.value.partida_individual    ?? '').trim()) erroresValidacion.push({ tab: 'puesto', msg: 'Partida Individual' })
+    if (!String(form.value.partida_presupuestaria ?? '').trim()) erroresValidacion.push({ tab: 'puesto', msg: 'Estructura Programática' })
+
+    if (erroresValidacion.length > 0) {
+      tabActivo.value = erroresValidacion[0].tab
+      error.value = 'Complete los campos requeridos: ' + erroresValidacion.map(e => e.msg).join(', ')
+      return
+    }
+
     const payload = {
       identificacion: form.value.cedula,
       nombre_emp:     form.value.nombres,
@@ -780,6 +844,7 @@ const guardar = async () => {
       estado:         form.value.estado || "ACTIVO",
       cargo_empleado: form.value.cargo_empleado,
       telefono:       form.value.telefono,
+      extension:      form.value.extension || null,
       calle_y_numero: form.value.direccion,
       fecha_ingreso:  form.value.fecha_ingreso,
       fecha_salida:         form.value.fecha_salida        || null,
@@ -821,6 +886,25 @@ const guardar = async () => {
       tiene_persona_sustituta:       form.value.tiene_persona_sustituta,
       sustituta_fecha_caducidad:     form.value.tiene_persona_sustituta ? (form.value.sustituta_fecha_caducidad || null) : null,
       num_hijos_mayores:             form.value.num_hijos_mayores || 0,
+    }
+
+    // Advertencia si cambiaron campos clave en edición (cargo, sueldo, dpto, tipo_contrato)
+    if (esEdicion.value && datosOriginales.value) {
+      const orig = datosOriginales.value
+      const cambiosClave = [
+        orig.departamento_id != form.value.departamento_id  && 'Departamento',
+        orig.cargo_empleado  !== (form.value.cargo_empleado || '') && 'Cargo',
+        String(orig.salario) !== String(form.value.salario) && 'Salario',
+        orig.tipo_contrato   !== (form.value.tipo_contrato || '') && 'Tipo de Contrato',
+      ].filter(Boolean)
+
+      if (cambiosClave.length > 0) {
+        const confirmar = await new Promise(resolve => {
+          resolverAdvertencia.value = resolve
+          modalAdvertenciaAccion.value = true
+        })
+        if (!confirmar) return
+      }
     }
 
     if (esEdicion.value) {
@@ -963,6 +1047,7 @@ onMounted(async () => {
     form.value.salario         = data.sueldo || ""
     form.value.nivel           = data.nivel || ""
     form.value.telefono        = data.telefono || ""
+    form.value.extension       = data.extension || ""
     form.value.direccion       = data.calle_y_numero || ""
     form.value.tipo_contrato     = data.tipo_contrato?.trim()     || ""
     form.value.modalidad_laboral = data.modalidad_laboral?.trim() || ""
@@ -1000,6 +1085,14 @@ onMounted(async () => {
     form.value.num_hijos_mayores             = data.num_hijos_mayores             ?? 0
     form.value.hijos                         = (data.hijos || []).map(h => ({ ...h }))
     fotoUrl.value = storageUrl(data.foto)
+
+    // Snapshot de campos clave para detectar cambios al guardar
+    datosOriginales.value = {
+      departamento_id:  data.id_depto,
+      cargo_empleado:   data.cargo_empleado || "",
+      salario:          data.sueldo || "",
+      tipo_contrato:    data.tipo_contrato?.trim() || "",
+    }
 
     // Cargar períodos de teletrabajo
     try {

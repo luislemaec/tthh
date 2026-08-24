@@ -13,14 +13,21 @@ class Equipo extends Model
         'codigo_bien', 'tipo_equipo_id', 'marca', 'modelo', 'descripcion', 'serie',
         'estado', 'condicion', 'fecha_ingreso', 'vida_util_anios', 'ubicacion',
         'ultimo_mantenimiento', 'observaciones', 'created_by', 'updated_by',
+        'motivo_baja', 'detalle_baja', 'fecha_baja',
     ];
 
-    protected $appends = ['vida_util_vencida'];
+    protected $appends = ['vida_util_vencida', 'custodio_inactivo'];
 
     public function getVidaUtilVencidaAttribute(): bool
     {
         if (!$this->fecha_ingreso || !$this->vida_util_anios) return false;
         return Carbon::parse($this->fecha_ingreso)->addYears((int) $this->vida_util_anios)->lte(now());
+    }
+
+    public function getCustodioInactivoAttribute(): bool
+    {
+        $activa = $this->asignacionActiva;
+        return (bool) ($activa && $activa->empleado && $activa->empleado->estado === 'INACTIVO');
     }
 
     public function tipoEquipo()
@@ -36,5 +43,10 @@ class Equipo extends Model
     public function asignacionActiva()
     {
         return $this->hasOne(Asignacion::class, 'equipo_id')->whereNull('fecha_devolucion');
+    }
+
+    public function piezasInstaladas()
+    {
+        return $this->hasMany(Pieza::class, 'equipo_id')->where('estado', 'INSTALADA');
     }
 }

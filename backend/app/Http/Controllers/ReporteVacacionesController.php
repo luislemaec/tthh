@@ -79,12 +79,12 @@ class ReporteVacacionesController extends Controller
         $cabecera = CabeceraVacacion::where('id_emp', $emp->id_emp)->first();
         if (!$cabecera) return $diasAcumulados;
 
-        return max(0, round(
+        return min(60, max(0, round(
             (float)($cabecera->dias_adicionales  ?? 0)
             + $diasAcumulados
             - (float)($cabecera->total_dias_tomados ?? 0),
             2
-        ));
+        )));
     }
 
     // Igual que aprobar() en VacacionesController: días calendario inclusivos
@@ -192,7 +192,7 @@ class ReporteVacacionesController extends Controller
             $movimientos[] = [
                 'tipo'        => 'VACACION',
                 'fecha'       => null,
-                'descripcion' => 'Vacaciones tomadas (registros anteriores al sistema)',
+                'descripcion' => 'Descuentos por permisos y vacaciones anteriores al sistema',
                 'entrada'     => null,
                 'salida'      => $diasLegado,
                 'saldo'       => null,

@@ -58,11 +58,13 @@
     </div>
 
     <!-- Modal Turno -->
-    <div v-if="modal" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-      <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md space-y-4">
-        <h2 class="text-lg font-semibold text-gray-700">
-          {{ form.id_turno ? "Editar Turno" : "Nuevo Turno" }}
-        </h2>
+    <div v-if="modal" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-lg w-full max-w-md overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#0b5447;">
+          <h2 class="text-lg font-semibold text-white">{{ form.id_turno ? "Editar Turno" : "Nuevo Turno" }}</h2>
+          <button @click="modal = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
+        </div>
+        <div class="p-6 space-y-4">
         <div>
           <label class="block text-sm font-medium text-gray-600 mb-1">Descripcion *</label>
           <input v-model="form.descripcion" type="text" placeholder="Ej: TURNO MANANA"
@@ -96,15 +98,18 @@
             {{ guardando ? "Guardando..." : "Guardar" }}
           </button>
         </div>
+        </div>
       </div>
     </div>
 
     <!-- Modal Horarios -->
-    <div v-if="modalHorarios" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-      <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-lg space-y-4">
-        <h2 class="text-lg font-semibold text-gray-700">
-          Horarios: {{ turnoSeleccionado?.descripcion }}
-        </h2>
+    <div v-if="modalHorarios" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-lg w-full max-w-lg overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#0b5447;">
+          <h2 class="text-lg font-semibold text-white">Horarios: {{ turnoSeleccionado?.descripcion }}</h2>
+          <button @click="modalHorarios = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
+        </div>
+        <div class="p-6 space-y-4">
         <div class="space-y-3">
           <div v-for="(h, idx) in horarios" :key="idx"
             class="grid grid-cols-3 gap-3 items-center">
@@ -144,6 +149,7 @@
             class="px-4 py-2 rounded-lg bg-purple-600 text-white text-sm hover:bg-purple-700 disabled:opacity-50">
             {{ guardandoHorarios ? "Guardando..." : "Guardar Horarios" }}
           </button>
+        </div>
         </div>
       </div>
     </div>

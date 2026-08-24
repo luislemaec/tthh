@@ -13,8 +13,11 @@ use Illuminate\Support\Facades\DB;
 
 class OrdenCompraController extends Controller
 {
+    private const ROLES_ADQ = ['ADMINISTRADOR', 'ADQUISICIONES', 'BIENES'];
+
     public function index(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $query = OrdenCompra::with(['proveedor', 'detalles.articulo'])
             ->orderByDesc('created_at');
 
@@ -27,6 +30,7 @@ class OrdenCompraController extends Controller
 
     public function store(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $esCompra    = $request->tipo_ingreso !== 'DONACION';
         $esFactura   = $request->tipo_documento === 'FACTURA';
 
@@ -86,13 +90,15 @@ class OrdenCompraController extends Controller
         return response()->json($orden->load(['proveedor', 'detalles.articulo']), 201);
     }
 
-    public function show($id)
+    public function show(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         return response()->json(OrdenCompra::with(['proveedor', 'detalles.articulo.iva'])->findOrFail($id));
     }
 
     public function update(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $orden = OrdenCompra::findOrFail($id);
         if ($orden->estado !== 'BORRADOR') {
             return response()->json(['message' => 'Solo se puede editar un ingreso en BORRADOR.'], 422);
@@ -147,6 +153,7 @@ class OrdenCompraController extends Controller
 
     public function confirmar(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $orden = OrdenCompra::with('detalles')->findOrFail($id);
         if ($orden->estado !== 'BORRADOR') {
             return response()->json(['message' => 'Solo se puede confirmar un ingreso en BORRADOR.'], 422);
@@ -234,6 +241,7 @@ class OrdenCompraController extends Controller
 
     public function confirmarConEgreso(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $orden = OrdenCompra::with('detalles')->findOrFail($id);
 
         if ($orden->estado !== 'BORRADOR') {
@@ -428,6 +436,7 @@ class OrdenCompraController extends Controller
 
     public function reversar(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $orden = OrdenCompra::with('detalles')->findOrFail($id);
         if ($orden->estado !== 'RECIBIDO') {
             return response()->json(['message' => 'Solo se puede reversar un ingreso en estado RECIBIDO.'], 422);
@@ -501,8 +510,9 @@ class OrdenCompraController extends Controller
         return response()->json($orden->load(['proveedor', 'detalles.articulo']));
     }
 
-    public function pdf($id)
+    public function pdf(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $orden = OrdenCompra::with(['proveedor', 'detalles.articulo'])->findOrFail($id);
         if ($orden->estado !== 'RECIBIDO') {
             return response()->json(['message' => 'El PDF solo está disponible para ingresos confirmados.'], 422);
@@ -512,8 +522,9 @@ class OrdenCompraController extends Controller
         return $pdf->download("ingreso-bodega-{$orden->id}.pdf");
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $orden = OrdenCompra::findOrFail($id);
         if ($orden->estado !== 'BORRADOR') {
             return response()->json(['message' => 'Solo se puede eliminar un ingreso en BORRADOR.'], 422);

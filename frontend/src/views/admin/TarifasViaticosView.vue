@@ -138,7 +138,10 @@
   <div v-if="modalAbierto" class="fixed inset-0 z-50 flex items-center justify-center px-4">
     <div class="fixed inset-0 bg-black/40" @click="cerrar"/>
     <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden z-10">
-      <div class="px-6 py-4 text-white font-bold text-base" style="background-color:#5c4a6e">{{ editandoId ? 'Editar Tarifa' : 'Nueva Tarifa Interior' }}</div>
+      <div class="flex items-center justify-between px-6 py-4" style="background-color:#5c4a6e;">
+        <h2 class="text-base font-bold text-white">{{ editandoId ? 'Editar Tarifa' : 'Nueva Tarifa Interior' }}</h2>
+        <button type="button" @click="cerrar" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
+      </div>
       <div class="p-6">
       <div class="space-y-4">
         <div>
@@ -183,7 +186,10 @@
   <div v-if="modalCoef.show" class="fixed inset-0 z-50 flex items-center justify-center px-4">
     <div class="fixed inset-0 bg-black/40" @click="modalCoef.show = false"/>
     <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden z-10">
-      <div class="px-6 py-4 text-white font-bold text-base" style="background-color:#5c4a6e">{{ modalCoef.id ? 'Editar Coeficiente' : 'Nuevo País' }}</div>
+      <div class="flex items-center justify-between px-6 py-4" style="background-color:#5c4a6e;">
+        <h2 class="text-base font-bold text-white">{{ modalCoef.id ? 'Editar Coeficiente' : 'Nuevo País' }}</h2>
+        <button type="button" @click="modalCoef.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
+      </div>
       <div class="p-6">
       <div class="space-y-4">
         <div>

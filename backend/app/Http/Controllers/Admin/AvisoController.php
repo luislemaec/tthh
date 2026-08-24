@@ -8,8 +8,11 @@ use Illuminate\Http\Request;
 
 class AvisoController extends Controller
 {
-    public function index()
+    private const ROLES_ADMIN = ['ADMINISTRADOR', 'TALENTO HUMANO'];
+
+    public function index(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $avisos    = Aviso::orderBy('orden')->orderBy('id')->get();
         $direccion = Configuracion::find('AVISOS_DIRECCION')?->valor ?? 'horizontal';
         return response()->json(['avisos' => $avisos, 'direccion' => $direccion]);
@@ -24,6 +27,7 @@ class AvisoController extends Controller
 
     public function store(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate(['texto' => 'required|string|max:500']);
         $aviso = Aviso::create([
             'texto'  => $request->texto,
@@ -35,6 +39,7 @@ class AvisoController extends Controller
 
     public function update(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $aviso = Aviso::findOrFail($id);
         $request->validate(['texto' => 'required|string|max:500']);
         $aviso->update([
@@ -45,14 +50,16 @@ class AvisoController extends Controller
         return response()->json($aviso);
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         Aviso::findOrFail($id)->delete();
         return response()->json(['ok' => true]);
     }
 
     public function setDireccion(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate(['direccion' => 'required|in:horizontal,vertical']);
         $config = Configuracion::find('AVISOS_DIRECCION');
         if ($config) {

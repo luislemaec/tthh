@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\DB;
 
 class EquipoController extends Controller
 {
+    private const ROLES_TEC = ['ADMINISTRADOR', 'TECNOLOGIA'];
+
     private function vidaUtilVencidaRaw(): string
     {
         return "fecha_ingreso IS NOT NULL AND vida_util_anios IS NOT NULL
@@ -21,6 +23,7 @@ class EquipoController extends Controller
 
     public function index(Request $request)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $query = Equipo::with(['tipoEquipo', 'asignacionActiva.empleado'])->orderBy('codigo_bien');
 
         if ($request->filled('tipo_equipo_id')) {
@@ -31,6 +34,10 @@ class EquipoController extends Controller
         }
         if ($request->boolean('vida_util_vencida')) {
             $query->whereRaw($this->vidaUtilVencidaRaw());
+        }
+        if ($request->boolean('custodio_inactivo')) {
+            $query->where('estado', 'ASIGNADO')
+                  ->whereHas('asignacionActiva.empleado', fn ($q) => $q->where('estado', 'INACTIVO'));
         }
         if ($request->filled('busqueda')) {
             $b = $request->busqueda;
@@ -46,14 +53,19 @@ class EquipoController extends Controller
         return response()->json($query->paginate(20));
     }
 
-    public function resumen()
+    public function resumen(Request $request)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $porEstado = Equipo::select('estado', DB::raw('COUNT(*) as total'))
             ->groupBy('estado')
             ->pluck('total', 'estado');
 
         $vidaUtilVencida = Equipo::where('estado', '!=', 'DE_BAJA')
             ->whereRaw($this->vidaUtilVencidaRaw())
+            ->count();
+
+        $custodioInactivo = Equipo::where('estado', 'ASIGNADO')
+            ->whereHas('asignacionActiva.empleado', fn ($q) => $q->where('estado', 'INACTIVO'))
             ->count();
 
         return response()->json([
@@ -63,11 +75,13 @@ class EquipoController extends Controller
             'danado'            => (int) ($porEstado['DAÑADO'] ?? 0),
             'de_baja'           => (int) ($porEstado['DE_BAJA'] ?? 0),
             'vida_util_vencida' => (int) $vidaUtilVencida,
+            'custodio_inactivo' => (int) $custodioInactivo,
         ]);
     }
 
     public function store(Request $request)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $request->validate([
             'codigo_bien'     => 'required|string|max:50|unique:pgsql.dbo.ti_equipo,codigo_bien',
             'tipo_equipo_id'  => 'nullable|exists:pgsql.dbo.ti_tipo_equipo,id',
@@ -95,6 +109,7 @@ class EquipoController extends Controller
 
     public function update(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $equipo = Equipo::findOrFail($id);
 
         $request->validate([
@@ -124,6 +139,7 @@ class EquipoController extends Controller
 
     public function asignar(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $equipo = Equipo::findOrFail($id);
 
         if ($equipo->estado !== 'DISPONIBLE') {
@@ -154,6 +170,7 @@ class EquipoController extends Controller
 
     public function devolver(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $equipo = Equipo::findOrFail($id);
 
         if ($equipo->estado !== 'ASIGNADO') {
@@ -186,8 +203,9 @@ class EquipoController extends Controller
         return response()->json($equipo->fresh(['tipoEquipo', 'asignacionActiva.empleado']));
     }
 
-    public function historial($id)
+    public function historial(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $equipo = Equipo::findOrFail($id);
 
         return response()->json(
@@ -200,24 +218,39 @@ class EquipoController extends Controller
 
     public function marcarBaja(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $equipo = Equipo::findOrFail($id);
 
         if ($equipo->estado === 'ASIGNADO') {
             return response()->json(['message' => 'Debe devolver el equipo antes de darlo de baja.'], 422);
         }
 
+        $request->validate([
+            'motivo_baja'  => 'required|in:DAÑO_IRREPARABLE,OBSOLETO,ROBO_PERDIDA,FIN_VIDA_UTIL,OTRO',
+            'detalle_baja' => 'required|string',
+            'fecha_baja'   => 'nullable|date',
+        ]);
+
         $estadoAnterior = $equipo->estado;
-        $equipo->update(['estado' => 'DE_BAJA', 'updated_by' => $request->user()->id_emp]);
+        $equipo->update([
+            'estado'       => 'DE_BAJA',
+            'motivo_baja'  => $request->motivo_baja,
+            'detalle_baja' => $request->detalle_baja,
+            'fecha_baja'   => $request->fecha_baja ?? now()->toDateString(),
+            'updated_by'   => $request->user()->id_emp,
+        ]);
 
         AuditoriaService::log('dbo.ti_equipo', $equipo->id, 'DAR_DE_BAJA',
-            ['estado' => $estadoAnterior], ['estado' => 'DE_BAJA'],
-            $request, "Baja de equipo {$equipo->codigo_bien}");
+            ['estado' => $estadoAnterior],
+            ['estado' => 'DE_BAJA', 'motivo_baja' => $request->motivo_baja, 'detalle_baja' => $request->detalle_baja],
+            $request, "Baja de equipo {$equipo->codigo_bien}: {$request->motivo_baja}");
 
         return response()->json($equipo);
     }
 
     public function marcarDisponible(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $equipo = Equipo::findOrFail($id);
 
         if ($equipo->estado === 'ASIGNADO') {
@@ -236,6 +269,7 @@ class EquipoController extends Controller
 
     public function importarCsv(Request $request)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $request->validate(['archivo' => 'required|file|mimes:csv,txt|max:2048']);
 
         $path = $request->file('archivo')->getRealPath();

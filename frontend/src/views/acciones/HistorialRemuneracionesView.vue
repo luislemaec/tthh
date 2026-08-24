@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-5">
-    <h1 class="text-2xl font-bold text-gray-800">Historial de Cargos y Remuneraciones</h1>
+    <h1 class="text-2xl font-bold text-gray-800">Reporte Historial de Cargos y Remuneraciones</h1>
 
     <!-- Filtros -->
     <div class="bg-white rounded-xl shadow p-4 space-y-3">

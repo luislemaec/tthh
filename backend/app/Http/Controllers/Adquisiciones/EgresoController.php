@@ -13,8 +13,11 @@ use Illuminate\Support\Facades\DB;
 
 class EgresoController extends Controller
 {
+    private const ROLES_ADQ = ['ADMINISTRADOR', 'ADQUISICIONES', 'BIENES'];
+
     public function index(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $query = Egreso::orderByDesc('created_at');
         if ($request->estado) {
             $query->where('estado', $request->estado);
@@ -24,6 +27,7 @@ class EgresoController extends Controller
 
     public function store(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $request->validate([
             'direccion'       => 'required|string|max:200',
             'empleado_id'     => 'required|string|max:20',
@@ -61,13 +65,15 @@ class EgresoController extends Controller
         return response()->json($egreso->load('detalles.articulo'), 201);
     }
 
-    public function show($id)
+    public function show(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         return response()->json(Egreso::with(['detalles.articulo.iva'])->findOrFail($id));
     }
 
     public function update(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $egreso = Egreso::findOrFail($id);
         if ($egreso->estado !== 'BORRADOR') {
             return response()->json(['message' => 'Solo se puede editar un egreso en BORRADOR.'], 422);
@@ -105,6 +111,7 @@ class EgresoController extends Controller
 
     public function confirmar(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $egreso = Egreso::with('detalles')->findOrFail($id);
         if ($egreso->estado !== 'BORRADOR') {
             return response()->json(['message' => 'Solo se puede confirmar un egreso en BORRADOR.'], 422);
@@ -209,6 +216,7 @@ class EgresoController extends Controller
 
     public function reversar(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $egreso = Egreso::with('detalles')->findOrFail($id);
         if ($egreso->estado !== 'DESPACHADO') {
             return response()->json(['message' => 'Solo se puede reversar un egreso en estado DESPACHADO.'], 422);
@@ -282,8 +290,9 @@ class EgresoController extends Controller
         return response()->json($egreso->load('detalles.articulo'));
     }
 
-    public function pdf($id)
+    public function pdf(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $egreso = Egreso::with(['detalles.articulo'])->findOrFail($id);
         if ($egreso->estado !== 'DESPACHADO') {
             return response()->json(['message' => 'El PDF solo está disponible para egresos confirmados.'], 422);
@@ -293,8 +302,9 @@ class EgresoController extends Controller
         return $pdf->download("egreso-bodega-{$egreso->id}.pdf");
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $egreso = Egreso::findOrFail($id);
         if ($egreso->estado !== 'BORRADOR') {
             return response()->json(['message' => 'Solo se puede eliminar un egreso en BORRADOR.'], 422);
@@ -303,8 +313,9 @@ class EgresoController extends Controller
         return response()->json(['message' => 'Egreso eliminado.']);
     }
 
-    public function departamentos()
+    public function departamentos(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $deptos = DB::table('dbo.ad_departamento')
             ->where('id_depto', '!=', 999)
             ->where('estado', 'ACTIVO')
@@ -315,6 +326,7 @@ class EgresoController extends Controller
 
     public function empleadosPorDepto(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $deptoId = $request->get('depto');
         $query = DB::table('dbo.ad_empleado')
             ->where('estado', 'ACTIVO')

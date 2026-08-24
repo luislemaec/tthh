@@ -31,7 +31,9 @@ composer dev
 
 ## Deployment
 
-Después de cualquier cambio: Push → Pull en servidor → `npm run build` (solo si hay cambios frontend) → `php artisan migrate` (solo si hay nuevas migraciones).
+Después de cualquier cambio: Push → Pull en servidor → `npm run build` (solo si hay cambios frontend) → `php artisan migrate` (solo si hay nuevas migraciones) → `php artisan config:clear` (solo si cambió `config/services.php`, `.env` o cualquier archivo de `config/`).
+
+> **IMPORTANTE — `config:clear` después de cambios a `config/*.php` o `.env`:** si el servidor tiene la configuración cacheada (`php artisan config:cache`, común en producción) desde *antes* de desplegar un cambio a un archivo de config, Laravel sigue leyendo el caché viejo — el cambio nuevo no se ve, aunque el código ya esté actualizado. Incidente real (2026-08-17): al mover la configuración de Alfresco de estar hardcodeada a `config('services.alfresco.*')` (ver sección Alfresco), 9 controladores quedaron con un `__construct()` que asigna ese valor a una propiedad `string` no-nullable. Con el caché viejo, `config('services.alfresco.base')` devolvía `null` → `TypeError` fatal en el constructor → **toda la clase quedaba inutilizable con error 500**, incluyendo métodos que ni siquiera usan Alfresco (ej. `EmpleadoController::index()` fallaba por esto). Se resolvió corriendo `php artisan config:clear` en el servidor.
 
 > **IMPORTANTE — `php artisan migrate` en producción:** Solo ejecuta migraciones NUEVAS (pendientes). NUNCA correr `migrate:rollback`, `migrate:fresh` o `migrate:reset` en producción — borra datos. Si una migración ya ejecutada no aparece en la tabla `public.migrations`, insertarla manualmente antes de correr `migrate`.
 
@@ -47,9 +49,34 @@ Después de cualquier cambio: Push → Pull en servidor → `npm run build` (sol
 - Para backup manual: `sudo /usr/local/bin/backup_rrhh.sh`
 - Para restaurar: `gunzip -c archivo.sql.gz | psql -U postgres -h 192.168.26.38 BDD_RRHH`
 
+## Sincronización de Hora del Servidor de Aplicaciones
+
+- **Servidor AD/NTP:** `192.168.26.6` (Active Directory — fuente de tiempo de la red)
+- **Problema:** el servidor `192.168.26.19` tiende a desviarse varios minutos; como las marcaciones web usan `now()` del servidor, una desviación causa que las timbradas queden con hora incorrecta
+- **Solución:** cron cada hora sincroniza automáticamente con el AD (`sudo crontab -e` en `192.168.26.19`):
+  ```
+  0 * * * * /usr/sbin/ntpdate -u 192.168.26.6 > /dev/null 2>&1
+  ```
+- **Nota:** `chrony` está instalado pero no sincroniza (AD bloquea UDP 123); por eso se usa `ntpdate` vía cron
+- **Reloj ZKTeco:** tiene su propio reloj interno — sincronizar manualmente desde el menú Red/Fecha y Hora apuntando al NTP `192.168.26.6`, o ajustar manualmente cuando se desvíe. Las marcaciones biométricas usan la hora del reloj, no la del servidor.
+
 ### Incidente 2026-06-24 — pérdida de datos adq
 
 Las tablas `adq.orden_compra`, `adq.egreso`, `adq.kardex`, `adq.solicitud_material` quedaron vacías porque las migraciones de adquisiciones no estaban registradas en `public.migrations`. Al correr `php artisan migrate`, Laravel las ejecutó de nuevo borrando los datos. Los 482 artículos (`adq.articulo`) no se vieron afectados. **Solución aplicada:** se insertaron manualmente los registros de las 21 migraciones adq en `public.migrations` con batch=1.
+
+### Incidente 2026-07-17 — disco lleno en servidor BD (`192.168.26.38`) por logs de Alfresco/Tomcat
+
+**Causa raíz:** `/opt/alfresco-community/tomcat/logs/localhost_access_log*.txt` (logs de acceso de Tomcat, sin rotación configurada) acumularon ~12.5 GB (1-2 GB/día) hasta llenar el `/` del servidor de BD al 100%. Con el disco lleno, PostgreSQL 13 (`postgresql-13.service`) no podía operar con normalidad y empezó a rechazar conexiones (`SQLSTATE[08006] Connection refused` / `No route to host` / `FATAL: the database system is starting up`), afectando toda la aplicación (login, marcaciones web, todo lo que dependiera de la BD) entre aprox. `08:21` y `08:22:41` del 2026-07-17.
+
+**Solución aplicada:**
+1. Se liberó espacio borrando los `localhost_access_log*.txt` viejos (los de fecha pasada ya no los usa Tomcat, es seguro `rm` directo; **no** usar `rm` en `catalina.out` mientras Tomcat corre — ahí se trunca con `: > catalina.out` porque el proceso mantiene el file handle abierto).
+2. Se instaló `/etc/logrotate.d/alfresco-tomcat` con `rotate 7` / `maxage 7` para `localhost_access_log*.txt`, `catalina.out` (con `copytruncate`, `maxsize 200M`) y el resto de `*.log` de Tomcat/Alfresco, para que no se repita.
+
+**Efecto colateral descubierto — pérdida de marcaciones del reloj biométrico durante la caída:** con la red y Apache/Laravel funcionando normal pero Postgres caído, el reloj ZKTeco (`VDE2261200055`) sí intentó enviar sus marcaciones en tiempo real (`Realtime=1`), pero `ZktecoController` dejaba que la excepción de conexión a BD reventara como error 500 HTML sin manejar. El reloj recibía *una respuesta* (aunque fuera de error) y no reintentaba esa transacción — a diferencia de un corte de red puro (sin respuesta / timeout), donde el reloj sí reintenta solo hasta entregar el dato exitosamente. Confirmado con dos pruebas controladas en producción: (a) desconectar el cable de red → el reloj reintentó y sincronizó solo con la hora original; (b) bajar `postgresql-13` a propósito, timbrar, y volver a subirlo → **antes del fix esto se perdía, después del fix la marcación llegó con la hora real** una vez restablecida la BD.
+
+**Fix aplicado en `ZktecoController.php`:** las 4 rutas del protocolo ADMS que usa el reloj (`cdata` GET/handshake, `cdata` POST/marcaciones reales, `getrequest`, `registry`, `devicecmd`) ahora envuelven su lógica en `try/catch` y, ante cualquier falla (típicamente de conexión a BD), responden `"ERROR"` en texto plano (helper privado `errorAdms()`) en vez de dejar pasar el error 500 de Laravel — ese es el formato que el protocolo ADMS ya usa para los rechazos (mismo que la respuesta 403 de dispositivo no autorizado), y es lo que le permite al reloj reconocer el rechazo y reintentar más tarde en vez de darlo por entregado.
+
+**Limitación conocida:** las marcaciones perdidas la mañana del 2026-07-17 (antes de aplicar el fix, en el grupo piloto del reloj biométrico) no se recuperan automáticamente — el fix solo corrige el comportamiento hacia adelante. Para ese día puntual se decidió no hacer corrección manual (dejar el atraso registrado tal cual); si se necesitara justificar sin afectar vacaciones, la vía es aprobar un permiso `tipo_horario=ENTRADA` con una razón `descontable=NO` en `dbo.d2_razon` (ver sección Permisos).
 
 ---
 
@@ -67,11 +94,52 @@ Roles: `ADMINISTRADOR`, `TALENTO HUMANO`, `TH ACCIONES PERSONAL`, `TH NOMINA`, `
 - Frontend: `auth.tieneRol('NOMBRE')` desde Pinia store
 - Menú filtrado por rol desde `dbo.admin_opcion`
 
+### Auditoría de seguridad — control de acceso por rol en el backend (2026-08-17)
+
+**Hallazgo:** como el backend no usa policies/gates de Laravel, el control de acceso dependía casi enteramente de que el frontend ocultara el botón/menú según el rol. Cualquier endpoint sin un chequeo de rol explícito *dentro del método del controlador* era accesible por **cualquier usuario autenticado** (con o sin rol) llamando directamente a la API — el sistema fallaba "abierto" por defecto, no "cerrado". El caso más grave detectado: `RolController::asignarRolEmpleado` no tenía ningún control, por lo que en teoría cualquier empleado podía asignarse a sí mismo el rol `ADMINISTRADOR`.
+
+**Corrección — helper reutilizable** en `backend/app/Http/Controllers/Controller.php`:
+```php
+protected function tieneAlgunRol(Request $request, array $roles): bool  // solo consulta
+protected function requireRole(Request $request, array $roles): void   // aborta 403 si no cumple
+```
+Patrón aplicado al inicio de cada método que debía restringirse:
+```php
+private const ROLES_ADMIN = ['ADMINISTRADOR', 'TALENTO HUMANO'];
+// ...
+public function store(Request $request) {
+    $this->requireRole($request, self::ROLES_ADMIN);
+    ...
+}
+```
+`TransporteController` y `Adquisiciones/SolicitudMaterialController` ya tenían helpers propios equivalentes (`esTransporte()`, `esConductor()`, `esRol()`) — se respetó ese patrón existente en vez de duplicar con el helper genérico.
+
+**Estado por módulo:**
+
+| Módulo | Estado | Notas |
+|---|---|---|
+| Talento Humano | ✅ Cerrado | `RolController`, `SupervisorController`, `EmpleadoController` (solo store/update/destroy), `AccionPersonalController`, `RolPagoController`, `AsistenciaController` (listado/reporte), `CuadreController`, `ReportesController`, catálogos `Admin/*` (Departamento, Razon, Turno, ModalidadLaboral, Aviso, AportesIess, Calendario, Configuracion) |
+| Adquisiciones | ✅ Cerrado | 11 de 12 controladores no tenían ningún control; `SolicitudMaterialController` ya estaba bien diseñado (roles + validación de propiedad), no se tocó |
+| Transportes | ✅ Cerrado | Incluye corrección de propiedad en `TransporteController::updateMov` (acción `hoja_ruta`): antes cualquier conductor podía completar la hoja de ruta de un viaje asignado a otro conductor, corrompiendo el kilometraje del vehículo |
+| Tecnología | ✅ Cerrado | Los 6 controladores (`TipoEquipoController`, `ActividadMantenimientoController`, `PiezaController`, `ReporteEquipoController`, `EquipoController`, `MantenimientoController`) no tenían ningún control |
+| Comisiones de Servicios | ⏳ Parcial | `InformeComisionController`, `TarifaViaticosController`, `CoeficientePaisController` sin protección. `ComisionController`, `LiquidacionController`, `FuncionarioExternoController`, `AnticipController` tienen protección parcial preexistente, no verificada método por método (6 roles financieros con flujo de aprobación en cadena — requiere lectura cuidadosa, no apurada). `Admin/ProvinciaCiudadController` sin revisar |
+
+**Ajuste post-cierre (2026-08-17):** `Admin/AportesIessController` se cerró inicialmente solo a `ADMINISTRADOR`/`TH NOMINA` (mismo criterio que Rol de Pagos/Nómina), pero en la práctica también lo usa `TALENTO HUMANO` — se amplió `ROLES_NOMINA` para incluir los 3 roles. Si algún otro catálogo cerrado en esta auditoría queda inaccesible para un rol que antes sí lo usaba, es probable que sea el mismo tipo de ajuste (el criterio se basó en el patrón del código, no siempre en el uso real).
+
+**Excepciones intencionales** — endpoints de lectura que se dejaron abiertos a propósito porque otros módulos/roles los consumen para búsquedas o dropdowns (verificado contra el uso real en el frontend antes de decidir):
+- `EmpleadoController::index/show` — usado por Tecnología, Nómina, Certificados, Comisiones, Supervisores, Adquisiciones, etc.
+- `Admin/DepartamentoController::index`, `Admin/RazonController::index` — usados en formularios de toda la app (permisos, vacaciones, reportes)
+- `Adquisiciones/ArticuloController::index/show` — usado por `SolicitudesView.vue` (cualquier empleado pidiendo materiales)
+- `Admin/AvisoController::activos()` — usado por el launcher de todos los usuarios
+- `Transportes/TipoMantenimientoController` y `PlanPreventivoController` (solo lectura) — abiertos también a `CONDUCTOR`, que los necesita para crear un requerimiento de mantenimiento
+
+**Importante — sin pruebas funcionales en vivo:** estos cambios se aplicaron revisando el código y, antes de cada restricción, confirmando en el frontend qué pantallas/roles consumen ese endpoint (para no romper accesos legítimos). No se ejecutó `php -l` (no había PHP CLI disponible en el entorno de trabajo) ni se probó manualmente con usuarios reales de cada rol. Antes de dar por cerrado cualquiera de estos módulos en producción: correr `php -l` sobre los archivos tocados y hacer una pasada manual con al menos un usuario de cada rol afectado, especialmente `SUPERVISOR`/`CONDUCTOR` en Transportes por la lógica de propiedad agregada en `updateMov`.
+
 ## Base de Datos
 
 - Schema `dbo` → Talento Humano | Schema `adq` → Adquisiciones (misma BD PostgreSQL)
 - Empleados: PK = `id_emp` (string); estados `ACTIVO`/`INACTIVO` (nunca eliminar)
-- Depto 999 excluido de todas las consultas (placeholder de sistema)
+- Depto 999 excluido de todas las consultas (placeholder de sistema). `Admin/DepartamentoController::index()` no lo excluía (aparecía "ADMINISTRACIÓN DEL SISTEMA" en el listado de Departamentos y en cualquier dropdown que consume ese mismo endpoint) — corregido 2026-08-17.
 - `dbo.d2_configuracion` → parámetros globales (clave/valor/descripcion). Campos de auditoría: `created_at`, `created_by`, `updated_at`, `updated_by`. La query siempre usa `LOWER(concepto)` porque los conceptos se guardan en MAYÚSCULAS. Migración `000030` agregó `descripcion`, migración `000031` agregó auditoría.
 - `dbo.ad_departamento` → numeración manual recomendada: padres en múltiplos de 10 (10,50,60,70,80,90), hijos en +1 a +9 del padre. Al crear desde la app, el campo ID es opcional; si se omite genera el siguiente correlativo (excluyendo 999). Campos de auditoría implementados (migración `000032`): `created_at`, `created_by`, `updated_at`, `updated_by`.
 - `dbo.ad_empleado` → campos de auditoría implementados (migración `000032`): `created_at`, `created_by`, `updated_at`, `updated_by`. Campos adicionales: `puede_solicitar_vehiculo BOOLEAN DEFAULT false`, `sexo VARCHAR(10) NULL` (MASCULINO/FEMENINO), `tipo_sangre VARCHAR(5) NULL` (A+, A-, B+, B-, AB+, AB-, O+, O-) — migración `000063`. Campos SERCOP: `num_sercop VARCHAR(50) NULL`, `fecha_vence_sercop DATE NULL` — migración `000065`. Campos sociales — migración `000070`: `grupo_vulnerable_id`, `grupo_prioritario_id`, `tiene_discapacidad`, `tipo_discapacidad_id`, `porcentaje_discapacidad`, `tiene_enfermedad_catastrofica`, `enfermedad_catastrofica_id`, `tiene_persona_sustituta`, `sustituta_alfresco_id`, `sustituta_nombre_archivo`, `sustituta_fecha_caducidad`, `num_hijos_mayores`. Campos de baja/comisión — migración `000073`: `motivo_salida VARCHAR(50) NULL`, `motivo_reactivacion VARCHAR(50) NULL`, `institucion_comision VARCHAR(200) NULL`.
@@ -133,8 +201,9 @@ Variable `$generadoPor` = `trim($request->user()->apellido_emp) . ' ' . trim($re
 
 ## Alfresco (documentos firmados)
 
-- URL: `http://192.168.26.38:8080/alfresco/api/-default-/public/alfresco/versions/1`
-- Credenciales: `admin/admin`, sitio: `talentohumano`
+- **Configuración por ambiente (`.env`)**: `ALFRESCO_BASE_URL`, `ALFRESCO_USER`, `ALFRESCO_PASS`, `ALFRESCO_SITE` → `config('services.alfresco.*')` en `backend/config/services.php`. Cada uno de los 9 controladores que usa Alfresco (`AccionPersonalController`, `HorasExtrasController`, `EmpleadoController`, `Comisiones/InformeComisionController`, `ReportePlanificacionController`, `CertificadoLaboralController`, `Comisiones/ComisionController`, `PermisosController`, `Tecnologia/MantenimientoController`) lee estos valores en su propio `__construct()` hacia las propiedades `$alfrescoBase`/`$alfrescoUser`/`$alfrescoPass`/`$alfrescoSite` — ya no están hardcodeados. Defaults en `config/services.php` = valores de desarrollo (`192.168.26.38`, `admin`/`admin`, sitio `talentohumano`); en producción se sobrescriben con el `.env` real de ese servidor.
+- Desarrollo: `http://192.168.26.38:8080/alfresco/api/-default-/public/alfresco/versions/1`, `admin/admin`, sitio `talentohumano`
+- Producción: Alfresco propio en instalación (IP/credenciales pendientes de definir); antes de conectar la app en producción hay que crear manualmente el sitio `talentohumano` en esa instancia (las subcarpetas se autogeneran solas, ver `getOrCreateFolderNodeId()` abajo)
 - Guardar `entry.id` en DB tras subir; descargar con `GET /nodes/{id}/content`
 - Helpers `getDocLibNodeId()` y `getOrCreateFolderNodeId()` repetidos en cada controlador que usa Alfresco
 
@@ -239,6 +308,7 @@ Campos relevantes:
 - `institucion_comision`: nombre de la institución destino (si `motivo_salida = COMISIÓN DE SERVICIOS`) o institución de origen (si `modalidad_laboral = Comisión de Servicios` en empleado entrante) — migración `000073`
 - `banco` / `tipo_cuenta` / `numero_cuenta`: datos bancarios del empleado para transferencias (migración `000081`); se auto-rellenan en el formulario de comisión al buscar un servidor
 - `es_externo BOOLEAN DEFAULT false`: empleados creados automáticamente desde "Dar acceso" en Funcionarios Externos (migración `000082`). Cuando `es_externo = true`: EmpleadoForm muestra banner amarillo de advertencia y EmpleadoController bloquea la edición (solo editable desde FuncionariosExternosView). `id_depto = 999` — excluidos de todas las queries de RRHH (nómina, asistencia, distributivo, vacaciones).
+- `extension VARCHAR(10) NULL`: extensión telefónica institucional del empleado — migración `000093`. Campo opcional; si está vacío sale en blanco. Visible en EmpleadoForm Tab 1 entre Teléfono y Email. Se usa en el reporte LOTAIP (Directorio y Distributivo).
 
 **Partidas disponibles** (`GET /api/empleados/partidas-vacantes`): devuelve empleados con `estado=INACTIVO` + `estado_puesto=DISPONIBLE`. En `EmpleadoForm.vue`, el campo Partida Individual tiene input libre + botón "Seleccionar libre" que abre un modal con la lista — al seleccionar una fila se auto-llenan `partida_individual` y `partida_presupuestaria`.
 
@@ -288,32 +358,65 @@ Calculado en `calcularSaldoDisponible()` — usa helper `tasaVacaciones()` en Va
 - Dashboard (empleado CT con 6+ años): chip "+X días/año por antigüedad" en tarjeta saldo
 - Vista Vacaciones (empleado CT con 6+ años): badge azul "15 base + X por antigüedad"
 - **CSV carga inicial:** el `saldo` debe incluir base + adicionales ya acumulados hasta fecha de corte
+- **TOPE DE 60 DÍAS (LOSEP Art. 29) — REGLA CRÍTICA:** el saldo disponible que se muestra al empleado y que se valida al solicitar/planificar vacaciones tiene un máximo de 60 días. Si el cálculo interno supera 60, se muestra y valida como 60. El acumulado interno sigue corriendo normalmente (no se borra ni se congela), pero el empleado nunca puede ver ni solicitar más de 60 días disponibles. Implementado con `min(60, max(0, $disponibles))` en: `VacacionesController::calcularSaldoDisponible()`, `ReporteVacacionesController::calcularSaldoActual()`, `PlanificacionVacController::calcularSaldo()`. **Excepción:** `LiquidacionVacController` NO aplica el tope — usa el valor real acumulado para calcular el pago de liquidación por desvinculación.
+- **Saldo negativo y flujo "informe favorable" (migración `000100`) — REGLA CRÍTICA para Nombramiento Definitivo:**
+  - `calcularSaldoDisponible()` devuelve dos valores: `dias_disponibles` (`min(60, max(0, ...))`, nunca negativo — para planificación y permisos) y `dias_disponibles_real` (`min(60, ...)`, puede ser negativo — para mostrar en UI y validar nuevas solicitudes de vacaciones). También devuelve `modalidad_laboral` del empleado.
+  - **Bug fix race condition (2026-08-20):** `store()` descuenta los días de solicitudes en estado PENDIENTE antes de comparar contra el saldo, evitando que dos solicitudes creadas simultáneamente pasen la validación con el mismo saldo.
+  - **Bloqueo por saldo insuficiente:** si `saldo_real − dias_pendientes < dias_solicitados`:
+    - Empleados con `modalidad_laboral = 'Nombramiento Definitivo'`: se permite crear la solicitud pero se marca `requiere_informe = true`. El saldo puede quedar negativo.
+    - Todos los demás: se bloquea con 422. No pueden solicitar más días de los disponibles.
+  - **Permisos descontables:** NO se bloquean aunque el saldo sea negativo (el descuento sigue acumulando sobre `total_dias_tomados`).
+  - **Saldo en rojo en la UI:** `VacacionesView.vue` muestra `dias_disponibles_real` en rojo cuando el empleado es Nombramiento Definitivo y el valor es negativo. No puede solicitar más vacaciones hasta que el saldo vuelva a positivo (el mismo bloqueo en `store()` aplica).
+  - **Flujo informe TH:** solicitudes con `requiere_informe = true` muestran badge naranja "Requiere informe TH" en la tabla. TH/Admin puede marcar el informe desde un modal (botones Favorable / Desfavorable). Mientras `informe_estado ≠ 'FAVORABLE'`, el supervisor no puede aprobar la solicitud (backend retorna 422). Si el informe es DESFAVORABLE, la solicitud pasa automáticamente a NEGADO.
+  - **Tabla `dbo.d2_vacacion`** — columnas nuevas (migración `000100`): `requiere_informe BOOLEAN DEFAULT false`, `informe_estado VARCHAR(20) NULL`, `informe_fecha DATE NULL`, `informe_por VARCHAR(20) NULL`.
+  - **Ruta nueva:** `PATCH /api/vacaciones/{id}/marcar-informe` → `VacacionesController::marcarInforme()` (solo ADMINISTRADOR / TALENTO HUMANO).
+  - Todo registrado en `nom_auditoria_log`: `SOLICITUD_CON_EXCESO` al crear, `INFORME_FAVORABLE` / `INFORME_DESFAVORABLE` al marcar.
 
 ### Acciones de Personal (`dbo.acc_accion_personal`)
 
-| Tipo | fecha_fin | Sit. Propuesta | Buscador Titular | Decl. Jurada | Auto-cierra |
-|---|---|---|---|---|---|
-| INGRESO | No aplica | Requerida (auto-llena) | No | Sí | No |
-| ENCARGO | Opcional | Requerida | Sí | No | No |
-| SUBROGACION | Requerida | Requerida | Sí | No | Sí (al vencer) |
-| VACACIONES | Requerida | No aplica | No | No | Sí (al vencer) |
-| DESTITUCION | No aplica | No aplica | No | Sí | No |
-| CESACION | No aplica | No aplica | No | Sí | No |
+| Tipo | Estado empleado al crear | Sit. Actual | Sit. Propuesta | Posesión | Decl. Jurada | Especificación | Después |
+|---|---|---|---|---|---|---|---|
+| INGRESO | ACTIVO | No aplica | Auto-llena del empleado | Se llena | Sí | No | Sigue ACTIVO |
+| ENCARGO | ACTIVO | Del empleado | Llenar manual | Se llena | No | No | Sigue ACTIVO |
+| SUBROGACION | ACTIVO | Del empleado | Llenar manual | Se llena | No | No | Sigue ACTIVO; auto-cierra al vencer |
+| VACACIONES | ACTIVO | Del empleado | No aplica | Se llena | No | No | Sigue ACTIVO; auto-cierra al vencer |
+| DESTITUCION | **INACTIVO** | Del empleado | No aplica | Se llena | Sí | No | Ya estaba INACTIVO |
+| CESACION DE FUNCIONES | ACTIVO | Del empleado | No aplica | Vacía | Sí | Sí | TH decide: ACTIVO (cambio puesto) o INACTIVO (renuncia/salida) |
+| COMISION DE SERVICIOS | ACTIVO | Del empleado | No aplica | Vacía | No | Sí | TH lo pasa a INACTIVO |
+| REINGRESO | ACTIVO *(TH reactiva primero)* | No aplica | Auto-llena del empleado | Vacía | No | Sí | Sigue ACTIVO |
 
 Auto-cierre corre en cada `index()` para SUBROGACION y VACACIONES con `fecha_fin < hoy`.
+
+**Búsqueda de empleado en el formulario:** `DESTITUCION` busca empleados INACTIVOS (TH los desactiva antes de crear la acción). Todos los demás tipos buscan empleados ACTIVOS.
+
+**Flujo de estado del empleado en comisión — REGLA CRÍTICA:**
+- **COMISION DE SERVICIOS (sale):** el empleado debe estar `ACTIVO` al crear la acción. Después de crear y procesar la acción, TH pasa al empleado a `INACTIVO` en su ficha con `motivo_salida = COMISIÓN DE SERVICIOS`.
+- **REINGRESO (retorna):** TH primero reactiva al empleado en su ficha (`ACTIVO`, `motivo_reactivacion = RETORNO DE COMISIÓN DE SERVICIOS`). Después crea la acción de REINGRESO. El buscador filtra empleados ACTIVOS — si el empleado sigue INACTIVO no aparece en la búsqueda.
+
+**Campo `especificacion` — migración `000097`:** `VARCHAR(300) NULL` en `dbo.acc_accion_personal`. Visible en el formulario solo para `COMISION DE SERVICIOS`, `REINGRESO` y `CESACION DE FUNCIONES`. TH escribe libremente el detalle que va en la línea "EN CASO DE REQUERIR ESPECIFICACIÓN DE LO SELECCIONADO" del PDF. Ejemplos: `COMISIÓN DE SERVICIOS SIN REMUNERACIÓN` / `REINTEGRO DE COMISIÓN DE SERVICIOS SIN REMUNERACIÓN`. También editable desde el modal "Editar Borrador".
+
+**Campo `medio` — migración `000095`:** `VARCHAR(10) NULL DEFAULT 'DIGITAL'`. Select DIGITAL/MANUAL en el formulario y modal editar borrador. Se muestra en la sección "USO EXCLUSIVO PARA TALENTO HUMANO" del PDF.
+
+**Reglas por tipo en el PDF (`accion_personal.blade.php`):**
+- `$showActual`: false para INGRESO y REINGRESO; true para el resto
+- `$showPropuesta`: false para DESTITUCION, CESACION DE FUNCIONES, VACACIONES, COMISION DE SERVICIOS; true para el resto
+- `$fillPosesion`: false para COMISION DE SERVICIOS, REINGRESO, CESACION DE FUNCIONES; true para el resto (incluye INGRESO)
+- `$declaracionSI`: true solo para INGRESO, DESTITUCION, CESACION DE FUNCIONES
+- `$deptPropuestoFinal`: INGRESO y REINGRESO usan `$deptActual` (no hay titular); resto usa `$deptPropuesto`
+- **BORRADOR**: banda roja con fondo `#b91c1c` y texto blanco en la parte superior del PDF (en flujo normal, no `position:fixed` para evitar solapamiento con DomPDF). Desaparece al procesar.
 
 **Estados del flujo:** `BORRADOR → ACTIVO` (estado final). TH ACCIONES PERSONAL crea en BORRADOR; `procesar()` pasa a ACTIVO y asigna `numero_accion`. `numero_accion` es nullable — se asigna al procesar, no al crear.
 
 **Métodos del controlador:**
 - `procesar($id)` — `PATCH /api/acciones-personal/{id}/procesar` — cambia estado a ACTIVO, asigna número de acción, sube PDF firmado a Alfresco
-- `editarBorrador($id)` — `PATCH /api/acciones-personal/{id}/editar-borrador` — permite modificar motivación, fecha de elaboración y firmantes mientras está en BORRADOR
+- `editarBorrador($id)` — `PATCH /api/acciones-personal/{id}/editar-borrador` — permite modificar motivación, fecha de elaboración, firmantes, medio y especificación mientras está en BORRADOR
 
 **PDFs y reportes:**
 - `accion_personal.blade.php` — PDF individual; usa `{!! !!}` (no `{{ }}`) para entidades HTML como `&nbsp;` en checkboxes y para el campo `motivacion` cuando contiene HTML de TipTap
 - `acc_lista.blade.php` — PDF de listado de acciones con filtros
 - Excel export disponible (requiere `phpoffice/phpspreadsheet` instalado en servidor: `composer require phpoffice/phpspreadsheet`)
 - PDF firmado se sube a Alfresco en `acciones-personal/{año}/`
-- **Vista previa en BORRADOR**: el endpoint `GET /api/acciones-personal/{id}/pdf` funciona en cualquier estado. El PDF muestra `— BORRADOR — BORRADOR — BORRADOR —` en gris encima del encabezado cuando `$accion->estado === 'BORRADOR'`; esa línea desaparece al procesar.
+- **Vista previa en BORRADOR**: el endpoint `GET /api/acciones-personal/{id}/pdf` funciona en cualquier estado. El PDF muestra una banda roja "** BORRADOR - NO VALIDO **" cuando `$accion->estado === 'BORRADOR'`; desaparece al procesar.
 
 **Campo `motivacion` con HTML (TipTap):** el editor TipTap en el formulario guarda HTML (`<p>`, `<strong>`, etc.). El blade detecta si el contenido es HTML con `str_contains($motivacion, '<p>')` y lo renderiza con `{!! !!}`; si es texto plano (registros anteriores) usa `{{ }}` con `white-space:pre-wrap`.
 
@@ -326,7 +429,7 @@ Flujo de firmantes:
 - Al **editar borrador**: el modal muestra los firmantes guardados en la acción; `index()` los puebla desde config para acciones BORRADOR que tengan los campos vacíos (registros previos a migración `000087`)
 - En el **PDF**: usa los firmantes de la acción con fallback a `d2_configuracion` y luego a los parámetros anteriores (`DIRECTOR_TALENTO_HUMANO` / `APROBADOR_ACCION_PERSONAL`)
 - Todos los valores se guardan en MAYÚSCULAS (`strtoupper`)
-- Endpoint config para pre-llenar formulario nuevo: `GET /api/configuracion/firmantes` → `{ firmante_th_nombre, firmante_th_cargo, firmante_autoridad_nombre, firmante_autoridad_cargo }`
+- Endpoint config para pre-llenar formulario nuevo: `GET /api/admin/configuracion/firmantes` → `{ firmante_th_nombre, firmante_th_cargo, firmante_autoridad_nombre, firmante_autoridad_cargo }`
 
 ### Vacaciones — backup al aprobar
 
@@ -342,16 +445,29 @@ Al aprobar una solicitud de vacaciones, el supervisor debe seleccionar un emplea
 - `ENTRE JORNADA`: justifica atraso de retorno del lunch
 
 **Descuento de vacaciones:** ocurre **inmediatamente al aprobar** (no en el cuadre nocturno). Se calcula sobre las horas del permiso (`hora_desde`/`hora_hasta`), no sobre la marcación real del empleado.
+
+**FACTOR PROPORCIONAL SÁBADOS/DOMINGOS — REGLA CRÍTICA:** Los 30 días de vacaciones LOSEP se componen de 22 días hábiles + 8 días de fin de semana (4 sábados + 4 domingos). Por eso cada día hábil de permiso descontable carga **1.3636 días** del saldo (factor = 30/22). Aplica a LOSEP y Código del Trabajo, y tanto a permisos por horas como de día completo. El método `anular()` usa el mismo factor para revertir exactamente lo descontado.
 ```php
-$diasDescuento = round(diffInMinutes(hora_desde, hora_hasta) / 60 / $horasJornada, 4);
+$factorFds     = 30 / 22;  // 1.3636...
+// Permiso por horas:
+$diasDescuento = round(diffInMinutes(hora_desde, hora_hasta) / 60 / $horasJornada * $factorFds, 4);
+// Permiso día completo:
+$diasDescuento = round($diasBase * $factorFds, 4);
 ```
+Ejemplos: 1 hora → 0.1705 días | 4 horas → 0.6818 días | 1 día completo → 1.3636 días
 
 **Validación de solapamiento:** la validación al crear un permiso filtra por `tipo_horario` — un permiso ENTRADA **no bloquea** la creación de un permiso SALIDA del mismo día aunque compartan rango de fechas. Solo bloquea permisos del **mismo tipo** que se crucen en horario.
+
+**Tope de 60 días (LOSEP Art. 29) y descuento de permisos — REGLA CRÍTICA:** el saldo visible al empleado es máximo 60 días (`min(60, saldoInterno)`). Al aprobar un permiso descontable, el descuento se aplica **desde los 60 días visibles**, no desde el saldo interno real (que puede ser 70, 80, etc.). Implementado con campo `dias_descuento_efectivo DECIMAL(10,4) NULL` en `dbo.d2_permiso` (migración `000094`):
+- `aprobar()`: calcula `internoSaldo` (sin tope), `exceso = max(0, internoSaldo - 60)`, `efectivo = exceso + diasDescuento` → suma `efectivo` a `total_dias_tomados` y lo guarda en `dias_descuento_efectivo`
+- `anular()`: revierte usando `dias_descuento_efectivo` guardado (compatible con permisos anteriores a migración `000094` → usa `diasDescuento` si el campo es null)
+- `LiquidacionVacController` NO aplica el tope — usa el valor real acumulado (correcto para pago por cesación)
+- El saldo interno sigue acumulando sin límite; solo el display y el descuento de permisos están limitados a 60
 
 **`PATCH /api/permisos/{id}/anular`** — solo ADMINISTRADOR / TALENTO HUMANO:
 - Requiere campo `observacion_negacion` (motivo)
 - Cambia estado a `ANULADO`
-- Si `descontable = 'SI'`: revierte el descuento sumando `diasDescuento` de vuelta al saldo de vacaciones
+- Si `descontable = 'SI'`: revierte usando `dias_descuento_efectivo` del permiso (o `diasDescuento` si null)
 - Revierte el campo correspondiente en `d2_cuadre_marcacion` del día del permiso
 - Uso: permiso aprobado que el empleado no utilizó (ej. salió a su hora normal)
 
@@ -485,7 +601,7 @@ views/empleados/        # CRUD empleados, detalle, importación, distributivo
                         #       botón "Agregar período" → formulario inline con fecha_desde y fecha_hasta
                         #       badges de estado calculados en frontend con hoy()
                         #     Cuando modalidad = BIOMETRICO: solo se muestra el radio seleccionado (sin sección adicional)
-                        #   Tab 1 "Datos Personales": nombres, apellidos, cédula, teléfono, email, dirección, sexo, tipo_sangre
+                        #   Tab 1 "Datos Personales": nombres, apellidos, cédula, teléfono, extensión (opcional), email, dirección, sexo, tipo_sangre
                         #     + grupo_vulnerable, grupo_prioritario (selects de catálogos sociales)
                         #     + bloque Discapacidad (toggle → tipo CONADIS + porcentaje %)
                         #     + bloque Enfermedad Catastrófica (toggle → tipo MSP)
@@ -506,6 +622,20 @@ views/empleados/        # CRUD empleados, detalle, importación, distributivo
                         #   Tab 4 "Asistencia": modalidad_marcacion (radio cards: PRESENCIAL/TEMPORAL/TELETRABAJO), puede_solicitar_vehiculo
                         #   Botones Guardar/Cancelar al final del formulario (no fijos — no tapan el sidebar)
                         #   Foto compacta fuera de las pestañas (solo en edición)
+                        # Validación de campos requeridos — IMPORTANTE:
+                        #   NO usar `required` en inputs dentro de tabs con `v-show`: el navegador intenta
+                        #   hacer focus en campos ocultos, falla silenciosamente y bloquea el submit sin
+                        #   mostrar ningún error al usuario ("An invalid form control with name='' is not
+                        #   focusable" en consola). Solución: quitar `required` del HTML y validar
+                        #   manualmente al inicio de `guardar()` dentro del bloque `try` (para que el
+                        #   `finally` siempre libere el botón). Si hay errores: cambiar `tabActivo` al
+                        #   primer tab con error y mostrar mensaje en `error.value`.
+                        #   Campos requeridos actuales: Tab Personal (nombres, apellidos, cédula),
+                        #   Tab Cargo (departamento, cargo, tipo_contrato, modalidad_laboral, id_jornada,
+                        #   fecha_ingreso, salario), Tab Puesto (grupo_ocupacional, nivel,
+                        #   proceso_institucional, partida_individual, partida_presupuestaria).
+                        #   Usar `String(val ?? '').trim()` para campos que pueden llegar como número
+                        #   desde la BD (partida_individual, partida_presupuestaria).
                         # Endpoints hijos: GET|POST /empleados/{id}/hijos, DELETE /empleados/{id}/hijos/{hijoId}
                         # Endpoints sustituta: POST|GET|DELETE /empleados/{id}/sustituta-doc (Alfresco, carpeta empleados/{cedula_APELLIDO}/)
                         # GET /empleados/catalogos-sociales → { grupos_vulnerables, grupos_prioritarios, tipos_discapacidad, enfermedades_catastroficas }
@@ -606,6 +736,10 @@ views/asistencia/       # Reporte de asistencia personal y admin
                         #   Confirmación al marcar SALIDA antes de las 16:30 con window.confirm()
                         #   ARTICULO_ATRASOS: se muestra con fondo #0b5447 y texto blanco (text-sm)
                         #     debajo del título "Mis Marcaciones" — más visible que el texto gris anterior
+                        #   Columna "Atraso" en tabla historial: en fila ENTRADA DEL LUNCH, si hay atraso,
+                        #     muestra "Debió: HH:MM" en ámbar — hora a la que debió regresar (SALIDA AL LUNCH + 30 min)
+                        #     Calculado en frontend con horaDebiRegresarLunch(fecha): busca la marcación
+                        #     SALIDA AL LUNCH del mismo día y le suma 30 minutos. Sin cambios de backend.
 views/horasextras/
   HorasExtrasView.vue   # 4 tabs:
                         #   MI PLANIFICACIÓN: crear/editar, PDF planificación, subir PDF firmado
@@ -618,6 +752,20 @@ views/asistencia/
                              # en views/reportes/ReportesView.vue (tab "Sin Atrasos")
                              # NO debe tener entrada de menú propia (sería duplicado) — eliminar si existe
 views/reportes/
+  LotaipView.vue             # Reporte LOTAIP Art. 7 lit. m) — ruta: reportes/lotaip (página independiente, NO tab de ReportesView)
+                             # Roles: TALENTO HUMANO, ADMINISTRADOR — agregar en Admin → Opciones de Menú con URL reportes/lotaip
+                             # 2 tabs solo con export Excel (sin PDF):
+                             #   Tab 1 "Directorio y Distributivo": Nro, Apellidos y Nombres, Dirección/Área,
+                             #     Dirección Institucional (config DIRECCION_INSTITUCIONAL), Ciudad (config UBICACION_DEFAULT),
+                             #     Teléfono (config TELEFONO_INSTITUCIONAL), Extensión, Correo Electrónico institucional
+                             #   Tab 2 "Remuneraciones": Nro, Cargo, Tipo Contrato, Partida Individual, Grado,
+                             #     Salario Base, Remuneración Anual (sueldo×12), D13 (en blanco), D14 (en blanco)
+                             # Ordenado alfabéticamente por apellido ASC (sin agrupación por departamento)
+                             # Email desde dbo.ad_empleado_mail (primer registro ACTIVO por empleado)
+                             # Controlador: LotaipController.php — rutas:
+                             #   GET /api/reportes/lotaip/directorio [?formato=excel]
+                             #   GET /api/reportes/lotaip/remuneraciones [?formato=excel]
+                             # Variables de configuración requeridas: DIRECCION_INSTITUCIONAL, UBICACION_DEFAULT, TELEFONO_INSTITUCIONAL
   ReportesView.vue           # 5 tabs: Atrasos | Marcaciones No Realizadas | Sin Atrasos | Movimientos de Personal | Marcaciones del Día
                              # Filtros comunes: fecha_desde, fecha_hasta, departamento, empleado
                              # Filtros depto/empleado se ocultan automáticamente en tab "Sin Atrasos"
@@ -687,13 +835,59 @@ views/admin/            # Roles, departamentos, turnos, configuración, IESS, av
                         # OpcionesView.vue (admin/opciones): tiene filtro de búsqueda en tiempo real
                         #   — input por descripción/URL/categoría, select por categoría, select activos/inactivos
                         #   — computed opcionesFiltradas; contador de resultados visibles
+                        # CalendarioView.vue (admin/calendario) — tabla dbo.d2_lista_fecha, CRUD de feriados/fechas especiales
+                        #   Botón "Cargar Feriados Ecuador" → Admin/CalendarioController::cargarFeriadosEcuador():
+                        #     9 feriados de fecha fija hardcodeados + Carnaval (2 días) y Viernes Santo calculados
+                        #     dinámicamente con easter_days() (función nativa de PHP) a partir del Domingo de Pascua
+                        #     del año seleccionado — antes estaban con fecha fija (27-28 feb / 14 abr) y solo
+                        #     coincidían para un año puntual (fix 2026-08-17)
+                        #   La fecha de un registro ya cargado SÍ se puede editar directo (antes había que
+                        #   eliminar y volver a crear) — el frontend guarda `fechaOriginal` aparte del campo
+                        #   `fecha` editable, porque la URL de actualización necesita la fecha original para
+                        #   encontrar el registro
+                        #   Campo `factor` (columna real en `d2_lista_fecha`, quedaba en 2.00 en la carga
+                        #   automática): confirmado que **ningún cálculo del sistema lo usa** — `HorasExtrasController`
+                        #   solo verifica si la fecha existe en la tabla, nunca lee `factor`. Se ocultó del
+                        #   modal y de la tabla en el frontend (sigue mandándose 2.00 fijo por detrás para no
+                        #   arriesgar la columna en BD); si en el futuro se necesita un recargo real por tipo
+                        #   de fecha, ahí sí habría que conectarlo a algún cálculo real primero.
 layouts/MainLayout.vue  # Layout del módulo RRHH (menú colapsado, se abre el grupo activo)
                         # Modo mantenimiento: lee GET /api/modo-mantenimiento?modulo=TH
                         #   Variable en d2_configuracion: MODO_MANTENIMIENTO_TH = 1 (activo) / 0
                         #   Empleados → pantalla verde bloqueante con botón "Cerrar Sesión"
                         #   ADMINISTRADOR / TALENTO HUMANO → banner naranja, pueden seguir trabajando
                         # Incluye <ChatbotFAB /> como elemento raíz adicional (Vue 3 fragment)
+                        # FIX 2026-08-17 — resaltado de menú activo (`isActive`): antes usaba
+                        #   `route.path.startsWith(item.url)` por ítem de forma aislada, así que si la URL de
+                        #   una opción de menú era prefijo literal de otra (ej. "empleados" y "empleados/reporte",
+                        #   o "planificacion" y "planificacion/reporte"), AMBAS quedaban marcadas como activas
+                        #   a la vez al estar en la más específica. Ahora se calcula, entre TODAS las opciones
+                        #   del menú visible, cuál coincide de forma más específica (URL más larga que calce
+                        #   con la ruta actual — computed `mejorCoincidencia`) y solo esa se marca activa.
+                        #   Aplica automáticamente a cualquier par de menús con esta relación en toda la app,
+                        #   no solo a los casos puntuales detectados.
 ```
+
+### Estándar de modales (OBLIGATORIO en todos los modales nuevos)
+
+```html
+<div v-if="modalX" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+  <div class="bg-white rounded-xl shadow-lg w-full max-w-lg overflow-hidden">
+    <div class="flex items-center justify-between px-6 py-4" style="background-color:COLOR;">
+      <h2 class="text-lg font-semibold text-white">Título</h2>
+      <button @click="modalX = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
+    </div>
+    <div class="p-6 space-y-4">
+      <!-- contenido -->
+      <div class="flex justify-end gap-3 pt-2">
+        <button @click="modalX = false" class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+```
+
+Color por módulo: TH/Admin/Adq `#0b5447` · Transportes `#1e3a5f` · Comisiones `#5c4a6e` · Tecnología `#4d7c8a`
 
 ### Componentes reutilizables
 
@@ -747,7 +941,7 @@ Implementada para trazabilidad ante la Contraloría General del Estado. Todas la
 | `Adquisiciones/EgresoController` | CONFIRMAR_EGRESO, REVERSAR_EGRESO |
 | `Adquisiciones/SolicitudMaterialController` | APROBAR, NEGAR, DESPACHAR |
 | `Adquisiciones/AjusteController` | AJUSTE_POSITIVO / AJUSTE_NEGATIVO |
-| `TransporteController` | APROBAR_MOV, NEGAR_MOV, ORDEN_TRABAJO, NEGAR_MANT, EN_TALLER, FINALIZAR_MANT |
+| `TransporteController` | APROBAR_MOV, NEGAR_MOV, HOJA_RUTA, ORDEN_TRABAJO, NEGAR_MANT, EN_TALLER, FINALIZAR_MANT, CREAR_VEHICULO, ACTUALIZAR_VEHICULO |
 
 ### Endpoint y vista
 
@@ -1085,13 +1279,13 @@ Combinación recomendada: EMPLEADO + TRANSPORTE o EMPLEADO + CONDUCTOR.
 
 | Tabla | Descripción |
 |---|---|
-| `trans_vehiculo` | Catálogo de vehículos; estado ACTIVO/INACTIVO/MANTENIMIENTO |
+| `trans_vehiculo` | Catálogo de vehículos; estado ACTIVO/INACTIVO/MANTENIMIENTO; `kilometraje_actual` es un contador acumulativo (ver sección Kilometraje abajo) |
 | `trans_taller` | Talleres mecánicos externos; estado ACTIVO/INACTIVO |
 | `trans_tipo_mantenimiento` | Categorías: PREVENTIVO, CORRECTIVO, PREVENTIVO Y CORRECTIVO; estado ACTIVO/INACTIVO |
-| `trans_plan_preventivo_cab` | Plan preventivo cabecera: vehiculo_id, km_hito, nombre del plan |
+| `trans_plan_preventivo_cab` | Plan preventivo cabecera: vehiculo_id, km_hito (hito ABSOLUTO, no intervalo — ver sección Kilometraje), nombre del plan |
 | `trans_plan_preventivo_det` | Actividades del plan: cab_id, orden, tipo_actividad (MO/RE/CL), cantidad, actividad |
-| `trans_mantenimiento` | Requerimientos; estados PENDIENTE→ORDEN_GENERADA→EN_TALLER→FINALIZADO |
-| `trans_mantenimiento_actividad` | Actividades del requerimiento de mantenimiento |
+| `trans_mantenimiento` | Requerimientos; estados PENDIENTE→ORDEN_GENERADA→EN_TALLER→FINALIZADO. `km_actual` = km del vehículo al crear (autocompletado); `km_finalizacion` = km del vehículo al finalizar (migración `000096`, obligatorio si tipo PREVENTIVO) |
+| `trans_mantenimiento_actividad` | Actividades del requerimiento de mantenimiento. `cantidad` (migración `000097`) — copiada desde `trans_plan_preventivo_det.cantidad` al crear el requerimiento; solo aplica a actividades PREVENTIVO (las CORRECTIVO no tienen cantidad, se registran como texto libre) |
 | `trans_solicitud_mov` | Solicitudes de movilización; estados PENDIENTE→APROBADO/NEGADO→COMPLETADO. Campos adicionales: `direccion_salida`, `direccion_destino` (VARCHAR 200), `pasajeros` (TEXT) |
 | `trans_vale_combustible` | Vales de combustible; formato FR05-PRO.GA-TR.001; numero auto-secuencial |
 
@@ -1105,6 +1299,30 @@ Campo adicional en `ad_empleado`: `puede_solicitar_vehiculo BOOLEAN DEFAULT fals
 - "PREVENTIVO Y CORRECTIVO" contiene ambas cadenas → activa ambas secciones simultáneamente
 - El CRUD permite activar/desactivar tipos y agregar nuevos (ej. EMERGENCIA)
 
+### Kilometraje — acumulación automática y alertas de mantenimiento por km
+
+**`trans_vehiculo.kilometraje_actual` es el único contador oficial**, se acumula solo (nunca lo digita el conductor):
+- **Km inicial**: se ingresa una sola vez al crear el vehículo (`+ Nuevo vehículo`, campo "Km Actual"). Al **editar** un vehículo existente, el backend (`TransporteController::update()`) solo permite subirlo, nunca bajarlo (`min: kilometraje_actual` actual) — es la única vía de corrección manual (ej. dato inicial mal digitado), y por eso está restringida a no poder romper la cadena hacia abajo.
+- **Hoja de ruta** (`updateMov`, acción `hoja_ruta`): el campo "Km Salida" del frontend es de **solo lectura** — el backend ignora cualquier valor que llegue del cliente y siempre usa `vehiculo->kilometraje_actual` en el momento de guardar. Valida que `km_retorno >= km_salida`. Al completar, `kilometraje_actual` se actualiza a `km_retorno`.
+  - Si el km mostrado en el modal quedó desactualizado (otro viaje/mantenimiento del mismo vehículo se completó mientras el modal estaba abierto), el backend responde 422 con `km_salida_actual` y el frontend **autocorrige** el campo en vez de solo mostrar un error genérico.
+- **Mantenimiento — crear requerimiento** (`storeMtto`): `km_actual` ya no lo digita el conductor, se autocompleta con `vehiculo->kilometraje_actual` (frontend lo muestra de solo lectura).
+- **Mantenimiento — finalizar** (`updateMtto`, acción `finalizar`): `km_finalizacion` es **obligatorio si el tipo contiene "PREVENTIVO"** (sin él no hay forma de saber desde cuándo contar el próximo hito de ese plan); opcional en CORRECTIVO. Valida que no sea menor al km actual del vehículo. Al finalizar, actualiza `kilometraje_actual`.
+
+**`km_hito` es un hito ABSOLUTO y único, NO un intervalo recurrente** — ej. el plan "Mantenimiento 170.000 km" (`km_hito = 170000`) se cumple una sola vez cuando el vehículo llega a ese kilometraje real, no se repite cada 170.000km. Al crear planes (manual o CSV) el campo Km Hito debe llevar el kilometraje objetivo real de ESE mantenimiento específico, no un intervalo genérico (ej. "5000") — cargarlo mal genera alertas falsas para cualquier vehículo con más de esa cantidad de km.
+
+`GET /transporte/vehiculos` (`index()`) calcula y devuelve por cada vehículo, comparando contra sus planes ACTIVO:
+- `planes_estado[]`: `{ plan_id, nombre, km_hito, km_recorridos (= kilometraje_actual del vehículo), vencido, proximo }`
+- Un plan que ya tuvo algún `trans_mantenimiento` en estado FINALIZADO se excluye de las alertas (hito cumplido, no vuelve a aparecer).
+- `vencido` = `kilometraje_actual >= km_hito`. `proximo` = `!vencido && kilometraje_actual >= km_hito * 0.9`.
+- `mantenimiento_vencido` / `mantenimiento_proximo` (booleanos a nivel vehículo) **NO son mutuamente excluyentes** — un vehículo puede tener a la vez un plan vencido (ej. 50.000) y otro próximo (ej. 170.000); ambas banderas se calculan de forma independiente para que la tarjeta resumen y los badges de la lista cuadren.
+
+**Validaciones adicionales en `storeMtto`**:
+- Un vehículo solo puede tener **un mantenimiento abierto a la vez** (estado distinto de FINALIZADO/NEGADO). Si ya hay uno, rechaza con 422 indicando cuál es (evita que se olviden de finalizar uno y se cree otro encima).
+- El `plan_preventivo_id` enviado debe pertenecer al `vehiculo_id` seleccionado (rechaza con 422 si no coincide).
+- **Un plan no se puede volver a ejecutar**: si el `plan_preventivo_id` ya tiene algún `trans_mantenimiento` en estado FINALIZADO, rechaza con 422 ("ya fue ejecutado anteriormente"). Es coherente con que `km_hito` es un hito único — para repetir un mantenimiento similar a otro kilometraje se crea un plan nuevo (ver botón "Duplicar" abajo), no se reutiliza el mismo.
+
+**Visibilidad compartida**: `indexMtto` ya NO filtra por conductor — todos los conductores ven el listado completo de mantenimientos de todos los vehículos (antes cada uno solo veía lo que él mismo había solicitado, lo que permitía crear solicitudes duplicadas sin que nadie se diera cuenta).
+
 ### Plan Preventivo
 
 Actividades agrupadas por vehículo + km_hito + nombre. Cada actividad tiene:
@@ -1112,7 +1330,11 @@ Actividades agrupadas por vehículo + km_hito + nombre. Cada actividad tiene:
 - `cantidad`: entero ≥ 1
 - `actividad`: descripción de la tarea
 
-Importación CSV: columnas `placa,km_hito,nombre,tipo_actividad,actividad,cantidad`. Agrupa por clave compuesta `vehiculo_id|km_hito|nombre`, crea una cabecera por grupo y los detalles correspondientes.
+Importación CSV: columnas `placa,km_hito,nombre,tipo_actividad,actividad,cantidad`. Agrupa por clave compuesta `vehiculo_id|km_hito|nombre`, crea una cabecera por grupo y los detalles correspondientes. Recordar: `km_hito` debe ser el kilometraje objetivo real (ver sección Kilometraje arriba), no un intervalo genérico.
+
+`GET /transporte/plan-preventivo` (`PlanPreventivoController::index()`) agrega por cada plan `ejecutado` (bool) y `fecha_ejecutado` — true si ya existe algún `trans_mantenimiento` FINALIZADO con ese `plan_preventivo_id`. Se usa para: deshabilitar esa opción en el select de "Nuevo requerimiento" (`MantenimientoView.vue`, con texto "— Ya ejecutado") y mostrar el badge azul "✓ Ejecutado" en el acordeón de `PlanPreventivoView.vue`.
+
+**Botón "Duplicar"** (`PlanPreventivoView.vue`, junto a Ver/Editar de cada plan): abre el modal de "Nuevo Plan" pre-llenado con el mismo `vehiculo_id` y todas las actividades copiadas (tipo, cantidad, descripción) — pero **`km_hito` y `nombre` quedan vacíos a propósito** para forzar a indicar el nuevo hito antes de guardar (evita duplicar sin querer el mismo hito ya existente). Crea un plan nuevo, no modifica el original. Pensado para cuando el checklist se repite casi igual entre hitos de un mismo vehículo (ej. 80.000 / 85.000 / 90.000 km).
 
 ### Vales de Combustible
 
@@ -1125,9 +1347,9 @@ Formato oficial FR05-PRO.GA-TR.001. PDF media carta (`[0, 0, 396, 504]`).
 
 ### Flujos
 
-**Mantenimiento:** conductor crea requerimiento (tipo + km_actual + actividades) → TRANSPORTE genera orden de trabajo (asigna taller de la lista, N° orden, fecha) → EN_TALLER → FINALIZAR (actualiza km del vehículo). PDF disponible desde ORDEN_GENERADA.
+**Mantenimiento:** conductor crea requerimiento (tipo + actividades; km_actual se autocompleta del vehículo, no se digita) → TRANSPORTE genera orden de trabajo (asigna taller de la lista, N° orden, fecha) → EN_TALLER → FINALIZAR (km_finalizacion obligatorio si PREVENTIVO, actualiza km del vehículo). PDF disponible desde ORDEN_GENERADA. No se puede crear un nuevo requerimiento si el vehículo ya tiene uno abierto (ver sección Kilometraje).
 
-**Movilización:** empleado autorizado solicita (con lugar_salida, lugar_destino, direccion_salida, direccion_destino opcionales, y pasajeros opcional) → TRANSPORTE aprueba (asigna vehículo + conductor, valida conflicto de horario) o niega → conductor llena hoja de ruta (km_salida, km_retorno) → COMPLETADO (actualiza km del vehículo). PDF disponible desde APROBADO.
+**Movilización:** empleado autorizado solicita (con lugar_salida, lugar_destino, direccion_salida, direccion_destino opcionales, y pasajeros opcional) → TRANSPORTE aprueba (asigna vehículo + conductor, valida conflicto de horario) o niega → conductor llena hoja de ruta (km_salida de solo lectura, autocompletado; km_retorno) → COMPLETADO (actualiza km del vehículo). PDF disponible desde APROBADO.
 
 **Vale combustible:** conductor abre formulario → selecciona vehículo, gasolinera, fecha, combustibles → guarda → PDF se abre automáticamente en nueva pestaña.
 
@@ -1139,6 +1361,7 @@ Controladores en `app/Http/Controllers/Transporte/`:
 - `TipoMantenimientoController` — CRUD tipos
 - `PlanPreventivoController` — CRUD plan + importar CSV
 - `ValeController` — vales combustible + PDF
+- `ReporteTransporteController` — reportes de vales/movilización/mantenimiento (ver sección Reportes abajo)
 
 Rutas bajo `/api/transporte/*`:
 - `GET/POST /vehiculos`, `PUT /vehiculos/{id}`
@@ -1150,27 +1373,86 @@ Rutas bajo `/api/transporte/*`:
 - `GET /notificaciones-pendientes` — solo TRANSPORTE; devuelve `{ pendientes, ultima_at, items[] }`
 - `GET/POST /vales-combustible`, `GET /vales-combustible/{id}/pdf`
 - `GET /conductores` — lista empleados con rol CONDUCTOR
+- `GET /reportes/vales-combustible`, `GET /reportes/movilizacion`, `GET /reportes/mantenimiento` — todos `?formato=pdf|excel` opcional; solo TRANSPORTE/ADMINISTRADOR
 
 `PUT /mantenimiento/{id}` con campo `accion`: `orden` / `en_taller` / `finalizar`.
 `PUT /movilizacion/{id}` con campo `accion`: `aprobar` / `negar` / `hoja_ruta`.
 
+### Reportes
+
+Antes de esto el módulo no tenía ningún reporte. `ReporteTransporteController` (`app/Http/Controllers/Transporte/`) agrega 3, todos con filtro `fecha_desde`/`fecha_hasta` obligatorio y respuesta JSON `{ datos: [...], resumen: {...} }` (sin `formato`) o descarga Excel/PDF (`?formato=excel|pdf`) — mismo patrón que `ReportesController` (TH) y `ReporteAdqController` (Adquisiciones), color institucional del módulo `#1e3a5f` en vez del verde de TH/Adquisiciones.
+
+- **`vales(Request)`** — filtros opcionales `vehiculo_id`, `id_emp_conductor`, `estado` (EMITIDO/ANULADO). `resumen`: `total_vales`, `total_anulados`, `total_valor` (excluye ANULADO), `total_glns_extra/super/diesel` (excluye ANULADO).
+- **`movilizacion(Request)`** — filtros opcionales `vehiculo_id`, `id_emp_conductor`, `id_emp_solicitante` (búsqueda ILIKE libre, no dropdown — cualquier empleado puede ser solicitante), `estado`. Calcula `km_recorridos` por fila (`km_retorno - km_salida`, solo si `estado = COMPLETADO`). `resumen`: conteos por estado + `km_totales` + `promedio_km`.
+- **`mantenimiento(Request)`** — filtra por `DATE(created_at)` (fecha de creación del requerimiento, no `fecha_orden` porque no todos los estados la tienen). Filtros opcionales `vehiculo_id`, `tipo_mantenimiento_id`, `estado`, `taller_id` (join a `adq.proveedor`, no a `trans_taller` — ver nota de unificación de talleres arriba). `resumen`: `preventivos`/`correctivos` con `str_contains($r->tipo, ...)` (mismo patrón dual-count que el resto del módulo — "PREVENTIVO Y CORRECTIVO" cuenta en ambos), `finalizados`, `en_proceso`, `negados`.
+
+Blades: `trans_reporte_vales.blade.php`, `trans_reporte_movilizacion.blade.php`, `trans_reporte_mantenimiento.blade.php` — landscape A4, mismo esqueleto que `reporte_atrasos.blade.php` (TH) con fila de resumen/totales entre el encabezado y la tabla.
+
 ### PDFs (`resources/views/reportes/`)
 
-- `trans_orden_trabajo.blade.php` — portrait letter; secciones: vehículo, requerimiento, actividades, orden, firmas (conductor/responsable/taller)
+- `trans_orden_trabajo.blade.php` — portrait letter; secciones: vehículo, requerimiento, actividades (incluye columna "Cant.", `—` si la actividad no tiene cantidad), orden, firmas (conductor/responsable/taller)
 - `trans_orden_movilizacion.blade.php` — portrait letter; secciones: solicitud, vehículo+conductor, hoja de ruta (solo si COMPLETADO), firmas
 - `trans_vale_combustible.blade.php` — **media carta** `[0,0,396,504]`; formato FR05-PRO.GA-TR.001; tabla combustibles, km/vehículo/fecha, firmas
+- `trans_reporte_vales.blade.php` / `trans_reporte_movilizacion.blade.php` / `trans_reporte_mantenimiento.blade.php` — landscape A4, listados con filtros + fila de totales (ver sección Reportes arriba)
 
 ### Vistas Frontend
 
 ```
 views/transporte/
   VehiculosView.vue           # CRUD vehículos; solo TRANSPORTE
+                              # 3 tarjetas resumen clickeables (Total / Mantenimiento vencido / Mantenimiento
+                              #   próximo — colores rojo/ámbar) que filtran la lista (filtroMtto)
+                              # Por fila: ícono circular de alerta (rojo si vencido, ámbar si solo próximo)
+                              #   junto al badge de estado — solo se pinta si el vehículo tiene alguna alerta.
+                              #   Clic abre modal "Alertas de Mantenimiento" con el detalle de cada plan
+                              #   (nombre, km_hito, badge Vencido/Próximo) — mismo patrón de modal "Ver" del resto
+                              #   de la app. Reemplaza el diseño anterior de pills apiladas en la fila (poco
+                              #   estético con vehículos de muchos planes).
+                              # Campo "Km Actual" en Editar Vehículo: solo permite subir el valor, nunca bajarlo
+                              #   (ver sección Kilometraje) — muestra el mínimo permitido bajo el input.
   TalleresView.vue            # CRUD talleres; solo TRANSPORTE
   TiposMantenimientoView.vue  # CRUD tipos (activar/desactivar); solo TRANSPORTE
   PlanPreventivoView.vue      # CRUD plan preventivo + importar CSV; solo TRANSPORTE
+                              # Acordeón agrupado por vehículo (reemplazó la lista plana paginada con
+                              #   select de un solo vehículo a la vez) — cada vehículo es una cabecera
+                              #   colapsable con badge de cantidad de planes (gris si 0, azul si tiene),
+                              #   botón "+ Plan" que preselecciona ese vehículo en el modal de creación
+                              # Buscador de texto (placa/marca/modelo) + checkbox "Solo con planes" +
+                              #   botones "Expandir todo"/"Colapsar todo" (Set `abiertos` con los ids abiertos)
+                              # Vehículos sin ningún plan igual aparecen (con "0 planes") para detectar huecos
+                              # Badge azul "✓ Ejecutado" por plan cuando `p.ejecutado` (ver sección Plan Preventivo)
+                              # Botón "Duplicar" por plan: copia vehículo + actividades a un plan nuevo,
+                              #   deja km_hito y nombre vacíos (ver sección Plan Preventivo arriba)
   MantenimientoView.vue       # Conductor crea; TRANSPORTE gestiona estados, asigna taller de lista, PDF
+                              # Km actual: solo lectura, autocompletado desde el vehículo seleccionado
+                              #   (computed kmVehiculoSeleccionado) — ya no es un input editable
+                              # Select de plan preventivo: opciones con p.ejecutado deshabilitadas y con
+                              #   texto "— Ya ejecutado" al final del nombre
+                              # Modal Ver: cada actividad muestra "Nx" antes de la descripción si tiene
+                              #   cantidad (a.cantidad) — solo aplica a actividades PREVENTIVO
+                              # Modal Finalizar: campo "Km Actual del Vehículo" (km_finalizacion) marcado
+                              #   obligatorio (*) cuando el tipo del requerimiento es PREVENTIVO
+                              #   (modalFinalizar.esPreventivo, derivado de m.tipo al abrir el modal)
+                              # Backend bloquea crear un nuevo requerimiento si el vehículo ya tiene uno
+                              #   abierto, o si el plan elegido ya fue ejecutado — el error llega vía
+                              #   errorCrear ya existente, sin cambios de UI
   MovilizacionView.vue        # Empleado solicita; TRANSPORTE aprueba/niega; conductor llena hoja de ruta
+                              # Modal Hoja de Ruta: "Km Salida" de solo lectura (bg-gray-100, disabled) —
+                              #   ya no editable por el conductor. abrirHojaRuta() es async y refresca el
+                              #   km real del vehículo (GET /transporte/vehiculos) justo al abrir el modal
+                              #   para minimizar el caso de dato desactualizado
+                              # Si el backend igual detecta km desactualizado al guardar (422 con
+                              #   km_salida_actual en el body), el frontend autocorrige formHojaRuta.km_salida
+                              #   en vez de solo mostrar el mensaje de error
   ValesCombustibleView.vue    # CONDUCTOR + TRANSPORTE; guarda y abre PDF automáticamente
+  ReportesView.vue            # Reportes de Vales/Movilización/Mantenimiento; solo TRANSPORTE/ADMINISTRADOR
+                              # 3 tabs (mismo patrón que views/reportes/ReportesView.vue de TH), color #1e3a5f
+                              # Filtros comunes fecha_desde/fecha_hasta + vehículo; por tab: conductor
+                              #   (dropdown desde /transporte/conductores), estado, y en movilización
+                              #   además solicitante (buscador libre) y en mantenimiento tipo + taller
+                              # Tarjetas de resumen arriba de la tabla (total_valor, km_totales, conteos
+                              #   por estado, etc.) — vienen del backend en `resumen`, no se calculan en frontend
+                              # Botones Excel/PDF visibles solo si hay datos cargados
 layouts/TransporteLayout.vue  # Menú dinámico desde auth.menuAgrupado filtrado a transporte/
                               # Modo mantenimiento: variable MODO_MANTENIMIENTO_TRANS = 1
                               #   ADMINISTRADOR / TRANSPORTE → banner naranja, siguen trabajando
@@ -1196,6 +1478,7 @@ layouts/TransporteLayout.vue  # Menú dinámico desde auth.menuAgrupado filtrado
 | `transporte/mantenimiento` | TRANSPORTE, CONDUCTOR |
 | `transporte/movilizacion` | TRANSPORTE, CONDUCTOR |
 | `transporte/vales-combustible` | TRANSPORTE, CONDUCTOR |
+| `transporte/reportes` | TRANSPORTE |
 
 ---
 
@@ -1464,7 +1747,9 @@ Quinto módulo del sistema, para la Dirección de Tecnología. Color institucion
 | URL | Descripción | Roles |
 |---|---|---|
 | `tecnologia/equipos` | Inventario de Equipos | TECNOLOGIA, ADMINISTRADOR |
+| `tecnologia/piezas` | Piezas y Repuestos | TECNOLOGIA, ADMINISTRADOR |
 | `tecnologia/mantenimiento` | Mantenimiento | TECNOLOGIA, ADMINISTRADOR |
+| `tecnologia/reportes` | Reportes de Equipos | TECNOLOGIA, ADMINISTRADOR |
 | `tecnologia/tipos-equipo` | Tipos de Equipo | TECNOLOGIA, ADMINISTRADOR |
 | `tecnologia/actividades-mantenimiento` | Actividades del checklist | TECNOLOGIA, ADMINISTRADOR |
 
@@ -1476,12 +1761,18 @@ Quinto módulo del sistema, para la Dirección de Tecnología. Color institucion
 | `ti_equipo` | Un registro por unidad física. `estado`: `DISPONIBLE`/`ASIGNADO`/`DAÑADO`/`DE_BAJA` (custodia, gestionado por el sistema al asignar/devolver). `condicion`: `BUENO`/`REGULAR`/`MALO` (estado físico, distinto de `estado`). `vida_util_anios`, `ultimo_mantenimiento` (caché). `marca VARCHAR(150)`, `modelo VARCHAR(300)` (ampliados en migración `000089` — el inventario real de TI trae descripciones largas en "modelo") |
 | `ti_asignacion` | Historial de custodia. Solo puede existir **una fila con `fecha_devolucion IS NULL` por `equipo_id`** a la vez (regla aplicada en el controlador, no a nivel de constraint) |
 | `ti_actividad_mantenimiento` | Catálogo maestro del checklist de mantenimiento (10 ítems reales del formulario físico de TI, editable) |
-| `ti_mantenimiento` | Cabecera de cada ejecución de mantenimiento; `UNIQUE(equipo_id, anio)` — refuerza que el mantenimiento preventivo es una vez al año por equipo. Incluye `hora_inicio`/`hora_fin` (nullable — el mantenimiento externo por lote no siempre registra hora exacta), `id_emp_tecnico` (usuario que registró) e `id_emp_custodio` (snapshot del custodio en ese momento). Campos de mantenimiento externo (migración `000090`): `origen` (`INTERNO`/`EXTERNO`), `proveedor`, `proceso_contratacion`, `numero_orden_compra`, `lote_externo` — ver sección "Mantenimiento externo" abajo |
+| `ti_mantenimiento` | Cabecera de cada ejecución de mantenimiento. **El "una vez al año" solo aplica al `tipo = PREVENTIVO`**: índice único parcial `ti_mantenimiento_preventivo_anio_uq` sobre `(equipo_id, anio) WHERE tipo = 'PREVENTIVO'` (migración `000098`, reemplazó el `UNIQUE(equipo_id, anio)` original que bloqueaba erróneamente registrar una reparación el mismo año del preventivo). El `CORRECTIVO` se puede registrar las veces que haga falta. Incluye `hora_inicio`/`hora_fin` (nullable — el mantenimiento externo por lote y las reparaciones rápidas no siempre registran hora exacta), `id_emp_tecnico` (usuario que registró) e `id_emp_custodio` (snapshot del custodio en ese momento). Campos de mantenimiento externo (migración `000090`): `origen` (`INTERNO`/`EXTERNO`), `proveedor`, `proceso_contratacion`, `numero_orden_compra`, `lote_externo` — ver sección "Mantenimiento externo" abajo |
 | `ti_mantenimiento_detalle` | Snapshot SI/NO del checklist para esa ejecución (una fila por actividad del catálogo activa al momento de registrar). Solo se genera cuando `origen = INTERNO` |
+| `ti_pieza` | Catálogo de piezas/repuestos (ver sección "Piezas y repuestos" abajo). `codigo`/`serie` opcionales, `descripcion` obligatoria, `fecha_entrega` (obligatoria — fecha en que la Unidad de Bienes/Dirección Administrativa entregó la pieza a Tecnología; **Tecnología no tiene bodega propia**, las piezas llegan ya codificadas por Bienes). `estado`: `DISPONIBLE`/`INSTALADA`/`DE_BAJA`. `equipo_id` = equipo donde está instalada actualmente (null si disponible o de baja) |
+| `ti_pieza_movimiento` | Historial de instalación/retiro de piezas, mismo patrón que `ti_asignacion` pero pieza↔equipo. `mantenimiento_id` (nullable) liga el movimiento al mantenimiento en el que se hizo el cambio. Solo puede existir **una fila con `fecha_retiro IS NULL` por `pieza_id`** a la vez |
 
-Migraciones: `000088` (crea las 6 tablas + rol `TECNOLOGIA` + seeds de tipos de equipo y checklist), `000089` (amplía `ti_equipo.marca`/`modelo`, ver arriba), `000090` (agrega columnas de mantenimiento externo a `ti_mantenimiento` y hace `hora_inicio`/`hora_fin` nullable).
+Migraciones: `000088` (crea las 6 tablas + rol `TECNOLOGIA` + seeds de tipos de equipo y checklist), `000089` (amplía `ti_equipo.marca`/`modelo`, ver arriba), `000090` (agrega columnas de mantenimiento externo a `ti_mantenimiento` y hace `hora_inicio`/`hora_fin` nullable), `000092` (crea `ti_pieza` y `ti_pieza_movimiento`), `000098` (cambia el `UNIQUE(equipo_id, anio)` de `ti_mantenimiento` a índice único parcial solo para `tipo=PREVENTIVO`, ver arriba), `000099` (agrega `motivo_baja`/`detalle_baja`/`fecha_baja` a `ti_equipo`).
+
+> **Nota sobre numeración de migraciones:** hubo una colisión de números (`000095`/`000097` usados dos veces por trabajo en paralelo) — las migraciones de este módulo siguen la secuencia `000088`...`000090`, `000092`, `000098`, `000099`. Antes de crear una migración nueva, verificar el número máximo real recorriendo todos los archivos (no solo los últimos alfabéticamente), ya que los nombres empiezan con fecha y pueden desordenar el orden numérico esperado.
 
 `Equipo` (modelo) tiene un accessor `vida_util_vencida` (`$appends`, calculado en PHP con `fecha_ingreso + vida_util_anios <= hoy`, sin necesidad de cast ni columna nueva) — se usa para el badge/filtro/tarjeta "Vida útil vencida" en `EquiposView.vue`. `EquipoController::resumen()` incluye el conteo `vida_util_vencida` (excluye equipos `DE_BAJA`) y `index()` acepta `?vida_util_vencida=1` como filtro.
+
+**Custodio inactivo:** no hay ningún trigger ni validación que cruce `ad_empleado.estado` con la custodia de equipos — si un empleado pasa a `INACTIVO` mientras tiene equipos asignados, estos se quedan `ASIGNADO` a esa persona indefinidamente hasta que alguien lo note y haga "Devolver" manualmente. Para que no pase desapercibido: accessor `custodio_inactivo` en `Equipo` (`$appends`, true si `estado=ASIGNADO` y el empleado de la asignación activa tiene `estado=INACTIVO`), tarjeta de alerta roja "Custodio inactivo" en `EquiposView.vue` (clickeable, filtra con `?custodio_inactivo=1`) y badge "⚠ Empleado inactivo" junto al nombre del custodio tanto en `EquiposView.vue` como en `ReporteEquiposView.vue`. `EquipoController::resumen()` incluye el conteo `custodio_inactivo`.
 
 Las opciones de menú (`admin_opcion`) y su asignación al rol `TECNOLOGIA` (`admin_rol_opcion`) se crean desde la UI (Admin → Opciones de Menú / Admin → Roles) — no se gestionan por migración.
 
@@ -1490,11 +1781,12 @@ Las opciones de menú (`admin_opcion`) y su asignación al rol `TECNOLOGIA` (`ad
 - **Asignar**: solo si `equipo.estado = DISPONIBLE`. El buscador de empleado consulta el mismo catálogo `dbo.ad_empleado` que usa Talento Humano (no hay lista separada). Crea fila en `ti_asignacion`, pasa el equipo a `ASIGNADO`.
 - **Devolver**: solo si `equipo.estado = ASIGNADO`. Pide fecha de devolución (editable, no forzada a "hoy" — permite registrar devoluciones retroactivas), motivo (`REASIGNACION`/`SALIDA_EMPLEADO`/`DAÑO`/`OTRO`) y observación. Si el motivo es `DAÑO` el equipo pasa a `DAÑADO`; en cualquier otro caso vuelve a `DISPONIBLE`. La asignación anterior no se borra, queda cerrada en el historial.
 - **Historial**: botón por equipo abre un modal con la línea de tiempo (timeline visual) de todas las asignaciones — activa (punto verde) e históricas (punto gris), con motivo de devolución.
-- **Dar de baja / Marcar disponible**: transición manual de estado, solo permitida cuando el equipo no está `ASIGNADO`.
+- **Dar de baja**: solo permitida cuando el equipo no está `ASIGNADO`. Pide motivo (`DAÑO_IRREPARABLE`/`OBSOLETO`/`ROBO_PERDIDA`/`FIN_VIDA_UTIL`/`OTRO`), detalle de qué acciones se tomaron (obligatorio) y fecha (editable, default hoy) — campos `motivo_baja`/`detalle_baja`/`fecha_baja` en `ti_equipo` (migración `000099`). Se muestran como nota roja bajo el nombre del equipo mientras esté `DE_BAJA`.
+- **Reactivar**: botón visible solo cuando `estado = DE_BAJA` (ej. equipo dado de baja por error) — lo regresa a `DISPONIBLE` sin pedir nada más (confirmación simple). Los campos de la última baja (`motivo_baja`/`detalle_baja`/`fecha_baja`) no se borran al reactivar, quedan como registro histórico de la última vez que se dio de baja.
 
 ### Mantenimiento preventivo (checklist real)
 
-El mantenimiento se ejecuta **una vez al año por equipo** (constraint `UNIQUE(equipo_id, anio)` en `ti_mantenimiento`). El checklist es fijo (catálogo `ti_actividad_mantenimiento`, editable desde `tecnologia/actividades-mantenimiento`) y reproduce el formulario físico que ya usaba TI:
+El mantenimiento **preventivo** se ejecuta **una vez al año por equipo** (índice único parcial sobre `ti_mantenimiento` solo para `tipo=PREVENTIVO`, ver arriba — el correctivo no tiene ese límite). El checklist es fijo (catálogo `ti_actividad_mantenimiento`, editable desde `tecnologia/actividades-mantenimiento`) y reproduce el formulario físico que ya usaba TI:
 
 1. Ingreso al equipo · 2. Limpieza interna del equipo · 3. Limpieza externa del equipo · 4. Borrado archivos temporales · 5. Ingreso al equipo por la IP · 6. Actualización del antivirus · 7. Formateo del equipo · 8. Respaldo carpeta Escritorio · 9. Respaldo carpeta Mis documentos · 10. Respaldo correo electrónico institucional (PST)
 
@@ -1503,6 +1795,15 @@ Al registrar un mantenimiento se marca SI/NO por cada ítem (hora de inicio/fin 
 **Acta de mantenimiento** (`resources/views/reportes/ti_acta_mantenimiento.blade.php`, A4 portrait): incluye fecha, hora de inicio y fin, tabla del checklist con columnas SI/NO, y firmas — **"Técnico que realizó"** = usuario logueado que registró (`id_emp_tecnico`, autocapturado de `$request->user()`, no es un campo editable del formulario) y **"Responsable del equipo"** = custodio con asignación activa al momento del registro (`id_emp_custodio`, snapshot — no cambia si luego se reasigna el equipo a otra persona). PDF generado con DomPDF (`->stream()`); opcionalmente se puede subir firmado a Alfresco (carpeta `mantenimiento-ti/{año}/`), mismo patrón de `relativePath` que Certificados Laborales / Horas Extras.
 
 `MantenimientoView.vue` tiene sus propios filtros (Buscar + Tipo de equipo) sobre `pendientes`/`realizados`, iguales a los de `EquiposView.vue` — útil porque antes había que buscar equipo por equipo en la lista.
+
+### Reparación de equipos dañados (mantenimiento correctivo)
+
+Cuando un equipo está en estado `DAÑADO`, su fila en `EquiposView.vue` muestra el botón **"Registrar reparación"** (reemplazó a un simple botón "Disponible" sin registro alguno). Abre un modal pidiendo solo **fecha** y **qué se hizo** (observación libre) — sin checklist ni horas, esos son propios del preventivo. Al guardar:
+- Crea un `ti_mantenimiento` con `tipo = CORRECTIVO` (sin filas en `ti_mantenimiento_detalle`, ya que no aplica el checklist de 10 puntos).
+- El equipo pasa automáticamente de `DAÑADO` a `DISPONIBLE` (antes había que hacerlo aparte, sin dejar ningún rastro de la reparación).
+- Se genera y abre automáticamente el acta en PDF — mismo `ti_acta_mantenimiento.blade.php`, pero oculta la tabla de checklist cuando no hay `detalle` y titula la sección de observaciones como "Descripción de la Reparación" en ese caso.
+
+Esta reparación queda visible en la pestaña "Realizados" de `MantenimientoView.vue` igual que un preventivo — es la constancia de "qué se hizo para volver a poner operativo el equipo".
 
 ### Mantenimiento externo (por proveedor, en lote)
 
@@ -1525,6 +1826,28 @@ En la pestaña "Realizados" de `MantenimientoView.vue`, los registros con `lote_
 - **Tipo de equipo**: se compara contra el catálogo ignorando mayúsculas/minúsculas, punto final y espacios repetidos — evita falsos "no existe en el catálogo" por diferencias de formato (ej. `"INFRAESTRUCTURA DE VIDEOVIGILANCIA."` con punto vs `"INFRAESTRUCTURA DE VIDEOVIGILANCIA"` sin punto en el catálogo).
 - Valida todas las filas antes de insertar y reporta todos los errores encontrados de una vez; si hay algún error no inserta nada (`DB::transaction`).
 
+### Piezas y repuestos
+
+Trazabilidad de partes/piezas cambiadas durante un mantenimiento (ej. disco, RAM, fuente de poder), para saber en qué equipo está instalada cada una y no perder el rastro cuando se mueven entre equipos. **Importante:** Tecnología no mantiene bodega propia de piezas — las entrega la **Unidad de Bienes (Dirección Administrativa)**, que ya las codifica y gestiona su trámite interno; Tecnología solo las solicita, las recibe y ahí procede con el cambio. Por eso `ti_pieza.fecha_entrega` es obligatoria: es la fecha en que Bienes entrega físicamente la pieza a Tecnología (distinta de `created_at`, que es cuándo se registró en el sistema).
+
+Ciclo de vida de una pieza: `DISPONIBLE` (ya entregada por Bienes, sin instalar) → `INSTALADA` (en un `equipo_id`) → puede volver a `DISPONIBLE` (retiro por reemplazo/desinstalación, reutilizable) o pasar a `DE_BAJA` (retiro por daño, o baja directa desde disponible).
+
+**Dos puntos de entrada** para instalar/retirar (`PiezaController`):
+1. **Pantalla `tecnologia/piezas`** (`PiezasView.vue`) — catálogo completo: crear pieza (código, serie, descripción, fecha de entrega), buscar por código/serie/descripción, ver en qué equipo está instalada, instalar/retirar/dar de baja en cualquier momento, historial (timeline) de en qué equipos ha estado.
+2. **Dentro del formulario de "Registrar Mantenimiento"** (`MantenimientoView.vue`, solo mantenimiento interno individual, no el externo por lote) — sección "Piezas Cambiadas": buscador inline de piezas `DISPONIBLE` existentes, o botón "+ Pieza nueva" para crear una al vuelo (código/serie/descripción); al guardar el mantenimiento, cada pieza queda instalada en ese equipo con `mantenimiento_id` ligado al registro. Si la pieza se crea al vuelo desde aquí, `fecha_entrega` se autocompleta con la fecha del mantenimiento (asumiendo que Bienes la entregó por esas fechas); si no es correcto, se puede corregir después desde `tecnologia/piezas`.
+
+**Simplificación deliberada:** el formulario de mantenimiento solo *instala* piezas nuevas — no intenta adivinar qué pieza vieja reemplaza a cuál. Si se está reemplazando una pieza que ya estaba en ese equipo, esa se retira aparte desde `tecnologia/piezas` (ahí se ve qué piezas tiene instaladas cada equipo).
+
+`EquipoController`/modelo `Equipo` tiene `piezasInstaladas()` (`hasMany` filtrado por `estado = INSTALADA`) para consultar rápido qué piezas tiene un equipo sin pasar por el historial completo de movimientos.
+
+### Reportes de equipos
+
+Pantalla `tecnologia/reportes` (`ReporteEquiposView.vue`) — una sola pantalla de reportes combinables en vez de pantallas separadas por cada tipo de consulta (por empleado, por marca/modelo, por vida útil vencida/vigente son todos, en el fondo, el mismo listado de equipos con distintos filtros). Filtros: **Custodio** (buscador de empleado, mismo patrón que `EquiposView.vue`), **Marca** y **Modelo** (selects poblados con los valores únicos que ya existen en el inventario vía `ReporteEquipoController::filtros()`, no texto libre), **Tipo de equipo**, **Vida útil** (Todos/Vencida/Vigente). No pagina en el backend (el reporte necesita el listado completo para exportar); se pagina 30/pág solo en el frontend para no listar cientos de filas de una vez.
+
+Columna **"🔧 N Piezas"**: si el equipo tiene piezas instaladas (`piezas_instaladas_count` vía `withCount`), un botón abre un modal con el detalle (reutiliza `GET /equipos/{id}/piezas`, el mismo endpoint de `PiezaController::porEquipo` que ya existía pero no estaba conectado a ninguna pantalla).
+
+**Exportar Excel/PDF**: los botones envían los mismos filtros activos en pantalla con `?formato=excel` o `?formato=pdf` — exportan exactamente lo que se está viendo, no todo el inventario. Excel con PhpSpreadsheet (patrón `ob_start()` + `Xlsx->save('php://output')`, sin archivo temporal), encabezado con fondo `#4d7c8a`. PDF con plantilla nueva `resources/views/reportes/ti_reporte_equipos.blade.php` (landscape A4, sin firmas — es un listado, no un documento a firmar).
+
 ### Backend
 
 Controladores en `app/Http/Controllers/Tecnologia/`:
@@ -1534,13 +1857,15 @@ Controladores en `app/Http/Controllers/Tecnologia/`:
 | `TipoEquipoController` | CRUD catálogo de tipos de equipo |
 | `EquipoController` | `index` (paginado 20/pág, filtros tipo/estado/búsqueda/`vida_util_vencida`), `resumen` (conteos por estado + vida útil vencida para las tarjetas del frontend), `store`/`update`, `importarCsv`, `asignar`/`devolver`/`historial`/`marcarBaja`/`marcarDisponible` |
 | `ActividadMantenimientoController` | CRUD catálogo del checklist |
-| `MantenimientoController` | `checklist`, `procesos` (lista fija de procesos de contratación), `pendientes`/`realizados` (con filtros tipo/búsqueda), `store`, `pdf`, `subirFirmado`, `descargarFirmado`, `storeExterno`, `pdfExterno`, `subirFirmadoExterno`, `descargarFirmadoExterno` (estos 4 últimos operan por `lote_externo`, no por `id`) |
+| `MantenimientoController` | `checklist`, `procesos` (lista fija de procesos de contratación), `pendientes`/`realizados` (con filtros tipo/búsqueda), `store` (acepta `piezas[]` opcional — instala piezas nuevas/existentes ligadas al mantenimiento), `pdf`, `subirFirmado`, `descargarFirmado`, `storeExterno`, `pdfExterno`, `subirFirmadoExterno`, `descargarFirmadoExterno` (estos 4 últimos operan por `lote_externo`, no por `id`) |
+| `PiezaController` | `index` (paginado 20/pág, filtros estado/búsqueda), `store`/`update`, `instalar`/`retirar`/`historial`, `marcarBaja`/`marcarDisponible`, `porEquipo` (piezas instaladas/históricas de un equipo — `GET /equipos/{id}/piezas`) |
+| `ReporteEquipoController` | `filtros` (marcas/modelos únicos existentes, para los selects), `index` (sin paginar — filtros custodio/marca/modelo/tipo/vida útil; con `?formato=excel\|pdf` exporta exactamente lo filtrado) |
 
-Modelos en `app/Models/Tecnologia/`: `TipoEquipo`, `Equipo` (`tipoEquipo()`, `asignaciones()`, `asignacionActiva()` — `hasOne` con `whereNull('fecha_devolucion')`; accessor `vida_util_vencida`), `Asignacion`, `ActividadMantenimiento`, `Mantenimiento` (`tecnico()`/`custodio()` → `Empleado`, `detalle()` → `MantenimientoDetalle`), `MantenimientoDetalle` (`$timestamps = false`).
+Modelos en `app/Models/Tecnologia/`: `TipoEquipo`, `Equipo` (`tipoEquipo()`, `asignaciones()`, `asignacionActiva()` — `hasOne` con `whereNull('fecha_devolucion')`; `piezasInstaladas()`; accessor `vida_util_vencida`), `Asignacion`, `ActividadMantenimiento`, `Mantenimiento` (`tecnico()`/`custodio()` → `Empleado`, `detalle()` → `MantenimientoDetalle`), `MantenimientoDetalle` (`$timestamps = false`), `Pieza` (`equipo()`, `movimientos()`), `PiezaMovimiento` (`pieza()`, `equipo()`, `mantenimiento()`).
 
 Rutas bajo `/api/tecnologia/*`, dentro del grupo `auth:sanctum` existente — sin middleware de rol dedicado, mismo patrón del resto del sistema (autorización real es la visibilidad del menú).
 
-Auditado con `AuditoriaService::log()` en `ASIGNAR`, `DEVOLVER`, `DAR_DE_BAJA`, `MARCAR_DISPONIBLE`, `REGISTRAR_MANTENIMIENTO` y `REGISTRAR_MANTENIMIENTO_EXTERNO`.
+Auditado con `AuditoriaService::log()` en `ASIGNAR`, `DEVOLVER`, `DAR_DE_BAJA`, `MARCAR_DISPONIBLE`, `REGISTRAR_MANTENIMIENTO`, `REGISTRAR_MANTENIMIENTO_EXTERNO` (equipos/mantenimiento) e `INSTALAR`/`RETIRAR`/`DAR_DE_BAJA`/`MARCAR_DISPONIBLE` (piezas, tabla `dbo.ti_pieza`).
 
 ### Frontend
 
@@ -1548,14 +1873,22 @@ Auditado con `AuditoriaService::log()` en `ASIGNAR`, `DEVOLVER`, `DAR_DE_BAJA`, 
 layouts/TecnologiaLayout.vue         # Layout azul petróleo #4d7c8a; menú desde auth.menuAgrupado (prefijo tecnologia/)
                                      # Modo mantenimiento: variable MODO_MANTENIMIENTO_TEC; incluye <ChatbotFAB />
 views/tecnologia/
-  EquiposView.vue                    # 6 tarjetas de resumen (Total/Disponibles/Asignados/Dañados/De baja/
-                                     #   Vida útil vencida), clickeables para filtrar la tabla (toggleStatCard)
+  EquiposView.vue                    # 7 tarjetas de resumen (Total/Disponibles/Asignados/Dañados/De baja/
+                                     #   Vida útil vencida/Custodio inactivo), clickeables para filtrar la
+                                     #   tabla (toggleStatCard); badge "⚠ Empleado inactivo" junto al custodio
                                      # Tabla paginada 20/pág: código, equipo (con badge naranja si
                                      #   vida_util_vencida), serie, estado, custodio actual, acciones
                                      #   (Asignar/Devolver como botón sólido; Historial/Editar/Dar de baja
                                      #   como botones de texto con borde — los íconos solos se descartaron
                                      #   por poco visibles). Columna "Condición" removida de la tabla
                                      #   (el campo se sigue editando desde el modal)
+                                     # Equipo DAÑADO: botón "Registrar reparación" (ver sección "Reparación
+                                     #   de equipos dañados" arriba) — modal fecha + qué se hizo, genera acta
+                                     #   como mantenimiento correctivo y pasa el equipo a DISPONIBLE
+                                     # "Dar de baja": modal fecha + motivo + qué acciones se tomaron (obligatorio)
+                                     #   Equipo DE_BAJA: botón "Reactivar" → confirmación simple, vuelve a DISPONIBLE
+                                     #   (por si se dio de baja por error); nota roja bajo el equipo con el
+                                     #   motivo/fecha de la última baja mientras esté en ese estado
                                      # Historial de custodia: línea de tiempo visual (timeline)
                                      # Importar CSV con plantilla de 9 columnas (ver sección arriba)
                                      # Todos los modales (crear/editar, Asignar, Devolver, Importar CSV)
@@ -1568,6 +1901,17 @@ views/tecnologia/
                                      # Técnico y custodio se autocompletan en el backend, no se piden en el form
                                      # Pestaña Realizados agrupa visualmente los mantenimientos EXTERNO por
                                      #   lote_externo (computed realizadosAgrupados, client-side)
+  PiezasView.vue                     # Catálogo de piezas/repuestos (ver sección "Piezas y repuestos" arriba)
+                                     # Tabla: código, descripción (+ fecha de entrega de Bienes), serie, estado,
+                                     #   equipo actual, acciones (Instalar/Retirar/Marcar disponible/Historial/
+                                     #   Editar/Dar de baja). Modal Instalar busca equipo por código/marca/modelo
+                                     #   (mismo endpoint de búsqueda que usa EquiposView)
+                                     # Modal crear/editar exige "Fecha de entrega (Bienes)" — no hay bodega
+                                     #   propia de TI, las piezas llegan ya codificadas desde Bienes
+                                     # Modal Historial: además del equipo, muestra su descripción y el
+                                     #   custodio actual (no solo el código de bien) — modal max-w-2xl
+  ReporteEquiposView.vue             # Ver sección "Reportes de equipos" arriba — filtros combinables
+                                     #   (custodio/marca/modelo/tipo/vida útil) + export Excel/PDF de lo filtrado
   TiposEquipoView.vue                # CRUD catálogo de tipos de equipo
   ActividadesMantenimientoView.vue   # CRUD catálogo del checklist de mantenimiento (nombre + orden + activo)
 ```
@@ -1647,6 +1991,8 @@ PIN\tDateTime\tStatus\tVerify\tWorkcode\tReserved1\tReserved2
 - **Lookup por cédula:** el controller busca al empleado por `identificacion` (cédula 10 dígitos) en `dbo.ad_empleado`, NO por `id_emp`. El `id_emp` (código corto como `00002`) es lo que se guarda en `nro_documento` de `sg_control_persona`
 
 **Lógica de asignación de concepto:** igual que el aplicativo web — cuenta las marcaciones del empleado en el día y asigna la siguiente en la secuencia `ENTRADA → SALIDA AL LUNCH → ENTRADA DEL LUNCH → SALIDA`. Si ya tiene 4, descarta.
+
+**Manejo de errores de BD (desde el incidente 2026-07-17, ver sección Backups):** las 4 rutas (`cdata` en ambos métodos, `getrequest`, `registry`, `devicecmd`) envuelven su lógica en `try/catch`. Ante cualquier excepción (típicamente pérdida de conexión a Postgres) responden `"ERROR"` en texto plano vía el helper privado `errorAdms()`, en el mismo formato que ya usa la respuesta 403 de dispositivo no autorizado — **nunca dejar que una excepción llegue sin capturar aquí**, porque el error 500 en HTML de Laravel no lo reconoce el protocolo ADMS y el reloj no reintenta esa marcación (la da por entregada aunque haya fallado). Un corte de red puro sí se recupera solo (el reloj no recibe respuesta y reintenta), pero una respuesta HTTP de error mal formada no.
 
 ### Endpoints admin — protegidos con Sanctum
 

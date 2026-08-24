@@ -1,6 +1,7 @@
 <?php
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ReportesController;
+use App\Http\Controllers\LotaipController;
 use App\Http\Controllers\RolController;
 use App\Http\Controllers\CuadreController;
 use App\Http\Controllers\DashboardController;
@@ -146,6 +147,7 @@ Route::middleware("auth:sanctum")->group(function () {
     // Dashboard
     Route::get("/dashboard", [DashboardController::class, "index"]);
     Route::get("/dashboard/atrasos-coordinacion", [DashboardController::class, "atrasosCoordinacion"]);
+    Route::get("/dashboard/pendientes", [DashboardController::class, "pendientesSupervisor"]);
 
     // Departamentos
     Route::get("/departamentos", [EmpleadoController::class, "departamentos"]);
@@ -192,6 +194,7 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::get("/acciones-personal/reporte/pdf",            [\App\Http\Controllers\AccionPersonalController::class, "reportePdf"]);
     Route::get("/acciones-personal/reporte/excel",         [\App\Http\Controllers\AccionPersonalController::class, "reporteExcel"]);
     Route::get("/acciones-personal/historial-remuneraciones", [\App\Http\Controllers\AccionPersonalController::class, "historialRemuneraciones"]);
+    Route::get("/acciones-personal/ultima-activa/{id_emp}", [\App\Http\Controllers\AccionPersonalController::class, "ultimaActiva"]);
     Route::get("/acciones-personal",                       [\App\Http\Controllers\AccionPersonalController::class, "index"]);
     Route::post("/acciones-personal",                      [\App\Http\Controllers\AccionPersonalController::class, "store"]);
     Route::get("/acciones-personal/{id}",                  [\App\Http\Controllers\AccionPersonalController::class, "show"]);
@@ -247,6 +250,10 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::get("/reportes/atrasos",               [ReportesController::class, "atrasos"]);
     Route::get("/reportes/marcaciones-faltantes", [ReportesController::class, "marcacionesFaltantes"]);
     Route::get("/reportes/movimientos-personal",  [ReportesController::class, "movimientosPersonal"]);
+
+    // LOTAIP
+    Route::get("/reportes/lotaip/directorio",     [LotaipController::class, "directorio"]);
+    Route::get("/reportes/lotaip/remuneraciones", [LotaipController::class, "remuneraciones"]);
 
     // Períodos de planificación (TH admin)
     Route::get("/admin/periodos-planificacion",          [PeriodoPlanificacionController::class, "index"]);
@@ -463,9 +470,10 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::get("/vacaciones",                   [VacacionesController::class, "index"]);
     Route::post("/vacaciones",                  [VacacionesController::class, "store"]);
     Route::get("/vacaciones/{id}/empleados-depto", [VacacionesController::class, "empleadosDepto"]);
-    Route::patch("/vacaciones/{id}/aprobar",    [VacacionesController::class, "aprobar"]);
-    Route::patch("/vacaciones/{id}/negar",      [VacacionesController::class, "negar"]);
-    Route::delete("/vacaciones/{id}",           [VacacionesController::class, "destroy"]);
+    Route::patch("/vacaciones/{id}/aprobar",         [VacacionesController::class, "aprobar"]);
+    Route::patch("/vacaciones/{id}/negar",           [VacacionesController::class, "negar"]);
+    Route::patch("/vacaciones/{id}/marcar-informe",  [VacacionesController::class, "marcarInforme"]);
+    Route::delete("/vacaciones/{id}",               [VacacionesController::class, "destroy"]);
 
     // Transporte — catálogos
     Route::prefix('transporte')->group(function () {
@@ -511,6 +519,11 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get('movilizacion/{id}/pdf', [TransporteController::class, 'pdfMov']);
 
         Route::get('conductores', [TransporteController::class, 'conductores']);
+
+        // Reportes
+        Route::get('reportes/vales-combustible', [\App\Http\Controllers\Transporte\ReporteTransporteController::class, 'vales']);
+        Route::get('reportes/movilizacion',      [\App\Http\Controllers\Transporte\ReporteTransporteController::class, 'movilizacion']);
+        Route::get('reportes/mantenimiento',     [\App\Http\Controllers\Transporte\ReporteTransporteController::class, 'mantenimiento']);
     });
 
     // Inventario Tecnológico
@@ -532,6 +545,21 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get('equipos/{id}/historial',   [\App\Http\Controllers\Tecnologia\EquipoController::class, 'historial']);
         Route::patch('equipos/{id}/baja',       [\App\Http\Controllers\Tecnologia\EquipoController::class, 'marcarBaja']);
         Route::patch('equipos/{id}/disponible', [\App\Http\Controllers\Tecnologia\EquipoController::class, 'marcarDisponible']);
+        Route::get('equipos/{id}/piezas',       [\App\Http\Controllers\Tecnologia\PiezaController::class, 'porEquipo']);
+
+        // Piezas / repuestos
+        Route::get('piezas',                  [\App\Http\Controllers\Tecnologia\PiezaController::class, 'index']);
+        Route::post('piezas',                 [\App\Http\Controllers\Tecnologia\PiezaController::class, 'store']);
+        Route::put('piezas/{id}',             [\App\Http\Controllers\Tecnologia\PiezaController::class, 'update']);
+        Route::patch('piezas/{id}/instalar',  [\App\Http\Controllers\Tecnologia\PiezaController::class, 'instalar']);
+        Route::patch('piezas/{id}/retirar',   [\App\Http\Controllers\Tecnologia\PiezaController::class, 'retirar']);
+        Route::patch('piezas/{id}/baja',       [\App\Http\Controllers\Tecnologia\PiezaController::class, 'marcarBaja']);
+        Route::patch('piezas/{id}/disponible', [\App\Http\Controllers\Tecnologia\PiezaController::class, 'marcarDisponible']);
+        Route::get('piezas/{id}/historial',    [\App\Http\Controllers\Tecnologia\PiezaController::class, 'historial']);
+
+        // Reportes de equipos
+        Route::get('reportes/equipos/filtros', [\App\Http\Controllers\Tecnologia\ReporteEquipoController::class, 'filtros']);
+        Route::get('reportes/equipos',         [\App\Http\Controllers\Tecnologia\ReporteEquipoController::class, 'index']);
 
         // Actividades del checklist de mantenimiento
         Route::get('actividades-mantenimiento',      [\App\Http\Controllers\Tecnologia\ActividadMantenimientoController::class, 'index']);

@@ -43,7 +43,7 @@ table.main tbody td { padding: 3px 3px; border: 1px solid #d1d5db; font-size: 6.
     </td>
     <td>
       <div class="inst-name">{{ $nombreInst }}</div>
-      <div class="report-title">Nómina de Personal</div>
+      <div class="report-title">{{ $titulo ?? 'Nómina de Personal' }}</div>
       <div class="report-sub">Generado: {{ now()->format('d/m/Y H:i') }} &nbsp;|&nbsp; Total: {{ count($empleados) }} empleado(s)</div>
     </td>
   </tr>
@@ -66,6 +66,7 @@ table.main tbody td { padding: 3px 3px; border: 1px solid #d1d5db; font-size: 6.
       <th style="width:9%">Sust. Vence</th>
       <th style="width:4%">H&lt;5</th>
       <th style="width:4%">Veh.</th>
+      <th style="width:5%">Años Serv.</th>
     </tr>
   </thead>
   <tbody>
@@ -105,13 +106,14 @@ table.main tbody td { padding: 3px 3px; border: 1px solid #d1d5db; font-size: 6.
       </td>
       <td class="text-center">{{ ($e->hijos_menores_5 ?? 0) > 0 ? $e->hijos_menores_5 : '—' }}</td>
       <td class="text-center">{{ $e->puede_solicitar_vehiculo ? 'Sí' : 'No' }}</td>
+      <td class="text-center">{{ $e->anios_servicio !== null ? $e->anios_servicio : '—' }}</td>
     </tr>
     @empty
-    <tr><td colspan="13" style="text-align:center; padding:12px; color:#888;">Sin resultados</td></tr>
+    <tr><td colspan="14" style="text-align:center; padding:12px; color:#888;">Sin resultados</td></tr>
     @endforelse
     @if(count($empleados))
     <tr class="total-row">
-      <td colspan="13" style="text-align:right; padding:3px 6px;">
+      <td colspan="14" style="text-align:right; padding:3px 6px;">
         Total: {{ count($empleados) }} empleado(s)
       </td>
     </tr>

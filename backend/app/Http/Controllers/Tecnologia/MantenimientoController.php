@@ -7,6 +7,8 @@ use App\Models\Tecnologia\Asignacion;
 use App\Models\Tecnologia\Equipo;
 use App\Models\Tecnologia\Mantenimiento;
 use App\Models\Tecnologia\MantenimientoDetalle;
+use App\Models\Tecnologia\Pieza;
+use App\Models\Tecnologia\PiezaMovimiento;
 use App\Services\AuditoriaService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -15,10 +17,20 @@ use Illuminate\Support\Facades\Http;
 
 class MantenimientoController extends Controller
 {
-    private string $alfrescoBase = 'http://192.168.26.38:8080/alfresco/api/-default-/public/alfresco/versions/1';
-    private string $alfrescoUser = 'admin';
-    private string $alfrescoPass = 'admin';
-    private string $alfrescoSite = 'talentohumano';
+    private const ROLES_TEC = ['ADMINISTRADOR', 'TECNOLOGIA'];
+
+    private string $alfrescoBase;
+    private string $alfrescoUser;
+    private string $alfrescoPass;
+    private string $alfrescoSite;
+
+    public function __construct()
+    {
+        $this->alfrescoBase = config('services.alfresco.base');
+        $this->alfrescoUser = config('services.alfresco.user');
+        $this->alfrescoPass = config('services.alfresco.pass');
+        $this->alfrescoSite = config('services.alfresco.site');
+    }
 
     public const PROCESOS_CONTRATACION = [
         'ÍNFIMA CUANTÍA', 'SUBASTA INVERSA', 'CATÁLOGO ELECTRÓNICO', 'CONTRATACIÓN DIRECTA', 'OTRO',
@@ -65,19 +77,21 @@ class MantenimientoController extends Controller
         return $create->json('entry.id');
     }
 
-    public function checklist()
+    public function checklist(Request $request)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         return response()->json(ActividadMantenimiento::where('estado', true)->orderBy('orden')->get());
     }
 
     public function pendientes(Request $request)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $anio = $request->input('anio', now()->year);
 
         $query = Equipo::with(['tipoEquipo', 'asignacionActiva.empleado'])
             ->where('estado', '!=', 'DE_BAJA')
             ->whereNotIn('id', function ($q) use ($anio) {
-                $q->select('equipo_id')->from('dbo.ti_mantenimiento')->where('anio', $anio);
+                $q->select('equipo_id')->from('dbo.ti_mantenimiento')->where('anio', $anio)->where('tipo', 'PREVENTIVO');
             })
             ->orderBy('codigo_bien');
 
@@ -100,6 +114,7 @@ class MantenimientoController extends Controller
 
     public function realizados(Request $request)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $anio = $request->input('anio', now()->year);
 
         $query = Mantenimiento::with(['equipo.tipoEquipo', 'tecnico', 'custodio'])
@@ -125,50 +140,103 @@ class MantenimientoController extends Controller
 
     public function store(Request $request)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $request->validate([
             'equipo_id'           => 'required|exists:pgsql.dbo.ti_equipo,id',
             'fecha_mantenimiento' => 'required|date',
-            'hora_inicio'         => 'required',
-            'hora_fin'            => 'required',
+            'hora_inicio'         => 'nullable',
+            'hora_fin'            => 'nullable',
             'tipo'                => 'nullable|in:PREVENTIVO,CORRECTIVO',
             'observaciones'       => 'nullable|string',
-            'checklist'                    => 'required|array|min:1',
-            'checklist.*.actividad_id'     => 'required|exists:pgsql.dbo.ti_actividad_mantenimiento,id',
-            'checklist.*.realizado'        => 'required|boolean',
+            'checklist'                    => 'nullable|array',
+            'checklist.*.actividad_id'     => 'required_with:checklist|exists:pgsql.dbo.ti_actividad_mantenimiento,id',
+            'checklist.*.realizado'        => 'required_with:checklist|boolean',
+            'piezas'                       => 'nullable|array',
+            'piezas.*.pieza_id'            => 'nullable|exists:pgsql.dbo.ti_pieza,id',
+            'piezas.*.codigo'              => 'nullable|string|max:50',
+            'piezas.*.serie'               => 'nullable|string|max:100',
+            'piezas.*.descripcion'         => 'nullable|string|max:300',
         ]);
 
+        $tipo = $request->tipo ?? 'PREVENTIVO';
         $anio = (int) date('Y', strtotime($request->fecha_mantenimiento));
 
-        if (Mantenimiento::where('equipo_id', $request->equipo_id)->where('anio', $anio)->exists()) {
-            return response()->json(['message' => 'Este equipo ya tiene un mantenimiento registrado para ese año.'], 422);
+        if ($tipo === 'PREVENTIVO'
+            && Mantenimiento::where('equipo_id', $request->equipo_id)->where('anio', $anio)->where('tipo', 'PREVENTIVO')->exists()) {
+            return response()->json(['message' => 'Este equipo ya tiene el mantenimiento preventivo registrado para ese año.'], 422);
+        }
+
+        foreach ($request->input('piezas', []) as $item) {
+            if (!empty($item['pieza_id'])) {
+                $pieza = Pieza::find($item['pieza_id']);
+                if (!$pieza || $pieza->estado !== 'DISPONIBLE') {
+                    return response()->json(['message' => 'Una de las piezas seleccionadas ya no está disponible.'], 422);
+                }
+            } elseif (empty($item['descripcion'])) {
+                return response()->json(['message' => 'Cada pieza nueva requiere una descripción.'], 422);
+            }
         }
 
         $idEmpCustodio = Asignacion::where('equipo_id', $request->equipo_id)
             ->whereNull('fecha_devolucion')
             ->value('id_emp');
 
-        $mantenimiento = Mantenimiento::create([
-            'equipo_id'           => $request->equipo_id,
-            'anio'                => $anio,
-            'fecha_mantenimiento' => $request->fecha_mantenimiento,
-            'hora_inicio'         => $request->hora_inicio,
-            'hora_fin'            => $request->hora_fin,
-            'tipo'                => $request->tipo ?? 'PREVENTIVO',
-            'id_emp_tecnico'      => $request->user()->id_emp,
-            'id_emp_custodio'     => $idEmpCustodio,
-            'observaciones'       => $request->observaciones,
-            'created_by'          => $request->user()->id_emp,
-        ]);
-
-        foreach ($request->checklist as $item) {
-            MantenimientoDetalle::create([
-                'mantenimiento_id' => $mantenimiento->id,
-                'actividad_id'     => $item['actividad_id'],
-                'realizado'        => $item['realizado'],
+        $mantenimiento = DB::transaction(function () use ($request, $tipo, $anio, $idEmpCustodio) {
+            $mantenimiento = Mantenimiento::create([
+                'equipo_id'           => $request->equipo_id,
+                'anio'                => $anio,
+                'fecha_mantenimiento' => $request->fecha_mantenimiento,
+                'hora_inicio'         => $request->hora_inicio,
+                'hora_fin'            => $request->hora_fin,
+                'tipo'                => $tipo,
+                'id_emp_tecnico'      => $request->user()->id_emp,
+                'id_emp_custodio'     => $idEmpCustodio,
+                'observaciones'       => $request->observaciones,
+                'created_by'          => $request->user()->id_emp,
             ]);
-        }
 
-        Equipo::whereKey($request->equipo_id)->update(['ultimo_mantenimiento' => $request->fecha_mantenimiento]);
+            foreach ($request->input('checklist', []) as $item) {
+                MantenimientoDetalle::create([
+                    'mantenimiento_id' => $mantenimiento->id,
+                    'actividad_id'     => $item['actividad_id'],
+                    'realizado'        => $item['realizado'],
+                ]);
+            }
+
+            foreach ($request->input('piezas', []) as $item) {
+                if (!empty($item['pieza_id'])) {
+                    $pieza = Pieza::findOrFail($item['pieza_id']);
+                } else {
+                    $pieza = Pieza::create([
+                        'codigo'        => $item['codigo'] ?? null,
+                        'serie'         => $item['serie'] ?? null,
+                        'descripcion'   => $item['descripcion'],
+                        'fecha_entrega' => $request->fecha_mantenimiento,
+                        'estado'        => 'DISPONIBLE',
+                        'created_by'    => $request->user()->id_emp,
+                    ]);
+                }
+
+                PiezaMovimiento::create([
+                    'pieza_id'          => $pieza->id,
+                    'equipo_id'         => $request->equipo_id,
+                    'mantenimiento_id'  => $mantenimiento->id,
+                    'fecha_instalacion' => $request->fecha_mantenimiento,
+                    'usuario_instala'   => $request->user()->id_emp,
+                ]);
+
+                $pieza->update(['estado' => 'INSTALADA', 'equipo_id' => $request->equipo_id, 'updated_by' => $request->user()->id_emp]);
+            }
+
+            $equipoActual = Equipo::findOrFail($request->equipo_id);
+            $datosEquipo  = ['ultimo_mantenimiento' => $request->fecha_mantenimiento, 'updated_by' => $request->user()->id_emp];
+            if ($tipo === 'CORRECTIVO' && $equipoActual->estado === 'DAÑADO') {
+                $datosEquipo['estado'] = 'DISPONIBLE';
+            }
+            $equipoActual->update($datosEquipo);
+
+            return $mantenimiento;
+        });
 
         AuditoriaService::log('dbo.ti_mantenimiento', $mantenimiento->id, 'REGISTRAR_MANTENIMIENTO',
             null,
@@ -178,13 +246,15 @@ class MantenimientoController extends Controller
         return response()->json($mantenimiento->load(['equipo.tipoEquipo', 'tecnico', 'custodio']), 201);
     }
 
-    public function procesos()
+    public function procesos(Request $request)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         return response()->json(self::PROCESOS_CONTRATACION);
     }
 
     public function storeExterno(Request $request)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $request->validate([
             'tipo_equipo_id'       => 'required|exists:pgsql.dbo.ti_tipo_equipo,id',
             'fecha_mantenimiento'  => 'required|date',
@@ -199,7 +269,7 @@ class MantenimientoController extends Controller
         $equipos = Equipo::where('tipo_equipo_id', $request->tipo_equipo_id)
             ->where('estado', '!=', 'DE_BAJA')
             ->whereNotIn('id', function ($q) use ($anio) {
-                $q->select('equipo_id')->from('dbo.ti_mantenimiento')->where('anio', $anio);
+                $q->select('equipo_id')->from('dbo.ti_mantenimiento')->where('anio', $anio)->where('tipo', 'PREVENTIVO');
             })
             ->get();
 
@@ -246,8 +316,9 @@ class MantenimientoController extends Controller
         ], 201);
     }
 
-    public function pdf($id)
+    public function pdf(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $m = Mantenimiento::with(['equipo.tipoEquipo', 'tecnico', 'custodio', 'detalle.actividad'])->findOrFail($id);
         $detalle = $m->detalle->sortBy(fn ($d) => $d->actividad->orden ?? 0)->values();
         $logo = $this->logoBase64();
@@ -260,6 +331,7 @@ class MantenimientoController extends Controller
 
     public function subirFirmado($id, Request $request)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $request->validate(['archivo' => 'required|file|mimes:pdf|max:10240']);
 
         $m = Mantenimiento::with('equipo')->findOrFail($id);
@@ -285,8 +357,9 @@ class MantenimientoController extends Controller
         return response()->json(['message' => 'Acta firmada subida correctamente', 'acta_alfresco_id' => $m->acta_alfresco_id]);
     }
 
-    public function descargarFirmado($id)
+    public function descargarFirmado(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $m = Mantenimiento::findOrFail($id);
 
         if (!$m->acta_alfresco_id) {
@@ -306,8 +379,9 @@ class MantenimientoController extends Controller
         ]);
     }
 
-    public function pdfExterno($lote)
+    public function pdfExterno(Request $request, $lote)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $registros = Mantenimiento::with(['equipo.tipoEquipo'])
             ->where('lote_externo', $lote)
             ->orderBy('id')
@@ -326,6 +400,7 @@ class MantenimientoController extends Controller
 
     public function subirFirmadoExterno($lote, Request $request)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $request->validate(['archivo' => 'required|file|mimes:pdf|max:10240']);
 
         $registros = Mantenimiento::where('lote_externo', $lote)->get();
@@ -356,8 +431,9 @@ class MantenimientoController extends Controller
         return response()->json(['message' => 'Acta firmada subida correctamente', 'acta_alfresco_id' => $upload->json('entry.id')]);
     }
 
-    public function descargarFirmadoExterno($lote)
+    public function descargarFirmadoExterno(Request $request, $lote)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $m = Mantenimiento::where('lote_externo', $lote)->first();
         if (!$m) abort(404);
 

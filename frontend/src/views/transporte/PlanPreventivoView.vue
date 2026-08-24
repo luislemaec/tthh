@@ -11,7 +11,7 @@
           Importar CSV
           <input type="file" accept=".csv" class="hidden" @change="importarCsv" />
         </label>
-        <button @click="abrirCrear" class="text-white px-4 py-2 rounded-lg text-sm hover:opacity-90"
+        <button @click="abrirCrear()" class="text-white px-4 py-2 rounded-lg text-sm hover:opacity-90"
           style="background-color:#1e3a5f;">
           + Nuevo plan
         </button>
@@ -27,69 +27,92 @@
       </ul>
     </div>
 
-    <!-- Filtro vehículo -->
-    <div class="flex gap-3 mb-4">
-      <select v-model="filtroVehiculo" @change="pagina = 1" class="border rounded-lg px-3 py-2 text-sm">
-        <option value="">Todos los vehículos</option>
-        <option v-for="v in vehiculos" :key="v.id" :value="v.id">
-          {{ v.placa }} — {{ v.marca }} {{ v.modelo }}
-        </option>
-      </select>
+    <!-- Buscador de vehículo + expandir/colapsar -->
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <input v-model="busqueda" type="text" placeholder="Buscar vehículo por placa, marca o modelo..."
+        class="border rounded-lg px-3 py-2 text-sm flex-1 min-w-[220px]" />
+      <label class="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none">
+        <input type="checkbox" v-model="soloConPlanes" class="rounded" />
+        Solo con planes
+      </label>
+      <button @click="expandirTodo" class="text-xs text-gray-600 hover:text-gray-900 border border-gray-300 px-3 py-1.5 rounded-lg">
+        Expandir todo
+      </button>
+      <button @click="colapsarTodo" class="text-xs text-gray-600 hover:text-gray-900 border border-gray-300 px-3 py-1.5 rounded-lg">
+        Colapsar todo
+      </button>
     </div>
 
+    <!-- Acordeón por vehículo -->
     <div class="space-y-2">
-      <div v-if="!listaFiltrada.length" class="bg-white rounded-xl shadow p-8 text-center text-gray-400">
-        Sin planes registrados
+      <div v-if="!gruposFiltrados.length" class="bg-white rounded-xl shadow p-8 text-center text-gray-400">
+        Sin vehículos que coincidan
       </div>
 
-      <div v-for="p in listaPaginada" :key="p.id"
-           class="bg-white rounded-xl shadow px-5 py-3 flex justify-between items-center gap-3">
-        <div class="min-w-0 flex-1">
-          <p class="font-semibold text-gray-800">
-            {{ p.nombre }}
-            <span class="text-gray-400 font-normal text-xs ml-2">
-              {{ p.vehiculo?.placa }} · {{ p.vehiculo?.marca }} {{ p.vehiculo?.modelo }}
+      <div v-for="g in gruposFiltrados" :key="g.vehiculo.id"
+           class="bg-white rounded-xl shadow overflow-hidden">
+        <!-- Cabecera vehículo -->
+        <div class="flex items-center justify-between px-5 py-3 cursor-pointer hover:bg-gray-50"
+             @click="toggleVehiculo(g.vehiculo.id)">
+          <div class="flex items-center gap-3 min-w-0">
+            <svg class="w-4 h-4 text-gray-400 flex-shrink-0 transition-transform"
+              :class="abiertos.has(g.vehiculo.id) ? 'rotate-90' : ''"
+              fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+            <span class="font-semibold text-gray-800 truncate">{{ g.vehiculo.placa }}</span>
+            <span class="text-gray-500 text-sm truncate">{{ g.vehiculo.marca }} {{ g.vehiculo.modelo }}</span>
+          </div>
+          <div class="flex items-center gap-2 flex-shrink-0">
+            <span :class="g.planes.length ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'"
+              class="px-2 py-0.5 rounded-full text-xs font-medium">
+              {{ g.planes.length }} plan{{ g.planes.length !== 1 ? 'es' : '' }}
             </span>
-          </p>
-          <p class="text-xs text-gray-500 mt-0.5">
-            Hito: {{ p.km_hito?.toLocaleString() }} km ·
-            {{ p.actividades?.length || 0 }} actividad{{ (p.actividades?.length || 0) !== 1 ? 'es' : '' }}
-          </p>
+            <button @click.stop="abrirCrear(g.vehiculo.id)"
+              class="text-xs text-blue-700 hover:text-blue-900 font-medium border border-blue-200 px-2 py-1 rounded-lg">
+              + Plan
+            </button>
+          </div>
         </div>
-        <div class="flex items-center gap-2 flex-shrink-0">
-          <span :class="p.estado === 'ACTIVO' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
-            class="px-2 py-0.5 rounded-full text-xs font-medium">
-            {{ p.estado }}
-          </span>
-          <button @click="abrirVer(p)"
-            class="text-xs text-gray-600 hover:text-gray-900 font-medium border border-gray-300 px-3 py-1 rounded-lg">
-            Ver
-          </button>
-          <button @click="abrirEditar(p)"
-            class="text-xs text-gray-600 hover:text-gray-900 font-medium border border-gray-300 px-3 py-1 rounded-lg">
-            Editar
-          </button>
-        </div>
-      </div>
-    </div>
 
-    <!-- Paginador -->
-    <div v-if="listaFiltrada.length > 0" class="flex items-center justify-between mt-4">
-      <div class="flex items-center gap-2 text-sm text-gray-600">
-        <span>Mostrar</span>
-        <select v-model="porPagina" @change="pagina = 1" class="border rounded px-2 py-1 text-sm">
-          <option :value="10">10</option>
-          <option :value="25">25</option>
-          <option :value="50">50</option>
-        </select>
-        <span>por página · {{ listaFiltrada.length }} total</span>
-      </div>
-      <div class="flex gap-1">
-        <button @click="pagina--" :disabled="pagina === 1"
-          class="px-3 py-1 text-sm border rounded disabled:opacity-40">‹</button>
-        <span class="px-3 py-1 text-sm text-gray-600">{{ pagina }} / {{ totalPaginas }}</span>
-        <button @click="pagina++" :disabled="pagina === totalPaginas"
-          class="px-3 py-1 text-sm border rounded disabled:opacity-40">›</button>
+        <!-- Planes del vehículo (expandible) -->
+        <div v-if="abiertos.has(g.vehiculo.id)" class="border-t px-5 py-3 space-y-2">
+          <p v-if="!g.planes.length" class="text-xs text-gray-400 italic">
+            Sin planes registrados para este vehículo.
+          </p>
+          <div v-for="p in g.planes" :key="p.id"
+               class="bg-gray-50 rounded-lg px-4 py-2.5 flex justify-between items-center gap-3">
+            <div class="min-w-0 flex-1">
+              <p class="font-medium text-gray-800 text-sm">{{ p.nombre }}</p>
+              <p class="text-xs text-gray-500 mt-0.5">
+                Hito: {{ p.km_hito?.toLocaleString() }} km ·
+                {{ p.actividades?.length || 0 }} actividad{{ (p.actividades?.length || 0) !== 1 ? 'es' : '' }}
+              </p>
+            </div>
+            <div class="flex items-center gap-2 flex-shrink-0">
+              <span v-if="p.ejecutado" title="Ya se registró un mantenimiento finalizado para este hito"
+                class="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                ✓ Ejecutado
+              </span>
+              <span :class="p.estado === 'ACTIVO' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
+                class="px-2 py-0.5 rounded-full text-xs font-medium">
+                {{ p.estado }}
+              </span>
+              <button @click="abrirVer(p)"
+                class="text-xs text-gray-600 hover:text-gray-900 font-medium border border-gray-300 px-3 py-1 rounded-lg bg-white">
+                Ver
+              </button>
+              <button @click="abrirEditar(p)"
+                class="text-xs text-gray-600 hover:text-gray-900 font-medium border border-gray-300 px-3 py-1 rounded-lg bg-white">
+                Editar
+              </button>
+              <button @click="abrirDuplicar(p)"
+                class="text-xs text-blue-700 hover:text-blue-900 font-medium border border-blue-200 px-3 py-1 rounded-lg bg-white">
+                Duplicar
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -98,7 +121,7 @@
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[85vh]">
         <div class="px-6 py-4 flex justify-between items-center flex-shrink-0" style="background-color:#1e3a5f;">
           <h2 class="text-lg font-bold text-white">{{ modalVer.plan?.nombre }}</h2>
-          <button @click="modalVer.show = false" class="text-white/70 hover:text-white text-xl leading-none">&times;</button>
+          <button @click="modalVer.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6 overflow-y-auto">
         <p class="text-xs text-gray-500 mb-4">
@@ -139,10 +162,11 @@
     <!-- Modal crear/editar -->
     <div v-if="modal.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
-        <div class="px-6 py-4 flex-shrink-0" style="background-color:#1e3a5f;">
+        <div class="flex items-center justify-between px-6 py-4 flex-shrink-0" style="background-color:#1e3a5f;">
           <h2 class="text-lg font-bold text-white">
             {{ modal.id ? 'Editar Plan Preventivo' : 'Nuevo Plan Preventivo' }}
           </h2>
+          <button @click="modal.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6 overflow-y-auto">
         <div class="space-y-3">
@@ -235,24 +259,42 @@ const vehiculos     = ref([])
 const msgImport     = ref({ texto: '', ok: true, errores: [] })
 const guardando     = ref(false)
 const error         = ref('')
-const pagina        = ref(1)
-const porPagina     = ref(10)
-const filtroVehiculo = ref('')
+const busqueda      = ref('')
+const soloConPlanes = ref(false)
+const abiertos      = ref(new Set())
 const modal         = ref({ show: false, id: null })
 const modalVer      = ref({ show: false, plan: null })
 const listaActRef   = ref(null)
 const form          = ref({ actividades: [] })
 
-const listaFiltrada = computed(() =>
-  filtroVehiculo.value
-    ? lista.value.filter(p => p.vehiculo_id == filtroVehiculo.value)
-    : lista.value
+// Agrupa los planes por vehículo — así no hay que buscar plan por plan en una lista plana.
+const grupos = computed(() =>
+  vehiculos.value.map(v => ({
+    vehiculo: v,
+    planes: lista.value.filter(p => p.vehiculo_id === v.id),
+  }))
 )
-const totalPaginas = computed(() => Math.max(1, Math.ceil(listaFiltrada.value.length / porPagina.value)))
-const listaPaginada = computed(() => {
-  const ini = (pagina.value - 1) * porPagina.value
-  return listaFiltrada.value.slice(ini, ini + porPagina.value)
+
+const gruposFiltrados = computed(() => {
+  const q = busqueda.value.trim().toLowerCase()
+  return grupos.value.filter(g => {
+    if (soloConPlanes.value && !g.planes.length) return false
+    if (!q) return true
+    return `${g.vehiculo.placa} ${g.vehiculo.marca} ${g.vehiculo.modelo}`.toLowerCase().includes(q)
+  })
 })
+
+function toggleVehiculo(id) {
+  if (abiertos.value.has(id)) abiertos.value.delete(id)
+  else abiertos.value.add(id)
+  abiertos.value = new Set(abiertos.value)
+}
+function expandirTodo() {
+  abiertos.value = new Set(gruposFiltrados.value.map(g => g.vehiculo.id))
+}
+function colapsarTodo() {
+  abiertos.value = new Set()
+}
 
 function descargarPlantilla() {
   const contenido = [
@@ -305,8 +347,8 @@ function abrirVer(p) {
   modalVer.value = { show: true, plan: p }
 }
 
-function abrirCrear() {
-  form.value = { vehiculo_id: '', km_hito: null, nombre: '', actividades: [{ tipo_actividad: 'MO', cantidad: 1, actividad: '' }] }
+function abrirCrear(vehiculoId = '') {
+  form.value = { vehiculo_id: vehiculoId, km_hito: null, nombre: '', actividades: [{ tipo_actividad: 'MO', cantidad: 1, actividad: '' }] }
   modal.value = { show: true, id: null }
   error.value = ''
 }
@@ -324,6 +366,23 @@ function abrirEditar(p) {
     })),
   }
   modal.value = { show: true, id: p.id }
+  error.value = ''
+}
+
+function abrirDuplicar(p) {
+  // Copia el vehículo y las actividades para no volver a digitar todo — km_hito y nombre
+  // quedan vacíos a propósito para forzar a indicar el nuevo hito (es un plan NUEVO, no una edición).
+  form.value = {
+    vehiculo_id: p.vehiculo_id,
+    km_hito:     null,
+    nombre:      '',
+    actividades: (p.actividades || []).map(a => ({
+      tipo_actividad: a.tipo_actividad || 'MO',
+      cantidad:       a.cantidad || 1,
+      actividad:      a.actividad,
+    })),
+  }
+  modal.value = { show: true, id: null }
   error.value = ''
 }
 

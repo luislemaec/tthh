@@ -8,16 +8,20 @@ use Illuminate\Support\Facades\DB;
 
 class AportesIessController extends Controller
 {
+    private const ROLES_NOMINA = ['ADMINISTRADOR', 'TH NOMINA', 'TALENTO HUMANO'];
+
     // GET /api/admin/aportes-iess
-    public function index()
+    public function index(Request $request)
     {
+        $this->requireRole($request, self::ROLES_NOMINA);
         $aportes = AportesIess::orderByDesc('fecha_desde')->get();
         return response()->json($aportes);
     }
 
     // GET /api/admin/aportes-iess/vigentes
-    public function vigentes()
+    public function vigentes(Request $request)
     {
+        $this->requireRole($request, self::ROLES_NOMINA);
         $aportes = AportesIess::whereNull('fecha_hasta')
             ->orWhere('fecha_hasta', '>=', now()->toDateString())
             ->orderByDesc('fecha_desde')
@@ -30,6 +34,7 @@ class AportesIessController extends Controller
     // POST /api/admin/aportes-iess
     public function store(Request $request)
     {
+        $this->requireRole($request, self::ROLES_NOMINA);
         $request->validate([
             'modalidad'         => 'required|string|max:100',
             'aporte_individual' => 'required|numeric|min:0|max:100',
@@ -72,6 +77,7 @@ class AportesIessController extends Controller
     // PUT /api/admin/aportes-iess/{id}
     public function update(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_NOMINA);
         $request->validate([
             'modalidad'         => 'required|string|max:100',
             'aporte_individual' => 'required|numeric|min:0|max:100',
@@ -102,8 +108,9 @@ class AportesIessController extends Controller
     }
 
     // DELETE /api/admin/aportes-iess/{id}
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_NOMINA);
         AportesIess::findOrFail($id)->delete();
         return response()->json(['message' => 'Eliminado correctamente.']);
     }

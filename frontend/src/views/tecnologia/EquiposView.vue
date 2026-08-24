@@ -15,7 +15,7 @@
     </div>
 
     <!-- Tarjetas de resumen -->
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-5">
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 mb-5">
       <button v-for="c in statCards" :key="c.key" @click="toggleStatCard(c)"
         class="rounded-xl p-4 text-left border-l-4 bg-white shadow-sm transition hover:shadow-md hover:-translate-y-0.5"
         :class="[c.borde, activoStatCard(c) ? 'ring-2 ring-offset-1' : '']"
@@ -86,6 +86,9 @@
                 <p class="text-xs text-gray-400">
                   {{ e.tipo_equipo?.nombre }}<span v-if="e.descripcion"> · {{ e.descripcion }}</span>
                 </p>
+                <p v-if="e.estado === 'DE_BAJA' && e.motivo_baja" class="text-xs text-red-500 mt-0.5">
+                  Baja: {{ motivoBajaLabel(e.motivo_baja) }} ({{ e.fecha_baja }})
+                </p>
               </td>
               <td class="px-4 py-3 text-gray-500 text-xs">{{ e.serie || '—' }}</td>
               <td class="px-4 py-3">
@@ -98,6 +101,9 @@
                   {{ e.asignacion_activa.empleado?.apellido_emp }} {{ e.asignacion_activa.empleado?.nombre_emp }}
                 </span>
                 <span v-else class="text-gray-300">—</span>
+                <span v-if="e.custodio_inactivo" class="block mt-0.5 text-[10px] font-semibold text-red-700 bg-red-100 px-1.5 py-0.5 rounded w-fit">
+                  ⚠ Empleado inactivo
+                </span>
               </td>
               <td class="px-4 py-3">
                 <div class="flex items-center justify-end gap-1.5 flex-wrap">
@@ -109,9 +115,9 @@
                     class="text-xs text-white font-medium px-3 py-1 rounded-lg bg-amber-600 hover:bg-amber-700">
                     Devolver
                   </button>
-                  <button v-if="e.estado === 'DAÑADO'" @click="marcarDisponible(e)"
+                  <button v-if="e.estado === 'DAÑADO'" @click="abrirReparacion(e)"
                     class="text-xs text-white font-medium px-3 py-1 rounded-lg bg-green-600 hover:bg-green-700">
-                    Disponible
+                    Registrar reparación
                   </button>
                   <button @click="abrirHistorial(e)"
                     class="text-xs text-gray-600 hover:text-gray-900 font-medium border border-gray-300 px-3 py-1 rounded-lg hover:bg-gray-50">
@@ -121,9 +127,13 @@
                     class="text-xs text-gray-600 hover:text-gray-900 font-medium border border-gray-300 px-3 py-1 rounded-lg hover:bg-gray-50">
                     Editar
                   </button>
-                  <button v-if="e.estado !== 'ASIGNADO' && e.estado !== 'DE_BAJA'" @click="marcarBaja(e)"
+                  <button v-if="e.estado !== 'ASIGNADO' && e.estado !== 'DE_BAJA'" @click="abrirBaja(e)"
                     class="text-xs text-red-600 hover:text-red-800 font-medium border border-red-200 px-3 py-1 rounded-lg hover:bg-red-50">
                     Dar de baja
+                  </button>
+                  <button v-if="e.estado === 'DE_BAJA'" @click="reactivar(e)"
+                    class="text-xs text-white font-medium px-3 py-1 rounded-lg bg-green-600 hover:bg-green-700">
+                    Reactivar
                   </button>
                 </div>
               </td>
@@ -147,7 +157,7 @@
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
         <div class="px-6 py-4 flex items-center justify-between" style="background-color:#4d7c8a;">
           <h2 class="text-lg font-bold text-white">{{ modal.id ? 'Editar Equipo' : 'Nuevo Equipo' }}</h2>
-          <button @click="modal.show = false" class="text-white/80 hover:text-white text-xl leading-none">&times;</button>
+          <button @click="modal.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6 max-h-[70vh] overflow-y-auto">
           <div class="space-y-3">
@@ -234,7 +244,7 @@
             <h2 class="text-lg font-bold text-white">Asignar Equipo</h2>
             <p class="text-white/80 text-xs mt-0.5">{{ modalAsignar.equipo?.codigo_bien }}</p>
           </div>
-          <button @click="modalAsignar.show = false" class="text-white/80 hover:text-white text-xl leading-none">&times;</button>
+          <button @click="modalAsignar.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6">
           <label class="block text-xs font-semibold text-gray-600 mb-1">Buscar empleado *</label>
@@ -245,9 +255,15 @@
           <div v-if="resultadosBusqueda.length > 0 && !empleadoSeleccionado"
             class="mt-2 border rounded-lg divide-y max-h-48 overflow-y-auto shadow-sm">
             <button v-for="emp in resultadosBusqueda" :key="emp.id_emp" @click="seleccionarEmpleado(emp)"
-              class="w-full text-left px-4 py-2.5 hover:bg-gray-50 text-sm transition">
-              <span class="font-medium">{{ emp.apellido_emp }} {{ emp.nombre_emp }}</span>
-              <span class="text-gray-400 ml-2 text-xs">{{ emp.identificacion }}</span>
+              class="w-full text-left px-4 py-2.5 hover:bg-gray-50 text-sm transition flex items-center justify-between gap-2">
+              <span>
+                <span class="font-medium">{{ emp.apellido_emp }} {{ emp.nombre_emp }}</span>
+                <span class="text-gray-400 ml-2 text-xs">{{ emp.identificacion }}</span>
+              </span>
+              <span :class="emp.estado === 'ACTIVO' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
+                class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0">
+                {{ emp.estado }}
+              </span>
             </button>
           </div>
 
@@ -255,6 +271,9 @@
             <div>
               <p class="font-semibold text-gray-800">{{ empleadoSeleccionado.apellido_emp }} {{ empleadoSeleccionado.nombre_emp }}</p>
               <p class="text-xs text-gray-500">{{ empleadoSeleccionado.identificacion }}</p>
+              <span v-if="empleadoSeleccionado.estado !== 'ACTIVO'" class="inline-block mt-1 text-[10px] font-semibold text-red-700 bg-red-100 px-1.5 py-0.5 rounded-full">
+                ⚠ Empleado {{ empleadoSeleccionado.estado }}
+              </span>
             </div>
             <button @click="empleadoSeleccionado = null; busquedaEmp = ''" class="text-gray-400 hover:text-gray-600 text-xs">Cambiar</button>
           </div>
@@ -285,7 +304,7 @@
             <h2 class="text-lg font-bold text-white">Devolver Equipo</h2>
             <p class="text-white/80 text-xs mt-0.5">{{ modalDevolver.equipo?.codigo_bien }}</p>
           </div>
-          <button @click="modalDevolver.show = false" class="text-white/80 hover:text-white text-xl leading-none">&times;</button>
+          <button @click="modalDevolver.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6">
           <label class="block text-xs font-semibold text-gray-600 mb-1">Fecha de devolución *</label>
@@ -314,6 +333,82 @@
       </div>
     </div>
 
+    <!-- Modal Registrar Reparación -->
+    <div v-if="modalReparacion.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+        <div class="px-6 py-4 flex items-start justify-between" style="background-color:#4d7c8a;">
+          <div>
+            <h2 class="text-lg font-bold text-white">Registrar Reparación</h2>
+            <p class="text-white/80 text-xs mt-0.5">{{ modalReparacion.equipo?.codigo_bien }}</p>
+          </div>
+          <button @click="modalReparacion.show = false" class="text-white/80 hover:text-white text-xl leading-none">&times;</button>
+        </div>
+        <div class="p-6">
+          <p class="text-xs text-gray-500 mb-3">
+            Queda registrada como un mantenimiento correctivo (con su propia acta en PDF) y el equipo pasa
+            automáticamente a <strong>Disponible</strong> al guardar.
+          </p>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Fecha *</label>
+          <input v-model="formReparacion.fecha_mantenimiento" type="date" class="w-full border rounded-lg px-3 py-2 text-sm" />
+
+          <label class="block text-xs font-semibold text-gray-600 mb-1 mt-3">¿Qué se hizo? *</label>
+          <textarea v-model="formReparacion.observaciones" rows="3" placeholder="Ej. Se reemplazó la fuente de poder dañada."
+            class="w-full border rounded-lg px-3 py-2 text-sm"></textarea>
+
+          <p v-if="error" class="text-red-600 text-sm mt-3">{{ error }}</p>
+          <div class="flex justify-end gap-2 mt-5">
+            <button @click="modalReparacion.show = false" class="px-4 py-2 text-sm text-gray-600 border rounded-lg">Cancelar</button>
+            <button @click="confirmarReparacion" :disabled="guardando || !formReparacion.observaciones"
+              class="px-5 py-2 text-sm text-white rounded-lg hover:opacity-90 disabled:opacity-50"
+              style="background-color:#4d7c8a;">
+              {{ guardando ? 'Guardando...' : 'Guardar y generar acta' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Dar de Baja -->
+    <div v-if="modalBaja.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+        <div class="px-6 py-4 flex items-start justify-between" style="background-color:#4d7c8a;">
+          <div>
+            <h2 class="text-lg font-bold text-white">Dar de Baja</h2>
+            <p class="text-white/80 text-xs mt-0.5">{{ modalBaja.equipo?.codigo_bien }}</p>
+          </div>
+          <button @click="modalBaja.show = false" class="text-white/80 hover:text-white text-xl leading-none">&times;</button>
+        </div>
+        <div class="p-6">
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Fecha *</label>
+          <input v-model="formBaja.fecha_baja" type="date" class="w-full border rounded-lg px-3 py-2 text-sm" />
+
+          <label class="block text-xs font-semibold text-gray-600 mb-1 mt-3">Motivo *</label>
+          <select v-model="formBaja.motivo_baja" class="w-full border rounded-lg px-3 py-2 text-sm">
+            <option value="">Seleccione...</option>
+            <option value="DAÑO_IRREPARABLE">Daño irreparable</option>
+            <option value="OBSOLETO">Obsoleto</option>
+            <option value="ROBO_PERDIDA">Robo o pérdida</option>
+            <option value="FIN_VIDA_UTIL">Fin de vida útil</option>
+            <option value="OTRO">Otro</option>
+          </select>
+
+          <label class="block text-xs font-semibold text-gray-600 mb-1 mt-3">¿Qué acciones se tomaron? *</label>
+          <textarea v-model="formBaja.detalle_baja" rows="3"
+            placeholder="Ej. Se hizo diagnóstico técnico, no es reparable, se procede a desecharlo."
+            class="w-full border rounded-lg px-3 py-2 text-sm"></textarea>
+
+          <p v-if="error" class="text-red-600 text-sm mt-3">{{ error }}</p>
+          <div class="flex justify-end gap-2 mt-5">
+            <button @click="modalBaja.show = false" class="px-4 py-2 text-sm text-gray-600 border rounded-lg">Cancelar</button>
+            <button @click="confirmarBaja" :disabled="guardando || !formBaja.motivo_baja || !formBaja.detalle_baja"
+              class="px-5 py-2 text-sm text-white rounded-lg hover:opacity-90 disabled:opacity-50 bg-red-600 hover:bg-red-700">
+              {{ guardando ? 'Guardando...' : 'Confirmar baja' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Modal Historial (timeline) -->
     <div v-if="modalHistorial.show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
@@ -322,7 +417,7 @@
             <h2 class="text-lg font-bold text-white">Historial de Custodia</h2>
             <p class="text-white/80 text-xs mt-0.5">{{ modalHistorial.equipo?.codigo_bien }}</p>
           </div>
-          <button @click="modalHistorial.show = false" class="text-white/80 hover:text-white text-xl leading-none">&times;</button>
+          <button @click="modalHistorial.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6 max-h-[60vh] overflow-y-auto">
           <div v-if="!modalHistorial.datos.length" class="text-center text-gray-400 py-6">Sin asignaciones registradas</div>
@@ -352,7 +447,7 @@
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
         <div class="px-6 py-4 flex items-center justify-between" style="background-color:#4d7c8a;">
           <h2 class="text-lg font-bold text-white">Importar Equipos (CSV)</h2>
-          <button @click="modalImportar.show = false" class="text-white/80 hover:text-white text-xl leading-none">&times;</button>
+          <button @click="modalImportar.show = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6">
           <p class="text-xs text-gray-500 mb-3">
@@ -389,7 +484,7 @@ import api from '@/services/api'
 
 const equipos  = ref([])
 const tipos    = ref([])
-const filtros  = ref({ busqueda: '', tipo_equipo_id: '', estado: '', vida_util_vencida: false })
+const filtros  = ref({ busqueda: '', tipo_equipo_id: '', estado: '', vida_util_vencida: false, custodio_inactivo: false })
 
 const pagina      = ref(1)
 const totalPaginas = ref(1)
@@ -402,18 +497,19 @@ const statCards = [
   { key: 'asignado',            titulo: 'Asignados',          tipo: 'estado', estado: 'ASIGNADO',   color: '#2563eb', borde: 'border-blue-500' },
   { key: 'danado',              titulo: 'Dañados',            tipo: 'estado', estado: 'DAÑADO',    color: '#dc2626', borde: 'border-red-500' },
   { key: 'de_baja',             titulo: 'De baja',            tipo: 'estado', estado: 'DE_BAJA',   color: '#6b7280', borde: 'border-gray-400' },
-  { key: 'vida_util_vencida',   titulo: 'Vida útil vencida',  tipo: 'vencida',                     color: '#ea580c', borde: 'border-orange-500' },
+  { key: 'vida_util_vencida',   titulo: 'Vida útil vencida',  tipo: 'flag', filtroKey: 'vida_util_vencida', color: '#ea580c', borde: 'border-orange-500' },
+  { key: 'custodio_inactivo',   titulo: 'Custodio inactivo',  tipo: 'flag', filtroKey: 'custodio_inactivo', color: '#dc2626', borde: 'border-red-400' },
 ]
 
 function activoStatCard(c) {
-  return c.tipo === 'estado' ? filtros.value.estado === c.estado : filtros.value.vida_util_vencida
+  return c.tipo === 'estado' ? filtros.value.estado === c.estado : filtros.value[c.filtroKey]
 }
 
 function toggleStatCard(c) {
   if (c.tipo === 'estado') {
     filtros.value.estado = filtros.value.estado === c.estado ? '' : c.estado
   } else {
-    filtros.value.vida_util_vencida = !filtros.value.vida_util_vencida
+    filtros.value[c.filtroKey] = !filtros.value[c.filtroKey]
   }
   pagina.value = 1
   cargar()
@@ -437,6 +533,7 @@ async function cargar() {
       tipo_equipo_id: filtros.value.tipo_equipo_id || undefined,
       estado: filtros.value.estado || undefined,
       vida_util_vencida: filtros.value.vida_util_vencida ? 1 : undefined,
+      custodio_inactivo: filtros.value.custodio_inactivo ? 1 : undefined,
       page: pagina.value,
     },
   })
@@ -503,15 +600,80 @@ async function guardar() {
   }
 }
 
-async function marcarBaja(e) {
-  if (!confirm(`¿Dar de baja el equipo ${e.codigo_bien}?`)) return
-  await api.patch(`/tecnologia/equipos/${e.id}/baja`)
+// ─── Dar de baja / Reactivar ────────────────────────────────────────────
+const modalBaja = ref({ show: false, equipo: null })
+const formBaja   = ref({ fecha_baja: '', motivo_baja: '', detalle_baja: '' })
+
+const motivoBajaLabels = {
+  DAÑO_IRREPARABLE: 'Daño irreparable',
+  OBSOLETO: 'Obsoleto',
+  ROBO_PERDIDA: 'Robo o pérdida',
+  FIN_VIDA_UTIL: 'Fin de vida útil',
+  OTRO: 'Otro',
+}
+function motivoBajaLabel(m) {
+  return motivoBajaLabels[m] || m
+}
+
+function abrirBaja(e) {
+  modalBaja.value = { show: true, equipo: e }
+  formBaja.value = { fecha_baja: new Date().toISOString().substring(0, 10), motivo_baja: '', detalle_baja: '' }
+  error.value = ''
+}
+
+async function confirmarBaja() {
+  error.value = ''
+  guardando.value = true
+  try {
+    await api.patch(`/tecnologia/equipos/${modalBaja.value.equipo.id}/baja`, formBaja.value)
+    modalBaja.value.show = false
+    await Promise.all([cargar(), cargarResumen()])
+  } catch (e) {
+    error.value = e.response?.data?.message || Object.values(e.response?.data?.errors || {})[0]?.[0] || 'Error al guardar'
+  } finally {
+    guardando.value = false
+  }
+}
+
+async function reactivar(e) {
+  if (!confirm(`¿Reactivar el equipo ${e.codigo_bien}? Volverá a estado Disponible.`)) return
+  await api.patch(`/tecnologia/equipos/${e.id}/disponible`)
   await Promise.all([cargar(), cargarResumen()])
 }
 
-async function marcarDisponible(e) {
-  await api.patch(`/tecnologia/equipos/${e.id}/disponible`)
-  await Promise.all([cargar(), cargarResumen()])
+// ─── Registrar reparación (equipo DAÑADO -> DISPONIBLE) ────────────────────
+const modalReparacion = ref({ show: false, equipo: null })
+const formReparacion   = ref({ fecha_mantenimiento: '', observaciones: '' })
+
+function abrirReparacion(e) {
+  modalReparacion.value = { show: true, equipo: e }
+  formReparacion.value = { fecha_mantenimiento: new Date().toISOString().substring(0, 10), observaciones: '' }
+  error.value = ''
+}
+
+async function confirmarReparacion() {
+  error.value = ''
+  guardando.value = true
+  try {
+    const { data } = await api.post('/tecnologia/mantenimiento', {
+      equipo_id: modalReparacion.value.equipo.id,
+      fecha_mantenimiento: formReparacion.value.fecha_mantenimiento,
+      tipo: 'CORRECTIVO',
+      observaciones: formReparacion.value.observaciones,
+    })
+    modalReparacion.value.show = false
+    await Promise.all([cargar(), cargarResumen()])
+
+    const resp = await api.get(`/tecnologia/mantenimiento/${data.id}/pdf`, { responseType: 'blob' })
+    const blob = new Blob([resp.data], { type: 'application/pdf' })
+    const url  = URL.createObjectURL(blob)
+    window.open(url, '_blank')
+    setTimeout(() => URL.revokeObjectURL(url), 60000)
+  } catch (e) {
+    error.value = e.response?.data?.message || Object.values(e.response?.data?.errors || {})[0]?.[0] || 'Error al guardar'
+  } finally {
+    guardando.value = false
+  }
 }
 
 // ─── Asignar ──────────────────────────────────────────────────────────────

@@ -35,7 +35,6 @@
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Fecha</th>
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Día</th>
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Tipo</th>
-            <th class="text-left px-6 py-3 text-gray-600 font-medium">Factor</th>
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Hora Desde</th>
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Hora Hasta</th>
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Ubicacion</th>
@@ -44,10 +43,10 @@
         </thead>
         <tbody>
           <tr v-if="cargando">
-            <td colspan="8" class="text-center py-8 text-gray-400">Cargando...</td>
+            <td colspan="7" class="text-center py-8 text-gray-400">Cargando...</td>
           </tr>
           <tr v-else-if="fechas.length === 0">
-            <td colspan="8" class="text-center py-8 text-gray-400">No hay fechas registradas para este año.</td>
+            <td colspan="7" class="text-center py-8 text-gray-400">No hay fechas registradas para este año.</td>
           </tr>
           <tr v-for="f in fechas" :key="f.fecha" class="border-b hover:bg-gray-50">
             <td class="px-6 py-3 font-medium">{{ f.fecha }}</td>
@@ -58,7 +57,6 @@
                 {{ f.tipo }}
               </span>
             </td>
-            <td class="px-6 py-3 text-gray-600">{{ f.factor }}</td>
             <td class="px-6 py-3 text-gray-600">{{ f.hora_desde }}</td>
             <td class="px-6 py-3 text-gray-600">{{ f.hora_hasta }}</td>
             <td class="px-6 py-3 text-gray-600">{{ f.ubicacion }}</td>
@@ -74,10 +72,11 @@
     <!-- Modal -->
     <div v-if="modal" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
       <div class="bg-white rounded-xl shadow-lg w-full max-w-md overflow-hidden">
-        <div class="px-6 py-4" style="background-color:#0b5447;">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#0b5447;">
           <h2 class="text-lg font-semibold text-white">
             {{ form.editando ? "Editar Fecha" : "Nueva Fecha" }}
           </h2>
+          <button type="button" @click="modal = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
         </div>
         <div class="p-6 space-y-4">
         <div class="grid grid-cols-2 gap-3">
@@ -85,7 +84,7 @@
             <label class="block text-sm font-medium text-gray-600 mb-1">Fecha *</label>
             <input v-model="form.fecha" type="date"
               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]"
-              :disabled="form.editando" required />
+              required />
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">Tipo *</label>
@@ -97,23 +96,16 @@
             </select>
           </div>
         </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-sm font-medium text-gray-600 mb-1">Factor *</label>
-            <input v-model="form.factor" type="number" step="0.01" min="1"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-600 mb-1">Color</label>
-            <select v-model="form.color"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
-              <option value="red">Rojo (Feriado)</option>
-              <option value="blue">Azul (Especial)</option>
-              <option value="gray">Gris (Fin Semana)</option>
-              <option value="green">Verde</option>
-              <option value="orange">Naranja</option>
-            </select>
-          </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Color</label>
+          <select v-model="form.color"
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
+            <option value="red">Rojo (Feriado)</option>
+            <option value="blue">Azul (Especial)</option>
+            <option value="gray">Gris (Fin Semana)</option>
+            <option value="green">Verde</option>
+            <option value="orange">Naranja</option>
+          </select>
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
@@ -166,7 +158,7 @@ const tipos = [
 ]
 
 const form = ref({
-  editando: false, fecha: "", tipo: "FERIADO",
+  editando: false, fechaOriginal: "", fecha: "", tipo: "FERIADO",
   factor: 2.00, color: "red", hora_desde: "00:00",
   hora_hasta: "23:59", ubicacion: "Quito"
 })
@@ -197,12 +189,13 @@ const abrirModal = (f = null) => {
   error.value = ""
   form.value = f ? {
     editando: true,
+    fechaOriginal: f.fecha,
     fecha: f.fecha, tipo: f.tipo.trim(),
     factor: f.factor, color: f.color.trim(),
     hora_desde: f.hora_desde, hora_hasta: f.hora_hasta,
     ubicacion: f.ubicacion.trim()
   } : {
-    editando: false, fecha: "", tipo: "FERIADO",
+    editando: false, fechaOriginal: "", fecha: "", tipo: "FERIADO",
     factor: 2.00, color: "red", hora_desde: "00:00",
     hora_hasta: "23:59", ubicacion: "Quito"
   }
@@ -215,7 +208,7 @@ const guardar = async () => {
   error.value = ""
   try {
     if (form.value.editando) {
-      await api.put("/admin/calendario/" + form.value.fecha + "/" + form.value.ubicacion, form.value)
+      await api.put("/admin/calendario/" + form.value.fechaOriginal + "/" + form.value.ubicacion, form.value)
     } else {
       await api.post("/admin/calendario", form.value)
     }

@@ -41,13 +41,61 @@ class TransporteController extends Controller
 
     // ─── VEHÍCULOS ────────────────────────────────────────────────────────────
 
-    public function index()
+    public function index(Request $request)
     {
-        return response()->json(Vehiculo::orderBy('placa')->get());
+        if (!$this->esTransporte($request) && !$this->esConductor($request)) {
+            abort(403, 'No tiene permisos para realizar esta acción.');
+        }
+        $vehiculos = Vehiculo::orderBy('placa')->get();
+
+        $planes = DB::table('dbo.trans_plan_preventivo_cab')
+            ->where('estado', 'ACTIVO')
+            ->get()
+            ->groupBy('vehiculo_id');
+
+        // km_hito es un hito ABSOLUTO y único (ej. "a los 170.000 km toca este mantenimiento",
+        // una sola vez), no un intervalo que se repite. Un plan que ya tuvo algún mantenimiento
+        // FINALIZADO se considera cumplido y deja de generar alerta.
+        $realizados = DB::table('dbo.trans_mantenimiento')
+            ->whereNotNull('plan_preventivo_id')
+            ->where('estado', 'FINALIZADO')
+            ->pluck('plan_preventivo_id')
+            ->unique();
+
+        $vehiculos->each(function ($v) use ($planes, $realizados) {
+            $estados = $planes->get($v->id, collect())
+                ->reject(fn($p) => $realizados->contains($p->id))
+                ->map(function ($p) use ($v) {
+                    $vencido = $p->km_hito > 0 && $v->kilometraje_actual >= $p->km_hito;
+                    $proximo = !$vencido && $p->km_hito > 0 && $v->kilometraje_actual >= $p->km_hito * 0.9;
+
+                    return [
+                        'plan_id'       => $p->id,
+                        'nombre'        => $p->nombre,
+                        'km_hito'       => $p->km_hito,
+                        'km_recorridos' => $v->kilometraje_actual,
+                        'vencido'       => $vencido,
+                        'proximo'       => $proximo,
+                    ];
+                })->values();
+
+            // Un mismo vehículo puede tener varios planes: unos ya vencidos y otros recién
+            // próximos (ej. hito de 50.000 vencido y el de 170.000 próximo a la vez). Por eso
+            // NO son mutuamente excluyentes — si no, la tarjeta resumen y los badges de la
+            // lista quedaban contando cosas distintas.
+            $v->planes_estado         = $estados;
+            $v->mantenimiento_vencido = $estados->contains('vencido', true);
+            $v->mantenimiento_proximo = $estados->contains('proximo', true);
+        });
+
+        return response()->json($vehiculos);
     }
 
     public function store(Request $request)
     {
+        if (!$this->esTransporte($request)) {
+            abort(403, 'No tiene permisos para realizar esta acción.');
+        }
         $request->validate([
             'placa'              => 'required|string|max:10|unique:pgsql.dbo.trans_vehiculo,placa',
             'marca'              => 'required|string|max:50',
@@ -63,12 +111,21 @@ class TransporteController extends Controller
             'placa', 'marca', 'modelo', 'anio', 'chasis', 'color', 'numero_motor', 'kilometraje_actual',
         ]));
 
+        AuditoriaService::log('dbo.trans_vehiculo', $vehiculo->id, 'CREAR_VEHICULO',
+            null,
+            ['placa' => $vehiculo->placa, 'kilometraje_actual' => $vehiculo->kilometraje_actual],
+            $request, "Vehículo {$vehiculo->placa} creado con {$vehiculo->kilometraje_actual} km");
+
         return response()->json($vehiculo, 201);
     }
 
     public function update(Request $request, $id)
     {
+        if (!$this->esTransporte($request)) {
+            abort(403, 'No tiene permisos para realizar esta acción.');
+        }
         $vehiculo = Vehiculo::findOrFail($id);
+        $anterior = $vehiculo->only(['kilometraje_actual', 'estado']);
 
         $request->validate([
             'placa'              => 'required|string|max:10|unique:pgsql.dbo.trans_vehiculo,placa,' . $id,
@@ -78,13 +135,24 @@ class TransporteController extends Controller
             'chasis'             => 'nullable|string|max:50',
             'color'              => 'nullable|string|max:30',
             'numero_motor'       => 'nullable|string|max:50',
-            'kilometraje_actual' => 'required|integer|min:0',
+            // No puede bajarse manualmente: el contador es acumulativo (hoja de ruta / mantenimiento).
+            // Solo se permite corregirlo hacia arriba (ej. dato inicial mal digitado por debajo del real).
+            'kilometraje_actual' => 'required|integer|min:' . $vehiculo->kilometraje_actual,
             'estado'             => 'required|in:ACTIVO,INACTIVO,MANTENIMIENTO',
+        ], [
+            'kilometraje_actual.min' => 'El kilometraje no puede ser menor al actual (' . $vehiculo->kilometraje_actual . '). El contador solo se corrige hacia arriba.',
         ]);
 
         $vehiculo->update($request->only([
             'placa', 'marca', 'modelo', 'anio', 'chasis', 'color', 'numero_motor', 'kilometraje_actual', 'estado',
         ]));
+
+        if ($anterior['kilometraje_actual'] != $vehiculo->kilometraje_actual || $anterior['estado'] != $vehiculo->estado) {
+            AuditoriaService::log('dbo.trans_vehiculo', $vehiculo->id, 'ACTUALIZAR_VEHICULO',
+                $anterior,
+                $vehiculo->only(['kilometraje_actual', 'estado']),
+                $request, "Vehículo {$vehiculo->placa} actualizado");
+        }
 
         return response()->json($vehiculo);
     }
@@ -93,27 +161,47 @@ class TransporteController extends Controller
 
     public function indexMtto(Request $request)
     {
+        if (!$this->esTransporte($request) && !$this->esConductor($request)) {
+            abort(403, 'No tiene permisos para realizar esta acción.');
+        }
+        // El vehículo es un recurso compartido entre conductores: todos deben ver el mismo
+        // listado (no solo lo que cada uno solicitó), para saber si ya hay un mantenimiento
+        // en curso de ese vehículo antes de pedir otro.
         $query = Mantenimiento::with(['vehiculo', 'conductor', 'responsable', 'actividades', 'tipoMantenimiento', 'tallerRel'])
             ->orderBy('created_at', 'desc');
-
-        if (!$this->esTransporte($request)) {
-            $query->where('id_emp_conductor', $this->emp($request)->id_emp);
-        }
 
         return response()->json($query->get());
     }
 
     public function storeMtto(Request $request)
     {
+        if (!$this->esTransporte($request) && !$this->esConductor($request)) {
+            abort(403, 'No tiene permisos para realizar esta acción.');
+        }
         $request->validate([
             'vehiculo_id'           => 'required|exists:pgsql.dbo.trans_vehiculo,id',
             'tipo_mantenimiento_id' => 'required|exists:pgsql.dbo.trans_tipo_mantenimiento,id',
-            'km_actual'             => 'required|integer|min:0',
             'descripcion'           => 'nullable|string',
             'plan_preventivo_id'    => 'nullable|exists:pgsql.dbo.trans_plan_preventivo_cab,id',
             'actividades_correctivas'              => 'nullable|array',
             'actividades_correctivas.*.actividad'  => 'required_with:actividades_correctivas|string',
         ]);
+
+        // Km actual ya no lo digita el conductor: siempre es el kilometraje_actual real del
+        // vehículo, para que quede consistente con el mismo contador que usa movilización.
+        $vehiculo = Vehiculo::findOrFail($request->vehiculo_id);
+
+        // Un vehículo solo puede tener UN mantenimiento abierto a la vez. Evita que se olviden
+        // de finalizar uno y se genere otro encima (o que dos conductores pidan lo mismo sin verse).
+        $abierto = Mantenimiento::where('vehiculo_id', $request->vehiculo_id)
+            ->whereNotIn('estado', ['FINALIZADO', 'NEGADO'])
+            ->first();
+
+        if ($abierto) {
+            return response()->json([
+                'message' => "Este vehículo ya tiene un mantenimiento en curso (#{$abierto->id}, {$abierto->tipo}, estado: {$abierto->estado}). Debe finalizarlo o negarlo antes de registrar uno nuevo.",
+            ], 422);
+        }
 
         $tipo = TipoMantenimiento::findOrFail($request->tipo_mantenimiento_id);
 
@@ -124,11 +212,32 @@ class TransporteController extends Controller
             return response()->json(['message' => 'Debe seleccionar un plan preventivo para este tipo de mantenimiento.'], 422);
         }
 
+        if ($request->plan_preventivo_id) {
+            $planPertenece = DB::table('dbo.trans_plan_preventivo_cab')
+                ->where('id', $request->plan_preventivo_id)
+                ->where('vehiculo_id', $request->vehiculo_id)
+                ->exists();
+
+            if (!$planPertenece) {
+                return response()->json(['message' => 'El plan preventivo seleccionado no corresponde a este vehículo.'], 422);
+            }
+
+            // km_hito es un hito único: si este plan ya tuvo un mantenimiento FINALIZADO,
+            // no se puede volver a ejecutar (para eso se crean planes separados por cada hito).
+            $yaEjecutado = Mantenimiento::where('plan_preventivo_id', $request->plan_preventivo_id)
+                ->where('estado', 'FINALIZADO')
+                ->exists();
+
+            if ($yaEjecutado) {
+                return response()->json(['message' => 'Este plan preventivo ya fue ejecutado anteriormente. No se puede repetir un hito ya cumplido.'], 422);
+            }
+        }
+
         $m = Mantenimiento::create([
             'vehiculo_id'           => $request->vehiculo_id,
             'tipo'                  => $tipo->nombre,
             'tipo_mantenimiento_id' => $request->tipo_mantenimiento_id,
-            'km_actual'             => $request->km_actual,
+            'km_actual'             => $vehiculo->kilometraje_actual,
             'descripcion'           => $request->descripcion ?? $tipo->nombre,
             'plan_preventivo_id'    => $request->plan_preventivo_id,
             'id_emp_conductor'      => $this->emp($request)->id_emp,
@@ -144,6 +253,7 @@ class TransporteController extends Controller
                     'tipo_actividad'   => $det->tipo_actividad,
                     'actividad'        => $det->actividad,
                     'orden'            => $det->orden,
+                    'cantidad'         => $det->cantidad,
                 ]);
             }
         }
@@ -164,6 +274,9 @@ class TransporteController extends Controller
 
     public function updateMtto(Request $request, $id)
     {
+        if (!$this->esTransporte($request)) {
+            abort(403, 'No tiene permisos para realizar esta acción.');
+        }
         $m = Mantenimiento::findOrFail($id);
 
         $accion = $request->input('accion');
@@ -220,28 +333,45 @@ class TransporteController extends Controller
                 $request, "Mantenimiento #{$m->id} en taller");
 
         } elseif ($accion === 'finalizar') {
-            $request->validate(['fecha_finalizacion' => 'required|date']);
+            // El km de finalización es obligatorio para PREVENTIVO: sin él no hay forma de
+            // saber desde cuándo contar el próximo hito de ese plan. En CORRECTIVO sigue
+            // siendo opcional (ese flujo ya tiene su propio registro de reparación).
+            $esPreventivo = str_contains($m->tipo, 'PREVENTIVO');
+            $kmVehiculoActual = $m->vehiculo->kilometraje_actual ?? 0;
+
+            $rules = ['fecha_finalizacion' => 'required|date'];
+            $rules['km_finalizacion'] = ($esPreventivo ? 'required' : 'nullable') . '|integer|min:' . $kmVehiculoActual;
+
+            $request->validate($rules, [
+                'km_finalizacion.required' => 'Debe indicar el kilometraje del vehículo para finalizar un mantenimiento preventivo.',
+                'km_finalizacion.min'      => 'El kilometraje no puede ser menor al km actual del vehículo (' . $kmVehiculoActual . ').',
+            ]);
+
             $m->update([
                 'estado'             => 'FINALIZADO',
                 'fecha_finalizacion' => $request->fecha_finalizacion,
                 'observacion_responsable' => $request->observacion_responsable ?? $m->observacion_responsable,
+                'km_finalizacion'    => $request->km_finalizacion ?? $m->km_finalizacion,
             ]);
-            // Actualizar km si se informó
-            if ($request->filled('km_nuevo')) {
-                $m->vehiculo->update(['kilometraje_actual' => $request->km_nuevo]);
+            // Acumular km del vehículo
+            if ($request->filled('km_finalizacion')) {
+                $m->vehiculo->update(['kilometraje_actual' => $request->km_finalizacion]);
             }
 
             AuditoriaService::log('dbo.trans_mantenimiento', $m->id, 'FINALIZAR_MANT',
-                ['estado' => 'EN_TALLER'],
-                ['estado' => 'FINALIZADO', 'fecha_finalizacion' => $request->fecha_finalizacion],
+                ['estado' => 'EN_TALLER', 'kilometraje_actual' => $kmVehiculoActual],
+                ['estado' => 'FINALIZADO', 'fecha_finalizacion' => $request->fecha_finalizacion, 'km_finalizacion' => $request->km_finalizacion],
                 $request, "Finalización de mantenimiento #{$m->id}");
         }
 
         return response()->json($m->load(['vehiculo', 'conductor', 'responsable']));
     }
 
-    public function pdfMtto($id)
+    public function pdfMtto(Request $request, $id)
     {
+        if (!$this->esTransporte($request) && !$this->esConductor($request)) {
+            abort(403, 'No tiene permisos para realizar esta acción.');
+        }
         $m = Mantenimiento::with(['vehiculo', 'conductor', 'responsable', 'actividades'])->findOrFail($id);
         $logo = $this->logoBase64();
 
@@ -310,6 +440,13 @@ class TransporteController extends Controller
         $s = SolicitudMov::findOrFail($id);
         $accion = $request->input('accion');
 
+        if (in_array($accion, ['aprobar', 'negar']) && !$this->esTransporte($request)) {
+            abort(403, 'No tiene permisos para realizar esta acción.');
+        }
+        if ($accion === 'hoja_ruta' && $s->id_emp_conductor !== $this->emp($request)->id_emp && !$this->esTransporte($request)) {
+            abort(403, 'Solo el conductor asignado puede completar la hoja de ruta.');
+        }
+
         if ($accion === 'aprobar') {
             $request->validate([
                 'vehiculo_id'      => 'required|exists:pgsql.dbo.trans_vehiculo,id',
@@ -358,20 +495,39 @@ class TransporteController extends Controller
                 $request, "Negación de movilización #{$s->id}: {$s->motivo}");
 
         } elseif ($accion === 'hoja_ruta') {
-            $request->validate([
-                'km_salida'  => 'required|integer|min:0',
-                'km_retorno' => 'required|integer|min:0',
-            ]);
+            // Km de salida ya NO se recibe del cliente: siempre es el kilometraje_actual
+            // del vehículo en este momento, para que el contador acumule viaje tras viaje
+            // sin depender de que el conductor lo digite correctamente.
+            $kmSalida = $s->vehiculo->kilometraje_actual ?? 0;
+
+            $request->validate(['km_retorno' => 'required|integer']);
+
+            // El km de salida mostrado en el frontend puede haber quedado desactualizado si otro
+            // viaje/mantenimiento de este mismo vehículo se completó mientras el modal estaba abierto.
+            // Se devuelve el valor real para que el frontend se autocorrija en vez de solo fallar.
+            if ($request->km_retorno < $kmSalida) {
+                return response()->json([
+                    'message'          => 'El kilometraje del vehículo cambió mientras completabas este formulario. Se actualizó el km de salida, verifica el km de retorno.',
+                    'km_salida_actual' => $kmSalida,
+                ], 422);
+            }
+
             $s->update([
                 'estado'               => 'COMPLETADO',
-                'km_salida'            => $request->km_salida,
+                'km_salida'            => $kmSalida,
                 'km_retorno'           => $request->km_retorno,
                 'hoja_ruta_observacion'=> $request->hoja_ruta_observacion,
                 'fecha_completado'     => now(),
             ]);
-            // Actualizar km del vehículo
+            // Acumular km del vehículo
             if ($s->vehiculo_id) {
+                $placaVehiculo = $s->vehiculo->placa;
                 $s->vehiculo->update(['kilometraje_actual' => $request->km_retorno]);
+
+                AuditoriaService::log('dbo.trans_vehiculo', $s->vehiculo_id, 'HOJA_RUTA',
+                    ['kilometraje_actual' => $kmSalida],
+                    ['kilometraje_actual' => $request->km_retorno],
+                    $request, "Hoja de ruta solicitud #{$s->id}, vehículo {$placaVehiculo}: {$kmSalida} → {$request->km_retorno} km");
             }
         }
 
@@ -418,8 +574,11 @@ class TransporteController extends Controller
 
     // ─── CONDUCTORES (para selectores en frontend) ───────────────────────────
 
-    public function conductores()
+    public function conductores(Request $request)
     {
+        if (!$this->esTransporte($request)) {
+            abort(403, 'No tiene permisos para realizar esta acción.');
+        }
         $ids = DB::table('dbo.admin_usuario_rol as ur')
             ->join('dbo.admin_rol as r', 'ur.id_rol', '=', 'r.id')
             ->where('r.descripcion', 'CONDUCTOR')

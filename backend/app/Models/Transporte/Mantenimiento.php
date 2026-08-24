@@ -12,7 +12,7 @@ class Mantenimiento extends Model
 
     protected $fillable = [
         'vehiculo_id', 'tipo', 'tipo_mantenimiento_id', 'descripcion',
-        'id_emp_conductor', 'estado', 'km_actual', 'plan_preventivo_id',
+        'id_emp_conductor', 'estado', 'km_actual', 'km_finalizacion', 'plan_preventivo_id',
         'taller', 'taller_id', 'fecha_orden', 'numero_orden', 'observacion_responsable',
         'fecha_finalizacion', 'id_emp_responsable',
         'motivo_negacion', 'fecha_negacion', 'usuario_negacion',

@@ -56,6 +56,7 @@ const routes = [
       { path: 'admin/periodos-planificacion', name: 'AdminPeriodosPlanificacion', component: () => import('@/views/admin/periodos/PeriodosView.vue') },
       { path: 'supervisores', name: 'Supervisores', component: () => import('@/views/supervisores/SupervisoresView.vue') },
       { path: 'reportes', name: 'Reportes', component: () => import('@/views/reportes/ReportesView.vue') },
+      { path: 'reportes/lotaip', name: 'Lotaip', component: () => import('@/views/reportes/LotaipView.vue') },
       { path: 'planificacion', name: 'Planificacion', component: () => import('@/views/planificacion/PlanificacionesView.vue') },
       { path: 'planificacion/reporte', name: 'ReportePlanificacion', component: () => import('@/views/planificacion/ReportePlanificacionView.vue') },
       { path: 'planificacion/reporte-saldo', name: 'ReporteSaldoVac', component: () => import('@/views/planificacion/ReporteSaldoVacView.vue') },
@@ -106,6 +107,7 @@ const routes = [
       { path: 'tipos-mantenimiento', name: 'TransTiposMantenimiento', component: () => import('@/views/transporte/TiposMantenimientoView.vue') },
       { path: 'plan-preventivo',    name: 'TransPlanPreventivo',     component: () => import('@/views/transporte/PlanPreventivoView.vue') },
       { path: 'vales-combustible',  name: 'TransValesCombustible',   component: () => import('@/views/transporte/ValesCombustibleView.vue') },
+      { path: 'reportes',           name: 'TransReportes',           component: () => import('@/views/transporte/ReportesView.vue') },
     ],
   },
   // ── Inventario Tecnológico ─────────────────────────────────────────────────
@@ -116,7 +118,9 @@ const routes = [
     children: [
       { path: '', redirect: '/tecnologia/equipos' },
       { path: 'equipos',                   name: 'TecEquipos',          component: () => import('@/views/tecnologia/EquiposView.vue') },
+      { path: 'piezas',                    name: 'TecPiezas',           component: () => import('@/views/tecnologia/PiezasView.vue') },
       { path: 'mantenimiento',             name: 'TecMantenimiento',    component: () => import('@/views/tecnologia/MantenimientoView.vue') },
+      { path: 'reportes',                  name: 'TecReportes',         component: () => import('@/views/tecnologia/ReporteEquiposView.vue') },
       { path: 'tipos-equipo',              name: 'TecTiposEquipo',      component: () => import('@/views/tecnologia/TiposEquipoView.vue') },
       { path: 'actividades-mantenimiento', name: 'TecActividadesMtto',  component: () => import('@/views/tecnologia/ActividadesMantenimientoView.vue') },
     ],

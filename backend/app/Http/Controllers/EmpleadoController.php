@@ -15,10 +15,12 @@ use Illuminate\Support\Facades\Storage;
 
 class EmpleadoController extends Controller
 {
+    private const ROLES_ADMIN = ['ADMINISTRADOR', 'TALENTO HUMANO'];
+
     // GET /api/empleados
     public function index(Request $request)
     {
-        $query = Empleado::with(["departamento", "emails"]);
+        $query = Empleado::with(["departamento", "emails"])->where("id_depto", "!=", 999);
 
         if ($request->filled("buscar")) {
             $b = $request->buscar;
@@ -85,8 +87,9 @@ class EmpleadoController extends Controller
     // POST /api/empleados
     public function store(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate([
-            "identificacion"         => "required|string|max:15",
+            "identificacion"         => "required|string|max:15|unique:dbo.ad_empleado,identificacion",
             "nombre_emp"             => "required|string|max:240",
             "apellido_emp"           => "required|string|max:240",
             "id_depto"               => "required|integer",
@@ -137,6 +140,7 @@ class EmpleadoController extends Controller
             "ubicacion"      => $request->ubicacion,
             "cargo_empleado"   => $request->cargo_empleado,
             "telefono"         => $request->telefono,
+            "extension"        => $request->extension        ?? null,
             "calle_y_numero"   => $request->calle_y_numero,
             "modalidad_laboral" => $request->modalidad_laboral,
             "id_jornada"        => $request->id_jornada,
@@ -212,6 +216,7 @@ class EmpleadoController extends Controller
     // PUT /api/empleados/{id}
     public function update(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $emp = Empleado::findOrFail($id);
 
         if ($emp->es_externo) {
@@ -283,6 +288,7 @@ class EmpleadoController extends Controller
             "ubicacion"             => $request->ubicacion               ?? $emp->ubicacion,
             "cargo_empleado"        => $request->cargo_empleado          ?? $emp->cargo_empleado,
             "telefono"              => $request->telefono                ?? $emp->telefono,
+            "extension"             => $request->filled('extension')     ? $request->extension : $emp->extension,
             "calle_y_numero"        => $request->calle_y_numero          ?? $emp->calle_y_numero,
             "modalidad_laboral"     => $request->modalidad_laboral       ?? $emp->modalidad_laboral,
             "id_jornada"            => $request->id_jornada              ?? $emp->id_jornada,
@@ -371,8 +377,9 @@ class EmpleadoController extends Controller
     }
 
     // DELETE /api/empleados/{id}
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $emp = Empleado::findOrFail($id);
         $emp->update(["estado" => "INACTIVO"]);
         return response()->json(["message" => "Empleado desactivado correctamente."]);
@@ -615,10 +622,18 @@ class EmpleadoController extends Controller
 
     // ── Documento persona sustituta (Alfresco) ──────────────────────────────
 
-    private string $alfrescoBase = 'http://192.168.26.38:8080/alfresco/api/-default-/public/alfresco/versions/1';
-    private string $alfrescoUser = 'admin';
-    private string $alfrescoPass = 'admin';
-    private string $alfrescoSite = 'talentohumano';
+    private string $alfrescoBase;
+    private string $alfrescoUser;
+    private string $alfrescoPass;
+    private string $alfrescoSite;
+
+    public function __construct()
+    {
+        $this->alfrescoBase = config('services.alfresco.base');
+        $this->alfrescoUser = config('services.alfresco.user');
+        $this->alfrescoPass = config('services.alfresco.pass');
+        $this->alfrescoSite = config('services.alfresco.site');
+    }
 
     private function getDocLibNodeId(): string
     {

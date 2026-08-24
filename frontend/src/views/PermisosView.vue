@@ -21,7 +21,7 @@
         :style="tabActivo === 'mia' ? 'background-color:#0b5447' : ''">Mis Permisos</button>
       <button @click="cambiarTab('equipo')"
         :class="['flex-1 py-2.5 text-sm font-semibold transition', tabActivo === 'equipo' ? 'text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100']"
-        :style="tabActivo === 'equipo' ? 'background-color:#0b5447' : ''">Permisos Equipo</button>
+        :style="tabActivo === 'equipo' ? 'background-color:#0b5447' : ''">{{ miRol.es_admin_th ? 'Permisos Institucionales' : 'Permisos Equipo' }}</button>
     </div>
 
     <!-- Filtros -->
@@ -263,8 +263,12 @@
 
     <!-- Modal Ver Permiso -->
     <div v-if="modalVer" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-2xl space-y-4 my-4">
-        <h2 class="text-lg font-semibold text-gray-700">Detalle del Permiso</h2>
+      <div class="bg-white rounded-xl shadow-lg w-full max-w-2xl my-4 overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#0b5447;">
+          <h2 class="text-lg font-semibold text-white">Detalle del Permiso</h2>
+          <button @click="modalVer = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
+        </div>
+        <div class="p-6 space-y-4">
         <dl class="grid grid-cols-2 gap-3 text-sm">
           <div>
             <dt class="text-gray-500">Empleado</dt>
@@ -273,6 +277,19 @@
           <div>
             <dt class="text-gray-500">Departamento</dt>
             <dd class="font-medium">{{ permisoSeleccionado?.empleado?.departamento?.nombre_depto }}</dd>
+          </div>
+          <div>
+            <dt class="text-gray-500">Fecha de solicitud</dt>
+            <dd class="font-medium">{{ permisoSeleccionado?.fecha_hora?.substring(0, 10) }}</dd>
+          </div>
+          <div>
+            <dt class="text-gray-500">
+              {{ permisoSeleccionado?.estado_permiso === 'APROBADO' ? 'Fecha de aprobación'
+               : permisoSeleccionado?.estado_permiso === 'NEGADO'   ? 'Fecha de negación'
+               : permisoSeleccionado?.estado_permiso === 'ANULADO'  ? 'Fecha de anulación'
+               : 'Última actualización' }}
+            </dt>
+            <dd class="font-medium">{{ permisoSeleccionado?.aprobado_en?.substring(0, 16)?.replace('T', ' ') || '—' }}</dd>
           </div>
           <div>
             <dt class="text-gray-500">Razon</dt>
@@ -390,6 +407,7 @@
           <button @click="modalVer = false"
             class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cerrar</button>
         </div>
+        </div>
       </div>
     </div>
 
@@ -481,7 +499,7 @@
     <div v-if="modalEstadistica" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-3xl space-y-4">
         <div class="flex justify-between items-center">
-          <h2 class="text-lg font-semibold text-gray-700">📊 Estadística por Supervisor</h2>
+          <h2 class="text-lg font-semibold text-gray-700">📊 Estadística</h2>
           <button @click="modalEstadistica = false" class="text-gray-400 hover:text-gray-600 text-xl">✕</button>
         </div>
         <div class="flex gap-3 items-end">
@@ -501,7 +519,7 @@
         <table class="w-full text-sm">
           <thead class="bg-gray-50 border-b">
             <tr>
-              <th class="text-left px-4 py-3 text-gray-600">Supervisor</th>
+              <th class="text-left px-4 py-3 text-gray-600">Jefe área</th>
               <th class="text-center px-4 py-3 text-green-600">Aprobados</th>
               <th class="text-center px-4 py-3 text-red-500">Negados</th>
               <th class="text-center px-4 py-3 text-gray-500">Eliminados</th>
@@ -657,7 +675,7 @@ const abrirModalNuevo = async () => {
 
 const guardarPermiso = async () => {
   if (!formNuevo.value.sec_permiso)   { errorNuevo.value = "Selecciona una razon"; return }
-  if (!formNuevo.value.tipo_horario)  { errorNuevo.value = "Selecciona el tipo de permiso"; return }
+  if (formNuevo.value.todo_dia !== 'SI' && !formNuevo.value.tipo_horario)  { errorNuevo.value = "Selecciona el tipo de permiso"; return }
   guardando.value  = true
   errorNuevo.value = ""
   try {

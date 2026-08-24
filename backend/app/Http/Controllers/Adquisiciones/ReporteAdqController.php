@@ -11,8 +11,11 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class ReporteAdqController extends Controller
 {
+    private const ROLES_ADQ = ['ADMINISTRADOR', 'ADQUISICIONES', 'BIENES'];
+
     public function kardex(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $request->validate([
             'articulo_id' => 'nullable|exists:pgsql.adq.articulo,id',
             'nivel1'      => 'nullable|string|max:2',
@@ -168,6 +171,7 @@ class ReporteAdqController extends Controller
 
     public function libroCompras(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $request->validate([
             'desde' => 'required|date',
             'hasta' => 'required|date|after_or_equal:desde',
@@ -218,6 +222,7 @@ class ReporteAdqController extends Controller
 
     public function egresosValorizados(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $request->validate([
             'desde' => 'required|date',
             'hasta' => 'required|date|after_or_equal:desde',
@@ -262,6 +267,7 @@ class ReporteAdqController extends Controller
 
     public function inventarioMensual(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $request->validate([
             'desde' => 'required|date',
             'hasta' => 'required|date|after_or_equal:desde',
@@ -498,6 +504,7 @@ class ReporteAdqController extends Controller
 
     public function inventarioValorizado(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $tipo            = $request->get('tipo', 'agrupado');
         $soloExistencias = $request->get('solo_existencias', '1') === '1';
 
@@ -651,6 +658,7 @@ class ReporteAdqController extends Controller
 
     public function articulosBuscar(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $q = $request->get('q', '');
         $articulos = DB::table('adq.articulo')
             ->where('estado', 'ACTIVO')
@@ -667,6 +675,7 @@ class ReporteAdqController extends Controller
 
     public function analitica(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADQ);
         $request->validate([
             'desde' => 'required|date',
             'hasta' => 'required|date|after_or_equal:desde',

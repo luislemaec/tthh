@@ -48,12 +48,15 @@ class AuditoriaController extends Controller
                 $query->where('tabla', 'ilike', 'adq.%');
             } elseif ($modulo === 'transportes') {
                 $query->where('tabla', 'ilike', '%trans_%');
+            } elseif ($modulo === 'tecnologia') {
+                $query->where('tabla', 'ilike', 'dbo.ti_%');
             } elseif ($modulo === 'talento') {
                 $query->where(function ($q) {
                     $q->where('tabla', 'auth')
                       ->orWhere(function ($q2) {
                           $q2->where('tabla', 'ilike', 'dbo.%')
-                             ->where('tabla', 'not ilike', '%trans_%');
+                             ->where('tabla', 'not ilike', '%trans_%')
+                             ->where('tabla', 'not ilike', 'dbo.ti_%');
                       });
                 });
             }

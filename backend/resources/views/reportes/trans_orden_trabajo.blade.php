@@ -122,10 +122,11 @@
   <thead>
     <tr style="background-color:#e5e7eb;">
       <th style="border:1px solid #555; padding:4px 6px; width:5%; text-align:center;">N°</th>
-      <th style="border:1px solid #555; padding:4px 6px; width:12%; text-align:center;">Cód.</th>
-      <th style="border:1px solid #555; padding:4px 6px; width:23%; text-align:center;">Tipo</th>
+      <th style="border:1px solid #555; padding:4px 6px; width:10%; text-align:center;">Cód.</th>
+      <th style="border:1px solid #555; padding:4px 6px; width:19%; text-align:center;">Tipo</th>
+      <th style="border:1px solid #555; padding:4px 6px; width:8%; text-align:center;">Cant.</th>
       <th style="border:1px solid #555; padding:4px 6px; text-align:left;">Actividad</th>
-      <th style="border:1px solid #555; padding:4px 6px; width:15%; text-align:center;">Categoría</th>
+      <th style="border:1px solid #555; padding:4px 6px; width:13%; text-align:center;">Categoría</th>
     </tr>
   </thead>
   <tbody>
@@ -138,6 +139,7 @@
       <td style="border:1px solid #555; padding:3px 6px; text-align:center;">
         {{ isset($tipoLabels[$act->tipo_actividad]) ? $tipoLabels[$act->tipo_actividad] : '' }}
       </td>
+      <td style="border:1px solid #555; padding:3px 6px; text-align:center;">{{ $act->cantidad ?? '—' }}</td>
       <td style="border:1px solid #555; padding:3px 6px;">{{ $act->actividad }}</td>
       <td style="border:1px solid #555; padding:3px 6px; text-align:center;">{{ $act->tipo }}</td>
     </tr>

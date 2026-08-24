@@ -7,18 +7,23 @@ use Illuminate\Http\Request;
 
 class TipoEquipoController extends Controller
 {
-    public function index()
+    private const ROLES_TEC = ['ADMINISTRADOR', 'TECNOLOGIA'];
+
+    public function index(Request $request)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         return response()->json(TipoEquipo::orderBy('nombre')->get());
     }
 
-    public function activos()
+    public function activos(Request $request)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         return response()->json(TipoEquipo::where('estado', true)->orderBy('nombre')->get());
     }
 
     public function store(Request $request)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $request->validate([
             'nombre' => 'required|string|max:50|unique:pgsql.dbo.ti_tipo_equipo,nombre',
         ]);
@@ -33,6 +38,7 @@ class TipoEquipoController extends Controller
 
     public function update(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_TEC);
         $tipo = TipoEquipo::findOrFail($id);
 
         $request->validate([

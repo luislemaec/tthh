@@ -22,6 +22,8 @@
               <option value="VACACIONES">Vacaciones</option>
               <option value="DESTITUCION">Destitución</option>
               <option value="CESACION DE FUNCIONES">Cesación de Funciones</option>
+              <option value="COMISION DE SERVICIOS">Comisión de Servicios</option>
+              <option value="REINGRESO">Reingreso</option>
             </select>
           </div>
           <div>
@@ -86,8 +88,8 @@
           </div>
         </div>
 
-        <!-- INGRESO: solo muestra nombre/CI, no situación actual -->
-        <div v-if="empleadoSeleccionado && form.tipo_accion === 'INGRESO'" class="bg-green-50 border border-green-200 rounded-lg p-4">
+        <!-- INGRESO / REINGRESO: solo muestra nombre/CI, no situación actual -->
+        <div v-if="empleadoSeleccionado && sinActual" class="bg-green-50 border border-green-200 rounded-lg p-4">
           <div class="flex items-center justify-between">
             <div>
               <p class="text-sm font-semibold text-green-800">{{ empleadoSeleccionado.apellido_emp }}, {{ empleadoSeleccionado.nombre_emp }}</p>
@@ -97,21 +99,56 @@
           </div>
         </div>
 
-        <!-- Otros tipos: muestra situación actual completa -->
-        <div v-else-if="empleadoSeleccionado" class="bg-gray-50 rounded-lg p-4">
-          <div class="flex items-center justify-between mb-3">
-            <p class="text-sm font-semibold text-gray-700">Situación Actual — cargada automáticamente</p>
+        <!-- Otros tipos: situación actual editable -->
+        <div v-else-if="empleadoSeleccionado && !sinActual" class="bg-gray-50 rounded-lg p-4">
+          <div class="flex items-center justify-between mb-1">
+            <div>
+              <p class="text-sm font-semibold text-gray-700">Situación Actual</p>
+              <p v-if="cargandoUltimaAccion" class="text-xs text-gray-400 mt-0.5">Buscando última acción...</p>
+              <p v-else-if="fuenteActual === 'accion'" class="text-xs text-green-700 mt-0.5">✓ Datos tomados de la última acción de personal registrada</p>
+              <p v-else class="text-xs text-amber-700 mt-0.5">⚠ No se encontró acción previa — datos tomados de la ficha actual. Verifique y corrija si es necesario.</p>
+            </div>
             <button type="button" @click="limpiarEmpleado" class="text-red-400 hover:text-red-600 text-xs">✕ Quitar</button>
           </div>
-          <dl class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
-            <div><dt class="text-gray-500 text-xs">Empleado</dt><dd class="font-medium">{{ empleadoSeleccionado.apellido_emp }}, {{ empleadoSeleccionado.nombre_emp }}</dd></div>
-            <div><dt class="text-gray-500 text-xs">Cargo actual</dt><dd class="font-medium">{{ empleadoSeleccionado.cargo_empleado || '—' }}</dd></div>
-            <div><dt class="text-gray-500 text-xs">Grupo ocupacional</dt><dd class="font-medium">{{ empleadoSeleccionado.grupo_ocupacional || '—' }}</dd></div>
-            <div><dt class="text-gray-500 text-xs">Grado</dt><dd class="font-medium">{{ empleadoSeleccionado.nivel || '—' }}</dd></div>
-            <div><dt class="text-gray-500 text-xs">Remuneración</dt><dd class="font-medium">${{ Number(empleadoSeleccionado.sueldo || 0).toFixed(2) }}</dd></div>
-            <div><dt class="text-gray-500 text-xs">Proceso institucional</dt><dd class="font-medium">{{ empleadoSeleccionado.proceso_institucional || '—' }}</dd></div>
-            <div class="sm:col-span-3"><dt class="text-gray-500 text-xs">Partida presupuestaria</dt><dd class="font-mono text-xs font-medium">{{ empleadoSeleccionado.partida_presupuestaria ? (empleadoSeleccionado.partida_presupuestaria + (empleadoSeleccionado.partida_individual ? `-${empleadoSeleccionado.partida_individual}` : '')) : '—' }}</dd></div>
-          </dl>
+          <p class="text-xs text-gray-500 mb-3">Empleado: <strong>{{ empleadoSeleccionado.apellido_emp }}, {{ empleadoSeleccionado.nombre_emp }}</strong> — CI: {{ empleadoSeleccionado.identificacion }}</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="sm:col-span-2">
+              <label class="block text-xs font-medium text-gray-600 mb-1">Denominación del Puesto</label>
+              <input v-model="actualOverride.cargo" type="text" style="text-transform:uppercase"
+                class="w-full border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186] bg-white" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Grupo Ocupacional</label>
+              <input v-model="actualOverride.grupo_ocup" type="text" style="text-transform:uppercase"
+                class="w-full border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186] bg-white" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Grado</label>
+              <input v-model="actualOverride.grado" type="number" min="1"
+                class="w-full border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186] bg-white" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Remuneración Mensual</label>
+              <input v-model="actualOverride.remuneracion" type="number" step="0.01" min="0"
+                @input="calcularDiferencial"
+                class="w-full border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186] bg-white" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Proceso Institucional</label>
+              <select v-model="actualOverride.proceso_inst"
+                class="w-full border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186] bg-white">
+                <option value="">—</option>
+                <option value="SUSTANTIVO">SUSTANTIVO</option>
+                <option value="ADJETIVO">ADJETIVO</option>
+                <option value="GOBERNANTE">GOBERNANTE</option>
+              </select>
+            </div>
+            <div class="sm:col-span-2">
+              <label class="block text-xs font-medium text-gray-600 mb-1">Partida Presupuestaria</label>
+              <input v-model="actualOverride.partida" type="text"
+                class="w-full border rounded-lg px-3 py-1.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#579186] bg-white" />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -206,6 +243,20 @@
         <TipTapEditor v-model="form.motivacion" minHeight="180px" />
       </div>
 
+      <!-- Especificación (visible cuando aplica) -->
+      <div v-if="conEspecificacion" class="bg-white rounded-xl shadow p-6 space-y-3">
+        <h2 class="text-lg font-semibold text-gray-700 border-b pb-2">Especificación</h2>
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">
+            En caso de requerir especificación de lo seleccionado
+          </label>
+          <input v-model="form.especificacion" type="text"
+            style="text-transform:uppercase"
+            placeholder="Ej: COMISIÓN DE SERVICIOS SIN REMUNERACIÓN"
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+        </div>
+      </div>
+
       <!-- Firmantes -->
       <div class="bg-white rounded-xl shadow p-6 space-y-4">
         <h2 class="text-lg font-semibold text-gray-700 border-b pb-2">Responsables de Aprobación</h2>
@@ -234,6 +285,14 @@
             <input v-model="form.firmante_autoridad_cargo" type="text"
               style="text-transform:uppercase"
               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Medio</label>
+            <select v-model="form.medio"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
+              <option value="DIGITAL">DIGITAL</option>
+              <option value="MANUAL">MANUAL</option>
+            </select>
           </div>
         </div>
       </div>
@@ -267,10 +326,12 @@ import TipTapEditor from "@/components/TipTapEditor.vue"
 const router = useRouter()
 
 // Reglas por tipo
-const TIPOS_CON_PROPUESTA = ['ENCARGO', 'SUBROGACION', 'INGRESO']
-const TIPOS_CON_TITULAR   = ['ENCARGO', 'SUBROGACION']
-const TIPOS_CON_FECHA_FIN = ['ENCARGO', 'SUBROGACION', 'VACACIONES']
-const TIPOS_FECHA_FIN_REQ = ['SUBROGACION', 'VACACIONES']
+const TIPOS_CON_PROPUESTA    = ['ENCARGO', 'SUBROGACION', 'INGRESO', 'REINGRESO']
+const TIPOS_SIN_ACTUAL       = ['INGRESO', 'REINGRESO']
+const TIPOS_CON_TITULAR      = ['ENCARGO', 'SUBROGACION']
+const TIPOS_CON_FECHA_FIN    = ['ENCARGO', 'SUBROGACION', 'VACACIONES', 'COMISION DE SERVICIOS']
+const TIPOS_FECHA_FIN_REQ    = ['SUBROGACION', 'VACACIONES', 'COMISION DE SERVICIOS']
+const TIPOS_CON_ESPECIFICACION = ['COMISION DE SERVICIOS', 'REINGRESO', 'CESACION DE FUNCIONES']
 
 const form = ref({
   tipo_accion:               "",
@@ -290,6 +351,8 @@ const form = ref({
   firmante_th_cargo:         "",
   firmante_autoridad_nombre: "",
   firmante_autoridad_cargo:  "",
+  medio:                     "DIGITAL",
+  especificacion:            "",
 })
 
 const hastaNuevaOrden      = ref(false)
@@ -299,6 +362,9 @@ const empleadoSeleccionado = ref(null)
 const busquedaTitular      = ref("")
 const resultadosTitular    = ref([])
 const titularSeleccionado  = ref(null)
+const cargandoUltimaAccion = ref(false)
+const fuenteActual         = ref(null) // 'accion' | 'ficha' | null
+const actualOverride       = ref({ cargo: '', grupo_ocup: '', grado: '', remuneracion: '', proceso_inst: '', partida: '' })
 const diferencial          = ref(null)
 const guardando            = ref(false)
 const error                = ref("")
@@ -306,10 +372,12 @@ let busquedaTimer          = null
 let titularTimer           = null
 
 // Computed: reglas por tipo
-const conPropuesta     = computed(() => TIPOS_CON_PROPUESTA.includes(form.value.tipo_accion))
-const conTitular       = computed(() => TIPOS_CON_TITULAR.includes(form.value.tipo_accion))
-const conFechaFin      = computed(() => TIPOS_CON_FECHA_FIN.includes(form.value.tipo_accion))
+const conPropuesta      = computed(() => TIPOS_CON_PROPUESTA.includes(form.value.tipo_accion))
+const sinActual         = computed(() => TIPOS_SIN_ACTUAL.includes(form.value.tipo_accion))
+const conTitular        = computed(() => TIPOS_CON_TITULAR.includes(form.value.tipo_accion))
+const conFechaFin       = computed(() => TIPOS_CON_FECHA_FIN.includes(form.value.tipo_accion))
 const fechaFinRequerida = computed(() => TIPOS_FECHA_FIN_REQ.includes(form.value.tipo_accion))
+const conEspecificacion = computed(() => TIPOS_CON_ESPECIFICACION.includes(form.value.tipo_accion))
 
 // Labels dinámicos
 const labelFechaInicio = computed(() => {
@@ -317,6 +385,8 @@ const labelFechaInicio = computed(() => {
     case 'INGRESO':               return 'Fecha de Posesión *'
     case 'DESTITUCION':           return 'Fecha de Destitución *'
     case 'CESACION DE FUNCIONES': return 'Fecha de Cesación *'
+    case 'COMISION DE SERVICIOS': return 'Fecha de Inicio de Comisión *'
+    case 'REINGRESO':             return 'Fecha de Reingreso *'
     default:                      return 'Vigente desde *'
   }
 })
@@ -331,15 +401,17 @@ const tituloEmpleado = computed(() => {
     case 'DESTITUCION':
     case 'CESACION DE FUNCIONES': return 'Servidor público afectado'
     case 'VACACIONES':            return 'Empleado que sale de vacaciones'
+    case 'COMISION DE SERVICIOS': return 'Servidor en comisión'
+    case 'REINGRESO':             return 'Servidor que regresa'
     default:                      return 'Empleado que recibe el encargo / subrogación'
   }
 })
 
-const tituloPropuesta = computed(() =>
-  form.value.tipo_accion === 'INGRESO'
-    ? 'Situación Propuesta (cargo de ingreso)'
-    : 'Situación Propuesta (cargo a encargar/subrogar)'
-)
+const tituloPropuesta = computed(() => {
+  if (form.value.tipo_accion === 'INGRESO')   return 'Situación Propuesta (cargo de ingreso)'
+  if (form.value.tipo_accion === 'REINGRESO') return 'Situación Propuesta (cargo de reingreso)'
+  return 'Situación Propuesta (cargo a encargar/subrogar)'
+})
 
 // Monto proporcional: solo con diferencial > 0 y ambas fechas
 const montoProporacional = computed(() => {
@@ -371,6 +443,9 @@ watch(() => form.value.tipo_accion, () => {
     busquedaTitular.value     = ""
     resultadosTitular.value   = []
   }
+  if (!TIPOS_CON_ESPECIFICACION.includes(form.value.tipo_accion)) {
+    form.value.especificacion = ""
+  }
 })
 
 watch(hastaNuevaOrden, (val) => {
@@ -381,7 +456,7 @@ const buscarEmpleados = () => {
   clearTimeout(busquedaTimer)
   if (busquedaEmp.value.length < 2) { resultadosEmp.value = []; return }
   busquedaTimer = setTimeout(async () => {
-    const requiereInactivo = ['DESTITUCION', 'CESACION DE FUNCIONES'].includes(form.value.tipo_accion)
+    const requiereInactivo = ['DESTITUCION'].includes(form.value.tipo_accion)
     const { data } = await api.get("/empleados", {
       params: { buscar: busquedaEmp.value, estado: requiereInactivo ? "INACTIVO" : "ACTIVO", per_page: 8 }
     })
@@ -389,14 +464,14 @@ const buscarEmpleados = () => {
   }, 300)
 }
 
-const seleccionarEmpleado = (e) => {
+const seleccionarEmpleado = async (e) => {
   empleadoSeleccionado.value = e
   form.value.id_emp = e.id_emp
   busquedaEmp.value   = ""
   resultadosEmp.value = []
 
-  // INGRESO: auto-llenar propuesta desde la ficha del empleado
-  if (form.value.tipo_accion === 'INGRESO') {
+  // INGRESO / REINGRESO: auto-llenar propuesta desde la ficha del empleado
+  if (TIPOS_SIN_ACTUAL.includes(form.value.tipo_accion)) {
     form.value.propuesto_cargo        = e.cargo_empleado         || ""
     form.value.propuesto_grupo_ocup   = e.grupo_ocupacional      || ""
     form.value.propuesto_grado        = e.nivel                  || ""
@@ -405,6 +480,51 @@ const seleccionarEmpleado = (e) => {
       ? (e.partida_presupuestaria + (e.partida_individual ? `-${e.partida_individual}` : ""))
       : ""
     form.value.propuesto_proceso_inst = e.proceso_institucional  || ""
+  } else {
+    // Para tipos con situación actual: intentar cargar desde la última acción procesada
+    cargandoUltimaAccion.value = true
+    fuenteActual.value = null
+    try {
+      const { data } = await api.get(`/acciones-personal/ultima-activa/${e.id_emp}`)
+      if (data) {
+        actualOverride.value = {
+          cargo:        data.actual_cargo        || "",
+          grupo_ocup:   data.actual_grupo_ocup   || "",
+          grado:        data.actual_grado        || "",
+          remuneracion: data.actual_remuneracion || "",
+          proceso_inst: data.actual_proceso_inst || "",
+          partida:      data.actual_partida      || "",
+        }
+        fuenteActual.value = 'accion'
+      } else {
+        // Sin acción previa: usar datos actuales de la ficha
+        actualOverride.value = {
+          cargo:        e.cargo_empleado        || "",
+          grupo_ocup:   e.grupo_ocupacional     || "",
+          grado:        e.nivel                 || "",
+          remuneracion: e.sueldo                || "",
+          proceso_inst: e.proceso_institucional || "",
+          partida:      e.partida_presupuestaria
+            ? (e.partida_presupuestaria + (e.partida_individual ? `-${e.partida_individual}` : ""))
+            : "",
+        }
+        fuenteActual.value = 'ficha'
+      }
+    } catch (_) {
+      actualOverride.value = {
+        cargo:        e.cargo_empleado        || "",
+        grupo_ocup:   e.grupo_ocupacional     || "",
+        grado:        e.nivel                 || "",
+        remuneracion: e.sueldo                || "",
+        proceso_inst: e.proceso_institucional || "",
+        partida:      e.partida_presupuestaria
+          ? (e.partida_presupuestaria + (e.partida_individual ? `-${e.partida_individual}` : ""))
+          : "",
+      }
+      fuenteActual.value = 'ficha'
+    } finally {
+      cargandoUltimaAccion.value = false
+    }
   }
 
   calcularDiferencial()
@@ -414,6 +534,8 @@ const limpiarEmpleado = () => {
   empleadoSeleccionado.value = null
   form.value.id_emp = ""
   diferencial.value = null
+  fuenteActual.value = null
+  actualOverride.value = { cargo: '', grupo_ocup: '', grado: '', remuneracion: '', proceso_inst: '', partida: '' }
 }
 
 const buscarTitular = () => {
@@ -461,7 +583,9 @@ const calcularDiferencial = () => {
     return
   }
   const propuesto = parseFloat(form.value.propuesto_remuneracion) || 0
-  const actual    = parseFloat(empleadoSeleccionado.value.sueldo) || 0
+  const actual    = sinActual.value
+    ? 0
+    : (parseFloat(actualOverride.value.remuneracion) || parseFloat(empleadoSeleccionado.value.sueldo) || 0)
   diferencial.value = Math.max(0, propuesto - actual)
 }
 
@@ -479,6 +603,13 @@ const guardar = async () => {
       propuesto_remuneracion: conPropuesta.value ? form.value.propuesto_remuneracion : 0,
       propuesto_partida:      conPropuesta.value ? form.value.propuesto_partida      : null,
       propuesto_proceso_inst: conPropuesta.value ? form.value.propuesto_proceso_inst : null,
+      // Situación actual editable (solo para tipos con actual; el backend ignora estos si sinActual)
+      actual_cargo:        actualOverride.value.cargo        || null,
+      actual_grupo_ocup:   actualOverride.value.grupo_ocup   || null,
+      actual_grado:        actualOverride.value.grado        || null,
+      actual_remuneracion: actualOverride.value.remuneracion || null,
+      actual_proceso_inst: actualOverride.value.proceso_inst || null,
+      actual_partida:      actualOverride.value.partida      || null,
     }
     await api.post("/acciones-personal", payload)
     router.push("/acciones-personal")
@@ -494,7 +625,7 @@ const guardar = async () => {
 
 onMounted(async () => {
   try {
-    const { data } = await api.get("/configuracion/firmantes")
+    const { data } = await api.get("/admin/configuracion/firmantes")
     form.value.firmante_th_nombre        = data.firmante_th_nombre        || ""
     form.value.firmante_th_cargo         = data.firmante_th_cargo         || ""
     form.value.firmante_autoridad_nombre = data.firmante_autoridad_nombre || ""

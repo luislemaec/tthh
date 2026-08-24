@@ -55,7 +55,8 @@ class VacacionesController extends Controller
             "saldo_inicial"                => $saldoInicial,
             "acumulado_a_hoy"              => $diasAcumulados,
             "tomados"                      => $tomados,
-            "dias_disponibles"             => max(0, $disponibles),
+            "dias_disponibles"             => min(60, max(0, $disponibles)),
+            "dias_disponibles_real"        => min(60, $disponibles), // sin floor en 0 — permite negativo para Nombramiento Definitivo
             "dias_anuales"                 => $info['dias_anuales'],
             "dias_adicionales_antiguedad"  => $info['dias_adicionales_antiguedad'],
         ];
@@ -129,9 +130,10 @@ class VacacionesController extends Controller
             : ["saldo_inicial" => 0, "acumulado_a_hoy" => 0, "tomados" => 0, "dias_disponibles" => 0];
 
         return response()->json([
-            "cabecera"       => $cabecera,
-            "detalle"        => $detalle,
-            "saldo_calculado"=> $saldoCalculado,
+            "cabecera"          => $cabecera,
+            "detalle"           => $detalle,
+            "saldo_calculado"   => $saldoCalculado,
+            "modalidad_laboral" => $emp->modalidad_laboral,
         ]);
     }
 
@@ -203,21 +205,37 @@ class VacacionesController extends Controller
             return response()->json(["message" => "Solo empleados activos pueden solicitar vacaciones"], 403);
         }
 
+        $diasSolicitados = Carbon::parse($request->fecha_inicial)
+            ->diffInDays(Carbon::parse($request->fecha_final)) + 1;
+
         // Verificar saldo disponible
         $cabecera = CabeceraVacacion::where("id_emp", $emp->id_emp)->first();
         $saldo    = $cabecera ? $this->calcularSaldoDisponible($emp, $cabecera) : null;
 
-        if (!$saldo || $saldo["dias_disponibles"] <= 0) {
-            return response()->json(["message" => "No tienes días de vacaciones disponibles"], 422);
-        }
+        // Bug fix: descontar días de solicitudes PENDIENTE para evitar doble-aprobación simultánea
+        $diasPendientes = (int) DB::table('dbo.d2_vacacion')
+            ->where('id_emp', $emp->id_emp)
+            ->where('estado_permiso', 'PENDIENTE')
+            ->selectRaw("COALESCE(SUM(fecha_final::date - fecha_inicial::date + 1), 0) as total")
+            ->value('total');
 
-        $diasSolicitados = Carbon::parse($request->fecha_inicial)
-            ->diffInDays(Carbon::parse($request->fecha_final)) + 1;
+        $saldoReal     = $saldo ? ($saldo['dias_disponibles_real'] ?? 0) : 0;
+        $saldoEfectivo = $saldoReal - $diasPendientes;
 
-        if ($diasSolicitados > $saldo["dias_disponibles"]) {
-            return response()->json([
-                "message" => "No tienes suficientes días disponibles. Disponibles: {$saldo['dias_disponibles']}, solicitados: {$diasSolicitados}"
-            ], 422);
+        $esNombramiento = trim($emp->modalidad_laboral ?? '') === 'Nombramiento Definitivo';
+
+        if ($saldoEfectivo < $diasSolicitados) {
+            if ($esNombramiento) {
+                // Nombramiento Definitivo puede solicitar con saldo insuficiente — requiere informe TH
+                $requiereInforme = true;
+            } else {
+                $disponiblesDisplay = max(0, $saldoEfectivo);
+                return response()->json([
+                    "message" => "No tienes suficientes días disponibles. Disponibles: {$disponiblesDisplay}, solicitados: {$diasSolicitados}"
+                ], 422);
+            }
+        } else {
+            $requiereInforme = false;
         }
 
         // Verificar que no tenga vacaciones en las mismas fechas
@@ -233,18 +251,26 @@ class VacacionesController extends Controller
         }
 
         $vacacion = Vacacion::create([
-            "id_emp"         => $emp->id_emp,
-            "fecha_hora"     => now(),
-            "nombre_emp"     => trim($emp->apellido_emp) . " " . trim($emp->nombre_emp),
-            "fecha_inicial"  => $request->fecha_inicial,
-            "fecha_final"    => $request->fecha_final,
-            "hora_desde"     => $request->fecha_inicial . " " . $request->hora_desde . ":00",
-            "hora_hasta"     => $request->fecha_final   . " " . $request->hora_hasta . ":00",
-            "observaciones"  => $request->observaciones,
-            "todo_dia"       => $request->todo_dia ?? "SI",
-            "estado_permiso" => "PENDIENTE",
-            "ip"             => $request->ip(),
+            "id_emp"          => $emp->id_emp,
+            "fecha_hora"      => now(),
+            "nombre_emp"      => trim($emp->apellido_emp) . " " . trim($emp->nombre_emp),
+            "fecha_inicial"   => $request->fecha_inicial,
+            "fecha_final"     => $request->fecha_final,
+            "hora_desde"      => $request->fecha_inicial . " " . $request->hora_desde . ":00",
+            "hora_hasta"      => $request->fecha_final   . " " . $request->hora_hasta . ":00",
+            "observaciones"   => $request->observaciones,
+            "todo_dia"        => $request->todo_dia ?? "SI",
+            "estado_permiso"  => "PENDIENTE",
+            "ip"              => $request->ip(),
+            "requiere_informe"=> $requiereInforme,
         ]);
+
+        if ($requiereInforme) {
+            AuditoriaService::log('dbo.d2_vacacion', $vacacion->secuencial_clave, 'SOLICITUD_CON_EXCESO',
+                null,
+                ['id_emp' => $emp->id_emp, 'dias_solicitados' => $diasSolicitados, 'saldo_efectivo' => $saldoEfectivo],
+                $request, "Solicitud de vacaciones con exceso de saldo (requiere informe TH): {$vacacion->nombre_emp}");
+        }
 
         return response()->json($vacacion->load("empleado"), 201);
     }
@@ -266,6 +292,10 @@ class VacacionesController extends Controller
 
         if ($vacacion->estado_permiso !== "PENDIENTE") {
             return response()->json(["message" => "La solicitud no está en estado PENDIENTE"], 422);
+        }
+
+        if ($vacacion->requiere_informe && $vacacion->informe_estado !== 'FAVORABLE') {
+            return response()->json(["message" => "Esta solicitud requiere informe favorable de Talento Humano antes de ser aprobada"], 422);
         }
 
         $vacacion->update([
@@ -347,6 +377,52 @@ class VacacionesController extends Controller
             $request, "Negación de vacación: {$vacacion->nombre_emp}");
 
         return response()->json(["message" => "Vacación negada", "vacacion" => $vacacion->load("empleado")]);
+    }
+
+    // Marcar informe favorable/desfavorable (solo TH/Admin)
+    public function marcarInforme(Request $request, $id)
+    {
+        $this->requireRole($request, ['ADMINISTRADOR', 'TALENTO HUMANO']);
+
+        $request->validate([
+            'informe_estado' => 'required|in:FAVORABLE,DESFAVORABLE',
+        ]);
+
+        $vacacion = Vacacion::findOrFail($id);
+
+        if (!$vacacion->requiere_informe) {
+            return response()->json(['message' => 'Esta solicitud no requiere informe'], 422);
+        }
+
+        if ($vacacion->estado_permiso !== 'PENDIENTE') {
+            return response()->json(['message' => 'Solo se puede marcar informe en solicitudes PENDIENTE'], 422);
+        }
+
+        $anterior = ['informe_estado' => $vacacion->informe_estado];
+
+        $updates = [
+            'informe_estado' => $request->informe_estado,
+            'informe_fecha'  => today()->toDateString(),
+            'informe_por'    => $request->user()->id_emp,
+        ];
+
+        // Informe desfavorable → negar automáticamente la solicitud
+        if ($request->informe_estado === 'DESFAVORABLE') {
+            $updates['estado_permiso'] = 'NEGADO';
+        }
+
+        $vacacion->update($updates);
+
+        $accion = $request->informe_estado === 'FAVORABLE' ? 'INFORME_FAVORABLE' : 'INFORME_DESFAVORABLE';
+        AuditoriaService::log('dbo.d2_vacacion', $vacacion->secuencial_clave, $accion,
+            $anterior,
+            ['informe_estado' => $request->informe_estado, 'informe_por' => $request->user()->id_emp, 'empleado' => $vacacion->nombre_emp],
+            $request, "{$accion}: {$vacacion->nombre_emp}");
+
+        return response()->json([
+            'message'  => 'Informe registrado correctamente',
+            'vacacion' => $vacacion->load('empleado'),
+        ]);
     }
 
     // Eliminar vacación

@@ -6,6 +6,7 @@ use App\Models\Razon;
 use App\Models\Empleado;
 use App\Models\Supervisor;
 use App\Models\CabeceraVacacion;
+use App\Models\Configuracion;
 use App\Services\AuditoriaService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -19,10 +20,18 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class PermisosController extends Controller
 {
-    private string $alfrescoBase = 'http://192.168.26.38:8080/alfresco/api/-default-/public/alfresco/versions/1';
-    private string $alfrescoUser = 'admin';
-    private string $alfrescoPass = 'admin';
-    private string $alfrescoSite = 'talentohumano';
+    private string $alfrescoBase;
+    private string $alfrescoUser;
+    private string $alfrescoPass;
+    private string $alfrescoSite;
+
+    public function __construct()
+    {
+        $this->alfrescoBase = config('services.alfresco.base');
+        $this->alfrescoUser = config('services.alfresco.user');
+        $this->alfrescoPass = config('services.alfresco.pass');
+        $this->alfrescoSite = config('services.alfresco.site');
+    }
 
     private function getDocLibNodeId(): string
     {
@@ -296,6 +305,36 @@ class PermisosController extends Controller
         return response()->json($permiso);
     }
 
+    // Calcula el saldo interno de vacaciones SIN aplicar el tope de 60 días.
+    // Replica la lógica de VacacionesController::calcularSaldoDisponible() pero devuelve el valor crudo.
+    private function calcularInternoVac(Empleado $emp, CabeceraVacacion $cabecera): float
+    {
+        $contrato = trim($emp->tipo_contrato ?? '');
+        if ($contrato === 'LOSEP') {
+            $tasaMensual = 2.50;
+        } elseif ($contrato === 'CODIGO DEL TRABAJO') {
+            $anios       = $emp->fecha_ingreso ? (int) Carbon::parse($emp->fecha_ingreso)->diffInYears(Carbon::today()) : 0;
+            $diasExtra   = min(max(0, $anios - 5), 15);
+            $tasaMensual = (15 + $diasExtra) / 12;
+        } else {
+            $tasaMensual = 0;
+        }
+
+        $fechaCorteConfig = Configuracion::find('FECHA_CORTE_VACACIONES');
+        $fechaCorte       = $fechaCorteConfig ? Carbon::parse($fechaCorteConfig->valor) : Carbon::today();
+        if ($emp->fecha_ingreso && Carbon::parse($emp->fecha_ingreso)->gt($fechaCorte)) {
+            $fechaCorte = Carbon::parse($emp->fecha_ingreso);
+        }
+
+        $fechaHasta     = Carbon::today();
+        $diasCalendario = max(0, $fechaCorte->diffInDays($fechaHasta));
+        $diasAcumulados = round($diasCalendario / 360 * ($tasaMensual * 12), 2);
+        $saldoInicial   = (float) ($cabecera->dias_adicionales  ?? 0);
+        $tomados        = (float) ($cabecera->total_dias_tomados ?? 0);
+
+        return $saldoInicial + $diasAcumulados - $tomados;
+    }
+
     // Aprobar permiso (solo supervisor del empleado)
     public function aprobar(Request $request, $id)
     {
@@ -309,12 +348,14 @@ class PermisosController extends Controller
             ], 403);
         }
 
-        // Verificar que es supervisor del empleado
-        $empleados = $this->empleadosDeSupervisor($supervisor->id_emp);
-        if (!$empleados->contains($permiso->id_emp)) {
-            return response()->json([
-                "message" => "No eres supervisor de este empleado"
-            ], 403);
+        // Verificar que es supervisor del empleado (TH/ADMIN pueden aprobar cualquiera)
+        if (!$this->esAdminOTH($supervisor->id_emp)) {
+            $empleados = $this->empleadosDeSupervisor($supervisor->id_emp);
+            if (!$empleados->contains($permiso->id_emp)) {
+                return response()->json([
+                    "message" => "No eres supervisor de este empleado"
+                ], 403);
+            }
         }
 
         if ($permiso->estado_permiso !== "PENDIENTE") {
@@ -326,28 +367,46 @@ class PermisosController extends Controller
         $permiso->update([
             "estado_permiso" => "APROBADO",
             "usuario"        => $supervisor->id_emp,
+            "aprobado_en"    => now(),
         ]);
 
         // Calcular días a descontar según jornada del empleado
         $empleado     = Empleado::with("jornada")->find($permiso->id_emp);
         $horasJornada = $empleado?->jornada ? (float) $empleado->jornada->normal : 8.0;
 
+        // Factor proporcional sábados/domingos: 30 días calendario = 22 hábiles + 8 fin de semana
+        // Cada día hábil de permiso carga 1 + 8/22 = 1.3636 días del saldo de vacaciones
+        $factorFds = 30 / 22;
+
         if ($permiso->todo_dia === "SI") {
-            $diasDescuento = Carbon::parse($permiso->fecha_desde)
+            $diasBase      = Carbon::parse($permiso->fecha_desde)
                 ->diffInDays(Carbon::parse($permiso->fecha_hasta)) + 1;
+            $diasDescuento = round($diasBase * $factorFds, 4);
         } else {
             $horas         = Carbon::parse($permiso->hora_desde)
                 ->diffInMinutes(Carbon::parse($permiso->hora_hasta)) / 60;
-            $diasDescuento = round($horas / $horasJornada, 4);
+            $diasDescuento = round($horas / $horasJornada * $factorFds, 4);
         }
 
         // Si es descontable → reducir saldo de vacaciones
         if ($permiso->descontable === "SI") {
             $cabecera = CabeceraVacacion::where("id_emp", $permiso->id_emp)->first();
             if ($cabecera) {
+                // Calcular el saldo interno real (sin tope) para saber cuánto excede los 60 días.
+                // Si el empleado tiene 70 días internos → exceso = 10 → el permiso primero consume ese
+                // exceso invisible y luego el descuento real, de modo que el saldo visible (≤60) baje correctamente.
+                $internoSaldo = $this->calcularInternoVac($empleado, $cabecera);
+                $exceso       = max(0.0, $internoSaldo - 60.0);
+                $efectivo     = round($exceso + $diasDescuento, 4);
+
                 $cabecera->dias_x_tomar_normal = max(0, (float)($cabecera->dias_x_tomar_normal ?? 0) - $diasDescuento);
-                $cabecera->total_dias_tomados  = round((float)($cabecera->total_dias_tomados  ?? 0) + $diasDescuento, 4);
+                $cabecera->total_dias_tomados  = round((float)($cabecera->total_dias_tomados  ?? 0) + $efectivo, 4);
                 $cabecera->save();
+
+                // Guardar el monto efectivo para que anular() pueda revertir exactamente lo correcto
+                DB::table('dbo.d2_permiso')
+                    ->where($permiso->getKeyName(), $permiso->getKey())
+                    ->update(['dias_descuento_efectivo' => $efectivo]);
             }
         }
 
@@ -395,12 +454,14 @@ class PermisosController extends Controller
             ], 403);
         }
 
-        // Verificar que es supervisor del empleado
-        $empleados = $this->empleadosDeSupervisor($supervisor->id_emp);
-        if (!$empleados->contains($permiso->id_emp)) {
-            return response()->json([
-                "message" => "No eres supervisor de este empleado"
-            ], 403);
+        // Verificar que es supervisor del empleado (TH/ADMIN pueden negar cualquiera)
+        if (!$this->esAdminOTH($supervisor->id_emp)) {
+            $empleados = $this->empleadosDeSupervisor($supervisor->id_emp);
+            if (!$empleados->contains($permiso->id_emp)) {
+                return response()->json([
+                    "message" => "No eres supervisor de este empleado"
+                ], 403);
+            }
         }
 
         if ($permiso->estado_permiso !== "PENDIENTE") {
@@ -597,19 +658,28 @@ class PermisosController extends Controller
             $empleado     = Empleado::with('jornada')->find($permiso->id_emp);
             $horasJornada = $empleado?->jornada ? (float) $empleado->jornada->normal : 8.0;
 
+            $factorFds = 30 / 22;
+
             if ($permiso->todo_dia === 'SI') {
-                $diasDescuento = Carbon::parse($permiso->fecha_desde)
+                $diasBase      = Carbon::parse($permiso->fecha_desde)
                     ->diffInDays(Carbon::parse($permiso->fecha_hasta)) + 1;
+                $diasDescuento = round($diasBase * $factorFds, 4);
             } else {
                 $horas         = Carbon::parse($permiso->hora_desde)
                     ->diffInMinutes(Carbon::parse($permiso->hora_hasta)) / 60;
-                $diasDescuento = round($horas / $horasJornada, 4);
+                $diasDescuento = round($horas / $horasJornada * $factorFds, 4);
             }
 
             $cabecera = CabeceraVacacion::where('id_emp', $permiso->id_emp)->first();
             if ($cabecera) {
+                // Usar el monto efectivo guardado al aprobar (incluye el exceso sobre 60 que se consumió).
+                // Si el permiso es anterior a este cambio, $dias_descuento_efectivo será null → usar diasDescuento.
+                $efectivoRevertir = $permiso->dias_descuento_efectivo !== null
+                    ? (float) $permiso->dias_descuento_efectivo
+                    : $diasDescuento;
+
                 $cabecera->dias_x_tomar_normal = round((float)($cabecera->dias_x_tomar_normal ?? 0) + $diasDescuento, 4);
-                $cabecera->total_dias_tomados  = max(0, round((float)($cabecera->total_dias_tomados ?? 0) - $diasDescuento, 4));
+                $cabecera->total_dias_tomados  = max(0, round((float)($cabecera->total_dias_tomados ?? 0) - $efectivoRevertir, 4));
                 $cabecera->save();
             }
         }

@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-6">
-    <h1 class="text-2xl font-bold text-gray-800">Reportes</h1>
+    <h1 class="text-2xl font-bold text-gray-800">Reportes de Marcaciones y Movimientos Personal</h1>
 
     <!-- Tabs -->
     <div class="flex border-b overflow-x-auto">
@@ -216,7 +216,7 @@
     <!-- Reporte Marcaciones Faltantes -->
     <div v-if="tabActivo === 'faltantes'" class="bg-white rounded-xl shadow overflow-hidden">
       <div class="px-6 py-4 border-b flex items-center justify-between">
-        <h2 class="font-semibold text-gray-700">Marcaciones No Realizadas</h2>
+        <h2 class="font-semibold text-gray-700">Marcaciones no Realizadas</h2>
         <span class="text-sm text-gray-400">{{ datos.length }} registros</span>
       </div>
       <div class="overflow-x-auto">
@@ -245,18 +245,22 @@
               <td class="px-4 py-3 text-gray-500 text-xs">{{ r.nombre_depto }}</td>
               <td class="px-4 py-3 text-center">
                 <span v-if="r.tiene_entrada > 0" class="text-green-600">✓</span>
+                <span v-else-if="r.motivo === 'VACACIONES'" class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-xs font-medium">Vacaciones</span>
                 <span v-else class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-medium">No registró</span>
               </td>
               <td class="px-4 py-3 text-center">
                 <span v-if="r.tiene_sal_lunch > 0" class="text-green-600">✓</span>
+                <span v-else-if="r.motivo === 'VACACIONES'" class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-xs font-medium">Vacaciones</span>
                 <span v-else class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-medium">No registró</span>
               </td>
               <td class="px-4 py-3 text-center">
                 <span v-if="r.tiene_ent_lunch > 0" class="text-green-600">✓</span>
+                <span v-else-if="r.motivo === 'VACACIONES'" class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-xs font-medium">Vacaciones</span>
                 <span v-else class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-medium">No registró</span>
               </td>
               <td class="px-4 py-3 text-center">
                 <span v-if="r.tiene_salida > 0" class="text-green-600">✓</span>
+                <span v-else-if="r.motivo === 'VACACIONES'" class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-xs font-medium">Vacaciones</span>
                 <span v-else class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-medium">No registró</span>
               </td>
             </tr>

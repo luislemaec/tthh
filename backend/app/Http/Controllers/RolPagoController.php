@@ -8,6 +8,8 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class RolPagoController extends Controller
 {
+    private const ROLES_NOMINA = ['ADMINISTRADOR', 'TH NOMINA'];
+
     private function esNominaOAdmin(string $id_emp): bool
     {
         return DB::table('dbo.admin_usuario_rol as ur')
@@ -100,6 +102,7 @@ class RolPagoController extends Controller
     // GET /api/nomina/rol-pago
     public function index(Request $request)
     {
+        $this->requireRole($request, self::ROLES_NOMINA);
         $request->validate(['anio' => 'required|integer', 'mes' => 'required|integer|min:1|max:12']);
 
         $cab = DB::table('dbo.nom_rol_pago_cab')
@@ -238,6 +241,7 @@ class RolPagoController extends Controller
     // PUT /api/nomina/rol-pago/detalle/{id}
     public function updateDetalle(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_NOMINA);
         $request->validate([
             'quirografario'   => 'nullable|numeric|min:0',
             'hipotecario'     => 'nullable|numeric|min:0',
@@ -324,6 +328,7 @@ class RolPagoController extends Controller
     // POST /api/nomina/rol-pago/importar
     public function importar(Request $request)
     {
+        $this->requireRole($request, self::ROLES_NOMINA);
         $request->validate([
             'anio'  => 'required|integer',
             'mes'   => 'required|integer|min:1|max:12',
@@ -403,8 +408,9 @@ class RolPagoController extends Controller
     }
 
     // GET /api/nomina/rol-pago/{cabId}/resumenes
-    public function resumenes($cabId)
+    public function resumenes(Request $request, $cabId)
     {
+        $this->requireRole($request, self::ROLES_NOMINA);
         $filas = DB::table('dbo.nom_rol_pago_det')
             ->where('cab_id', $cabId)
             ->selectRaw("
@@ -428,6 +434,7 @@ class RolPagoController extends Controller
     // GET /api/nomina/rol-pago/{cabId}/resumenes/pdf
     public function pdfResumenes($cabId, Request $request)
     {
+        $this->requireRole($request, self::ROLES_NOMINA);
         $cab = DB::table('dbo.nom_rol_pago_cab')->where('id', $cabId)->first();
         if (!$cab) {
             return response()->json(['message' => 'Período no encontrado.'], 404);
@@ -467,6 +474,7 @@ class RolPagoController extends Controller
     // GET /api/nomina/rol-pago/pdf
     public function pdf(Request $request)
     {
+        $this->requireRole($request, self::ROLES_NOMINA);
         $request->validate(['anio' => 'required|integer', 'mes' => 'required|integer|min:1|max:12']);
 
         $cab = DB::table('dbo.nom_rol_pago_cab')
