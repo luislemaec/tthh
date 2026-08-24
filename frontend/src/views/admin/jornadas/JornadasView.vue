@@ -84,7 +84,7 @@
 
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">
-              Descripción
+              Descripción *
             </label>
             <input v-model="modal.form.descripcion" type="text" maxlength="50"
               placeholder="Ej: Jornada Completa"
@@ -133,7 +133,7 @@
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">
-                H. Extraordinarias %
+                H. Extraordinarias % *
               </label>
               <input v-model="modal.form.porc_extraordinaria" type="number" step="0.01"
                 placeholder="Ej: 50 (CdT) / 25 (LOSEP)"
@@ -141,7 +141,7 @@
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">
-                H. Suplementarias %
+                H. Suplementarias % *
               </label>
               <input v-model="modal.form.porc_suplementaria" type="number" step="0.01"
                 placeholder="Ej: 100 (CdT) / 60 (LOSEP)"
@@ -247,6 +247,9 @@ function cerrarModal() {
 
 // Guardar (crear o editar)
 async function guardarJornada() {
+  if (!modal.value.form.descripcion?.trim())                   { error.value = 'La descripción es requerida.'; return }
+  if (modal.value.form.porc_extraordinaria === null || modal.value.form.porc_extraordinaria === '') { error.value = 'El porcentaje de horas extraordinarias es requerido.'; return }
+  if (modal.value.form.porc_suplementaria  === null || modal.value.form.porc_suplementaria  === '') { error.value = 'El porcentaje de horas suplementarias es requerido.'; return }
   guardando.value = true
   error.value = ""
   try {
