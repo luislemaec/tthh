@@ -89,7 +89,9 @@ Las tablas `adq.orden_compra`, `adq.egreso`, `adq.kardex`, `adq.solicitud_materi
 
 ## Roles
 
-Roles: `ADMINISTRADOR`, `TALENTO HUMANO`, `TH ACCIONES PERSONAL`, `TH NOMINA`, `SUPERVISOR`, `ADQUISICIONES`, `TRANSPORTE`, `CONDUCTOR`, `MAXIMA AUTORIDAD`, `CONTABILIDAD`, `PRESUPUESTO`, `DIRECTOR FINANCIERO`, `TESORERIA`, `COMISIONADO EXTERNO`. Empleados sin rol = acceso básico.
+Roles: `ADMINISTRADOR`, `TALENTO HUMANO`, `TH ACCIONES PERSONAL`, `TH NOMINA`, `SUPERVISOR`, `ADQUISICIONES`, `SUMINISTROS`, `TRANSPORTE`, `CONDUCTOR`, `MAXIMA AUTORIDAD`, `CONTABILIDAD`, `PRESUPUESTO`, `DIRECTOR FINANCIERO`, `TESORERIA`, `COMISIONADO EXTERNO`, `COMISIONES`. Empleados sin rol = acceso básico (solo Talento Humano).
+- `SUMINISTROS` — rol básico de adquisiciones: solo ve la tarjeta "Solicitar Materiales" en el launcher y la vista `adquisiciones/solicitudes`. Sin acceso al módulo completo de Adquisiciones.
+- `COMISIONES` — rol básico de comisiones: ve la tarjeta "Comisiones" en el launcher y las vistas `comisiones/solicitudes` y `comisiones/liquidaciones`. Sin acceso a las funciones financieras (CURs, ficha de liquidación, tarifas).
 - Backend: `DB::table('dbo.admin_usuario_rol')` — sin Laravel policies/gates
 - Frontend: `auth.tieneRol('NOMBRE')` desde Pinia store
 - Menú filtrado por rol desde `dbo.admin_opcion`
