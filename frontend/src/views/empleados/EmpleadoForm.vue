@@ -341,6 +341,11 @@
                 <option>FIN DE CONTRATO</option>
                 <option>RENUNCIA VOLUNTARIA</option>
                 <option>JUBILACIÓN</option>
+                <option>REMOCIÓN</option>
+                <option>FALLECIMIENTO</option>
+                <option>DESTITUCIÓN</option>
+                <option>TERMINACIÓN CONTRATO SERVICIOS OCASIONALES</option>
+                <option>TERMINACIÓN NOMBRAMIENTO</option>
               </select>
             </div>
             <!-- Institución destino — solo cuando sale en comisión -->
@@ -364,7 +369,7 @@
               </select>
             </div>
             <div>
-              <label class="label-field">Salario Base *</label>
+              <label class="label-field">Remuneración / Sueldo *</label>
               <div class="relative">
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-medium">$</span>
                 <input v-model="form.salario" type="number" step="0.01" min="0"
@@ -745,7 +750,7 @@ const opcionesModalidad = [
   { value: 'PRESENCIAL',  label: 'Presencial',  desc: 'Solo puede timbrar desde las VLANs internas configuradas.' },
   { value: 'TEMPORAL',    label: 'Temporal',    desc: 'Puede timbrar desde cualquier IP (comisión, viaje temporal).' },
   { value: 'TELETRABAJO', label: 'Teletrabajo', desc: 'Marca como teletrabajo sin restricción de IP. Requiere período habilitado.' },
-  { value: 'BIOMETRICO',  label: 'Biométrico',  desc: 'Solo puede timbrar por el reloj biométrico. Web deshabilitado.' },
+  // { value: 'BIOMETRICO',  label: 'Biométrico',  desc: 'Solo puede timbrar por el reloj biométrico. Web deshabilitado.' },
 ]
 
 function seleccionarPartida(p) {
@@ -1029,7 +1034,14 @@ onMounted(async () => {
   jornadas.value             = jors
   partidasVacantes.value     = partidas
   modalidadesLaborales.value = mods.filter(m => m.estado === 'ACTIVO')
-  catalogos.value            = cats
+  // Ocultar grupos no aplicables a la institución
+  const VULNERABLES_OCULTOS  = ['Personas en situación de movilidad humana', 'Personas privadas de libertad']
+  const PRIORITARIOS_OCULTOS = ['Migrantes en situación de vulnerabilidad', 'Personas en situación de riesgo', 'Personas privadas de libertad']
+  catalogos.value = {
+    ...cats,
+    grupos_vulnerables:  cats.grupos_vulnerables.filter(g  => !VULNERABLES_OCULTOS.includes(g.nombre)),
+    grupos_prioritarios: cats.grupos_prioritarios.filter(g => !PRIORITARIOS_OCULTOS.includes(g.nombre)),
+  }
 
   if (esEdicion.value) {
     const { data } = await api.get("/empleados/" + route.params.id)
