@@ -129,8 +129,8 @@
         </div>
       </button>
 
-      <!-- Solicitudes de materiales (todos los empleados) -->
-      <button v-if="!tieneAccesoAdquisiciones" @click="irA('/adquisiciones/solicitudes')" @animationend="onAnimEnd"
+      <!-- Solicitudes de materiales (solo rol SUMINISTROS) -->
+      <button v-if="store.tieneRol('SUMINISTROS') && !tieneAccesoAdquisiciones" @click="irA('/adquisiciones/solicitudes')" @animationend="onAnimEnd"
         :class="cardAnimClass"
         class="bg-white rounded-xl shadow-lg p-3 w-36 flex flex-col items-center gap-3 hover:scale-105 transition-transform cursor-pointer">
         <div class="w-10 h-10 rounded-full flex items-center justify-center bg-amber-600">
