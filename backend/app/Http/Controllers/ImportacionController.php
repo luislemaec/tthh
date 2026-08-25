@@ -15,22 +15,46 @@ class ImportacionController extends Controller
         'cargo_empleado', 'grupo_ocupacional', 'proceso_institucional',
         'modalidad_laboral', 'modalidad_marcacion',
         'partida_individual', 'partida_presupuestaria',
+        'programa', 'actividad',
         'fecha_ingreso', 'fecha_salida',
+        'motivo_salida', 'motivo_reactivacion', 'institucion_comision',
         'acumula_decimo_tercero', 'acumula_decimo_cuarto', 'acumula_fondos_reserva',
         'puede_solicitar_vehiculo',
-        'telefono', 'calle_y_numero', 'email',
+        'sexo', 'tipo_sangre',
+        'num_sercop', 'fecha_vence_sercop',
+        'banco', 'tipo_cuenta', 'numero_cuenta',
+        'telefono', 'extension', 'calle_y_numero', 'email',
+        'grupo_vulnerable', 'grupo_prioritario',
+        'tiene_discapacidad', 'tipo_discapacidad', 'porcentaje_discapacidad',
+        'tiene_enfermedad_catastrofica', 'enfermedad_catastrofica',
+        'tiene_persona_sustituta', 'sustituta_fecha_caducidad',
+        'num_hijos_mayores',
     ];
 
+    // Catálogos: nombre debe coincidir (sin distinguir mayúsculas) con dbo.ad_grupo_vulnerable /
+    // ad_grupo_prioritario / ad_tipo_discapacidad / ad_enfermedad_catastrofica. Dejar vacío si no aplica.
+    // Hijos menores individuales y el documento de persona sustituta NO se cargan por este CSV —
+    // se gestionan desde la ficha del empleado (Tab 1).
     private const EJEMPLO = [
         '1234567890', 'JUAN CARLOS', 'PEREZ GARCIA', '16',
         'ACTIVO', 'OCUPADO', 'LOSEP', '1500.00', '1',
         'ANALISTA', 'GESTIÓN INTERNA', 'TALENTO HUMANO',
         'SERVIDOR PÚBLICO', 'PRESENCIAL',
         'PI-001', 'PP-001',
+        '55', '001',
         '2020-01-15', '',
+        '', '', '',
         '0', '0', '0',
         '0',
-        '0991234567', 'Av. Amazonas 123', 'juan@correo.com',
+        'MASCULINO', 'O+',
+        '', '',
+        'BANCO PICHINCHA', 'AHORROS', '2200123456',
+        '0991234567', '102', 'Av. Amazonas 123', 'juan@correo.com',
+        '', '',
+        'NO', '', '',
+        'NO', '',
+        'NO', '',
+        '0',
     ];
 
     // Descargar plantilla CSV
@@ -108,6 +132,24 @@ class ImportacionController extends Controller
         $cabeceras    = null;
         $fila_num     = 0;
 
+        $mapaCatalogo = fn (string $tabla) => DB::table($tabla)->get(['id', 'nombre'])
+            ->mapWithKeys(fn ($r) => [strtoupper(trim($r->nombre)) => $r->id])->toArray();
+
+        $catGrupoVulnerable  = $mapaCatalogo('dbo.ad_grupo_vulnerable');
+        $catGrupoPrioritario = $mapaCatalogo('dbo.ad_grupo_prioritario');
+        $catTipoDiscapacidad = $mapaCatalogo('dbo.ad_tipo_discapacidad');
+        $catEnfermedad       = $mapaCatalogo('dbo.ad_enfermedad_catastrofica');
+
+        $buscarCatalogo = function (array $catalogo, ?string $nombre, string $etiqueta, int $filaNum, array &$errores): ?int {
+            $nombre = trim((string) $nombre);
+            if ($nombre === '') return null;
+            $id = $catalogo[strtoupper($nombre)] ?? null;
+            if ($id === null) {
+                $errores[] = "Fila $filaNum: $etiqueta '$nombre' no encontrado en el catálogo, se dejó vacío";
+            }
+            return $id;
+        };
+
         DB::beginTransaction();
         try {
             while (($fila = fgetcsv($handle, 2000, ',')) !== false) {
@@ -139,14 +181,37 @@ class ImportacionController extends Controller
                         'modalidad_marcacion'    => strtoupper($d['modalidad_marcacion'] ?? 'PRESENCIAL'),
                         'partida_individual'     => $d['partida_individual'] ?? null,
                         'partida_presupuestaria' => $d['partida_presupuestaria'] ?? null,
+                        'programa'               => !empty($d['programa'])  ? strtoupper($d['programa'])  : null,
+                        'actividad'              => !empty($d['actividad']) ? strtoupper($d['actividad']) : null,
                         'fecha_ingreso'          => !empty($d['fecha_ingreso']) ? $d['fecha_ingreso'] : null,
                         'fecha_salida'           => !empty($d['fecha_salida']) ? $d['fecha_salida'] : null,
+                        'motivo_salida'          => !empty($d['motivo_salida'])        ? $d['motivo_salida']        : null,
+                        'motivo_reactivacion'    => !empty($d['motivo_reactivacion'])  ? $d['motivo_reactivacion']  : null,
+                        'institucion_comision'   => !empty($d['institucion_comision']) ? $d['institucion_comision'] : null,
                         'acumula_decimo_tercero' => (bool)($d['acumula_decimo_tercero'] ?? false),
                         'acumula_decimo_cuarto'  => (bool)($d['acumula_decimo_cuarto'] ?? false),
                         'acumula_fondos_reserva' => (int)($d['acumula_fondos_reserva'] ?? 0),
                         'puede_solicitar_vehiculo' => (bool)($d['puede_solicitar_vehiculo'] ?? false),
+                        'sexo'                   => !empty($d['sexo'])        ? strtoupper($d['sexo'])        : null,
+                        'tipo_sangre'            => !empty($d['tipo_sangre']) ? strtoupper($d['tipo_sangre']) : null,
+                        'num_sercop'             => !empty($d['num_sercop']) ? $d['num_sercop'] : null,
+                        'fecha_vence_sercop'     => !empty($d['fecha_vence_sercop']) ? $d['fecha_vence_sercop'] : null,
+                        'banco'                  => !empty($d['banco'])       ? strtoupper($d['banco'])       : null,
+                        'tipo_cuenta'            => !empty($d['tipo_cuenta']) ? strtoupper($d['tipo_cuenta']) : null,
+                        'numero_cuenta'          => !empty($d['numero_cuenta']) ? $d['numero_cuenta'] : null,
                         'telefono'               => $d['telefono'] ?? null,
+                        'extension'              => !empty($d['extension']) ? $d['extension'] : null,
                         'calle_y_numero'         => $d['calle_y_numero'] ?? null,
+                        'grupo_vulnerable_id'    => $buscarCatalogo($catGrupoVulnerable,  $d['grupo_vulnerable']  ?? null, 'grupo vulnerable',  $fila_num, $errores),
+                        'grupo_prioritario_id'   => $buscarCatalogo($catGrupoPrioritario, $d['grupo_prioritario'] ?? null, 'grupo prioritario', $fila_num, $errores),
+                        'tiene_discapacidad'     => strtoupper(trim($d['tiene_discapacidad'] ?? '')) === 'SI',
+                        'tipo_discapacidad_id'   => $buscarCatalogo($catTipoDiscapacidad, $d['tipo_discapacidad'] ?? null, 'tipo de discapacidad', $fila_num, $errores),
+                        'porcentaje_discapacidad' => !empty($d['porcentaje_discapacidad']) ? (float)$d['porcentaje_discapacidad'] : null,
+                        'tiene_enfermedad_catastrofica' => strtoupper(trim($d['tiene_enfermedad_catastrofica'] ?? '')) === 'SI',
+                        'enfermedad_catastrofica_id'    => $buscarCatalogo($catEnfermedad, $d['enfermedad_catastrofica'] ?? null, 'enfermedad catastrófica', $fila_num, $errores),
+                        'tiene_persona_sustituta'   => strtoupper(trim($d['tiene_persona_sustituta'] ?? '')) === 'SI',
+                        'sustituta_fecha_caducidad' => !empty($d['sustituta_fecha_caducidad']) ? $d['sustituta_fecha_caducidad'] : null,
+                        'num_hijos_mayores'         => !empty($d['num_hijos_mayores']) ? (int)$d['num_hijos_mayores'] : 0,
                     ];
 
                     $existe = Empleado::where('identificacion', $d['identificacion'])->first();

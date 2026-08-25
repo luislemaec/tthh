@@ -43,18 +43,27 @@
         <span>{{ estado.mensaje_bloqueo }}</span>
       </div>
 
-      <!-- Mensaje de exito -->
-      <div v-if="mensajeExito"
-        class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm text-center">
-        {{ mensajeExito }}
-      </div>
-
-      <!-- Mensaje de error -->
-      <div v-if="mensajeError"
-        class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm text-center">
-        {{ mensajeError }}
-      </div>
     </div>
+
+    <!-- Toast flotante: fijo en la parte superior, siempre visible sin importar el scroll -->
+    <Teleport to="body">
+      <div v-if="mensajeExito || mensajeError"
+        class="fixed top-4 inset-x-0 z-[9985] flex justify-center px-4 pointer-events-none">
+        <div :class="mensajeError ? 'bg-red-600' : 'bg-green-600'"
+          class="pointer-events-auto max-w-md w-full sm:w-auto flex items-center gap-3 text-white px-5 py-3 rounded-xl shadow-lg text-sm font-medium">
+          <svg v-if="mensajeError" class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+          </svg>
+          <svg v-else class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+          </svg>
+          <span class="flex-1">{{ mensajeError || mensajeExito }}</span>
+          <button @click="mensajeExito = ''; mensajeError = ''"
+            class="text-white/80 hover:text-white text-lg leading-none flex-shrink-0">×</button>
+        </div>
+      </div>
+    </Teleport>
 
     <!-- Historial personal de marcaciones -->
     <div class="bg-white rounded-xl shadow p-6">

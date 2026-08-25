@@ -12,7 +12,7 @@ return new class extends Migration
             ->exists();
 
         if (!$existe) {
-            DB::table('dbo.ad_enfermedad_catastrofica')->insert(['nombre' => 'OTROS']);
+            DB::table('dbo.ad_enfermedad_catastrofica')->insert(['nombre' => 'Otros']);
         }
     }
 
