@@ -110,7 +110,7 @@ class ReporteEmpleadosController extends Controller
                 'e.tiene_enfermedad_catastrofica', 'e.tiene_persona_sustituta',
                 'e.sustituta_fecha_caducidad', 'e.num_sercop', 'e.fecha_vence_sercop',
                 'e.num_hijos_mayores', 'e.puede_solicitar_vehiculo', 'e.fecha_ingreso',
-                'e.motivo_salida', 'e.motivo_reactivacion', 'e.institucion_comision',
+                'e.motivo_salida', 'e.motivo_reactivacion', 'e.institucion_comision', 'e.es_comisionado_entrante',
                 'd.nombre_depto',
                 'gv.nombre as grupo_vulnerable',
                 'gp.nombre as grupo_prioritario',
@@ -138,6 +138,7 @@ class ReporteEmpleadosController extends Controller
         if ($request->filled('tiene_enfermedad'))     $q->where('e.tiene_enfermedad_catastrofica', $request->tiene_enfermedad === '1');
         if ($request->filled('puede_vehiculo'))       $q->where('e.puede_solicitar_vehiculo', $request->puede_vehiculo === '1');
         if ($request->filled('motivo_salida'))         $q->where('e.motivo_salida', $request->motivo_salida);
+        if ($request->filled('es_comisionado_entrante')) $q->where('e.es_comisionado_entrante', $request->es_comisionado_entrante === '1');
 
         if ($request->filled('antiguedad')) {
             switch ($request->antiguedad) {

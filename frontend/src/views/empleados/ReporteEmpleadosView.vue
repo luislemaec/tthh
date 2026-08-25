@@ -243,6 +243,15 @@
             </select>
           </div>
           <div>
+            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Comisión Entrante</label>
+            <select v-model="filtros.es_comisionado_entrante"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#579186] bg-gray-50 focus:bg-white outline-none">
+              <option value="">Todos</option>
+              <option value="1">Viene de comisión de otra institución</option>
+              <option value="0">No viene de comisión</option>
+            </select>
+          </div>
+          <div>
             <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Antigüedad</label>
             <select v-model="filtros.antiguedad"
               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#579186] bg-gray-50 focus:bg-white outline-none">
@@ -448,6 +457,7 @@ const filtrosIniciales = () => ({
   con_guarderia: '', sustituta_filter: '', sercop_filter: '',
   puede_vehiculo: '',
   motivo_salida: '',
+  es_comisionado_entrante: '',
   antiguedad: '',
 })
 const filtros = ref(filtrosIniciales())
