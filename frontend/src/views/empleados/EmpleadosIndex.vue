@@ -39,6 +39,12 @@
         <option value="">Todas las modalidades</option>
         <option v-for="m in modalidadesLaborales" :key="m.id" :value="m.nombre">{{ m.nombre }}</option>
       </select>
+      <select v-model="filtro.es_comisionado_entrante" @change="cargarEmpleados"
+        class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
+        <option value="">Comisión entrante: Todos</option>
+        <option value="1">Viene de comisión</option>
+        <option value="0">No viene de comisión</option>
+      </select>
     </div>
 
     <!-- Tabla -->
@@ -117,7 +123,7 @@ const total             = ref(0)
 const pagina            = ref(1)
 const porPagina         = 10
 
-const filtro = ref({ buscar: '', departamento: '', estado: '', tipo_contrato: '', modalidad_laboral: '' })
+const filtro = ref({ buscar: '', departamento: '', estado: '', tipo_contrato: '', modalidad_laboral: '', es_comisionado_entrante: '' })
 
 const cargarEmpleados = async () => {
   cargando.value = true
@@ -130,7 +136,8 @@ const cargarEmpleados = async () => {
         departamento_id:   filtro.value.departamento,
         estado:            filtro.value.estado,
         tipo_contrato:     filtro.value.tipo_contrato,
-        modalidad_laboral: filtro.value.modalidad_laboral,
+        modalidad_laboral:       filtro.value.modalidad_laboral,
+        es_comisionado_entrante: filtro.value.es_comisionado_entrante,
       }
     })
     empleados.value = data.data

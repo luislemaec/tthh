@@ -47,6 +47,10 @@ class EmpleadoController extends Controller
             $query->where("modalidad_laboral", $request->modalidad_laboral);
         }
 
+        if ($request->filled("es_comisionado_entrante")) {
+            $query->where("es_comisionado_entrante", $request->es_comisionado_entrante === '1');
+        }
+
         $perPage = $request->get("per_page", 10);
         $data    = $query->orderBy("apellido_emp")->orderBy("nombre_emp")
                          ->paginate($perPage);
