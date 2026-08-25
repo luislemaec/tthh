@@ -346,8 +346,15 @@
               <input v-model="form.institucion_comision" type="text" placeholder="Nombre de la institución a donde se va"
                 class="input-field" />
             </div>
-            <!-- Institución origen — empleados que vienen en comisión -->
-            <div v-if="form.modalidad_laboral === 'Comisión de Servicios'">
+            <!-- Empleado que viene de comisión de servicios de otra institución -->
+            <div class="flex items-center gap-3 py-1">
+              <input type="checkbox" id="chk_comisionado" v-model="form.es_comisionado_entrante"
+                class="w-4 h-4 accent-[#0b5447]" />
+              <label for="chk_comisionado" class="text-sm font-medium text-gray-700 cursor-pointer">
+                ¿Viene de comisión de servicios de otra institución?
+              </label>
+            </div>
+            <div v-if="form.es_comisionado_entrante">
               <label class="label-field">Institución de Origen</label>
               <input v-model="form.institucion_comision" type="text" placeholder="Nombre de la institución de donde viene"
                 class="input-field" />
@@ -786,6 +793,7 @@ const form = ref({
   motivo_salida:         "",
   motivo_reactivacion:   "",
   institucion_comision:  "",
+  es_comisionado_entrante: false,
   salario:        "",
   nivel:                   "",
   grupo_ocupacional:       "",
@@ -846,7 +854,8 @@ const guardar = async () => {
       fecha_salida:         form.value.fecha_salida        || null,
       motivo_salida:        form.value.motivo_salida        || null,
       motivo_reactivacion:  form.value.motivo_reactivacion  || null,
-      institucion_comision: form.value.institucion_comision || null,
+      institucion_comision:     form.value.institucion_comision || null,
+      es_comisionado_entrante:  form.value.es_comisionado_entrante ? true : false,
       sueldo:         form.value.salario,
       nivel:          form.value.nivel,
       tipo_contrato:     form.value.tipo_contrato,
@@ -1060,6 +1069,7 @@ onMounted(async () => {
     form.value.motivo_salida         = data.motivo_salida        || ""
     form.value.motivo_reactivacion   = data.motivo_reactivacion  || ""
     form.value.institucion_comision  = data.institucion_comision || ""
+    form.value.es_comisionado_entrante = data.es_comisionado_entrante ?? false
     form.value.salario         = data.sueldo || ""
     form.value.nivel           = data.nivel || ""
     form.value.telefono        = data.telefono || ""

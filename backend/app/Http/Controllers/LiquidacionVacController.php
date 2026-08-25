@@ -28,11 +28,13 @@ class LiquidacionVacController extends Controller
 
     private const MOTIVOS_POR_MODALIDAD = [
         'Nombramiento definitivo'       => ['INICIO_COMISION', 'FIN_COMISION_RETORNO'],
-        'Comisión de servicios'         => ['COMISION_ENTRANTE', 'FIN_COMISION_SALIDA'],
         'Contrato ocasional'            => ['DESVINCULACION'],
         'Nombramiento provisional'      => ['DESVINCULACION'],
         'Libre Nombramiento y Remoción' => ['DESVINCULACION'],
     ];
+
+    // Motivos adicionales para empleados comisionados entrantes (independiente de la modalidad)
+    private const MOTIVOS_COMISIONADO_ENTRANTE = ['COMISION_ENTRANTE', 'FIN_COMISION_SALIDA'];
 
     // Motivos que requieren cargar días de certificado externo
     private const MOTIVOS_CARGA_SALDO = ['FIN_COMISION_RETORNO', 'COMISION_ENTRANTE'];
@@ -135,13 +137,17 @@ class LiquidacionVacController extends Controller
             ->get();
 
         $modalidad = trim($emp->modalidad_laboral ?? '');
-        // Búsqueda case-insensitive por si hay diferencias de mayúsculas en la BD
+        // Búsqueda case-insensitive por modalidad
         $motivosDisponibles = [];
         foreach (self::MOTIVOS_POR_MODALIDAD as $key => $motivos) {
             if (mb_strtolower($key) === mb_strtolower($modalidad)) {
                 $motivosDisponibles = $motivos;
                 break;
             }
+        }
+        // Si viene de comisión entrante, agregar sus motivos específicos
+        if ($emp->es_comisionado_entrante) {
+            $motivosDisponibles = array_unique(array_merge($motivosDisponibles, self::MOTIVOS_COMISIONADO_ENTRANTE));
         }
 
         return response()->json([

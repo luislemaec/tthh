@@ -235,7 +235,8 @@ class EmpleadoController extends Controller
             'modalidad_marcacion'  => $emp->modalidad_marcacion,
             'motivo_salida'        => $emp->motivo_salida,
             'motivo_reactivacion'  => $emp->motivo_reactivacion,
-            'institucion_comision' => $emp->institucion_comision,
+            'institucion_comision'     => $emp->institucion_comision,
+            'es_comisionado_entrante'  => (bool) $emp->es_comisionado_entrante,
         ];
 
         $request->validate([
@@ -322,7 +323,8 @@ class EmpleadoController extends Controller
             "num_hijos_mayores"             => $request->filled('num_hijos_mayores') ? (int)$request->num_hijos_mayores : $emp->num_hijos_mayores,
             "motivo_salida"         => $request->has('motivo_salida')         ? ($request->motivo_salida         ?: null) : $emp->motivo_salida,
             "motivo_reactivacion"   => $request->has('motivo_reactivacion')   ? ($request->motivo_reactivacion   ?: null) : $emp->motivo_reactivacion,
-            "institucion_comision"  => $request->has('institucion_comision')  ? ($request->institucion_comision  ?: null) : $emp->institucion_comision,
+            "institucion_comision"       => $request->has('institucion_comision')       ? ($request->institucion_comision       ?: null) : $emp->institucion_comision,
+            "es_comisionado_entrante"    => $request->has('es_comisionado_entrante')    ? $request->boolean('es_comisionado_entrante') : $emp->es_comisionado_entrante,
             "banco"                 => $request->filled('banco')         ? strtoupper($request->banco)         : ($request->has('banco')         ? null : $emp->banco),
             "tipo_cuenta"           => $request->filled('tipo_cuenta')   ? strtoupper($request->tipo_cuenta)   : ($request->has('tipo_cuenta')   ? null : $emp->tipo_cuenta),
             "numero_cuenta"         => $request->filled('numero_cuenta') ? $request->numero_cuenta             : ($request->has('numero_cuenta') ? null : $emp->numero_cuenta),
@@ -364,9 +366,10 @@ class EmpleadoController extends Controller
                 'programa'            => $emp->programa,
                 'actividad'           => $emp->actividad,
                 'modalidad_marcacion' => $emp->modalidad_marcacion,
-                'motivo_salida'        => $emp->motivo_salida,
-                'motivo_reactivacion'  => $emp->motivo_reactivacion,
-                'institucion_comision' => $emp->institucion_comision,
+                'motivo_salida'           => $emp->motivo_salida,
+                'motivo_reactivacion'     => $emp->motivo_reactivacion,
+                'institucion_comision'    => $emp->institucion_comision,
+                'es_comisionado_entrante' => $emp->es_comisionado_entrante,
             ],
             $request, 'Actualización de empleado: ' . trim($emp->apellido_emp . ' ' . $emp->nombre_emp));
 
