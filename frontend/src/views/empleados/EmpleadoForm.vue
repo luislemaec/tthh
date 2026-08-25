@@ -307,15 +307,7 @@
                 <option v-for="m in modalidadesLaborales" :key="m.id" :value="m.nombre">{{ m.nombre }}</option>
               </select>
             </div>
-            <div>
-              <label class="label-field">Jornada Laboral *</label>
-              <select v-model="form.id_jornada" class="input-field">
-                <option value="">Seleccionar...</option>
-                <option v-for="j in jornadas" :key="j.id_jornada" :value="j.id_jornada">
-                  {{ j.descripcion }} ({{ j.normal }}h)
-                </option>
-              </select>
-            </div>
+            <!-- Jornada oculta — se asigna automáticamente según tipo_contrato -->
             <div>
               <label class="label-field">Estado</label>
               <select v-model="form.estado" class="input-field">
@@ -412,7 +404,7 @@
               </select>
             </div>
             <div class="sm:col-span-2">
-              <label class="label-field">Partida Individual *</label>
+              <label class="label-field">Partida Individual</label>
               <div class="flex gap-2">
                 <input v-model="form.partida_individual" type="text"
                   placeholder="Escriba una nueva o use el botón para seleccionar una libre"
@@ -677,7 +669,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue"
+import { ref, computed, onMounted, watch } from "vue"
 
 import { useRoute, useRouter } from "vue-router"
 import api from "@/services/api"
@@ -826,14 +818,13 @@ const guardar = async () => {
     if (!form.value.cargo_empleado?.trim())        erroresValidacion.push({ tab: 'cargo',    msg: 'Cargo' })
     if (!form.value.tipo_contrato)                 erroresValidacion.push({ tab: 'cargo',    msg: 'Tipo de Contrato' })
     if (!form.value.modalidad_laboral)             erroresValidacion.push({ tab: 'cargo',    msg: 'Modalidad Laboral' })
-    if (!form.value.id_jornada)                    erroresValidacion.push({ tab: 'cargo',    msg: 'Jornada Laboral' })
+    // id_jornada se asigna automáticamente — no se valida
     if (!form.value.fecha_ingreso)                 erroresValidacion.push({ tab: 'cargo',    msg: 'Fecha de Ingreso' })
     if (!form.value.salario && form.value.salario !== 0) erroresValidacion.push({ tab: 'cargo', msg: 'Salario Base' })
     if (!form.value.grupo_ocupacional?.trim())                erroresValidacion.push({ tab: 'puesto', msg: 'Grupo Ocupacional' })
     if (!form.value.nivel)                                    erroresValidacion.push({ tab: 'puesto', msg: 'Grado' })
     if (!form.value.proceso_institucional)                    erroresValidacion.push({ tab: 'puesto', msg: 'Proceso Institucional' })
-    if (!String(form.value.partida_individual    ?? '').trim()) erroresValidacion.push({ tab: 'puesto', msg: 'Partida Individual' })
-    if (!String(form.value.partida_presupuestaria ?? '').trim()) erroresValidacion.push({ tab: 'puesto', msg: 'Estructura Programática' })
+    // Partida Individual y Estructura Programática son opcionales
 
     if (erroresValidacion.length > 0) {
       tabActivo.value = erroresValidacion[0].tab
@@ -1032,6 +1023,19 @@ onMounted(async () => {
   ])
   departamentos.value        = deps
   jornadas.value             = jors
+
+  // Auto-asignar jornada según tipo_contrato
+  watch(() => form.value.tipo_contrato, (tipo) => {
+    if (!tipo) return
+    const tipoUpper = tipo.toUpperCase()
+    let jornada = null
+    if (tipoUpper.includes('LOSEP')) {
+      jornada = jornadas.value.find(j => j.descripcion?.toUpperCase().includes('LOSEP'))
+    } else if (tipoUpper.includes('CODIGO') || tipoUpper.includes('TRABAJO')) {
+      jornada = jornadas.value.find(j => j.descripcion?.toUpperCase().includes('CODIGO') || j.descripcion?.toUpperCase().includes('TRABAJO'))
+    }
+    if (jornada) form.value.id_jornada = jornada.id_jornada
+  }, { immediate: true })
   partidasVacantes.value     = partidas
   modalidadesLaborales.value = mods.filter(m => m.estado === 'ACTIVO')
   // Ocultar grupos no aplicables a la institución

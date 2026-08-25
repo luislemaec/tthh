@@ -1,11 +1,11 @@
 <template>
   <div class="space-y-6">
     <div class="flex items-center justify-between">
-      <h1 class="text-2xl font-bold text-gray-800">Turnos</h1>
-      <button @click="abrirModal()"
+      <h1 class="text-2xl font-bold text-gray-800">Horarios</h1>
+      <!-- <button @click="abrirModal()"
         class="bg-[#0b5447] text-white px-4 py-2 rounded-lg hover:bg-[#00372e] text-sm font-medium">
         + Nuevo Turno
-      </button>
+      </button> -->
     </div>
 
     <!-- Lista de turnos -->
