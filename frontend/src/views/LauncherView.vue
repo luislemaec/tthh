@@ -276,7 +276,7 @@ const tieneAccesoComisiones = computed(() =>
   store.tieneRol('DIRECTOR FINANCIERO') ||
   store.tieneRol('TESORERIA') ||
   store.tieneRol('ADMINISTRADOR') ||
-  store.tieneRol('TALENTO HUMANO') ||
+  store.tieneRol('COMISIONES') ||
   store.tieneRol('COMISIONADO EXTERNO') ||
   store.tieneRol('COMISIONADO')
 )
