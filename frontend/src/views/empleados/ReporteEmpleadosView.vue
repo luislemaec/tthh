@@ -4,7 +4,7 @@
     <!-- ── HEADER ──────────────────────────────────────────────────── -->
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <h1 class="text-2xl font-bold text-gray-800">Reporte Nómina de Personal</h1>
+        <h1 class="text-2xl font-bold text-gray-800">Reporte Distributivo de Personal</h1>
         <p class="text-sm text-gray-400 mt-0.5">
           {{ resumen?.total_activos ?? '—' }} empleados activos
         </p>

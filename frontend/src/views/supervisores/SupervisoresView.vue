@@ -1,10 +1,10 @@
 <template>
   <div class="space-y-6">
     <div class="flex items-center justify-between">
-      <h1 class="text-2xl font-bold text-gray-800">Supervisores por Area</h1>
+      <h1 class="text-2xl font-bold text-gray-800">Jefes de Área</h1>
       <button @click="abrirModal"
         class="bg-[#0b5447] text-white px-4 py-2 rounded-lg hover:bg-[#00372e] text-sm font-medium">
-        + Asignar Supervisor
+        + Asignar Jefe de Área
       </button>
     </div>
 
@@ -57,7 +57,7 @@
                 </span>
               </div>
               <p v-if="s.supervisor?.estado === 'INACTIVO'"
-                class="text-xs text-red-500 mt-0.5">Reasignar a un supervisor activo</p>
+                class="text-xs text-red-500 mt-0.5">Reasignar a un jefe de área activo</p>
             </td>
             <td class="px-4 py-3 text-gray-500">
               {{ s.supervisor?.departamento?.nombre_depto }}
@@ -81,7 +81,7 @@
       <div class="bg-white rounded-xl shadow-lg w-full max-w-lg overflow-hidden">
         <div class="px-6 py-4" style="background-color:#0b5447;">
           <h2 class="text-lg font-semibold text-white">
-            {{ form.editando ? "Editar Supervisor" : "Asignar Supervisor a Area" }}
+            {{ form.editando ? "Editar Jefe de Área" : "Asignar Jefe de Área" }}
           </h2>
         </div>
         <div class="p-6 space-y-4">
@@ -98,9 +98,9 @@
           </select>
         </div>
 
-        <!-- Supervisor -->
+        <!-- Jefe de Área -->
         <div>
-          <label class="block text-sm font-medium text-gray-600 mb-1">Supervisor *</label>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Jefe de Área *</label>
           <input v-model="buscarSup" type="text" placeholder="Buscar por nombre o cedula..."
             @input="filtrarEmpleados"
             class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
