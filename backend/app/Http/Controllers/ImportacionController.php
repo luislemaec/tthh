@@ -19,7 +19,7 @@ class ImportacionController extends Controller
         'programa', 'actividad',
         'fecha_ingreso', 'fecha_salida',
         'motivo_salida', 'motivo_reactivacion', 'institucion_comision',
-        'acumula_decimo_tercero', 'acumula_decimo_cuarto', 'acumula_fondos_reserva',
+        'acumula_decimos', 'acumula_fondos_reserva',
         'puede_solicitar_vehiculo',
         'sexo', 'tipo_sangre',
         'num_sercop', 'fecha_vence_sercop',
@@ -36,6 +36,8 @@ class ImportacionController extends Controller
     // ad_grupo_prioritario / ad_tipo_discapacidad / ad_enfermedad_catastrofica. Dejar vacío si no aplica.
     // Fechas (fecha_ingreso, fecha_salida, fecha_vence_sercop, sustituta_fecha_caducidad): DD/MM/AAAA,
     // AAAA-MM-DD o DD-MM-AAAA — cualquiera de los tres formatos se acepta.
+    // acumula_decimos: 0 = Cobra mensualmente, 1 = Acumula (aplica igual a décimo 13° y 14°,
+    // igual que el selector único de la ficha del empleado).
     // Hijos menores individuales y el documento de persona sustituta NO se cargan por este CSV —
     // se gestionan desde la ficha del empleado (Tab 1).
     private const EJEMPLO = [
@@ -47,7 +49,7 @@ class ImportacionController extends Controller
         '55', '001',
         '15/01/2020', '',
         '', '', '',
-        '0', '0', '0',
+        '0', '0',
         '0',
         'MASCULINO', 'O+',
         '', '',
@@ -153,6 +155,16 @@ class ImportacionController extends Controller
             return $id;
         };
 
+        // Tolera tilde, mayúsculas/minúsculas y el error común "CODIGO DE TRABAJO" (sin la L de "DEL")
+        $normalizarContrato = function (?string $valor): ?string {
+            $valor = trim((string) $valor);
+            if ($valor === '') return null;
+            $sinTildes = strtr(mb_strtoupper($valor), ['Á' => 'A', 'É' => 'E', 'Í' => 'I', 'Ó' => 'O', 'Ú' => 'U', 'Ñ' => 'N']);
+            if ($sinTildes === 'LOSEP') return 'LOSEP';
+            if (in_array($sinTildes, ['CODIGO DEL TRABAJO', 'CODIGO DE TRABAJO'], true)) return 'CODIGO DEL TRABAJO';
+            throw new \Exception("tipo_contrato '$valor' no es válido (use LOSEP o CODIGO DEL TRABAJO)");
+        };
+
         // Acepta DD/MM/AAAA (formato típico de Excel en Ecuador), AAAA-MM-DD y DD-MM-AAAA
         $parseFecha = function (?string $valor, string $campo): ?string {
             $valor = trim((string) $valor);
@@ -189,7 +201,7 @@ class ImportacionController extends Controller
                         'id_depto'               => (int)$d['id_depto'],
                         'estado'                 => strtoupper($d['estado'] ?? 'ACTIVO'),
                         'estado_puesto'          => strtoupper($d['estado_puesto'] ?? 'OCUPADO'),
-                        'tipo_contrato'          => $d['tipo_contrato'] ?? null,
+                        'tipo_contrato'          => $normalizarContrato($d['tipo_contrato'] ?? null),
                         'sueldo'                 => !empty($d['sueldo']) ? (float)$d['sueldo'] : null,
                         'nivel'                  => !empty($d['nivel']) ? (int)$d['nivel'] : null,
                         'cargo_empleado'         => $d['cargo_empleado'] ?? null,
@@ -206,8 +218,8 @@ class ImportacionController extends Controller
                         'motivo_salida'          => !empty($d['motivo_salida'])        ? $d['motivo_salida']        : null,
                         'motivo_reactivacion'    => !empty($d['motivo_reactivacion'])  ? $d['motivo_reactivacion']  : null,
                         'institucion_comision'   => !empty($d['institucion_comision']) ? $d['institucion_comision'] : null,
-                        'acumula_decimo_tercero' => (bool)($d['acumula_decimo_tercero'] ?? false),
-                        'acumula_decimo_cuarto'  => (bool)($d['acumula_decimo_cuarto'] ?? false),
+                        'acumula_decimo_tercero' => (bool)($d['acumula_decimos'] ?? false),
+                        'acumula_decimo_cuarto'  => (bool)($d['acumula_decimos'] ?? false),
                         'acumula_fondos_reserva' => (int)($d['acumula_fondos_reserva'] ?? 0),
                         'puede_solicitar_vehiculo' => (bool)($d['puede_solicitar_vehiculo'] ?? false),
                         'sexo'                   => !empty($d['sexo'])        ? strtoupper($d['sexo'])        : null,
