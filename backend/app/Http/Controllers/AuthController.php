@@ -2,6 +2,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Empleado;
+use App\Services\ActiveDirectoryService;
 use App\Services\AuditoriaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -20,7 +21,15 @@ class AuthController extends Controller
             ->where('estado', 'ACTIVO')
             ->first();
 
-        if (!$empleado || !Hash::check($request->password, $empleado->password)) {
+        // Híbrido: intenta AD primero (cédula = employeeID); si no aplica o falla,
+        // cae a la clave local — así los externos sin cuenta AD (es_externo=true)
+        // y cualquier ambiente sin AD configurado (ej. pruebas) siguen funcionando igual.
+        $autenticado = $empleado && (
+            ActiveDirectoryService::autenticar($request->identificacion, $request->password)
+            || Hash::check($request->password, $empleado->password)
+        );
+
+        if (!$autenticado) {
             // Registrar intento fallido si el empleado existe
             if ($empleado) {
                 try {

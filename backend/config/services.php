@@ -42,4 +42,16 @@ return [
         'site' => env('ALFRESCO_SITE', 'talentohumano'),
     ],
 
+    // Autenticación híbrida contra Active Directory (login). Si AD_HOST está vacío,
+    // el login funciona 100% como hasta ahora (clave local) — así pruebas no se ve afectado.
+    'ad' => [
+        'host'             => env('AD_HOST'),
+        'port'             => env('AD_PORT', 389),
+        'use_tls'          => env('AD_USE_TLS', false),
+        'base_dn'          => env('AD_BASE_DN'),
+        'bind_dn'          => env('AD_BIND_DN'),
+        'bind_password'    => env('AD_BIND_PASSWORD'),
+        'employee_attr'    => env('AD_EMPLOYEE_ATTR', 'employeeID'),
+    ],
+
 ];
