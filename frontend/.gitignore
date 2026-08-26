@@ -14,6 +14,12 @@ dist-ssr
 coverage
 *.local
 
+# Variables de entorno (cada servidor/máquina tiene las suyas, nunca se comitean)
+.env
+.env.production
+.env.local
+.env.*.local
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

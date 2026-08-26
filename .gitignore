@@ -1,0 +1,9 @@
+# Variables de entorno — nunca se comitean, cada servidor/máquina tiene las suyas.
+# (backend/ y frontend/ ya tienen su propio .gitignore para esto; este cubre archivos
+# sueltos en la raíz del repo, como el .env.production que quedó expuesto por no
+# tener esta regla aquí.)
+.env
+.env.production
+.env.local
+.env.*.local
+.env.backup
