@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use App\Models\Empleado;
 use App\Models\EmpleadoMail;
 use App\Models\CabeceraVacacion;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -33,6 +34,8 @@ class ImportacionController extends Controller
 
     // Catálogos: nombre debe coincidir (sin distinguir mayúsculas) con dbo.ad_grupo_vulnerable /
     // ad_grupo_prioritario / ad_tipo_discapacidad / ad_enfermedad_catastrofica. Dejar vacío si no aplica.
+    // Fechas (fecha_ingreso, fecha_salida, fecha_vence_sercop, sustituta_fecha_caducidad): DD/MM/AAAA,
+    // AAAA-MM-DD o DD-MM-AAAA — cualquiera de los tres formatos se acepta.
     // Hijos menores individuales y el documento de persona sustituta NO se cargan por este CSV —
     // se gestionan desde la ficha del empleado (Tab 1).
     private const EJEMPLO = [
@@ -42,7 +45,7 @@ class ImportacionController extends Controller
         'SERVIDOR PÚBLICO', 'PRESENCIAL',
         'PI-001', 'PP-001',
         '55', '001',
-        '2020-01-15', '',
+        '15/01/2020', '',
         '', '', '',
         '0', '0', '0',
         '0',
@@ -150,6 +153,21 @@ class ImportacionController extends Controller
             return $id;
         };
 
+        // Acepta DD/MM/AAAA (formato típico de Excel en Ecuador), AAAA-MM-DD y DD-MM-AAAA
+        $parseFecha = function (?string $valor, string $campo): ?string {
+            $valor = trim((string) $valor);
+            if ($valor === '') return null;
+            foreach (['d/m/Y', 'Y-m-d', 'd-m-Y', 'd/m/y'] as $formato) {
+                try {
+                    $fecha = Carbon::createFromFormat($formato, $valor);
+                    if ($fecha !== false) return $fecha->format('Y-m-d');
+                } catch (\Exception $e) {
+                    continue;
+                }
+            }
+            throw new \Exception("$campo '$valor' no es una fecha válida (use DD/MM/AAAA)");
+        };
+
         DB::beginTransaction();
         try {
             while (($fila = fgetcsv($handle, 2000, ',')) !== false) {
@@ -183,8 +201,8 @@ class ImportacionController extends Controller
                         'partida_presupuestaria' => $d['partida_presupuestaria'] ?? null,
                         'programa'               => !empty($d['programa'])  ? strtoupper($d['programa'])  : null,
                         'actividad'              => !empty($d['actividad']) ? strtoupper($d['actividad']) : null,
-                        'fecha_ingreso'          => !empty($d['fecha_ingreso']) ? $d['fecha_ingreso'] : null,
-                        'fecha_salida'           => !empty($d['fecha_salida']) ? $d['fecha_salida'] : null,
+                        'fecha_ingreso'          => $parseFecha($d['fecha_ingreso'] ?? '', 'fecha_ingreso'),
+                        'fecha_salida'           => $parseFecha($d['fecha_salida'] ?? '', 'fecha_salida'),
                         'motivo_salida'          => !empty($d['motivo_salida'])        ? $d['motivo_salida']        : null,
                         'motivo_reactivacion'    => !empty($d['motivo_reactivacion'])  ? $d['motivo_reactivacion']  : null,
                         'institucion_comision'   => !empty($d['institucion_comision']) ? $d['institucion_comision'] : null,
@@ -195,7 +213,7 @@ class ImportacionController extends Controller
                         'sexo'                   => !empty($d['sexo'])        ? strtoupper($d['sexo'])        : null,
                         'tipo_sangre'            => !empty($d['tipo_sangre']) ? strtoupper($d['tipo_sangre']) : null,
                         'num_sercop'             => !empty($d['num_sercop']) ? $d['num_sercop'] : null,
-                        'fecha_vence_sercop'     => !empty($d['fecha_vence_sercop']) ? $d['fecha_vence_sercop'] : null,
+                        'fecha_vence_sercop'     => $parseFecha($d['fecha_vence_sercop'] ?? '', 'fecha_vence_sercop'),
                         'banco'                  => !empty($d['banco'])       ? strtoupper($d['banco'])       : null,
                         'tipo_cuenta'            => !empty($d['tipo_cuenta']) ? strtoupper($d['tipo_cuenta']) : null,
                         'numero_cuenta'          => !empty($d['numero_cuenta']) ? $d['numero_cuenta'] : null,
@@ -210,7 +228,7 @@ class ImportacionController extends Controller
                         'tiene_enfermedad_catastrofica' => strtoupper(trim($d['tiene_enfermedad_catastrofica'] ?? '')) === 'SI',
                         'enfermedad_catastrofica_id'    => $buscarCatalogo($catEnfermedad, $d['enfermedad_catastrofica'] ?? null, 'enfermedad catastrófica', $fila_num, $errores),
                         'tiene_persona_sustituta'   => strtoupper(trim($d['tiene_persona_sustituta'] ?? '')) === 'SI',
-                        'sustituta_fecha_caducidad' => !empty($d['sustituta_fecha_caducidad']) ? $d['sustituta_fecha_caducidad'] : null,
+                        'sustituta_fecha_caducidad' => $parseFecha($d['sustituta_fecha_caducidad'] ?? '', 'sustituta_fecha_caducidad'),
                         'num_hijos_mayores'         => !empty($d['num_hijos_mayores']) ? (int)$d['num_hijos_mayores'] : 0,
                     ];
 
