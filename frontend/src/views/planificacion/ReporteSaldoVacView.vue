@@ -79,8 +79,8 @@
               <td class="px-4 py-2 text-center text-gray-700">{{ emp.tomados }}</td>
               <td class="px-4 py-2 text-center">
                 <span class="font-bold text-lg"
-                  :class="emp.saldo_actual <= 0 ? 'text-red-600' : emp.saldo_actual < 5 ? 'text-amber-600' : 'text-green-700'">
-                  {{ emp.saldo_actual }}
+                  :class="saldoMostrar(emp) <= 0 ? 'text-red-600' : saldoMostrar(emp) < 5 ? 'text-amber-600' : 'text-green-700'">
+                  {{ saldoMostrar(emp) }}
                 </span>
                 <span class="text-xs text-gray-400 ml-1">días</span>
               </td>
@@ -567,6 +567,15 @@ async function toggleDetalle(id_emp) {
   } finally {
     cargandoKardex.value = false
   }
+}
+
+// Nombramiento Definitivo con saldo real negativo (migración 000100): muestra el real,
+// no el 0 con piso — mismo criterio que Dashboard y VacacionesView.vue.
+function saldoMostrar(emp) {
+  if (emp.modalidad_laboral === 'Nombramiento Definitivo' && (emp.saldo_actual_real ?? 0) < 0) {
+    return emp.saldo_actual_real
+  }
+  return emp.saldo_actual
 }
 
 function fmtFecha(f) {

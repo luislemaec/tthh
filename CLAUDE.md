@@ -78,6 +78,24 @@ Las tablas `adq.orden_compra`, `adq.egreso`, `adq.kardex`, `adq.solicitud_materi
 
 **Limitación conocida:** las marcaciones perdidas la mañana del 2026-07-17 (antes de aplicar el fix, en el grupo piloto del reloj biométrico) no se recuperan automáticamente — el fix solo corrige el comportamiento hacia adelante. Para ese día puntual se decidió no hacer corrección manual (dejar el atraso registrado tal cual); si se necesitara justificar sin afectar vacaciones, la vía es aprobar un permiso `tipo_horario=ENTRADA` con una razón `descontable=NO` en `dbo.d2_razon` (ver sección Permisos).
 
+## Despliegue a Producción (2026-08-27)
+
+Servidores de producción, **todos distintos a los de pruebas**: aplicación `192.168.26.23` (Ubuntu 26.04, "resolute"), Postgres `192.168.26.31`, Alfresco `192.168.26.28`. AD/NTP es el mismo de pruebas (`192.168.26.6`). Pruebas sigue en Ubuntu 24.04.
+
+> **CRÍTICO — el esquema base NO lo crea ninguna migración de Laravel.** Tablas como `ad_empleado`, `d2_permiso`, `d2_vacacion`, `admin_rol`, `admin_opcion`, `d2_razon`, `d2_turno`, `d2_jornada`, `d2_configuracion` vienen de un esquema legado (sistema anterior) que se restauró una vez en Postgres por fuera de Laravel — las 124+ migraciones de este repo solo hacen `ALTER TABLE` o agregan tablas nuevas sobre esa base. **`php artisan migrate` solo, en una base vacía, falla** en la primera migración que toque esas tablas. Para una instalación nueva: `pg_dump -Fc` completo desde un ambiente que ya tenga el esquema (ej. pruebas) y `pg_restore` en la base nueva — recién ahí `migrate` sirve para lo que falte. El esquema `dbo` tampoco lo crea nada — hay que `CREATE SCHEMA dbo;` a mano antes del restore si es una base 100% nueva (`adq` sí lo crea la migración `2026_04_21_000001_create_adq_schema.php`).
+
+> **CRÍTICO — arquitectura de Apache: Laravel necesita ser dueño de su propia raíz.** Un solo `VirtualHost` con `Alias /api → backend/public` **no funciona** — dio `404` en todas las rutas de la API. Causa: las rutas de `routes/api.php` llevan el prefijo `api/` incluido en el nombre de la ruta (comportamiento automático de Laravel vía `bootstrap/app.php`'s `withRouting(api: ...)`). Con `Alias`, Apache le hace creer a Laravel que su propia base es `/api`, Laravel resta esa base de la URL entrante, y termina buscando `login` (sin prefijo) en vez de `api/login`. **Solución:** dos `VirtualHost` — uno interno (`127.0.0.1:8081`, no expuesto a la red) con `DocumentRoot` en `backend/public` donde Laravel vive en su raíz, y el público (puerto 80, con el frontend) reenvía `/api` hacia el interno con `ProxyPass`/`ProxyPassReverse` (reverse proxy real, invisible para el navegador — no es una redirección, la URL nunca cambia). Con este esquema, `trustProxies(at: '127.0.0.1')` (ya en `bootstrap/app.php`) **sí hace falta** — sin él, Laravel vería todas las peticiones como si vinieran del proxy interno en vez de la IP real del cliente, rompiendo la validación de IP de marcación PRESENCIAL.
+
+> **Ubuntu 26.04 quitó/renombró varios paquetes que sí estaban en 24.04** (mismo patrón, 3 veces en el mismo despliegue):
+> - `php8.4` explícito no existe en los repos de 26.04, y el PPA `ondrej/php` tampoco tiene build para "resolute" todavía (release muy nueva) → usar paquetes **sin pinnear versión** (`php`, `php-fpm`, `php-pgsql`, etc. — `composer.json` solo pide `^8.2`, cualquiera que traiga la distro alcanza; en la práctica salió PHP 8.5.4).
+> - El paquete `nodejs` de 26.04 no trae `npm` incluido (a diferencia del repo de NodeSource) → instalar `npm` aparte.
+> - `ntpdate` ya no existe como paquete → reemplazado por `ntpsec-ntpdate`, pero instala el binario en la **misma ruta de siempre** (`/usr/sbin/ntpdate`), así que ningún cron/script que ya lo referencie por ruta necesita cambiar.
+> - `postgresql-client-16` (versión pinneada) tampoco existía — usar `postgresql-client` sin sufijo de versión.
+
+**Incidente — `.env.production` expuesto en GitLab:** un commit (`Agregar archivos Docker para producción`) subió `.env.production` (raíz del repo, pensado para un `docker-compose.yml` que finalmente no se usó — Docker se descartó por completo del proyecto) con `DB_PASSWORD=postgres` y `ALFRESCO_PASS=admin`. Ya se pusheó a `origin`, por lo que sigue en el historial aunque el archivo ya no esté trackeado. **Confirmado que esos valores nunca fueron las credenciales reales** (placeholders), así que no hubo necesidad de rotar nada — pero si alguna vez se pushea un `.env*` con secretos reales, hay que rotarlos de inmediato, borrar el archivo del tracking no es suficiente. Causa raíz: no existía `.gitignore` en la raíz del repo (`backend/.gitignore` solo protege rutas dentro de `backend/`, no un `.env.production` en la raíz) y `frontend/.gitignore` no tenía ninguna regla de `.env*`. Fix aplicado: `.gitignore` nuevo en la raíz + reglas agregadas a `frontend/.gitignore` + los 3 archivos sacados del tracking (`git rm --cached`, se quedan en disco).
+
+**Bootstrap de producción — decisión tomada:** en vez de partir de cero con empleados y catálogos (habría que recrear a mano decenas de opciones de menú, roles, departamentos, turnos, razones — ninguno de esos tiene migración/seeder), se hace `pg_dump`/`pg_restore` completo desde pruebas y luego se trunca **solo lo transaccional** (marcaciones, permisos, vacaciones solicitadas, planificación, horas extras, movimientos de adquisiciones/transportes/comisiones) — empleados reales, departamentos, roles, menú, catálogos y equipos/vehículos/artículos se conservan tal cual. Se eliminan puntualmente los empleados ficticios de pruebas, no toda la tabla.
+
 ---
 
 ## Autenticación
@@ -296,6 +314,7 @@ setTimeout(() => URL.revokeObjectURL(url), 60000)   // revocar después de 60s, 
 |---|---|
 | `AuthController` | Login / logout / me |
 | `EmpleadoController` | CRUD empleados + asignación de roles + partidas disponibles |
+| `ImportacionController` | Importación masiva de empleados por CSV (plantilla + preview + import) — ver sección propia abajo |
 | `AccionPersonalController` | Acciones (encargo, subrogación, ingreso, vacaciones, destitución, cesación) |
 | `VacacionesController` | Solicitudes de vacaciones (aprobar/negar/saldo) — al aprobar, modal pide empleado backup del mismo departamento |
 | `PlanificacionVacController` | Planificación anual de vacaciones — estados `ELIMINADO` y `NEGADO` permiten re-planificar; fechas de períodos se validan contra el año planificado |
@@ -387,10 +406,23 @@ Calculado en `calcularSaldoDisponible()` — usa helper `tasaVacaciones()` en Va
     - Todos los demás: se bloquea con 422. No pueden solicitar más días de los disponibles.
   - **Permisos descontables:** NO se bloquean aunque el saldo sea negativo (el descuento sigue acumulando sobre `total_dias_tomados`).
   - **Saldo en rojo en la UI:** `VacacionesView.vue` muestra `dias_disponibles_real` en rojo cuando el empleado es Nombramiento Definitivo y el valor es negativo. No puede solicitar más vacaciones hasta que el saldo vuelva a positivo (el mismo bloqueo en `store()` aplica).
+  - **Bug fix consistencia (2026-08-27):** `DashboardController` y `ReporteVacacionesController` tenían su propio cálculo de saldo **duplicado e independiente** (no reusaban `calcularSaldoDisponible()`), y ambos aplicaban `max(0, ...)` siempre — un Nombramiento Definitivo con saldo real negativo veía "0" en el Dashboard y en el Reporte de Saldo de TH (`planificacion/reporte-saldo`), aunque en `VacacionesView.vue` sí se viera correctamente en rojo. Se agregaron `$saldoReal` (Dashboard) y `calcularSaldoActualReal()` (Reporte) — mismo cálculo sin el piso de 0 — y ambas vistas (+ el PDF del reporte, `vac_reporte_saldo.blade.php`) ahora muestran el valor real en rojo bajo el mismo criterio (`modalidad_laboral === 'Nombramiento Definitivo' && saldo_real < 0`). **Nota:** este criterio deliberadamente NO cubre otras modalidades (ej. Nombramiento Provisional) — si un empleado de otra modalidad termina con saldo negativo (típicamente por corrección manual de saldo histórico), queda bloqueado para pedir vacaciones nuevas pero la UI le sigue mostrando "0" sin explicación; es una decisión de negocio pendiente si el criterio debe ampliarse a otras modalidades.
   - **Flujo informe TH:** solicitudes con `requiere_informe = true` muestran badge naranja "Requiere informe TH" en la tabla. TH/Admin puede marcar el informe desde un modal (botones Favorable / Desfavorable). Mientras `informe_estado ≠ 'FAVORABLE'`, el supervisor no puede aprobar la solicitud (backend retorna 422). Si el informe es DESFAVORABLE, la solicitud pasa automáticamente a NEGADO.
   - **Tabla `dbo.d2_vacacion`** — columnas nuevas (migración `000100`): `requiere_informe BOOLEAN DEFAULT false`, `informe_estado VARCHAR(20) NULL`, `informe_fecha DATE NULL`, `informe_por VARCHAR(20) NULL`.
   - **Ruta nueva:** `PATCH /api/vacaciones/{id}/marcar-informe` → `VacacionesController::marcarInforme()` (solo ADMINISTRADOR / TALENTO HUMANO).
   - Todo registrado en `nom_auditoria_log`: `SOLICITUD_CON_EXCESO` al crear, `INFORME_FAVORABLE` / `INFORME_DESFAVORABLE` al marcar.
+
+### Importación Masiva de Empleados (`ImportacionController`)
+
+Rutas: `GET /api/empleados/importacion/plantilla`, `POST /api/empleados/importacion/preview`, `POST /api/empleados/importacion/importar`. Vista: `views/empleados/ImportacionView.vue`.
+
+- **Upsert por `identificacion`** — cédula existente → `update()` (sobrescribe **todos** los campos de la fila, incluidos los vacíos como `null`, no hace merge); cédula nueva → `create()` con `id_emp` autogenerado (`str_pad` correlativo de 5 dígitos). Empleados que ya existen en BD pero no están en el CSV no se tocan.
+- **48 columnas** (ampliado desde las 22 originales el 2026-08-25/26): todos los campos planos de `ad_empleado` incluidos los agregados en migraciones recientes (sexo, tipo_sangre, SERCOP, bancarios, campos sociales, `motivo_salida`/`motivo_reactivacion`, `programa`/`actividad`). **NO cubre** tablas hijas: hijos menores (`ad_empleado_hijo`), documento de persona sustituta (Alfresco), períodos de teletrabajo, roles (`admin_usuario_rol`) — esos se cargan aparte desde la ficha o el módulo correspondiente.
+- **Fechas** (`fecha_ingreso`, `fecha_salida`, `fecha_vence_sercop`, `sustituta_fecha_caducidad`): aceptan `DD/MM/AAAA`, `AAAA-MM-DD` o `DD-MM-AAAA` — mismo patrón que ya usa `Tecnologia\EquipoController::importarCsv`. Fila con fecha no reconocible se rechaza con error claro, no se guarda mal en silencio.
+- **`tipo_contrato`** normalizado: tolera tildes/mayúsculas/minúsculas y el error común "CODIGO DE TRABAJO" (sin la L de "DEL"), normaliza a `LOSEP` o `CODIGO DEL TRABAJO` exacto. Si no reconoce el valor, rechaza la fila — este campo antes se guardaba tal cual (sin `strtoupper` ni validación), y como `VacacionesController::tasaVacaciones()` compara con `===` exacto, un typo aquí rompía silenciosamente el cálculo de tasa de vacaciones del empleado.
+- **`acumula_decimos`** — una sola columna (`0`=Cobra mensualmente, `1`=Acumula) que se aplica a la vez a `acumula_decimo_tercero` y `acumula_decimo_cuarto` — replica el selector único que ya tiene `EmpleadoForm.vue` (ahí también es un solo campo que setea ambos). Ya NO son dos columnas separadas.
+- **Catálogos sociales** (`grupo_vulnerable`, `grupo_prioritario`, `tipo_discapacidad`, `enfermedad_catastrofica`) — se escribe el **nombre** (no el ID), resuelto contra el catálogo real (case-insensitive). Si no coincide con nada, se deja vacío con un aviso en la respuesta (`"Fila N: ... no encontrado en el catálogo"`) — no bloquea la fila completa.
+- **Excel + ceros a la izquierda:** clásico problema si la cédula o `partida_presupuestaria` se editan en Excel sin formatear la columna como Texto primero — Excel puede convertir a número y perder el cero inicial, o pasar a notación científica en campos numéricos largos (ej. `2.02622E+44`). El importador NO reintenta recuperar esto — si la columna llegó mal, se guarda mal (o no coincide con nadie). Recomendación siempre: formatear la columna como Texto en Excel antes de escribir/pegar.
 
 ### Acciones de Personal (`dbo.acc_accion_personal`)
 
@@ -681,6 +713,22 @@ views/planificacion/    # Planificación anual de vacaciones, liquidación, repo
                         #   Botón "Cargar Saldos": modal para subir CSV (cedula,saldo) + nueva fecha de corte
                         #     → actualiza dias_adicionales + total_dias_tomados=0 en d2_cabecera_vacacion
                         #     → actualiza FECHA_CORTE_VACACIONES en d2_configuracion
+                        #     Todo o nada (2026-08-27): primera pasada solo verifica que TODAS las cédulas
+                        #       existan (activo, depto != 999) antes de escribir nada. Si alguna cédula no
+                        #       se encuentra, rechaza el archivo COMPLETO con 422 — no actualiza a nadie ni
+                        #       mueve la fecha de corte. Antes era "mejor esfuerzo": actualizaba a los que sí
+                        #       encontraba y solo avisaba de los demás en "No encontrados", lo cual dejaba a
+                        #       esos empleados con un hueco de cálculo (fecha de corte ya adelantada, saldo
+                        #       sin recargar) hasta la siguiente carga. Cédula sin el cero inicial (típico de
+                        #       Excel sin formatear la columna como Texto) es la causa más común de "no
+                        #       encontrado" — el backend NO rellena ceros a la izquierda en esta carga
+                        #       (identificacion => trim($cedula), sin str_pad, a diferencia del importador de
+                        #       empleados nuevo que sí lo hace).
+                        #     El campo `saldo` no acepta negativos (validación `min:0`) — Nombramiento
+                        #       Definitivo con saldo real negativo hay que cargarlo aparte con un UPDATE
+                        #       directo a d2_cabecera_vacacion (dias_adicionales, total_dias_tomados=0,
+                        #       dias_x_tomar_normal, fecha_proceso — mismos campos que esta carga, solo que
+                        #       sin pasar por la validación de la UI).
                         #   Botón "Editar saldo individual": modal para ajustar el saldo de UN empleado
                         #     → pide el saldo disponible total DESEADO (no dias_adicionales directamente)
                         #     → back-calcula: dias_adicionales = saldo_deseado + tomados - acumulado
@@ -760,6 +808,13 @@ views/asistencia/       # Reporte de asistencia personal y admin
                         #     muestra "Debió: HH:MM" en ámbar — hora a la que debió regresar (SALIDA AL LUNCH + 30 min)
                         #     Calculado en frontend con horaDebiRegresarLunch(fecha): busca la marcación
                         #     SALIDA AL LUNCH del mismo día y le suma 30 minutos. Sin cambios de backend.
+                        #   Mensaje de error/éxito de marcación (2026-08-26): toast flotante fijo arriba de
+                        #     la pantalla (`<Teleport to="body">`, `position:fixed top-4`, z-[9985]), no un
+                        #     div inline debajo de los botones grandes de marcación como antes — con los
+                        #     íconos de hasta 176px de alto en desktop, el mensaje (ej. error de VLAN no
+                        #     permitida) quedaba fuera de la vista sin scroll, y se autodesaparecía a los 5s
+                        #     antes de que el usuario se enterara. Ahora es visible sin importar el scroll,
+                        #     con botón × para cerrar manual además del auto-dismiss.
 views/horasextras/
   HorasExtrasView.vue   # 4 tabs:
                         #   MI PLANIFICACIÓN: crear/editar, PDF planificación, subir PDF firmado

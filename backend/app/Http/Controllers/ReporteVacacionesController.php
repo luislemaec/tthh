@@ -87,6 +87,39 @@ class ReporteVacacionesController extends Controller
         )));
     }
 
+    // Igual que calcularSaldoActual() pero sin el piso de 0 — para Nombramiento Definitivo
+    // con saldo negativo (migración 000100), que debe verse en rojo en vez de como 0.
+    // Mismo criterio que VacacionesController::calcularSaldoDisponible()['dias_disponibles_real'].
+    private function calcularSaldoActualReal(Empleado $emp): float
+    {
+        $tasa = $this->tasaVacaciones($emp)['tasa_mensual'];
+
+        $fechaCorteConfig = Configuracion::find('FECHA_CORTE_VACACIONES');
+        $fechaCorte       = $fechaCorteConfig ? Carbon::parse($fechaCorteConfig->valor) : Carbon::today();
+
+        if ($emp->fecha_ingreso && Carbon::parse($emp->fecha_ingreso)->gt($fechaCorte)) {
+            $fechaCorte = Carbon::parse($emp->fecha_ingreso);
+        }
+
+        $fechaHasta = Carbon::today();
+        if ($emp->estado === 'INACTIVO' && !empty($emp->fecha_salida)) {
+            $fechaHasta = Carbon::parse($emp->fecha_salida);
+        }
+
+        $diasCalendario = max(0, $fechaCorte->diffInDays($fechaHasta));
+        $diasAcumulados = round($diasCalendario / 360 * ($tasa * 12), 2);
+
+        $cabecera = CabeceraVacacion::where('id_emp', $emp->id_emp)->first();
+        if (!$cabecera) return $diasAcumulados;
+
+        return min(60, round(
+            (float)($cabecera->dias_adicionales  ?? 0)
+            + $diasAcumulados
+            - (float)($cabecera->total_dias_tomados ?? 0),
+            2
+        ));
+    }
+
     // Igual que aprobar() en VacacionesController: días calendario inclusivos
     private function diasVacacion(string $desde, string $hasta): float
     {
@@ -236,12 +269,14 @@ class ReporteVacacionesController extends Controller
             $emp      = $request->user();
             $cabecera = CabeceraVacacion::where('id_emp', $emp->id_emp)->first();
             return response()->json([[
-                'id_emp'          => $emp->id_emp,
-                'nombre_completo' => trim($emp->apellido_emp . ' ' . $emp->nombre_emp),
-                'departamento'    => '',
-                'tipo_contrato'   => trim($emp->tipo_contrato ?? ''),
-                'tomados'         => (float)($cabecera?->total_dias_tomados ?? 0),
-                'saldo_actual'    => $this->calcularSaldoActual($emp),
+                'id_emp'            => $emp->id_emp,
+                'nombre_completo'   => trim($emp->apellido_emp . ' ' . $emp->nombre_emp),
+                'departamento'      => '',
+                'tipo_contrato'     => trim($emp->tipo_contrato ?? ''),
+                'modalidad_laboral' => $emp->modalidad_laboral,
+                'tomados'           => (float)($cabecera?->total_dias_tomados ?? 0),
+                'saldo_actual'      => $this->calcularSaldoActual($emp),
+                'saldo_actual_real' => $this->calcularSaldoActualReal($emp),
             ]]);
         }
 
@@ -268,12 +303,14 @@ class ReporteVacacionesController extends Controller
         $resultado = $empleados->map(function (Empleado $emp) use ($cabecerasMap) {
             $cabecera = $cabecerasMap->get($emp->id_emp);
             return [
-                'id_emp'          => $emp->id_emp,
-                'nombre_completo' => trim($emp->apellido_emp . ' ' . $emp->nombre_emp),
-                'departamento'    => $emp->departamento?->nombre_depto ?? '—',
-                'tipo_contrato'   => trim($emp->tipo_contrato ?? ''),
-                'tomados'         => (float)($cabecera?->total_dias_tomados ?? 0),
-                'saldo_actual'    => $this->calcularSaldoActual($emp),
+                'id_emp'            => $emp->id_emp,
+                'nombre_completo'   => trim($emp->apellido_emp . ' ' . $emp->nombre_emp),
+                'departamento'      => $emp->departamento?->nombre_depto ?? '—',
+                'tipo_contrato'     => trim($emp->tipo_contrato ?? ''),
+                'modalidad_laboral' => $emp->modalidad_laboral,
+                'tomados'           => (float)($cabecera?->total_dias_tomados ?? 0),
+                'saldo_actual'      => $this->calcularSaldoActual($emp),
+                'saldo_actual_real' => $this->calcularSaldoActualReal($emp),
             ];
         });
 
@@ -430,8 +467,10 @@ class ReporteVacacionesController extends Controller
                 'nombre_completo' => trim($emp->apellido_emp . ' ' . $emp->nombre_emp),
                 'departamento'    => $emp->departamento?->nombre_depto ?? '—',
                 'tipo_contrato'   => trim($emp->tipo_contrato ?? ''),
+                'modalidad_laboral' => $emp->modalidad_laboral,
                 'tomados'         => (float)($cabecera?->total_dias_tomados ?? 0),
                 'saldo_actual'    => $this->calcularSaldoActual($emp),
+                'saldo_actual_real' => $this->calcularSaldoActualReal($emp),
             ];
         });
 
