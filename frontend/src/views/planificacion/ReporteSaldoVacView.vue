@@ -638,7 +638,10 @@ async function confirmarCarga() {
     cargaResultado.value = data
     if (lista.value.length) cargar()
   } catch (err) {
-    cargaResultado.value = { error: err.response?.data?.message ?? 'Error al procesar la carga' }
+    cargaResultado.value = {
+      error: err.response?.data?.message ?? 'Error al procesar la carga',
+      no_encontrados: err.response?.data?.no_encontrados ?? [],
+    }
   } finally {
     cargando2.value = false
   }

@@ -341,21 +341,39 @@ class ReporteVacacionesController extends Controller
             'saldos.*.saldo'  => 'required|numeric|min:0',
         ]);
 
-        $actualizados  = 0;
+        // Primera pasada — solo verificar, sin escribir nada. Si alguna cédula no se
+        // encuentra, se rechaza el archivo COMPLETO: no se actualiza ningún empleado y
+        // la fecha de corte tampoco se mueve. Evita dejar empleados con un hueco de
+        // cálculo (fecha de corte adelantada sin que su saldo se haya recargado) mientras
+        // se corrige el archivo — todo o nada.
         $noEncontrados = [];
+        $empleadosPorCedula = [];
+        foreach ($request->saldos as $fila) {
+            $emp = Empleado::where('identificacion', trim($fila['cedula']))
+                ->where('estado', 'ACTIVO')
+                ->where('id_depto', '!=', 999)
+                ->first();
+
+            if (!$emp) {
+                $noEncontrados[] = $fila['cedula'];
+            } else {
+                $empleadosPorCedula[$fila['cedula']] = $emp;
+            }
+        }
+
+        if (!empty($noEncontrados)) {
+            return response()->json([
+                'message' => 'No se actualizó nada — hay ' . count($noEncontrados) . ' cédula(s) que no se encontraron. Corrige el archivo y vuelve a intentar.',
+                'no_encontrados' => $noEncontrados,
+            ], 422);
+        }
+
+        $actualizados = 0;
 
         DB::beginTransaction();
         try {
             foreach ($request->saldos as $fila) {
-                $emp = Empleado::where('identificacion', trim($fila['cedula']))
-                    ->where('estado', 'ACTIVO')
-                    ->where('id_depto', '!=', 999)
-                    ->first();
-
-                if (!$emp) {
-                    $noEncontrados[] = $fila['cedula'];
-                    continue;
-                }
+                $emp = $empleadosPorCedula[$fila['cedula']];
 
                 CabeceraVacacion::updateOrCreate(
                     ['id_emp' => $emp->id_emp],
@@ -383,7 +401,7 @@ class ReporteVacacionesController extends Controller
 
         return response()->json([
             'actualizados'  => $actualizados,
-            'no_encontrados' => $noEncontrados,
+            'no_encontrados' => [],
         ]);
     }
 
