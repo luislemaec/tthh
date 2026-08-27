@@ -87,6 +87,24 @@ Las tablas `adq.orden_compra`, `adq.egreso`, `adq.kardex`, `adq.solicitud_materi
 - Token Sanctum en **sessionStorage** (no localStorage — sesión se cierra al cerrar el navegador); Axios lo inyecta en cada request
 - 401 → limpia token y redirige a `/login`
 
+### Autenticación híbrida contra Active Directory (2026-08-27)
+
+`AuthController::login()` intenta primero validar contra el AD institucional vía LDAP; si no aplica (AD no configurado en ese ambiente) o falla, cae a la clave local (`Hash::check` contra `ad_empleado.password`) — el comportamiento de siempre.
+
+```php
+$autenticado = $empleado && (
+    ActiveDirectoryService::autenticar($request->identificacion, $request->password)
+    || Hash::check($request->password, $empleado->password)
+);
+```
+
+- **`App\Services\ActiveDirectoryService::autenticar()`** — usa `ext-ldap` directo (sin paquete Composer nuevo). Bind en 2 pasos: (1) con una cuenta de servicio busca al usuario en el AD por `employeeID = identificacion` (cédula), (2) hace un segundo bind *como ese usuario* con la clave recibida — así es como se valida realmente una clave contra LDAP. Nunca lanza excepción, siempre retorna `bool` (si algo falla, retorna `false` y el caller cae al fallback local).
+- **Config nueva en `config/services.php`** (bloque `ad`) + variables `.env`: `AD_HOST`, `AD_PORT` (default 389), `AD_USE_TLS`, `AD_BASE_DN`, `AD_BIND_DN`, `AD_BIND_PASSWORD`, `AD_EMPLOYEE_ATTR` (default `employeeID`).
+- **Diseño clave — si `AD_HOST` está vacío, el comportamiento es 100% idéntico al de antes**: `ActiveDirectoryService::autenticar()` retorna `false` de inmediato sin intentar conectar a nada. Por eso pruebas (sin `AD_HOST` en su `.env`) sigue funcionando exactamente igual, sin ningún cambio visible.
+- Pensado como híbrido a propósito: los Funcionarios Externos (`es_externo=true`, ver sección Comisiones) no van a tener cuenta en el AD — siguen entrando con su clave local aunque el AD esté configurado, porque el AD simplemente no los encuentra por `employeeID` y el fallback local los cubre.
+- Requiere la extensión `php8.x-ldap` instalada en el servidor (agregar al `apt install` del deploy).
+- **No probado contra un AD real todavía** — antes de confiar en esto en producción, probar login con un usuario real y confirmar que `employeeID` en el AD tiene la cédula en el mismo formato que `ad_empleado.identificacion` (con ceros a la izquierda si aplica).
+
 ## Roles
 
 Roles: `ADMINISTRADOR`, `TALENTO HUMANO`, `TH ACCIONES PERSONAL`, `TH NOMINA`, `SUPERVISOR`, `ADQUISICIONES`, `SUMINISTROS`, `TRANSPORTE`, `CONDUCTOR`, `MAXIMA AUTORIDAD`, `CONTABILIDAD`, `PRESUPUESTO`, `DIRECTOR FINANCIERO`, `TESORERIA`, `COMISIONADO EXTERNO`, `COMISIONES`. Empleados sin rol = acceso básico (solo Talento Humano).

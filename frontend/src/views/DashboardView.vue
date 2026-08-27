@@ -25,7 +25,9 @@
 
         <!-- Saldo de vacaciones -->
         <div class="rounded-xl p-4 flex items-center gap-3 text-white"
-          style="background: linear-gradient(135deg,#0b5447,#1a8a6f);">
+          :style="saldoRealNegativo
+            ? 'background: linear-gradient(135deg,#a13a26,#c9573e);'
+            : 'background: linear-gradient(135deg,#0b5447,#1a8a6f);'">
           <div class="bg-white/20 p-2.5 rounded-xl flex-shrink-0">
             <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -34,8 +36,12 @@
           </div>
           <div>
             <p class="text-xs text-white/70 font-medium uppercase tracking-wide">Saldo de vacaciones</p>
-            <p class="text-3xl font-extrabold leading-none mt-0.5">{{ stats.datos_empleado?.saldo_vacaciones ?? 0 }}</p>
-            <p class="text-xs text-white/60 mt-0.5">días disponibles</p>
+            <p class="text-3xl font-extrabold leading-none mt-0.5">
+              {{ saldoRealNegativo ? stats.datos_empleado.saldo_vacaciones_real : (stats.datos_empleado?.saldo_vacaciones ?? 0) }}
+            </p>
+            <p class="text-xs text-white/60 mt-0.5">
+              {{ saldoRealNegativo ? 'días — saldo en negativo, requiere atención' : 'días disponibles' }}
+            </p>
             <span v-if="(stats.datos_empleado?.dias_adicionales_antiguedad ?? 0) > 0"
               class="inline-block bg-white/20 text-white text-xs px-2 py-0.5 rounded-full mt-1">
               +{{ stats.datos_empleado.dias_adicionales_antiguedad }} días/año por antigüedad
@@ -363,6 +369,12 @@ function pct(val) {
 }
 
 const mostrarVacProximas = ref(false)
+// Nombramiento Definitivo puede quedar con saldo real negativo (informe TH favorable) —
+// mismo criterio que VacacionesView.vue: se muestra en rojo en vez de esconderlo como 0.
+const saldoRealNegativo = computed(() => {
+  const d = stats.value.datos_empleado
+  return !!d && d.modalidad_laboral === 'Nombramiento Definitivo' && (d.saldo_vacaciones_real ?? 0) < 0
+})
 const proximoPeriodo     = computed(() => stats.value.datos_empleado?.proximo_periodo ?? null)
 const enCurso            = computed(() => proximoPeriodo.value?.en_curso === true)
 const diasParaVacaciones = computed(() => {

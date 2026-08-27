@@ -216,10 +216,14 @@ class DashboardController extends Controller
             $diasCalendario = max(0, $fechaCorte->diffInDays(Carbon::today()));
             $diasAcumulados = round($diasCalendario / 360 * ($tasaMensual * 12), 2);
 
-            $cabecera = CabeceraVacacion::where('id_emp', $emp->id_emp)->first();
-            $tomados  = (float) ($cabecera->total_dias_tomados ?? 0);
-            $adicional= (float) ($cabecera->dias_adicionales   ?? 0);
-            $saldo    = min(60, max(0, round($adicional + $diasAcumulados - $tomados, 2)));
+            $cabecera  = CabeceraVacacion::where('id_emp', $emp->id_emp)->first();
+            $tomados   = (float) ($cabecera->total_dias_tomados ?? 0);
+            $adicional = (float) ($cabecera->dias_adicionales   ?? 0);
+            $saldo     = min(60, max(0, round($adicional + $diasAcumulados - $tomados, 2)));
+            // Igual que VacacionesView.vue: sin el piso de 0, para que Nombramiento Definitivo
+            // con saldo negativo lo vea también aquí (antes solo se veía en Personal → Vacaciones,
+            // el Dashboard lo mostraba como 0 y ocultaba la alerta).
+            $saldoReal = min(60, round($adicional + $diasAcumulados - $tomados, 2));
 
             // Atrasos por mes: días con atraso en cada mes del año actual
             $anio = now()->year;
@@ -240,6 +244,8 @@ class DashboardController extends Controller
 
             $datosEmpleado = [
                 'saldo_vacaciones'            => $saldo,
+                'saldo_vacaciones_real'       => $saldoReal,
+                'modalidad_laboral'           => $emp->modalidad_laboral,
                 'atrasos_por_mes'             => array_values($atrasosPorMes),
                 'dias_adicionales_antiguedad' => $diasAdicAntig,
             ];
