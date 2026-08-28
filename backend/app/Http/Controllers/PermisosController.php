@@ -208,6 +208,30 @@ class PermisosController extends Controller
     }
 
     // Solicitar nuevo permiso
+    // Igual que ProcesarCuadre.php: resuelve el turno asignado a un empleado en una fecha
+    // puntual vía d2_programacion (columna s{día} = id_turno), con fallback a turno 1 si no
+    // hay programación para ese mes. Devuelve la hora del concepto (ENTRADA/SALIDA) en "H:i",
+    // o null si el turno no tiene ese concepto configurado.
+    private function horaTurnoDelDia(string $id_emp, Carbon $fecha, string $concepto): ?string
+    {
+        $colTurno = 's' . (int) $fecha->format('j');
+
+        $prog = DB::table('dbo.d2_programacion')
+            ->where('id_emp', $id_emp)
+            ->whereYear('fecha', $fecha->year)
+            ->whereMonth('fecha', $fecha->month)
+            ->first();
+
+        $idTurno = $prog ? ((int) ($prog->$colTurno ?? 1)) : 1;
+
+        $turno = DB::table('dbo.d2_turno')
+            ->where('id_turno', $idTurno)
+            ->where('concepto', $concepto)
+            ->first();
+
+        return $turno ? Carbon::parse($turno->hora)->format('H:i') : null;
+    }
+
     public function store(Request $request)
     {
         $request->validate([
@@ -270,14 +294,28 @@ class PermisosController extends Controller
             ], 422);
         }
 
+        // "Todo el día": la hora de entrada/salida se toma del turno real asignado ese día
+        // (d2_programacion → d2_turno), no de lo que traiga el formulario — antes quedaba
+        // fijo en 08:00-17:00 aunque el horario real del empleado fuera distinto (ej. 16:30).
+        // Con horario partido, usar la ENTRADA del primer día y la SALIDA del último — si el
+        // turno no tiene ese concepto configurado, cae al valor que mandó el formulario.
+        $horaDesdeFinal = $request->hora_desde;
+        $horaHastaFinal = $request->hora_hasta;
+        if ($request->todo_dia === "SI") {
+            $horaDesdeFinal = $this->horaTurnoDelDia($emp->id_emp, Carbon::parse($request->fecha_desde), 'ENTRADA')
+                ?? $request->hora_desde;
+            $horaHastaFinal = $this->horaTurnoDelDia($emp->id_emp, Carbon::parse($request->fecha_hasta), 'SALIDA')
+                ?? $request->hora_hasta;
+        }
+
         $permiso = Permiso::create([
             "fecha_hora"     => now(),
             "id_emp"         => $emp->id_emp,
             "razon"          => trim($razon->descripcion),
             "fecha_desde"    => $request->fecha_desde,
             "fecha_hasta"    => $request->fecha_hasta,
-            "hora_desde"     => $request->fecha_desde . " " . $request->hora_desde . ":00",
-            "hora_hasta"     => $request->fecha_hasta . " " . $request->hora_hasta . ":00",
+            "hora_desde"     => $request->fecha_desde . " " . $horaDesdeFinal . ":00",
+            "hora_hasta"     => $request->fecha_hasta . " " . $horaHastaFinal . ":00",
             "usuario"        => $emp->id_emp,
             "cargo"          => 0,
             "sec_permiso"    => $request->sec_permiso,
