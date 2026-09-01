@@ -4,12 +4,15 @@ namespace App\Http\Controllers;
 use App\Models\Empleado;
 use App\Models\EmpleadoMail;
 use App\Models\CabeceraVacacion;
+use App\Services\AuditoriaService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class ImportacionController extends Controller
 {
+    private const ROLES_ADMIN = ['ADMINISTRADOR', 'TALENTO HUMANO'];
+
     private const COLUMNAS = [
         'identificacion', 'nombre_emp', 'apellido_emp', 'id_depto',
         'estado', 'estado_puesto', 'tipo_contrato', 'sueldo', 'nivel',
@@ -63,8 +66,10 @@ class ImportacionController extends Controller
     ];
 
     // Descargar plantilla CSV
-    public function plantilla()
+    public function plantilla(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
+
         $headers = [
             'Content-Type'        => 'text/csv',
             'Content-Disposition' => 'attachment; filename=plantilla_empleados.csv',
@@ -84,6 +89,8 @@ class ImportacionController extends Controller
     // Vista previa del CSV
     public function preview(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
+
         $request->validate([
             'archivo' => 'required|file|mimes:csv,txt|max:5120',
         ]);
@@ -126,6 +133,8 @@ class ImportacionController extends Controller
     // Importar empleados
     public function importar(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
+
         $request->validate([
             'archivo' => 'required|file|mimes:csv,txt|max:5120',
         ]);
@@ -246,6 +255,13 @@ class ImportacionController extends Controller
 
                     $existe = Empleado::where('identificacion', $d['identificacion'])->first();
                     if ($existe) {
+                        // Funcionarios Externos (es_externo=true) solo se editan desde
+                        // FuncionariosExternosView — mismo criterio que EmpleadoController::update().
+                        if ($existe->es_externo) {
+                            $errores[] = "Fila $fila_num ({$d['identificacion']}): es Funcionario Externo, se omite — edítelo desde Funcionarios Externos";
+                            $fila_num++;
+                            continue;
+                        }
                         $existe->update($campos);
                         if (!empty($d['email'])) {
                             EmpleadoMail::where('id_emp', $existe->id_emp)->update(['estado' => 'INACTIVO']);
@@ -281,6 +297,14 @@ class ImportacionController extends Controller
             DB::rollBack();
             return response()->json(['message' => 'Error: ' . $e->getMessage()], 500);
         }
+
+        AuditoriaService::log(
+            'dbo.ad_empleado', 0, 'IMPORTACION_MASIVA',
+            null,
+            ['importados' => $importados, 'actualizados' => $actualizados, 'errores' => count($errores), 'archivo' => $request->file('archivo')->getClientOriginalName()],
+            $request,
+            "Importación masiva de empleados: {$importados} creados, {$actualizados} actualizados"
+        );
 
         return response()->json([
             'message'      => 'Importación completada',

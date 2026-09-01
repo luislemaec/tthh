@@ -8,11 +8,18 @@ use App\Models\PlanificacionDet;
 use App\Models\PeriodoPlanificacion;
 use App\Models\CabeceraVacacion;
 use App\Models\Configuracion;
+use App\Services\AuditoriaService;
+use App\Services\SaldoVacacionesService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class PlanificacionVacController extends Controller
 {
+    public function __construct(private SaldoVacacionesService $saldoService)
+    {
+    }
+
     // ── Helpers ────────────────────────────────────────────────────────────────
 
     private function esSupervisor($id_emp)
@@ -22,48 +29,43 @@ class PlanificacionVacController extends Controller
 
     private function esAdminOTH($id_emp)
     {
-        return \Illuminate\Support\Facades\DB::table('dbo.admin_usuario_rol as ur')
+        return DB::table('dbo.admin_usuario_rol as ur')
             ->join('dbo.admin_rol as r', 'ur.id_rol', '=', 'r.id')
             ->where('ur.id_emp', $id_emp)
             ->whereIn('r.descripcion', ['ADMINISTRADOR', 'TALENTO HUMANO'])
             ->exists();
     }
 
+    // Empleados que supervisa, incluyendo supervisores de departamentos hijos
+    // (mismo patrón que VacacionesController/PermisosController — antes esta versión
+    // solo tenía el tramo directo, por lo que un supervisor de nivel superior no veía
+    // las planificaciones de los empleados de un departamento hijo).
     private function empleadosDeSupervisor($id_supervisor)
     {
         $deptos = Supervisor::where('id_supervisor', $id_supervisor)->pluck('id_depto');
-        return Empleado::whereIn('id_depto', $deptos)
+
+        $empleadosDirectos = Empleado::whereIn('id_depto', $deptos)
             ->where('estado', 'ACTIVO')
             ->where('id_emp', '!=', $id_supervisor)
             ->pluck('id_emp');
+
+        $deptosHijos = DB::table('dbo.ad_departamento')
+            ->whereIn('padre_id', $deptos)
+            ->pluck('id_depto');
+
+        $supervisoresHijos = Supervisor::whereIn('id_depto', $deptosHijos)
+            ->where('id_supervisor', '!=', $id_supervisor)
+            ->pluck('id_supervisor');
+
+        return $empleadosDirectos->merge($supervisoresHijos)->unique()->values();
     }
 
-    // Calcula el saldo real disponible (igual que VacacionesController)
+    // Calcula el saldo real disponible — delegado a SaldoVacacionesService (única
+    // fuente de verdad). Antes tenía su propia copia con tasa fija 1.25 para Código
+    // del Trabajo (ignoraba antigüedad) y sin congelar en fecha_salida.
     private function calcularSaldo(Empleado $emp): float
     {
-        $tasas = [
-            'LOSEP'              => 2.50,
-            'CODIGO DEL TRABAJO' => 1.25,
-        ];
-        $tasa = $tasas[trim($emp->tipo_contrato)] ?? 0;
-
-        $fechaCorteConfig = Configuracion::find('FECHA_CORTE_VACACIONES');
-        $fechaCorte       = $fechaCorteConfig ? Carbon::parse($fechaCorteConfig->valor) : Carbon::today();
-
-        if ($emp->fecha_ingreso && Carbon::parse($emp->fecha_ingreso)->gt($fechaCorte)) {
-            $fechaCorte = Carbon::parse($emp->fecha_ingreso);
-        }
-
-        $diasCalendario = max(0, $fechaCorte->diffInDays(Carbon::today()));
-        $diasAcumulados = round($diasCalendario / 360 * ($tasa * 12), 2);
-
-        $cabecera = CabeceraVacacion::where('id_emp', $emp->id_emp)->first();
-        if (!$cabecera) return $diasAcumulados;
-
-        $saldoInicial = (float)($cabecera->dias_adicionales  ?? 0);
-        $tomados      = (float)($cabecera->total_dias_tomados ?? 0);
-
-        return min(60, max(0, round($saldoInicial + $diasAcumulados - $tomados, 2)));
+        return $this->saldoService->calcular($emp)['dias_disponibles'];
     }
 
     // Calcula días calendario entre dos fechas (inclusivo)
@@ -224,6 +226,15 @@ class PlanificacionVacController extends Controller
             ], 422);
         }
 
+        // Validar contra el saldo real disponible — antes solo se validaba el tope de
+        // 30 días, así que un empleado con 10 días reales podía planificar hasta 30.
+        $saldoDisponible = $this->calcularSaldo($emp);
+        if ($totalDias > $saldoDisponible) {
+            return response()->json([
+                'message' => "No tienes suficiente saldo de vacaciones. Disponible: {$saldoDisponible} días, planificados: {$totalDias} días."
+            ], 422);
+        }
+
         // Supervisores auto-aprueban su propia planificación
         $esSupervisor = $this->esSupervisor($emp->id_emp);
 
@@ -275,6 +286,11 @@ class PlanificacionVacController extends Controller
                 'dias_calculados'=> $dias,
             ]);
         }
+
+        AuditoriaService::log('dbo.vac_planificacion_cab', $cab->id, 'CREAR',
+            null,
+            ['anio' => $cab->anio, 'estado' => $cab->estado, 'total_dias_planificados' => $totalDias],
+            $request, "Planificación de vacaciones " . ($esSupervisor ? 'creada y auto-aprobada' : 'creada') . ": " . trim($emp->apellido_emp . ' ' . $emp->nombre_emp));
 
         return response()->json($cab->load('periodos'), 201);
     }
@@ -336,6 +352,11 @@ class PlanificacionVacController extends Controller
             'usuario_decision'=> $supervisor->id_emp,
         ]);
 
+        AuditoriaService::log('dbo.vac_planificacion_cab', $planificacion->id, 'APROBAR',
+            ['estado' => 'PENDIENTE'],
+            ['estado' => 'APROBADO'],
+            $request, "Aprobación de planificación de vacaciones: " . trim(($planificacion->empleado->apellido_emp ?? '') . ' ' . ($planificacion->empleado->nombre_emp ?? '')));
+
         return response()->json(['message' => 'Planificación aprobada', 'planificacion' => $planificacion->load('periodos')]);
     }
 
@@ -369,6 +390,11 @@ class PlanificacionVacController extends Controller
             'observacion'     => $request->observacion,
         ]);
 
+        AuditoriaService::log('dbo.vac_planificacion_cab', $planificacion->id, 'NEGAR',
+            ['estado' => 'PENDIENTE'],
+            ['estado' => 'NEGADO', 'observacion' => $request->observacion],
+            $request, "Negación de planificación de vacaciones: " . trim(($planificacion->empleado->apellido_emp ?? '') . ' ' . ($planificacion->empleado->nombre_emp ?? '')));
+
         return response()->json(['message' => 'Planificación negada']);
     }
 
@@ -397,6 +423,11 @@ class PlanificacionVacController extends Controller
             'usuario_decision'=> $supervisor->id_emp,
             'observacion'     => $request->observacion,
         ]);
+
+        AuditoriaService::log('dbo.vac_planificacion_cab', $planificacion->id, 'ELIMINAR',
+            ['estado' => 'PENDIENTE', 'total_dias_planificados' => $planificacion->total_dias_planificados],
+            ['estado' => 'ELIMINADO', 'observacion' => $request->observacion],
+            $request, "Eliminación de planificación de vacaciones: " . trim(($planificacion->empleado->apellido_emp ?? '') . ' ' . ($planificacion->empleado->nombre_emp ?? '')));
 
         return response()->json(['message' => 'Planificación eliminada']);
     }
@@ -464,6 +495,19 @@ class PlanificacionVacController extends Controller
             ], 422);
         }
 
+        // Validar contra el saldo real disponible (mismo criterio que store())
+        $empPlanificado = Empleado::find($planificacion->id_emp);
+        if ($empPlanificado) {
+            $saldoDisponible = $this->calcularSaldo($empPlanificado);
+            if ($totalDias > $saldoDisponible) {
+                return response()->json([
+                    'message' => "No tienes suficiente saldo de vacaciones. Disponible: {$saldoDisponible} días, replanificados: {$totalDias} días."
+                ], 422);
+            }
+        }
+
+        $totalDiasAnterior = $planificacion->total_dias_planificados;
+
         // Eliminar períodos anteriores y crear nuevos
         PlanificacionDet::where('cab_id', $planificacion->id)->delete();
 
@@ -488,6 +532,11 @@ class PlanificacionVacController extends Controller
             'fecha_decision'          => now(),
             'usuario_decision'        => $supervisor->id_emp,
         ]);
+
+        AuditoriaService::log('dbo.vac_planificacion_cab', $planificacion->id, 'REPLANIFICAR',
+            ['estado' => 'APROBADO', 'total_dias_planificados' => $totalDiasAnterior],
+            ['estado' => 'REPLANIFICADO', 'total_dias_planificados' => $totalDias],
+            $request, "Replanificación de vacaciones: " . trim(($planificacion->empleado->apellido_emp ?? '') . ' ' . ($planificacion->empleado->nombre_emp ?? '')));
 
         return response()->json([
             'message'       => 'Planificación replanificada correctamente',

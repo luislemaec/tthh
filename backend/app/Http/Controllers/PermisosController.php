@@ -6,8 +6,8 @@ use App\Models\Razon;
 use App\Models\Empleado;
 use App\Models\Supervisor;
 use App\Models\CabeceraVacacion;
-use App\Models\Configuracion;
 use App\Services\AuditoriaService;
+use App\Services\SaldoVacacionesService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -25,7 +25,7 @@ class PermisosController extends Controller
     private string $alfrescoPass;
     private string $alfrescoSite;
 
-    public function __construct()
+    public function __construct(private SaldoVacacionesService $saldoService)
     {
         $this->alfrescoBase = config('services.alfresco.base');
         $this->alfrescoUser = config('services.alfresco.user');
@@ -336,41 +336,46 @@ class PermisosController extends Controller
         return response()->json($permiso->load(["empleado", "razonPermiso"]), 201);
     }
 
-    // Ver un permiso
-    public function show($id)
+    // Ver un permiso — solo el dueño, su supervisor, o TH/Admin
+    public function show(Request $request, $id)
     {
         $permiso = Permiso::with(["empleado.departamento", "razonPermiso"])->findOrFail($id);
+        if (!$this->puedeVerPermiso($request, $permiso)) {
+            return response()->json(["message" => "No tienes acceso a este permiso"], 403);
+        }
         return response()->json($permiso);
     }
 
+    // Dueño del permiso, su supervisor, o TH/Admin pueden verlo/descargarlo
+    private function puedeVerPermiso(Request $request, Permiso $permiso): bool
+    {
+        $actor = $request->user();
+        if ($permiso->id_emp === $actor->id_emp) return true;
+        if ($this->esAdminOTH($actor->id_emp)) return true;
+        return $this->empleadosDeSupervisor($actor->id_emp)->contains($permiso->id_emp);
+    }
+
+    // Solo el dueño del permiso o TH/Admin pueden subir/eliminar sus documentos de respaldo
+    private function puedeEditarDocumentosPermiso(Request $request, Permiso $permiso): bool
+    {
+        $actor = $request->user();
+        return $permiso->id_emp === $actor->id_emp || $this->esAdminOTH($actor->id_emp);
+    }
+
+    // Nombre del empleado del permiso, para mensajes de auditoría — d2_permiso NO tiene
+    // columna nombre_emp (esa es de ad_empleado), hay que ir por la relación
+    private function nombreEmpleadoPermiso(Permiso $permiso): string
+    {
+        $emp = $permiso->empleado;
+        return $emp ? trim(trim($emp->apellido_emp ?? '') . ' ' . trim($emp->nombre_emp ?? '')) : $permiso->id_emp;
+    }
+
     // Calcula el saldo interno de vacaciones SIN aplicar el tope de 60 días.
-    // Replica la lógica de VacacionesController::calcularSaldoDisponible() pero devuelve el valor crudo.
+    // Delegado a SaldoVacacionesService (única fuente de verdad) — se mantiene el
+    // nombre/firma para no tocar el único punto que lo llama en aprobar().
     private function calcularInternoVac(Empleado $emp, CabeceraVacacion $cabecera): float
     {
-        $contrato = trim($emp->tipo_contrato ?? '');
-        if ($contrato === 'LOSEP') {
-            $tasaMensual = 2.50;
-        } elseif ($contrato === 'CODIGO DEL TRABAJO') {
-            $anios       = $emp->fecha_ingreso ? (int) Carbon::parse($emp->fecha_ingreso)->diffInYears(Carbon::today()) : 0;
-            $diasExtra   = min(max(0, $anios - 5), 15);
-            $tasaMensual = (15 + $diasExtra) / 12;
-        } else {
-            $tasaMensual = 0;
-        }
-
-        $fechaCorteConfig = Configuracion::find('FECHA_CORTE_VACACIONES');
-        $fechaCorte       = $fechaCorteConfig ? Carbon::parse($fechaCorteConfig->valor) : Carbon::today();
-        if ($emp->fecha_ingreso && Carbon::parse($emp->fecha_ingreso)->gt($fechaCorte)) {
-            $fechaCorte = Carbon::parse($emp->fecha_ingreso);
-        }
-
-        $fechaHasta     = Carbon::today();
-        $diasCalendario = max(0, $fechaCorte->diffInDays($fechaHasta));
-        $diasAcumulados = round($diasCalendario / 360 * ($tasaMensual * 12), 2);
-        $saldoInicial   = (float) ($cabecera->dias_adicionales  ?? 0);
-        $tomados        = (float) ($cabecera->total_dias_tomados ?? 0);
-
-        return $saldoInicial + $diasAcumulados - $tomados;
+        return $this->saldoService->calcularInterno($emp, $cabecera);
     }
 
     // Aprobar permiso (solo supervisor del empleado)
@@ -448,26 +453,17 @@ class PermisosController extends Controller
             }
         }
 
-        // Actualizar d2_cuadre_marcacion por cada día del permiso
-        $campo       = $permiso->descontable === "SI" ? "horas_decto" : "horaspermiso_pag";
-        $diasRango   = $permiso->todo_dia === "SI" ? $diasDescuento : 1;
-        $diasXDia    = $permiso->todo_dia === "SI" ? 1 : $diasDescuento;
-        $fechaActual = Carbon::parse($permiso->fecha_desde);
+        // NOTA: el aporte de este permiso a d2_cuadre_marcacion (horas_decto/horaspermiso_pag)
+        // ya NO se escribe aquí. Se calcula siempre desde cero en ProcesarCuadre (comando
+        // procesar:cuadre) a partir de los permisos APROBADO vigentes ese día — así el valor
+        // es idempotente: no se pierde si el cuadre de ese día aún no existe (permiso a futuro)
+        // ni se sobrescribe si el cuadre se reprocesa después. Si el permiso es para hoy o una
+        // fecha ya procesada, correr `php artisan procesar:cuadre --fecha=YYYY-MM-DD` para reflejarlo.
 
-        for ($i = 0; $i < $diasRango; $i++) {
-            DB::table("dbo.d2_cuadre_marcacion")
-                ->where("id_emp", $permiso->id_emp)
-                ->whereDate("fecha", $fechaActual->toDateString())
-                ->update([
-                    $campo => DB::raw("COALESCE($campo, 0) + $diasXDia"),
-                ]);
-            $fechaActual->addDay();
-        }
-
-        AuditoriaService::log('dbo.d2_permiso', $permiso->id, 'APROBAR',
+        AuditoriaService::log('dbo.d2_permiso', $permiso->getKey(), 'APROBAR',
             ['estado_permiso' => 'PENDIENTE'],
             ['estado_permiso' => 'APROBADO', 'fecha_desde' => $permiso->fecha_desde, 'fecha_hasta' => $permiso->fecha_hasta, 'descontable' => $permiso->descontable],
-            $request, "Aprobación de permiso: {$permiso->nombre_emp}");
+            $request, "Aprobación de permiso: {$this->nombreEmpleadoPermiso($permiso)}");
 
         return response()->json([
             "message" => "Permiso aprobado correctamente",
@@ -514,10 +510,10 @@ class PermisosController extends Controller
             "observacion_negacion" => $request->observacion_negacion,
         ]);
 
-        AuditoriaService::log('dbo.d2_permiso', $permiso->id, 'NEGAR',
+        AuditoriaService::log('dbo.d2_permiso', $permiso->getKey(), 'NEGAR',
             ['estado_permiso' => 'PENDIENTE'],
             ['estado_permiso' => 'NEGADO', 'observacion' => $request->observacion_negacion],
-            $request, "Negación de permiso: {$permiso->nombre_emp}");
+            $request, "Negación de permiso: {$this->nombreEmpleadoPermiso($permiso)}");
 
         return response()->json([
             "message" => "Permiso negado",
@@ -553,17 +549,22 @@ class PermisosController extends Controller
             "observacion_negacion" => $request->observacion_negacion,
         ]);
 
-        AuditoriaService::log('dbo.d2_permiso', $permiso->id, 'ELIMINAR',
+        AuditoriaService::log('dbo.d2_permiso', $permiso->getKey(), 'ELIMINAR',
             ['estado_permiso' => 'PENDIENTE', 'fecha_desde' => $permiso->fecha_desde, 'fecha_hasta' => $permiso->fecha_hasta],
             ['estado_permiso' => 'ELIMINADO', 'observacion' => $request->observacion_negacion],
-            $request, "Eliminación de permiso: {$permiso->nombre_emp}");
+            $request, "Eliminación de permiso: {$this->nombreEmpleadoPermiso($permiso)}");
 
         return response()->json(["message" => "Permiso eliminado correctamente"]);
     }
 
     // GET /api/permisos/{id}/documentos
-    public function listarDocumentos($id)
+    public function listarDocumentos(Request $request, $id)
     {
+        $permiso = Permiso::findOrFail($id);
+        if (!$this->puedeVerPermiso($request, $permiso)) {
+            return response()->json(['message' => 'No tienes acceso a este permiso'], 403);
+        }
+
         $docs = DB::table('dbo.d2_permiso_documento')
             ->where('permiso_id', $id)
             ->orderBy('created_at')
@@ -580,6 +581,9 @@ class PermisosController extends Controller
         ]);
 
         $permiso = Permiso::with('empleado')->findOrFail($id);
+        if (!$this->puedeEditarDocumentosPermiso($request, $permiso)) {
+            return response()->json(['message' => 'No puedes adjuntar documentos a un permiso de otro empleado'], 403);
+        }
         if ($permiso->estado_permiso !== 'PENDIENTE') {
             return response()->json(['message' => 'Solo se pueden adjuntar documentos en permisos PENDIENTES.'], 422);
         }
@@ -627,6 +631,9 @@ class PermisosController extends Controller
     public function eliminarDocumento(Request $request, $id, $docId)
     {
         $permiso = Permiso::findOrFail($id);
+        if (!$this->puedeEditarDocumentosPermiso($request, $permiso)) {
+            return response()->json(['message' => 'No puedes eliminar documentos de un permiso de otro empleado'], 403);
+        }
         if ($permiso->estado_permiso !== 'PENDIENTE') {
             return response()->json(['message' => 'No se pueden eliminar documentos de un permiso ya procesado.'], 422);
         }
@@ -647,8 +654,13 @@ class PermisosController extends Controller
     }
 
     // GET /api/permisos/{id}/documentos/{docId}/descargar
-    public function descargarDocumento($id, $docId)
+    public function descargarDocumento(Request $request, $id, $docId)
     {
+        $permiso = Permiso::findOrFail($id);
+        if (!$this->puedeVerPermiso($request, $permiso)) {
+            return response()->json(['message' => 'No tienes acceso a este permiso'], 403);
+        }
+
         $doc = DB::table('dbo.d2_permiso_documento')
             ->where('id', $docId)
             ->where('permiso_id', $id)
@@ -722,32 +734,11 @@ class PermisosController extends Controller
             }
         }
 
-        // Revertir actualización del cuadre
-        $campo       = $permiso->descontable === 'SI' ? 'horas_decto' : 'horaspermiso_pag';
-        $diasRango   = $permiso->todo_dia === 'SI'
-            ? (Carbon::parse($permiso->fecha_desde)->diffInDays(Carbon::parse($permiso->fecha_hasta)) + 1)
-            : 1;
-
-        if ($permiso->todo_dia === 'SI') {
-            $diasXDia = 1;
-        } else {
-            $empleado     = $empleado ?? Empleado::with('jornada')->find($permiso->id_emp);
-            $horasJornada = $empleado?->jornada ? (float) $empleado->jornada->normal : 8.0;
-            $horas        = Carbon::parse($permiso->hora_desde)
-                ->diffInMinutes(Carbon::parse($permiso->hora_hasta)) / 60;
-            $diasXDia     = round($horas / $horasJornada, 4);
-        }
-
-        $fechaActual = Carbon::parse($permiso->fecha_desde);
-        for ($i = 0; $i < $diasRango; $i++) {
-            DB::table('dbo.d2_cuadre_marcacion')
-                ->where('id_emp', $permiso->id_emp)
-                ->whereDate('fecha', $fechaActual->toDateString())
-                ->update([
-                    $campo => DB::raw("GREATEST(0, COALESCE($campo, 0) - $diasXDia)"),
-                ]);
-            $fechaActual->addDay();
-        }
+        // NOTA: no hay reversión manual de d2_cuadre_marcacion aquí — al pasar el permiso a
+        // ANULADO, ProcesarCuadre deja automáticamente de contarlo (solo suma permisos en
+        // estado APROBADO) la próxima vez que se reprocese ese día. Si la fecha ya pasó y se
+        // necesita corregir el cuadre ya generado, correr:
+        // `php artisan procesar:cuadre --fecha=YYYY-MM-DD`
 
         $permiso->update([
             'estado_permiso'       => 'ANULADO',
@@ -755,10 +746,10 @@ class PermisosController extends Controller
             'usuario'              => $actor->id_emp,
         ]);
 
-        AuditoriaService::log('dbo.d2_permiso', $permiso->id, 'ANULAR',
+        AuditoriaService::log('dbo.d2_permiso', $permiso->getKey(), 'ANULAR',
             ['estado_permiso' => 'APROBADO', 'descontable' => $permiso->descontable],
             ['estado_permiso' => 'ANULADO', 'observacion' => $request->observacion_negacion],
-            $request, "Anulación de permiso aprobado: {$permiso->id_emp}");
+            $request, "Anulación de permiso aprobado: {$this->nombreEmpleadoPermiso($permiso)}");
 
         return response()->json([
             'message' => 'Permiso anulado y descuento revertido correctamente',

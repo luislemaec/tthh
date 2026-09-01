@@ -6,6 +6,7 @@ use App\Models\Configuracion;
 use App\Models\Empleado;
 use App\Models\LiquidacionHistorico;
 use App\Models\Vacacion;
+use App\Services\SaldoVacacionesService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -13,6 +14,10 @@ use Illuminate\Support\Facades\DB;
 
 class ReporteVacacionesController extends Controller
 {
+    public function __construct(private SaldoVacacionesService $saldoService)
+    {
+    }
+
     private const MOTIVOS_CARGA_SALDO = ['FIN_COMISION_RETORNO', 'COMISION_ENTRANTE'];
 
     private const MOTIVO_LABEL = [
@@ -41,83 +46,24 @@ class ReporteVacacionesController extends Controller
             ->exists();
     }
 
+    // Delegado a SaldoVacacionesService (única fuente de verdad — ver esa clase para
+    // la fórmula completa). Se mantienen estos wrappers con el mismo nombre/firma para
+    // no tocar los ~7 puntos de este archivo que ya los llaman.
     private function tasaVacaciones(Empleado $emp): array
     {
-        $contrato = trim($emp->tipo_contrato ?? '');
-        if ($contrato === 'LOSEP') {
-            return ['tasa_mensual' => 2.50, 'dias_anuales' => 30, 'dias_adicionales_antiguedad' => 0];
-        }
-        if ($contrato === 'CODIGO DEL TRABAJO') {
-            $anios     = $emp->fecha_ingreso ? (int) Carbon::parse($emp->fecha_ingreso)->diffInYears(Carbon::today()) : 0;
-            $diasExtra = min(max(0, $anios - 5), 15);
-            $diasAnuales = 15 + $diasExtra;
-            return ['tasa_mensual' => $diasAnuales / 12, 'dias_anuales' => $diasAnuales, 'dias_adicionales_antiguedad' => $diasExtra];
-        }
-        return ['tasa_mensual' => 0, 'dias_anuales' => 0, 'dias_adicionales_antiguedad' => 0];
+        return $this->saldoService->tasaVacaciones($emp);
     }
 
     private function calcularSaldoActual(Empleado $emp): float
     {
-        $tasa = $this->tasaVacaciones($emp)['tasa_mensual'];
-
-        $fechaCorteConfig = Configuracion::find('FECHA_CORTE_VACACIONES');
-        $fechaCorte       = $fechaCorteConfig ? Carbon::parse($fechaCorteConfig->valor) : Carbon::today();
-
-        if ($emp->fecha_ingreso && Carbon::parse($emp->fecha_ingreso)->gt($fechaCorte)) {
-            $fechaCorte = Carbon::parse($emp->fecha_ingreso);
-        }
-
-        // INACTIVO con fecha_salida: acumular solo hasta esa fecha (no hasta hoy)
-        $fechaHasta = Carbon::today();
-        if ($emp->estado === 'INACTIVO' && !empty($emp->fecha_salida)) {
-            $fechaHasta = Carbon::parse($emp->fecha_salida);
-        }
-
-        $diasCalendario = max(0, $fechaCorte->diffInDays($fechaHasta));
-        $diasAcumulados = round($diasCalendario / 360 * ($tasa * 12), 2);
-
-        $cabecera = CabeceraVacacion::where('id_emp', $emp->id_emp)->first();
-        if (!$cabecera) return $diasAcumulados;
-
-        return min(60, max(0, round(
-            (float)($cabecera->dias_adicionales  ?? 0)
-            + $diasAcumulados
-            - (float)($cabecera->total_dias_tomados ?? 0),
-            2
-        )));
+        return $this->saldoService->calcular($emp)['dias_disponibles'];
     }
 
     // Igual que calcularSaldoActual() pero sin el piso de 0 — para Nombramiento Definitivo
     // con saldo negativo (migración 000100), que debe verse en rojo en vez de como 0.
-    // Mismo criterio que VacacionesController::calcularSaldoDisponible()['dias_disponibles_real'].
     private function calcularSaldoActualReal(Empleado $emp): float
     {
-        $tasa = $this->tasaVacaciones($emp)['tasa_mensual'];
-
-        $fechaCorteConfig = Configuracion::find('FECHA_CORTE_VACACIONES');
-        $fechaCorte       = $fechaCorteConfig ? Carbon::parse($fechaCorteConfig->valor) : Carbon::today();
-
-        if ($emp->fecha_ingreso && Carbon::parse($emp->fecha_ingreso)->gt($fechaCorte)) {
-            $fechaCorte = Carbon::parse($emp->fecha_ingreso);
-        }
-
-        $fechaHasta = Carbon::today();
-        if ($emp->estado === 'INACTIVO' && !empty($emp->fecha_salida)) {
-            $fechaHasta = Carbon::parse($emp->fecha_salida);
-        }
-
-        $diasCalendario = max(0, $fechaCorte->diffInDays($fechaHasta));
-        $diasAcumulados = round($diasCalendario / 360 * ($tasa * 12), 2);
-
-        $cabecera = CabeceraVacacion::where('id_emp', $emp->id_emp)->first();
-        if (!$cabecera) return $diasAcumulados;
-
-        return min(60, round(
-            (float)($cabecera->dias_adicionales  ?? 0)
-            + $diasAcumulados
-            - (float)($cabecera->total_dias_tomados ?? 0),
-            2
-        ));
+        return $this->saldoService->calcular($emp)['dias_disponibles_real'];
     }
 
     // Igual que aprobar() en VacacionesController: días calendario inclusivos

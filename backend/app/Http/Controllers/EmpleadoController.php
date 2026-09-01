@@ -539,6 +539,7 @@ class EmpleadoController extends Controller
     // POST /api/empleados/{id}/foto
     public function subirFoto(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate(['foto' => 'required|image|max:2048']);
 
         $emp = Empleado::findOrFail($id);
@@ -554,8 +555,9 @@ class EmpleadoController extends Controller
     }
 
     // DELETE /api/empleados/{id}/foto
-    public function eliminarFoto($id)
+    public function eliminarFoto(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $emp = Empleado::findOrFail($id);
 
         if ($emp->foto) {
@@ -578,8 +580,9 @@ class EmpleadoController extends Controller
     }
 
     // GET /api/empleados/{id}/hijos
-    public function hijoIndex($id)
+    public function hijoIndex(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $hijos = EmpleadoHijo::where('id_emp', $id)->orderBy('fecha_nacimiento')->get();
         $hoy   = now()->toDateString();
         return response()->json($hijos->map(function ($h) use ($hoy) {
@@ -598,6 +601,7 @@ class EmpleadoController extends Controller
     // POST /api/empleados/{id}/hijos
     public function hijoStore(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate([
             'fecha_nacimiento' => 'required|date|before_or_equal:today',
             'nombre'           => 'nullable|string|max:200',
@@ -620,8 +624,9 @@ class EmpleadoController extends Controller
     }
 
     // DELETE /api/empleados/{id}/hijos/{hijoId}
-    public function hijoDestroy($id, $hijoId)
+    public function hijoDestroy(Request $request, $id, $hijoId)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $hijo = EmpleadoHijo::where('id_emp', $id)->where('id', $hijoId)->firstOrFail();
         $hijo->delete();
         return response()->json(['message' => 'Hijo eliminado.']);
@@ -652,6 +657,7 @@ class EmpleadoController extends Controller
     // POST /api/empleados/{id}/sustituta-doc
     public function subirDocSustituta(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate([
             'documento'            => 'required|file|mimes:pdf|max:5120',
             'sustituta_fecha_caducidad' => 'nullable|date',
@@ -694,8 +700,9 @@ class EmpleadoController extends Controller
     }
 
     // GET /api/empleados/{id}/sustituta-doc
-    public function descargarDocSustituta($id)
+    public function descargarDocSustituta(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $emp = Empleado::findOrFail($id);
         if (!$emp->sustituta_alfresco_id) {
             return response()->json(['message' => 'Sin documento de persona sustituta.'], 404);
@@ -710,8 +717,9 @@ class EmpleadoController extends Controller
     }
 
     // DELETE /api/empleados/{id}/sustituta-doc
-    public function eliminarDocSustituta($id)
+    public function eliminarDocSustituta(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $emp = Empleado::findOrFail($id);
         if ($emp->sustituta_alfresco_id) {
             Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
@@ -727,8 +735,9 @@ class EmpleadoController extends Controller
     // ── Períodos de teletrabajo ─────────────────────────────────────────────
 
     // GET /api/empleados/{id}/teletrabajo
-    public function teletrabajoIndex($id)
+    public function teletrabajoIndex(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $periodos = DB::table('dbo.ad_empleado_teletrabajo')
             ->where('id_emp', $id)
             ->orderByDesc('fecha_desde')
@@ -739,6 +748,7 @@ class EmpleadoController extends Controller
     // POST /api/empleados/{id}/teletrabajo
     public function teletrabajoStore(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         Empleado::findOrFail($id);
 
         $request->validate([
@@ -762,8 +772,9 @@ class EmpleadoController extends Controller
     }
 
     // DELETE /api/empleados/{id}/teletrabajo/{periodoId}
-    public function teletrabajoDestroy($id, $periodoId)
+    public function teletrabajoDestroy(Request $request, $id, $periodoId)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $deleted = DB::table('dbo.ad_empleado_teletrabajo')
             ->where('id', $periodoId)
             ->where('id_emp', $id)

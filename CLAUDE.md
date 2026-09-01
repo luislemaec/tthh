@@ -116,12 +116,32 @@ $autenticado = $empleado && (
 );
 ```
 
-- **`App\Services\ActiveDirectoryService::autenticar()`** — usa `ext-ldap` directo (sin paquete Composer nuevo). Bind en 2 pasos: (1) con una cuenta de servicio busca al usuario en el AD por `employeeID = identificacion` (cédula), (2) hace un segundo bind *como ese usuario* con la clave recibida — así es como se valida realmente una clave contra LDAP. Nunca lanza excepción, siempre retorna `bool` (si algo falla, retorna `false` y el caller cae al fallback local).
-- **Config nueva en `config/services.php`** (bloque `ad`) + variables `.env`: `AD_HOST`, `AD_PORT` (default 389), `AD_USE_TLS`, `AD_BASE_DN`, `AD_BIND_DN`, `AD_BIND_PASSWORD`, `AD_EMPLOYEE_ATTR` (default `employeeID`).
+- **`App\Services\ActiveDirectoryService::autenticar()`** — usa `ext-ldap` directo (sin paquete Composer nuevo). Bind en 2 pasos: (1) con una cuenta de servicio busca al usuario en el AD por `AD_EMPLOYEE_ATTR = identificacion` (cédula), (2) hace un segundo bind *como ese usuario* con la clave recibida — así es como se valida realmente una clave contra LDAP. Nunca lanza excepción, siempre retorna `bool` (si algo falla, retorna `false` y el caller cae al fallback local).
+- **Config nueva en `config/services.php`** (bloque `ad`) + variables `.env`: `AD_HOST`, `AD_PORT` (default 389), `AD_USE_TLS`, `AD_BASE_DN`, `AD_BIND_DN`, `AD_BIND_PASSWORD`, `AD_EMPLOYEE_ATTR` (default `employeeID`, ver dato real confirmado abajo).
 - **Diseño clave — si `AD_HOST` está vacío, el comportamiento es 100% idéntico al de antes**: `ActiveDirectoryService::autenticar()` retorna `false` de inmediato sin intentar conectar a nada. Por eso pruebas (sin `AD_HOST` en su `.env`) sigue funcionando exactamente igual, sin ningún cambio visible.
-- Pensado como híbrido a propósito: los Funcionarios Externos (`es_externo=true`, ver sección Comisiones) no van a tener cuenta en el AD — siguen entrando con su clave local aunque el AD esté configurado, porque el AD simplemente no los encuentra por `employeeID` y el fallback local los cubre.
+- Pensado como híbrido a propósito: los Funcionarios Externos (`es_externo=true`, ver sección Comisiones) no van a tener cuenta en el AD — siguen entrando con su clave local aunque el AD esté configurado, porque el AD simplemente no los encuentra por el atributo de cédula y el fallback local los cubre.
 - Requiere la extensión `php8.x-ldap` instalada en el servidor (agregar al `apt install` del deploy).
-- **No probado contra un AD real todavía** — antes de confiar en esto en producción, probar login con un usuario real y confirmar que `employeeID` en el AD tiene la cédula en el mismo formato que `ad_empleado.identificacion` (con ceros a la izquierda si aplica).
+
+**Datos reales del AD institucional, confirmados en la práctica (2026-08-28):**
+- Servidor: `192.168.26.6:389` (mismo AD/NTP que ya se usaba para sincronización horaria)
+- Base DN: `DC=consejodc,DC=int`
+- **IMPORTANTE — el atributo con la cédula NO es `employeeID` (el default del código), es `postOfficeBox`** ("Apartado postal" en la consola de AD en español, un campo reutilizado para guardar cédulas). Hay que configurar explícitamente `AD_EMPLOYEE_ATTR=postOfficeBox` — dejarlo en el default `employeeID` hace que la búsqueda nunca encuentre a nadie y el login caiga siempre al fallback local sin ningún error visible.
+- Cuenta de servicio candidata para `AD_BIND_DN`: `CN=glpi,CN=Users,DC=consejodc,DC=int` (la misma cuenta que ya usa el sistema GLPI para conectarse al AD — compartida entre sistemas, no dedicada solo a RRHH; si algún día rotan esa clave por GLPI, también se cae la conexión de RRHH sin relación aparente).
+- Probado en el servidor de pruebas con estos valores + la cuenta personal del desarrollador como bind temporal (antes de tener la clave real de `glpi`) — pendiente confirmar el resultado final del login de punta a punta (clave local Y clave AD, las dos deben funcionar).
+- Comando de diagnóstico usado para explorar atributos/DNs en el AD (útil para futuras dudas):
+  ```bash
+  ldapsearch -x -H ldap://192.168.26.6:389 \
+    -D "<tu-propio-DN-completo>" -W \
+    -b "DC=consejodc,DC=int" \
+    "(sAMAccountName=<usuario_a_buscar>)"
+  ```
+
+**Diseño para producción — pendiente de implementar (2026-08-28), NO existe en el código todavía:**
+Requerimiento distinto del híbrido actual: en producción, login **solo** con usuario de Windows (`sAMAccountName`) + clave del AD, **sin** fallback a clave local (excepto para `es_externo=true`, que nunca va a tener cuenta AD). Requiere:
+- `AD_LOGIN_ATTR` (nuevo) — atributo por el cual buscar según lo que el usuario escriba en el campo de login. Default = mismo valor que `AD_EMPLOYEE_ATTR` (compatible con pruebas sin cambios). En producción sería `sAMAccountName`.
+- `AD_ONLY` (nuevo, bool) — desactiva el fallback local para empleados normales cuando está activo. Los `es_externo=true` siguen con clave local siempre, sin importar este flag.
+- Como el login ya no entra con la cédula, `ActiveDirectoryService` necesita devolver la cédula resuelta (leyendo `AD_EMPLOYEE_ATTR` de la cuenta de AD encontrada) en vez de solo `true`/`false`, para poder ubicar al empleado correcto en `ad_empleado` (que sigue indexado por cédula).
+- Controlado por variables de entorno — no afecta pruebas si no se configuran ahí.
 
 ## Roles
 
@@ -163,6 +183,10 @@ public function store(Request $request) {
 | Comisiones de Servicios | ⏳ Parcial | `InformeComisionController`, `TarifaViaticosController`, `CoeficientePaisController` sin protección. `ComisionController`, `LiquidacionController`, `FuncionarioExternoController`, `AnticipController` tienen protección parcial preexistente, no verificada método por método (6 roles financieros con flujo de aprobación en cadena — requiere lectura cuidadosa, no apurada). `Admin/ProvinciaCiudadController` sin revisar |
 
 **Ajuste post-cierre (2026-08-17):** `Admin/AportesIessController` se cerró inicialmente solo a `ADMINISTRADOR`/`TH NOMINA` (mismo criterio que Rol de Pagos/Nómina), pero en la práctica también lo usa `TALENTO HUMANO` — se amplió `ROLES_NOMINA` para incluir los 3 roles. Si algún otro catálogo cerrado en esta auditoría queda inaccesible para un rol que antes sí lo usaba, es probable que sea el mismo tipo de ajuste (el criterio se basó en el patrón del código, no siempre en el uso real).
+
+**Gaps encontrados y cerrados el 2026-09-01 (fuera del alcance original del 2026-08-17):**
+- **`EmpleadoController` — 10 endpoints de sub-recursos sin proteger.** La tabla de arriba decía "✅ Cerrado (solo store/update/destroy)" — literal: esos 3 sí tenían `requireRole()`, pero los 10 endpoints de foto (`subirFoto`/`eliminarFoto`), hijos menores (`hijoIndex`/`hijoStore`/`hijoDestroy`), documento de persona sustituta (`subirDocSustituta`/`descargarDocSustituta`/`eliminarDocSustituta`) y teletrabajo (`teletrabajoIndex`/`teletrabajoStore`/`teletrabajoDestroy`) no tenían ningún control — cualquier empleado autenticado podía, por ejemplo, borrar la foto o los períodos de teletrabajo de otro. Cerrados con `$this->requireRole($request, self::ROLES_ADMIN)` al inicio de cada método.
+- **`ImportacionController` — sin ningún control de rol.** Los 3 endpoints (`plantilla`, `preview`, `importar`) no estaban en el alcance de la auditoría original y no tenían protección — cualquier empleado autenticado podía importar/sobrescribir el CSV masivo de empleados. Cerrados con `requireRole(self::ROLES_ADMIN)`. De paso: `importar()` ahora **omite** (con error legible, no falla la fila en silencio) a los empleados `es_externo=true` — antes el upsert por cédula los sobrescribía igual que a cualquier empleado, contradiciendo la regla de que solo se editan desde `FuncionariosExternosView` (ver sección Comisiones). También se agregó auditoría (`IMPORTACION_MASIVA` en `nom_auditoria_log`, con conteo de importados/actualizados/errores y nombre del archivo) — antes una importación masiva de decenas/cientos de empleados no dejaba ningún rastro.
 
 **Excepciones intencionales** — endpoints de lectura que se dejaron abiertos a propósito porque otros módulos/roles los consumen para búsquedas o dropdowns (verificado contra el uso real en el frontend antes de decidir):
 - `EmpleadoController::index/show` — usado por Tecnología, Nómina, Certificados, Comisiones, Supervisores, Adquisiciones, etc.
@@ -316,8 +340,8 @@ setTimeout(() => URL.revokeObjectURL(url), 60000)   // revocar después de 60s, 
 | `EmpleadoController` | CRUD empleados + asignación de roles + partidas disponibles |
 | `ImportacionController` | Importación masiva de empleados por CSV (plantilla + preview + import) — ver sección propia abajo |
 | `AccionPersonalController` | Acciones (encargo, subrogación, ingreso, vacaciones, destitución, cesación) |
-| `VacacionesController` | Solicitudes de vacaciones (aprobar/negar/saldo) — al aprobar, modal pide empleado backup del mismo departamento |
-| `PlanificacionVacController` | Planificación anual de vacaciones — estados `ELIMINADO` y `NEGADO` permiten re-planificar; fechas de períodos se validan contra el año planificado |
+| `VacacionesController` | Solicitudes de vacaciones (aprobar/negar/saldo) — al aprobar, modal pide empleado backup del mismo departamento; incluye `anular()` para TH/Admin (revierte una vacación ya APROBADA) |
+| `PlanificacionVacController` | Planificación anual de vacaciones — estados `ELIMINADO` y `NEGADO` permiten re-planificar; fechas de períodos se validan contra el año planificado y contra el saldo real disponible |
 | `LiquidacionVacController` | Liquidación por comisión/desvinculación |
 | `ReportePlanificacionController` | PDF planificación + subida Alfresco |
 | `PermisosController` | Permisos y licencias — incluye `anular()` para TH/Admin |
@@ -381,7 +405,7 @@ Campos clave de `sg_control_persona`: `nro_documento` (= id_emp), `clasificacion
 
 ### Vacaciones — cálculo de saldo
 
-Calculado en `calcularSaldoDisponible()` — usa helper `tasaVacaciones()` en VacacionesController:
+Calculado en `App\Services\SaldoVacacionesService` (única fuente de verdad desde 2026-09-01 — ver corrección al final de esta sección). Antes de esa fecha, la fórmula vivía duplicada en cada controlador; el resumen de la fórmula sigue siendo el mismo:
 - `LOSEP` → fijo 2.50 días/mes (30 días/año)
 - `CODIGO DEL TRABAJO` → tasa variable según antigüedad (Art. 69 Código del Trabajo):
   - 0–5 años completos → 1.25 días/mes (15 días/año)
@@ -397,9 +421,9 @@ Calculado en `calcularSaldoDisponible()` — usa helper `tasaVacaciones()` en Va
 - Dashboard (empleado CT con 6+ años): chip "+X días/año por antigüedad" en tarjeta saldo
 - Vista Vacaciones (empleado CT con 6+ años): badge azul "15 base + X por antigüedad"
 - **CSV carga inicial:** el `saldo` debe incluir base + adicionales ya acumulados hasta fecha de corte
-- **TOPE DE 60 DÍAS (LOSEP Art. 29) — REGLA CRÍTICA:** el saldo disponible que se muestra al empleado y que se valida al solicitar/planificar vacaciones tiene un máximo de 60 días. Si el cálculo interno supera 60, se muestra y valida como 60. El acumulado interno sigue corriendo normalmente (no se borra ni se congela), pero el empleado nunca puede ver ni solicitar más de 60 días disponibles. Implementado con `min(60, max(0, $disponibles))` en: `VacacionesController::calcularSaldoDisponible()`, `ReporteVacacionesController::calcularSaldoActual()`, `PlanificacionVacController::calcularSaldo()`. **Excepción:** `LiquidacionVacController` NO aplica el tope — usa el valor real acumulado para calcular el pago de liquidación por desvinculación.
+- **TOPE DE 60 DÍAS (LOSEP Art. 29) — REGLA CRÍTICA:** el saldo disponible que se muestra al empleado y que se valida al solicitar/planificar vacaciones tiene un máximo de 60 días. Si el cálculo interno supera 60, se muestra y valida como 60. El acumulado interno sigue corriendo normalmente (no se borra ni se congela), pero el empleado nunca puede ver ni solicitar más de 60 días disponibles. Implementado con `min(60, max(0, $disponibles))` dentro de `SaldoVacacionesService::calcular()` (campo `dias_disponibles` del array que devuelve). **Excepción:** `LiquidacionVacController` NO aplica el tope — usa el valor real acumulado para calcular el pago de liquidación por desvinculación.
 - **Saldo negativo y flujo "informe favorable" (migración `000100`) — REGLA CRÍTICA para Nombramiento Definitivo:**
-  - `calcularSaldoDisponible()` devuelve dos valores: `dias_disponibles` (`min(60, max(0, ...))`, nunca negativo — para planificación y permisos) y `dias_disponibles_real` (`min(60, ...)`, puede ser negativo — para mostrar en UI y validar nuevas solicitudes de vacaciones). También devuelve `modalidad_laboral` del empleado.
+  - `SaldoVacacionesService::calcular()` devuelve, entre otros campos, `dias_disponibles` (`min(60, max(0, ...))`, nunca negativo — para planificación y permisos) y `dias_disponibles_real` (`min(60, ...)`, puede ser negativo — para mostrar en UI y validar nuevas solicitudes de vacaciones). `modalidad_laboral` se lee aparte, directo del empleado.
   - **Bug fix race condition (2026-08-20):** `store()` descuenta los días de solicitudes en estado PENDIENTE antes de comparar contra el saldo, evitando que dos solicitudes creadas simultáneamente pasen la validación con el mismo saldo.
   - **Bloqueo por saldo insuficiente:** si `saldo_real − dias_pendientes < dias_solicitados`:
     - Empleados con `modalidad_laboral = 'Nombramiento Definitivo'`: se permite crear la solicitud pero se marca `requiere_informe = true`. El saldo puede quedar negativo.
@@ -414,9 +438,10 @@ Calculado en `calcularSaldoDisponible()` — usa helper `tasaVacaciones()` en Va
 
 ### Importación Masiva de Empleados (`ImportacionController`)
 
-Rutas: `GET /api/empleados/importacion/plantilla`, `POST /api/empleados/importacion/preview`, `POST /api/empleados/importacion/importar`. Vista: `views/empleados/ImportacionView.vue`.
+Rutas: `GET /api/empleados/importacion/plantilla`, `POST /api/empleados/importacion/preview`, `POST /api/empleados/importacion/importar`. Vista: `views/empleados/ImportacionView.vue`. Los 3 endpoints requieren rol `ADMINISTRADOR`/`TALENTO HUMANO` (`requireRole()` — cerrado 2026-09-01, antes sin ningún control).
 
-- **Upsert por `identificacion`** — cédula existente → `update()` (sobrescribe **todos** los campos de la fila, incluidos los vacíos como `null`, no hace merge); cédula nueva → `create()` con `id_emp` autogenerado (`str_pad` correlativo de 5 dígitos). Empleados que ya existen en BD pero no están en el CSV no se tocan.
+- **Upsert por `identificacion`** — cédula existente → `update()` (sobrescribe **todos** los campos de la fila, incluidos los vacíos como `null`, no hace merge); cédula nueva → `create()` con `id_emp` autogenerado (`str_pad` correlativo de 5 dígitos). Empleados que ya existen en BD pero no están en el CSV no se tocan. **Excepción (2026-09-01):** si la cédula coincide con un empleado `es_externo=true`, la fila se **omite** (error legible: "es Funcionario Externo, se omite") en vez de sobrescribirlo — esos solo se editan desde `FuncionariosExternosView` (ver sección Comisiones).
+- **Auditoría (2026-09-01):** cada importación deja un registro `IMPORTACION_MASIVA` en `nom_auditoria_log` con conteo de importados/actualizados/errores y el nombre del archivo — antes no quedaba ningún rastro.
 - **48 columnas** (ampliado desde las 22 originales el 2026-08-25/26): todos los campos planos de `ad_empleado` incluidos los agregados en migraciones recientes (sexo, tipo_sangre, SERCOP, bancarios, campos sociales, `motivo_salida`/`motivo_reactivacion`, `programa`/`actividad`). **NO cubre** tablas hijas: hijos menores (`ad_empleado_hijo`), documento de persona sustituta (Alfresco), períodos de teletrabajo, roles (`admin_usuario_rol`) — esos se cargan aparte desde la ficha o el módulo correspondiente.
 - **Fechas** (`fecha_ingreso`, `fecha_salida`, `fecha_vence_sercop`, `sustituta_fecha_caducidad`): aceptan `DD/MM/AAAA`, `AAAA-MM-DD` o `DD-MM-AAAA` — mismo patrón que ya usa `Tecnologia\EquipoController::importarCsv`. Fila con fecha no reconocible se rechaza con error claro, no se guarda mal en silencio.
 - **`tipo_contrato`** normalizado: tolera tildes/mayúsculas/minúsculas y el error común "CODIGO DE TRABAJO" (sin la L de "DEL"), normaliza a `LOSEP` o `CODIGO DEL TRABAJO` exacto. Si no reconoce el valor, rechaza la fila — este campo antes se guardaba tal cual (sin `strtoupper` ni validación), y como `VacacionesController::tasaVacaciones()` compara con `===` exacto, un typo aquí rompía silenciosamente el cálculo de tasa de vacaciones del empleado.
@@ -487,6 +512,30 @@ Flujo de firmantes:
 
 Al aprobar una solicitud de vacaciones, el supervisor debe seleccionar un empleado de backup del mismo departamento. Campos en `dbo.d2_vacacion`: `backup_id` (VARCHAR 20, nullable), `backup_nombre` (VARCHAR 300, nullable). Migración `000055`. El endpoint `PATCH /api/vacaciones/{id}/aprobar` acepta `backup_id` y `backup_nombre` opcionales. Endpoint auxiliar: `GET /api/vacaciones/{id}/empleados-depto` — lista empleados activos del mismo departamento del solicitante.
 
+### Corrección de deuda técnica — Vacaciones y Planificación (2026-09-01)
+
+Auditoría de código detectó 6 hallazgos (uno de ellos, "4 implementaciones divergentes de saldo", cubría 4 puntos distintos por sí solo) — todos corregidos el mismo día, sin cambios de schema:
+
+1. **`SaldoVacacionesService` (nuevo, `app/Services/SaldoVacacionesService.php`)** — única fuente de verdad para el cálculo de saldo. Antes existían **4 copias independientes** de la misma fórmula, con reglas divergentes entre sí:
+   - `VacacionesController::calcularSaldoDisponible()` — correcta (con antigüedad + congelado en `fecha_salida` + tope 60).
+   - `ReporteVacacionesController::calcularSaldoActual()`/`calcularSaldoActualReal()` — su propio `tasaVacaciones()` duplicado, correcto pero mantenido a mano por separado.
+   - `PermisosController::calcularInternoVac()` — otro duplicado más, correcto en antigüedad pero **sin congelar en `fecha_salida`**.
+   - `PlanificacionVacController::calcularSaldo()` — el más roto: **tasa fija `1.25` para Código del Trabajo, ignorando antigüedad por completo**, y tampoco congelaba en `fecha_salida`. Un empleado CT con 6+ años veía un saldo de planificación por debajo del real.
+
+   Los 4 controladores ahora inyectan `SaldoVacacionesService` por constructor y delegan — `calcular()` (shape completo: `saldo_inicial`, `acumulado_a_hoy`, `tomados`, `dias_disponibles`, `dias_disponibles_real`, `dias_anuales`, `dias_adicionales_antiguedad`), `calcularInterno()` (sin tope de 60, para `PermisosController::aprobar()`) y `tasaVacaciones()` quedan expuestos como métodos públicos del servicio.
+
+2. **`VacacionesController::anular()` (nuevo)** — `PATCH /api/vacaciones/{id}/anular`, solo ADMINISTRADOR/TALENTO HUMANO, requiere `observacion_negacion`. Antes no existía ninguna forma de revertir una vacación ya `APROBADO` (a diferencia de Permisos, que sí tenía `anular()`): si se aprobaba y el empleado terminaba no tomándola, el descuento del saldo quedaba fijo sin reversa limpia. Revierte `dias_x_tomar_normal`/`total_dias_tomados`/`total_tomados` en `d2_cabecera_vacacion` restando los mismos días calendario que sumó `aprobar()`, pasa el estado a `ANULADO` y queda registrado en `nom_auditoria_log`. Mismo patrón que `PermisosController::anular()`.
+
+3. **`PlanificacionVacController` — auditoría agregada.** Antes `store/aprobar/negar/destroy/replanificar` no dejaban ningún rastro en `nom_auditoria_log` — cero traza de un proceso obligatorio anual. Ahora los 5 métodos auditan (`CREAR`/`APROBAR`/`NEGAR`/`ELIMINAR`/`REPLANIFICAR`) contra la tabla `dbo.vac_planificacion_cab` (PK real: `id`, a diferencia de las tablas legadas `d2_permiso`/`d2_vacacion` que usan `secuencial_clave` — ver punto 5).
+
+4. **`PlanificacionVacController::empleadosDeSupervisor()` — cascada a departamentos hijos.** Tenía su propia versión simplificada que solo miraba el departamento directo del supervisor, sin el segundo tramo (`deptosHijos` → `supervisoresHijos`) que sí tienen `VacacionesController` y `PermisosController`. Un supervisor de nivel superior no veía las planificaciones de los empleados de un departamento hijo al aprobar/negar/replanificar. Ahora las 3 implementaciones coinciden.
+
+5. **`PlanificacionVacController::store()`/`replanificar()` — validación contra saldo real.** Antes solo validaban el tope fijo de 30 días (`$totalDias > 30`); `calcularSaldo($emp)` existía pero solo se usaba para *mostrar* el saldo en `miPlanificacion()`, nunca como gate de validación. Un empleado con 10 días reales de saldo podía planificar hasta 30. Ahora ambos métodos comparan `$totalDias` contra `$this->calcularSaldo($emp)` (equivalente a `dias_disponibles`) y rechazan con 422 si excede — sin tocar el tope de 30 días existente, que se mantiene como segundo límite.
+
+6. **Bug de auditoría — `secuencial_clave` vs `id` (bonus, encontrado al tocar el archivo, no parte de los 6 hallazgos originales).** `Vacacion::$primaryKey = "secuencial_clave"` (igual que `Permiso`, ver sección Permisos), pero `VacacionesController::aprobar()/negar()/destroy()` pasaban `$vacacion->id` (atributo inexistente → `null`) a `AuditoriaService::log()`. Corregido a `$vacacion->getKey()` en los 3 métodos + en el nuevo `anular()`.
+
+Ninguno de estos 6 cambios tocó `config/*.php`, `.env` ni el schema de BD — solo requieren `git pull` en el servidor, sin `migrate` ni `config:clear`.
+
 ### Permisos y Licencias (`dbo.d2_permiso`)
 
 **Estados:** `PENDIENTE → APROBADO / NEGADO / ELIMINADO / ANULADO`
@@ -498,7 +547,7 @@ Al aprobar una solicitud de vacaciones, el supervisor debe seleccionar un emplea
 
 **Descuento de vacaciones:** ocurre **inmediatamente al aprobar** (no en el cuadre nocturno). Se calcula sobre las horas del permiso (`hora_desde`/`hora_hasta`), no sobre la marcación real del empleado.
 
-**FACTOR PROPORCIONAL SÁBADOS/DOMINGOS — REGLA CRÍTICA:** Los 30 días de vacaciones LOSEP se componen de 22 días hábiles + 8 días de fin de semana (4 sábados + 4 domingos). Por eso cada día hábil de permiso descontable carga **1.3636 días** del saldo (factor = 30/22). Aplica a LOSEP y Código del Trabajo, y tanto a permisos por horas como de día completo. El método `anular()` usa el mismo factor para revertir exactamente lo descontado.
+**FACTOR PROPORCIONAL SÁBADOS/DOMINGOS — REGLA CRÍTICA:** Los 30 días de vacaciones LOSEP se componen de 22 días hábiles + 8 días de fin de semana (4 sábados + 4 domingos). Por eso cada día hábil de permiso descontable carga **1.3636 días** del saldo (factor = 30/22). Aplica a LOSEP y Código del Trabajo, y tanto a permisos por horas como de día completo. El método `anular()` usa el mismo factor para revertir exactamente lo descontado del **saldo de vacaciones** (`dias_x_tomar_normal`/`total_dias_tomados` en `d2_cabecera_vacacion`) — el aporte de este factor a `d2_cuadre_marcacion` funciona distinto desde 2026-09-01, ver corrección más abajo.
 ```php
 $factorFds     = 30 / 22;  // 1.3636...
 // Permiso por horas:
@@ -519,8 +568,8 @@ Ejemplos: 1 hora → 0.1705 días | 4 horas → 0.6818 días | 1 día completo �
 **`PATCH /api/permisos/{id}/anular`** — solo ADMINISTRADOR / TALENTO HUMANO:
 - Requiere campo `observacion_negacion` (motivo)
 - Cambia estado a `ANULADO`
-- Si `descontable = 'SI'`: revierte usando `dias_descuento_efectivo` del permiso (o `diasDescuento` si null)
-- Revierte el campo correspondiente en `d2_cuadre_marcacion` del día del permiso
+- Si `descontable = 'SI'`: revierte el saldo de vacaciones usando `dias_descuento_efectivo` del permiso (o `diasDescuento` si null)
+- **Ya NO revierte nada en `d2_cuadre_marcacion` directamente** (ver corrección 2026-09-01 más abajo) — al pasar a `ANULADO`, el próximo `php artisan procesar:cuadre --fecha=X` para esa fecha deja de contar el permiso automáticamente
 - Uso: permiso aprobado que el empleado no utilizó (ej. salió a su hora normal)
 
 **Vista personal de asistencia:** muestra `atraso` (minutos medidos) + `justificado`:
@@ -530,6 +579,24 @@ Ejemplos: 1 hora → 0.1705 días | 4 horas → 0.6818 días | 1 día completo �
 - El "14min Justificado" significa: llegaste 14 min tarde PERO hay un permiso que lo cubre → no se descuenta. No indica minutos pendientes de descuento.
 
 **Advertencia de tipo_horario:** un permiso con `tipo_horario = 'ENTRADA'` y horas amplias (ej. 10:00-16:30) puede hacer que el cuadre y la vista personal muestren el día como "Justificado" para la entrada aunque el rango no tenga sentido semánticamente. Verificar que el tipo_horario sea correcto al crear permisos.
+
+### Corrección de deuda técnica — Permisos (2026-09-01)
+
+Auditoría de código detectó 5 hallazgos en `PermisosController.php`, todos corregidos el mismo día, sin cambios de schema:
+
+1. **Fuga de acceso en `show()`/documentos.** `show($id)`, `listarDocumentos($id)`, `subirDocumento()`, `descargarDocumento()` y `eliminarDocumento()` no tenían ningún chequeo de propiedad ni de rol — cualquier usuario autenticado, sin rol especial, podía ver/descargar/**eliminar** documentos de respaldo de un permiso ajeno con solo incrementar el `{id}`/`{docId}` en la URL (incluye certificados médicos adjuntos a permisos `descontable=NO`, ver sección "Documentos de respaldo" arriba). Corregido con 2 helpers nuevos:
+   - `puedeVerPermiso()` (dueño / su supervisor / TH-Admin) → aplicado en `show()`, `listarDocumentos()`, `descargarDocumento()`.
+   - `puedeEditarDocumentosPermiso()` (dueño / TH-Admin, **sin** supervisor) → aplicado en `subirDocumento()`, `eliminarDocumento()`.
+
+2. **`ProcesarCuadre` sobrescribía el descuento de `aprobar()` en `d2_cuadre_marcacion`.** `aprobar()` hacía un `UPDATE ... horas_decto = horas_decto + N` incremental sobre una fila que, para un permiso a futuro (el caso normal), **todavía no existía** — el `UPDATE` no-opeaba en silencio. Cuando `ProcesarCuadre` procesaba esa fecha más tarde, creaba la fila desde cero con `horas_decto` calculado solo de atrasos, sin rastro del permiso. Rediseñado: `aprobar()`/`anular()` **ya no tocan `d2_cuadre_marcacion` directamente** — `ProcesarCuadre.php` ahora recalcula `horas_decto`/`horaspermiso_pag` **desde cero cada vez** (nunca con `+=`) sumando el aporte de los permisos `APROBADO` vigentes ese día (mismo factor 30/22). Es idempotente: no importa el orden aprobación-vs-cuadre, y una anulación se refleja sola en el siguiente reproceso (`php artisan procesar:cuadre --fecha=X`) porque el permiso `ANULADO` deja de contar. De paso, `horaspermiso_pag` (permisos `descontable=NO`) ahora sí se escribe en el cuadre — antes `ProcesarCuadre` nunca la tocaba.
+
+3. **Asimetría del factor 30/22 en `anular()` (caso por horas) — ya no aplica.** El bug (`anular()` restaba `horas/horasJornada` sin el factor, mientras `aprobar()` sumaba con el factor, dejando un residuo permanente en `d2_cuadre_marcacion`) quedó eliminado de raíz junto con el punto 2 — ya no hay una resta manual que pueda desalinearse de la suma.
+
+4. **Bucle `for` con magnitud fraccionaria como contador de días — ya no aplica.** En permisos `todo_dia=SI`, `aprobar()` usaba `$diasDescuento` (ya multiplicado por el factor 30/22, ej. `1.3636` para 1 día) como **cantidad de iteraciones** de un `for` que avanzaba `$fechaActual` un día por vuelta — un permiso de 1 día terminaba tocando también el día siguiente con un `+1` fantasma en `d2_cuadre_marcacion`. Eliminado junto con el punto 2: `ProcesarCuadre` ahora solo suma `1` cuando la fecha que está procesando cae dentro del rango real del permiso (ya filtrado por la query), sin ningún loop derivado de una magnitud fraccionaria.
+
+5. **Auditoría con clave/nombre incorrectos.** `Permiso::$primaryKey = "secuencial_clave"` (no `id`), pero las 4 llamadas a `AuditoriaService::log()` (`aprobar/negar/eliminar/anular`) pasaban `$permiso->id` (atributo inexistente → `null`) — cada entrada de auditoría de permisos quedaba con `registro_id = NULL`. Además usaban `$permiso->nombre_emp`, columna que **no existe** en `d2_permiso` (sí existe en `d2_vacacion`, de ahí la confusión) — la descripción quedaba como `"Aprobación de permiso: "` sin nombre. Corregido: `$permiso->getKey()` para la clave, y un helper nuevo `nombreEmpleadoPermiso()` que arma el nombre vía la relación `empleado()`.
+
+Ninguno de estos 5 cambios tocó `config/*.php`, `.env` ni el schema de BD — solo requieren `git pull` en el servidor, sin `migrate` ni `config:clear`.
 
 ### Liquidación de Vacaciones
 
@@ -1005,9 +1072,11 @@ Implementada para trazabilidad ante la Contraloría General del Estado. Todas la
 | Controlador | Acciones auditadas |
 |---|---|
 | `EmpleadoController` | CREAR, ACTUALIZAR |
+| `ImportacionController` | IMPORTACION_MASIVA (2026-09-01) |
 | `RolController` | ASIGNAR_ROL, REVOCAR_ROL |
-| `VacacionesController` | APROBAR, NEGAR, ELIMINAR |
+| `VacacionesController` | APROBAR, NEGAR, ELIMINAR, ANULAR (2026-09-01) |
 | `PermisosController` | APROBAR, NEGAR, ELIMINAR, ANULAR |
+| `PlanificacionVacController` | CREAR, APROBAR, NEGAR, ELIMINAR, REPLANIFICAR (2026-09-01 — antes sin auditoría) |
 | `HorasExtrasController` | APROBAR, NEGAR, AUTORIZAR, CONFIRMAR, NEGAR (registro) |
 | `CertificadoLaboralController` | EMITIR |
 | `Admin/ConfiguracionController` | ACTUALIZAR (valor anterior/nuevo) |
@@ -2037,9 +2106,17 @@ Reloj **ZKTeco SenseFace 7A** (reconocimiento facial). Protocolo **ADMS push** �
 | `nombre` | varchar(100) nullable | Nombre descriptivo (ej: "Reloj Entrada Principal") |
 | `ip` | varchar(45) nullable | IP detectada en el último push |
 | `ultimo_push` | timestamp nullable | Fecha/hora del último push recibido |
-| `activo` | boolean | `true` = puede enviar marcaciones; `false` = rechazado con 403 |
+| `activo` | boolean, default `false` desde 2026-09-01 (ver corrección abajo) | `true` = puede enviar marcaciones; `false` = rechazado con 403 |
 
-Migración: `2026_05_27_000059_create_zkteco_dispositivo_table.php`
+Migración: `2026_05_27_000059_create_zkteco_dispositivo_table.php` (creación) + `2026_08_28_000105_fix_zkteco_activo_default.php` (corrige el default, ver corrección abajo)
+
+### Corrección — auto-activación de dispositivos nuevos (2026-09-01)
+
+**Hallazgo:** `ZktecoController::registrarContacto()` (llamado en cada handshake/`registry`, no solo al registrarse por primera vez) ponía `'activo' => true` incondicionalmente. Cualquier dispositivo — el legítimo o uno falsificando el `SN` — quedaba auto-activado en segundos, **anulando cualquier desactivación manual del admin** desde `admin/zkteco`: bastaba con que el reloj (o un tercero) volviera a tocar el endpoint. El diseño real es que un dispositivo nuevo requiera activación manual explícita.
+
+**Fix aplicado:**
+- `registrarContacto()` ahora distingue: dispositivo **nuevo** → se inserta con `activo = false` (requiere que el admin lo active desde `admin/zkteco`); dispositivo **ya conocido** → solo actualiza `ip`/`ultimo_push`, el campo `activo` queda tal como lo dejó el admin (nunca se reescribe en el handshake).
+- Migración `2026_08_28_000105_fix_zkteco_activo_default.php`: `ALTER TABLE dbo.d2_zkteco_dispositivo ALTER COLUMN activo SET DEFAULT false` (antes `true`). No toca filas existentes, solo el default para inserts futuros sin valor explícito — segura para producción, requiere `php artisan migrate`.
 
 ### Endpoints ADMS — públicos (sin Sanctum)
 

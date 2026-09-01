@@ -25,6 +25,32 @@ class ZktecoController extends Controller
         return response('ERROR', 500)->header('Content-Type', 'text/plain');
     }
 
+    // Registra el contacto de un dispositivo SIN auto-activarlo — antes esto ponía
+    // 'activo' => true en cada handshake/registro, lo que anulaba en segundos cualquier
+    // desactivación manual del admin (bastaba con que el reloj, o cualquiera falsificando
+    // su SN, volviera a tocar el endpoint). Ahora: dispositivo nuevo entra INACTIVO
+    // (requiere que el admin lo active desde admin/zkteco); dispositivo ya conocido solo
+    // actualiza ip/ultimo_push, 'activo' queda tal como lo dejó el admin.
+    private function registrarContacto(Request $request, string $sn): void
+    {
+        $existe = DB::table('dbo.d2_zkteco_dispositivo')->where('serial', $sn)->exists();
+
+        if ($existe) {
+            DB::table('dbo.d2_zkteco_dispositivo')
+                ->where('serial', $sn)
+                ->update(['ip' => $request->ip(), 'ultimo_push' => now(), 'updated_at' => now()]);
+        } else {
+            DB::table('dbo.d2_zkteco_dispositivo')->insert([
+                'serial'      => $sn,
+                'ip'          => $request->ip(),
+                'ultimo_push' => now(),
+                'activo'      => false,
+                'created_at'  => now(),
+                'updated_at'  => now(),
+            ]);
+        }
+    }
+
     // GET|POST /iclock/cdata
     public function cdata(Request $request)
     {
@@ -35,12 +61,7 @@ class ZktecoController extends Controller
             if (!$sn) return response('ERROR', 400)->header('Content-Type', 'text/plain');
 
             try {
-                // Registrar automáticamente si no existe
-                DB::table('dbo.d2_zkteco_dispositivo')
-                    ->updateOrInsert(
-                        ['serial' => $sn],
-                        ['ip' => $request->ip(), 'ultimo_push' => now(), 'activo' => true]
-                    );
+                $this->registrarContacto($request, $sn);
             } catch (\Throwable $e) {
                 return $this->errorAdms($e, 'cdata-handshake');
             }
@@ -181,11 +202,7 @@ class ZktecoController extends Controller
         try {
             $sn = $request->query('SN', $request->input('SN', 'DESCONOCIDO'));
 
-            DB::table('dbo.d2_zkteco_dispositivo')
-                ->updateOrInsert(
-                    ['serial' => $sn],
-                    ['ip' => $request->ip(), 'ultimo_push' => now(), 'activo' => true]
-                );
+            $this->registrarContacto($request, $sn);
 
             return response('OK', 200)->header('Content-Type', 'text/plain');
         } catch (\Throwable $e) {

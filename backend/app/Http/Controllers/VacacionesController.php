@@ -3,63 +3,19 @@ namespace App\Http\Controllers;
 
 use App\Models\Vacacion;
 use App\Models\CabeceraVacacion;
-use App\Models\Configuracion;
 use App\Models\DetalleVacacion;
 use App\Models\Empleado;
 use App\Models\Supervisor;
 use App\Services\AuditoriaService;
+use App\Services\SaldoVacacionesService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class VacacionesController extends Controller
 {
-    private function tasaVacaciones(Empleado $emp, ?Carbon $fechaHasta = null): array
+    public function __construct(private SaldoVacacionesService $saldoService)
     {
-        $contrato = trim($emp->tipo_contrato ?? '');
-        if ($contrato === 'LOSEP') {
-            return ['tasa_mensual' => 2.50, 'dias_anuales' => 30, 'dias_adicionales_antiguedad' => 0];
-        }
-        if ($contrato === 'CODIGO DEL TRABAJO') {
-            $hasta         = $fechaHasta ?? Carbon::today();
-            $anios         = $emp->fecha_ingreso ? (int) Carbon::parse($emp->fecha_ingreso)->diffInYears($hasta) : 0;
-            $diasExtra     = min(max(0, $anios - 5), 15);
-            $diasAnuales   = 15 + $diasExtra;
-            return ['tasa_mensual' => $diasAnuales / 12, 'dias_anuales' => $diasAnuales, 'dias_adicionales_antiguedad' => $diasExtra];
-        }
-        return ['tasa_mensual' => 0, 'dias_anuales' => 0, 'dias_adicionales_antiguedad' => 0];
-    }
-
-    private function calcularSaldoDisponible(Empleado $emp, CabeceraVacacion $cabecera): array
-    {
-        $fechaCorteConfig = Configuracion::find("FECHA_CORTE_VACACIONES");
-        $fechaCorte       = $fechaCorteConfig ? Carbon::parse($fechaCorteConfig->valor) : Carbon::today();
-
-        if ($emp->fecha_ingreso && Carbon::parse($emp->fecha_ingreso)->gt($fechaCorte)) {
-            $fechaCorte = Carbon::parse($emp->fecha_ingreso);
-        }
-
-        $estaInactivo = strtoupper(trim($emp->estado)) === 'INACTIVO';
-        $fechaHasta   = ($estaInactivo && $emp->fecha_salida)
-            ? Carbon::parse($emp->fecha_salida)
-            : Carbon::today();
-
-        $info           = $this->tasaVacaciones($emp, $fechaHasta);
-        $diasCalendario = max(0, $fechaCorte->diffInDays($fechaHasta));
-        $diasAcumulados = round($diasCalendario / 360 * ($info['tasa_mensual'] * 12), 2);
-        $saldoInicial   = (float) ($cabecera->dias_adicionales  ?? 0);
-        $tomados        = (float) ($cabecera->total_dias_tomados ?? 0);
-        $disponibles    = round($saldoInicial + $diasAcumulados - $tomados, 2);
-
-        return [
-            "saldo_inicial"                => $saldoInicial,
-            "acumulado_a_hoy"              => $diasAcumulados,
-            "tomados"                      => $tomados,
-            "dias_disponibles"             => min(60, max(0, $disponibles)),
-            "dias_disponibles_real"        => min(60, $disponibles), // sin floor en 0 — permite negativo para Nombramiento Definitivo
-            "dias_anuales"                 => $info['dias_anuales'],
-            "dias_adicionales_antiguedad"  => $info['dias_adicionales_antiguedad'],
-        ];
     }
 
     private function esSupervisor($id_emp)
@@ -126,7 +82,7 @@ class VacacionesController extends Controller
             ->get();
 
         $saldoCalculado = $cabecera
-            ? $this->calcularSaldoDisponible($emp, $cabecera)
+            ? $this->saldoService->calcular($emp, $cabecera)
             : ["saldo_inicial" => 0, "acumulado_a_hoy" => 0, "tomados" => 0, "dias_disponibles" => 0];
 
         return response()->json([
@@ -210,7 +166,7 @@ class VacacionesController extends Controller
 
         // Verificar saldo disponible
         $cabecera = CabeceraVacacion::where("id_emp", $emp->id_emp)->first();
-        $saldo    = $cabecera ? $this->calcularSaldoDisponible($emp, $cabecera) : null;
+        $saldo    = $cabecera ? $this->saldoService->calcular($emp, $cabecera) : null;
 
         // Bug fix: descontar días de solicitudes PENDIENTE para evitar doble-aprobación simultánea
         $diasPendientes = (int) DB::table('dbo.d2_vacacion')
@@ -319,7 +275,7 @@ class VacacionesController extends Controller
             $cabecera->save();
         }
 
-        AuditoriaService::log('dbo.d2_vacacion', $vacacion->id, 'APROBAR',
+        AuditoriaService::log('dbo.d2_vacacion', $vacacion->getKey(), 'APROBAR',
             ['estado_permiso' => 'PENDIENTE'],
             ['estado_permiso' => 'APROBADO', 'fecha_inicial' => $vacacion->fecha_inicial, 'fecha_final' => $vacacion->fecha_final, 'dias' => $dias],
             $request, "Aprobación de vacación: {$vacacion->nombre_emp}");
@@ -371,7 +327,7 @@ class VacacionesController extends Controller
             "observacion_negacion" => $request->observacion_negacion,
         ]);
 
-        AuditoriaService::log('dbo.d2_vacacion', $vacacion->id, 'NEGAR',
+        AuditoriaService::log('dbo.d2_vacacion', $vacacion->getKey(), 'NEGAR',
             ['estado_permiso' => 'PENDIENTE'],
             ['estado_permiso' => 'NEGADO', 'observacion' => $request->observacion_negacion],
             $request, "Negación de vacación: {$vacacion->nombre_emp}");
@@ -453,11 +409,58 @@ class VacacionesController extends Controller
             "observacion_negacion" => $request->observacion_negacion,
         ]);
 
-        AuditoriaService::log('dbo.d2_vacacion', $vacacion->id, 'ELIMINAR',
+        AuditoriaService::log('dbo.d2_vacacion', $vacacion->getKey(), 'ELIMINAR',
             ['estado_permiso' => 'PENDIENTE', 'fecha_inicial' => $vacacion->fecha_inicial, 'fecha_final' => $vacacion->fecha_final],
             ['estado_permiso' => 'ELIMINADO', 'observacion' => $request->observacion_negacion],
             $request, "Eliminación de vacación: {$vacacion->nombre_emp}");
 
         return response()->json(["message" => "Vacación eliminada correctamente"]);
+    }
+
+    // Anular vacación ya APROBADA (solo TH/ADMIN) — revierte el descuento del saldo.
+    // Mismo patrón que PermisosController::anular(). Uso: la vacación se aprobó pero
+    // el empleado no la tomó (cambio de planes, se le necesitó, etc.) y hay que
+    // devolverle los días sin dejar el saldo descontado permanentemente.
+    public function anular(Request $request, $id)
+    {
+        $this->requireRole($request, ['ADMINISTRADOR', 'TALENTO HUMANO']);
+
+        $request->validate([
+            "observacion_negacion" => "required|string|max:120",
+        ]);
+
+        $actor    = $request->user();
+        $vacacion = Vacacion::findOrFail($id);
+
+        if ($vacacion->estado_permiso !== "APROBADO") {
+            return response()->json(["message" => "Solo se pueden anular vacaciones en estado APROBADO"], 422);
+        }
+
+        $dias     = Carbon::parse($vacacion->fecha_inicial)
+            ->diffInDays(Carbon::parse($vacacion->fecha_final)) + 1;
+        $cabecera = CabeceraVacacion::where("id_emp", $vacacion->id_emp)->first();
+        if ($cabecera) {
+            $cabecera->dias_x_tomar_normal = (float)($cabecera->dias_x_tomar_normal ?? 0) + $dias;
+            $cabecera->total_dias_tomados  = max(0, (float)($cabecera->total_dias_tomados ?? 0) - $dias);
+            $cabecera->total_tomados       = max(0, (float)($cabecera->total_tomados      ?? 0) - $dias);
+            $cabecera->save();
+        }
+
+        $vacacion->update([
+            "estado_permiso"       => "ANULADO",
+            "observacion_negacion" => $request->observacion_negacion,
+            "updated_at"           => now(),
+            "updated_by"           => $actor->id_emp,
+        ]);
+
+        AuditoriaService::log('dbo.d2_vacacion', $vacacion->getKey(), 'ANULAR',
+            ['estado_permiso' => 'APROBADO', 'fecha_inicial' => $vacacion->fecha_inicial, 'fecha_final' => $vacacion->fecha_final, 'dias' => $dias],
+            ['estado_permiso' => 'ANULADO', 'observacion' => $request->observacion_negacion],
+            $request, "Anulación de vacación aprobada: {$vacacion->nombre_emp}");
+
+        return response()->json([
+            "message"  => "Vacación anulada y saldo revertido correctamente",
+            "vacacion" => $vacacion->load("empleado"),
+        ]);
     }
 }
