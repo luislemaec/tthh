@@ -49,6 +49,20 @@ class LimpiarProduccion extends Command
         'dbo.com_anticipo',
         'dbo.com_informe', 'dbo.com_informe_transporte',
         'dbo.com_ficha_liquidacion',
+
+        // Auditoría legada (distinta de nom_auditoria_log) — AuthController todavía escribe acá
+        // en cada login, se detectó al revisar manualmente después del primer TRUNCATE (2026-09-02)
+        'dbo.d2_auditoria',
+
+        // Framework (schema public) — sesiones/tokens/cache/colas con datos reales de pruebas.
+        // OJO: incluye sessions y personal_access_tokens — correr esto desloguea la sesión activa
+        // con la que se está parado en el navegador en ese momento (esperado, no es un error).
+        // NO incluye public.migrations — esa se maneja aparte (ver Fase 3 del artifact), nunca
+        // se trunca a mano.
+        'public.cache', 'public.cache_locks',
+        'public.failed_jobs', 'public.job_batches', 'public.jobs',
+        'public.password_reset_tokens', 'public.personal_access_tokens', 'public.sessions',
+        'public.users',
     ];
 
     public function handle(): int
@@ -59,7 +73,8 @@ class LimpiarProduccion extends Command
             $this->line("  - {$t}");
         }
         $this->newLine();
-        $this->info('Se conservan intactas: ad_empleado, ad_departamento, roles, admin_usuario_rol, menú, catálogos y todo lo de Tecnología (ti_*).');
+        $this->info('Se conservan intactas: ad_empleado, ad_departamento, roles, admin_usuario_rol, menú, catálogos, todo lo de Tecnología (ti_*), y public.migrations.');
+        $this->warn('Incluye sessions y personal_access_tokens — esto va a desloguear cualquier sesión activa en el navegador (esperado).');
         $this->newLine();
 
         if (!$this->option('force')) {
