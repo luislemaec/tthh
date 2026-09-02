@@ -173,9 +173,10 @@ Validaciones **en orden**:
      `ubicacion = empleado.ubicacion ?? 'Quito'`, `identificador = 0`.
    - Respuesta HTTP 201 con la marcación y la hora.
 
-> **Nota:** `marcar()` **no** valida que la modalidad sea una de las 4 conocidas; una modalidad
-> desconocida cae en el camino "no BIOMETRICO, no TELETRABAJO, no PRESENCIAL" → marca como `WEB` sin
-> validación de VLAN (equivalente a `TEMPORAL`).
+> **Nota (2026-09-01):** `marcar()` **falla cerrado** — si `modalidad_marcacion` no es una de las 4
+> conocidas (`PRESENCIAL`/`TEMPORAL`/`TELETRABAJO`/`BIOMETRICO`) responde HTTP 422 y no marca. Antes
+> una modalidad desconocida caía a un camino sin restricción (marcaba como `WEB`, equivalente a
+> `TEMPORAL` por accidente).
 
 ### 5.3 Validación de IP tras proxy
 
@@ -262,14 +263,21 @@ Comando artesanal `php artisan procesar:cuadre {--fecha=YYYY-MM-DD}`. Sin `--fec
 
 ### 7.3 Algoritmo (`ProcesarCuadre::handle`)
 
-Para **cada empleado `ACTIVO`** (no filtra depto 999 — ver §9):
+Para **cada empleado `ACTIVO`** con `id_depto != 999` **y** `es_externo` en `false`/`NULL`
+(filtrado explícito desde 2026-09-01 — antes iteraba todos los activos, incluidos los funcionarios
+externos):
 
 1. **Turno del día:** `colTurno = 's' . díaDelMes`. Busca `d2_programacion` del empleado para
    ese año/mes; `idTurno = (int)($prog->{$colTurno} ?? 1)`; si no hay programación → `1`.
 2. **Horas programadas** (`turnoHora`): de `d2_turno` filtrado por `id_turno`, toma la `hora` de cada
-   concepto y la convierte a decimal (`hour + minute/60`, redondeo 4). Concepto ausente → `0.0`.
+   concepto y la convierte a decimal (`hour + minute/60`, redondeo 4). **Concepto ausente → `null`**
+   (2026-09-01; antes `0.0` = medianoche → atraso falso de horas). Si **algún** concepto del turno
+   falta → `$turnoIncompleto = true`: se emite un `warn` en la salida del comando y **todos los
+   atrasos del día quedan en 0** (no hay hora de turno con la que comparar).
 3. **Marcaciones reales:** las de `sg_control_persona` del empleado para esa fecha, ordenadas. Se
-   busca por `concepto`; **fallback por posición** (0,1,2,3) si el concepto no aparece.
+   busca **por `concepto`** (2026-09-01); si ninguna calza con los 4 conceptos esperados se trata
+   como no-marcada (no se adivina por posición) y se emite un `warn`. Antes caía a la posición
+   0/1/2/3 y podía atribuir una marcación al concepto equivocado.
 4. **Horas reales** (`toDecimalHours`): `hour + minute/60` (trunca segundos), o `null` si falta la marca.
 5. **Permisos aprobados que solapan el día** (`d2_permiso`, `estado_permiso = APROBADO`,
    `fecha_desde <= día <= fecha_hasta`):
@@ -320,7 +328,8 @@ Para **cada empleado `ACTIVO`** (no filtra depto 999 — ver §9):
 ### 8.1 `GET /api/asistencia/listado` — `listado()` (Admin/TH)
 
 - **RN-03.20** — Marcaciones de `sg_control_persona` de una `fecha` (default hoy) con
-  `empleado.departamento`, ordenadas por `fecha_hora`. Filtros: `departamento_id`, `buscar` (ILIKE).
+  `empleado.departamento`, ordenadas por `fecha_hora`, con techo `->limit(2000)` (2026-09-01).
+  Filtros: `departamento_id`, `buscar` (ILIKE).
 - Consumido también por el tab "Marcaciones del Día" de `ReportesView.vue` (spec 11). Sin export.
 
 ### 8.2 `GET /api/asistencia/reporte` — `reporte()` (Admin/TH)
@@ -415,38 +424,53 @@ en CLAUDE.md §`views/asistencia/`.
 | Caso | Comportamiento |
 |---|---|
 | Empleado sin `d2_programacion` para el mes | Usa `id_turno = 1` en el cuadre. |
-| Turno `1` sin filas en `d2_turno` | Horas programadas = `0.0` → cualquier marcación real cuenta como atraso enorme (`round((rEntrada − 0) × 60)`). Riesgo real si el catálogo de turnos está incompleto. |
-| Marcaciones en desorden (concepto no coincide con la posición) | `ProcesarCuadre` hace fallback por posición 0/1/2/3 — puede tomar la marca equivocada. |
+| Turno sin todos los conceptos en `d2_turno` | `$turnoIncompleto = true` → atrasos del día = 0, `warn` en la salida del comando (2026-09-01). Antes: horas programadas `0.0` → atraso falso enorme sin aviso. |
+| Marcaciones cuyo `concepto` no calza con ninguno de los 4 esperados | Se tratan como no-marcadas + `warn` (2026-09-01); ya no se adivina por posición. |
 | Empleado `INACTIVO` que marcó ese día | `ProcesarCuadre` solo itera `ACTIVO` → su marcación no genera cuadre. |
-| Empleado con `id_depto = 999` activo | **Sí** se le procesa cuadre (el comando no excluye 999). *(Hallazgo §12.)* |
+| Empleado con `id_depto = 999` o `es_externo = true` activo | **No** se le procesa cuadre (filtrado explícito desde 2026-09-01). |
 | Marca `SALIDA` a las 16:00 (antes de 16:30) | La web pide confirmación (`window.confirm`); si confirma, se registra y el cuadre calcula `atraso_salida` contra la hora de turno. |
 | PIN del reloj con longitud distinta de 9 o 10 | Si ≠ 9 no se rellena; si no matchea ningún empleado se ignora silenciosamente. |
 | `fecha_hora` del reloj con segundos | El cuadre trunca segundos (`toDecimalHours`); la dedupe del reloj compara `fecha_hora` exacta (con segundos). |
 | Permiso `tipo_horario = ENTRADA` con rango amplio (10:00–16:30) | Puede marcar el día como "Justificado" para la entrada aunque el rango no tenga sentido semántico. Advertencia conocida (spec 04). |
-| `modalidad_marcacion` con valor no reconocido | `marcar()` cae al camino por defecto → marca como `WEB` sin validación de VLAN. |
+| `modalidad_marcacion` con valor no reconocido | `marcar()` responde HTTP 422 (falla cerrado, 2026-09-01). |
 
 ---
 
 ## 12. Deuda técnica / hallazgos
 
-1. **`ProcesarCuadre` no excluye `id_depto = 999`** ni empleados `es_externo` → genera cuadres
-   basura para los funcionarios externos activos. Contradice CA-00-1.
-2. **Turno `0.0` por catálogo incompleto** produce atrasos falsos gigantes sin ninguna alerta.
-3. **`procesado` nunca se actualiza a `'SI'`** — el flag de `sg_control_persona` queda siempre en `NO`;
-   revisar si algo depende de él (nómina/legado).
-4. **Fallback por posición** en el cuadre es frágil si las marcaciones no están en orden canónico.
-5. **`marcar()` sin validación de enum de modalidad** — una modalidad mal escrita evita la
-   validación de VLAN silenciosamente.
-6. **Dependencia del `schedule:run`** — si el cron del servidor no está configurado, el cuadre
-   nocturno no corre y nadie se entera hasta que faltan datos.
+1. ✅ **RESUELTO (2026-09-01)** — `ProcesarCuadre` ahora filtra `id_depto != 999` y
+   `es_externo` en `false`/`NULL` — ya no genera cuadres basura para funcionarios externos.
+2. ✅ **RESUELTO (2026-09-01)** — Turno incompleto: `turnoHora()` devuelve `null` (antes `0.0`);
+   `$turnoIncompleto` fuerza los atrasos del día a 0 y emite un `warn`. Ya no hay atrasos falsos
+   gigantes silenciosos.
+3. ✅ **RESUELTO (2026-09-01)** — `ProcesarCuadre` marca `procesado = 'SI'` en las marcaciones de
+   cada empleado/día tras incorporarlas al cuadre. **Advertencia:** no se pudo confirmar si algún
+   sistema legado externo lee este campo esperando que quede en `'NO'` — verificar antes de darlo
+   por cerrado del todo en producción.
+4. ✅ **RESUELTO (2026-09-01)** — Fallback por posición eliminado: si ninguna marcación calza con
+   los 4 conceptos esperados, `ProcesarCuadre` la trata como no-marcada (no adivina) y emite un
+   `warn`.
+5. ✅ **RESUELTO (2026-09-01)** — `marcar()` **falla cerrado**: `modalidad_marcacion` fuera de
+   `{PRESENCIAL, TEMPORAL, TELETRABAJO, BIOMETRICO}` → HTTP 422 (antes pasaba sin restricción, como
+   TEMPORAL por accidente).
+6. ✅ **RESUELTO (2026-09-01)** — Monitoreo de `schedule:run`: `ProcesarCuadre` guarda
+   `ULTIMO_CUADRE_PROCESADO` (timestamp) en `d2_configuracion` al terminar;
+   `DashboardController::index()` devuelve `cuadre_alerta = { ultimo_at, atrasado }` (`atrasado` si
+   pasaron > 26 h o nunca corrió) y `DashboardView.vue` muestra un banner ámbar a Admin/TH. Es un
+   piso mínimo (revisa el dashboard, no manda alertas activas); el timestamp sirve de base para algo
+   proactivo más adelante.
 7. ✅ **RESUELTO (2026-09-01)** — Auto-activación de dispositivos: `registrarContacto()` (antes
    `cdata` GET / `registry` ponían `activo = true` en cada contacto, anulando la desactivación
    manual del admin) ahora inserta los nuevos con `activo = false` y nunca reescribe `activo` de un
    dispositivo conocido; migración `000105` cambia el default de la columna a `false`. `registry`
    sigue **abierto** (el reloj necesita registrarse solo) pero un dispositivo no autorizado ya no
    puede quedar operativo sin acción del admin.
-8. **`reporte` / `listado` de marcaciones sin paginar** — un rango grande puede devolver miles de filas.
-9. **`d2_cuadre_marcacion.ip = '127.0.0.1'` fijo** — el campo no aporta información.
+8. **`asistencia/reporte` sin límite** — un rango grande puede devolver miles de filas.
+   `asistencia/listado` ("Marcaciones del Día") sí tiene un techo `->limit(2000)` desde 2026-09-01
+   (no es paginación de UI — el frontend espera un array plano — solo un tope de seguridad).
+   *(reporte: abierto — P3)*
+9. **`d2_cuadre_marcacion.ip = '127.0.0.1'` fijo** — evaluado y **dejado a propósito**: es un comando
+   CLI, no hay IP de cliente que capturar.
 
 ---
 
@@ -465,9 +489,11 @@ en CLAUDE.md §`views/asistencia/`.
 
 ## 14. Preguntas abiertas
 
-- ¿`ProcesarCuadre` debe filtrar `id_depto != 999` y `es_externo = false`? (§12.1)
-- ¿Alertar cuando un empleado activo no tiene turno válido (horas 0.0)? (§12.2)
+- ~~¿`ProcesarCuadre` debe filtrar 999 / `es_externo`?~~ ✅ hecho 2026-09-01 (§12.1).
+- ~~¿Alertar cuando el turno está incompleto?~~ ✅ hecho 2026-09-01 (§12.2) — `warn` + atrasos en 0.
 - ~~¿Cerrar la auto-activación de dispositivos nuevos?~~ ✅ hecho 2026-09-01 (§12.7). Queda abierto si `registry` debería además exigir algún token.
-- ¿El cuadre debe marcar `procesado = 'SI'` en las marcaciones que consumió? (§12.3)
-- ¿Registrar auditoría de las marcaciones manuales / correcciones de cuadre? (hoy no hay ninguna traza)
-- ¿Paginar `asistencia/listado` y `asistencia/reporte`?
+- ~~¿`procesado = 'SI'` / fallback por posición / enum de modalidad / monitoreo de `schedule:run`?~~ ✅ los 4 hechos 2026-09-01 (§12.3–6).
+- ¿Alerta proactiva (email/Slack/healthchecks.io) cuando el cuadre lleva > 26 h sin correr? (hoy solo banner en el dashboard)
+- ¿Confirmar que ningún sistema legado externo depende de `sg_control_persona.procesado = 'NO'`? (§12.3)
+- ¿Registrar auditoría de las marcaciones manuales / correcciones de cuadre?
+- ¿Paginación real de UI para `asistencia/reporte` (hoy sin límite) y `asistencia/listado` (techo 2000)?

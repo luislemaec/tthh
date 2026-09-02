@@ -2,12 +2,28 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class AccionPersonal extends Model
 {
     protected $connection = "pgsql";
     protected $table      = "dbo.acc_accion_personal";
     protected $primaryKey = "id_accion";
+
+    // Genera el siguiente numero_accion correlativo del año (formato PREFIJO-AÑO-NNNNN).
+    // Mismo patrón que Empleado::generarSiguienteId() — advisory lock de Postgres para
+    // que dos "procesar()" simultáneos no calculen el mismo número. numero_accion es el
+    // número de documento oficial (Contraloría), un duplicado acá es más grave que un
+    // id_emp duplicado. DEBE llamarse dentro de una transacción activa.
+    public static function generarSiguienteNumero(string $prefijo, int $anio): string
+    {
+        DB::statement('SELECT pg_advisory_xact_lock(852963741)');
+        $ultimo = self::whereYear('created_at', $anio)
+            ->whereNotNull('numero_accion')
+            ->max(DB::raw("CAST(SPLIT_PART(numero_accion, '-', 3) AS INTEGER)")) ?? 0;
+        $numero = str_pad($ultimo + 1, 5, '0', STR_PAD_LEFT);
+        return "{$prefijo}-{$anio}-{$numero}";
+    }
 
     protected $fillable = [
         "numero_accion", "tipo_accion", "fecha_elaboracion",

@@ -89,6 +89,23 @@
 
     </template>
 
+    <!-- Alerta: procesar:cuadre no corrió en las últimas ~26h (cron schedule:run caído
+         o nunca configurado en el servidor) — solo visible para Admin/TH -->
+    <div v-if="esAdmin && stats.cuadre_alerta?.atrasado"
+      class="rounded-xl p-4 flex items-start gap-3 bg-amber-50 border border-amber-300">
+      <svg class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+      </svg>
+      <div>
+        <p class="text-sm font-semibold text-amber-800">El cuadre de marcaciones no se ha procesado recientemente</p>
+        <p class="text-xs text-amber-700 mt-0.5">
+          {{ stats.cuadre_alerta.ultimo_at ? `Última corrida: ${formatFechaHora(stats.cuadre_alerta.ultimo_at)}` : 'No hay registro de ninguna corrida.' }}
+          Revisar que el cron <code class="bg-amber-100 px-1 rounded">schedule:run</code> esté activo en el servidor.
+        </p>
+      </div>
+    </div>
+
     <!-- ── ADMIN / TH ──────────────────────────────────────────────────────── -->
     <div v-if="esAdmin" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <div class="bg-white rounded-xl shadow p-6 flex items-center gap-4">
@@ -334,6 +351,7 @@ const stats = ref({
   es_admin_th: false,
   datos_supervisor: null,
   datos_empleado: null,
+  cuadre_alerta: null,
 })
 
 
@@ -391,6 +409,15 @@ function formatFecha(fecha) {
   const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
   const [, m, d] = fecha.split('-')
   return `${parseInt(d)} de ${meses[parseInt(m) - 1]}`
+}
+
+// Fecha+hora tipo "2026-09-02 23:55:00" (ULTIMO_CUADRE_PROCESADO) — formatFecha() de
+// arriba solo sirve para fechas puras (fecha_inicial/fecha_final), pierde la hora.
+function formatFechaHora(fechaHora) {
+  if (!fechaHora) return '—'
+  const [fecha, hora] = fechaHora.split(' ')
+  const [y, m, d] = fecha.split('-')
+  return `${d}/${m}/${y} ${hora ? hora.substring(0, 5) : ''}`
 }
 
 onMounted(async () => {

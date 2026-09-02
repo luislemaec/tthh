@@ -26,7 +26,7 @@ para especificar cambios futuros.
 | 03 | Control de asistencia (marcación web + biométrico) | ✅ Borrador v1 | [03-control-asistencia.md](03-control-asistencia.md) |
 | 04 | Permisos y licencias | ✅ Borrador v1 | [04-permisos-licencias.md](04-permisos-licencias.md) |
 | 05 | Vacaciones (solicitud, saldo, planificación) | ✅ Borrador v1 | [05-vacaciones.md](05-vacaciones.md) |
-| 06 | Acciones de personal | ⬜ Pendiente | — |
+| 06 | Acciones de personal | ✅ Borrador v1 | [06-acciones-personal.md](06-acciones-personal.md) |
 | 07 | Liquidación de vacaciones | ⬜ Pendiente | — |
 | 08 | Horas extras | ⬜ Pendiente | — |
 | 09 | Nómina (D13 / D14 / Fondos de Reserva / Rol de Pagos) | ⬜ Pendiente | — |

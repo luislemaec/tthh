@@ -94,6 +94,16 @@ class AsistenciaController extends Controller
         // Validar modalidad de marcación
         $modalidad = $emp->modalidad_marcacion ?? 'PRESENCIAL';
 
+        // Falla cerrado ante un valor no reconocido — antes, cualquier valor que no
+        // fuera exactamente BIOMETRICO/TELETRABAJO/PRESENCIAL no entraba en ningún if
+        // y la marcación pasaba sin restricción (mismo efecto que TEMPORAL, pero
+        // llegado por accidente en vez de a propósito).
+        if (!in_array($modalidad, ['PRESENCIAL', 'TEMPORAL', 'TELETRABAJO', 'BIOMETRICO'], true)) {
+            return response()->json([
+                'message' => 'Tu modalidad de marcación no está configurada correctamente. Contacta a Talento Humano.',
+            ], 422);
+        }
+
         if ($modalidad === 'BIOMETRICO') {
             return response()->json([
                 'message' => 'Tu marcación es exclusivamente por reloj biométrico. Contacta a Talento Humano si necesitas cambiar tu modalidad.',
@@ -229,7 +239,11 @@ class AsistenciaController extends Controller
             });
         }
 
-        return response()->json($query->get());
+        // Límite de seguridad — acotado a un día, así que en la práctica nunca se acerca
+        // a esto, pero sin filtro de depto/búsqueda podía traer todo sin tope. No es
+        // paginación real de UI (el frontend espera un array plano, no {data, meta}) —
+        // si algún día el volumen lo justifica, cambiar a paginate() junto con la vista.
+        return response()->json($query->limit(2000)->get());
     }
 
     // Reporte de asistencia por empleado y rango de fechas

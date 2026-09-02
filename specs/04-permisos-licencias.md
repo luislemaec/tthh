@@ -149,8 +149,10 @@ Nombre base: `permiso_{id}_{tipo_doc}.{ext}`.
   - Empleado sin rol: siempre solo los propios.
 - **RN-04.2** — Filtros: `estado` (`estado_permiso`), `fecha_desde` (`fecha_desde >= X`),
   `fecha_hasta` (`fecha_hasta <= X`), `descontable`.
-- **RN-04.3** — Si `formato` (`excel`|`pdf`) → devuelve archivo (§8.3) sobre el resultado **sin
-  paginar**. Si no → paginado (`per_page`, default 15), ordenado por `fecha_hora` desc.
+- **RN-04.3 (2026-09-01)** — Si `formato` (`excel`|`pdf`) → devuelve archivo (§8.3). El export
+  **exige `fecha_desde` y `fecha_hasta`** y tiene un tope de **5000 filas** (antes `->get()` sin
+  ningún límite podía traer el historial completo de la institución). Si no hay `formato` → paginado
+  (`per_page`, default 15), ordenado por `fecha_hora` desc.
 - **RN-04.4 (aviso `sin_atraso`)** — Por cada permiso de la página se calcula el flag booleano
   `sin_atraso`: `true` sii `descontable = 'SI'` **y** `tipo_horario ∈ {ENTRADA, SALIDA}` **y**
   `fecha_desde <= hoy` **y** existe cuadre de ese día **y** el atraso correspondiente
@@ -181,7 +183,8 @@ salvo que `todo_dia = 'SI'`, donde es `nullable`).
   concepto configurado → cae al valor del formulario.
 - **RN-04.11** — Se crea con `estado_permiso = 'PENDIENTE'`, `todo_dia` default `'NO'`,
   `concepto` default `'PERMISO'`. Respuesta HTTP 201.
-- **RN-04.12** — `store` **no** registra auditoría (a diferencia de aprobar/negar/eliminar/anular).
+- **RN-04.12 (2026-09-01)** — `store` registra `SOLICITAR` en `nom_auditoria_log` al final (antes
+  la creación de la solicitud era la única acción del flujo sin auditoría).
 
 ### 5.3 Aprobación (`PATCH /api/permisos/{id}/aprobar` — `aprobar`)
 
@@ -366,7 +369,7 @@ supervisor/Admin-TH), y filtros comunes.
 - **CA-04-9** — Aprobar un permiso **no** descontable → `d2_cabecera_vacacion` no cambia; `d2_cuadre_marcacion.horaspermiso_pag` del día sube.
 - **CA-04-10** — Tras aprobar, el cuadre del día refleja el permiso como justificación (spec 03 CA-03-15/16).
 - **CA-04-11** — Aprobar un permiso ya `APROBADO`/`NEGADO` → 422.
-- **CA-04-12** — Toda aprobación/negación/eliminación/anulación genera exactamente un registro en `nom_auditoria_log`.
+- **CA-04-12** — Toda solicitud (`SOLICITAR`, 2026-09-01) / aprobación / negación / eliminación / anulación genera exactamente un registro en `nom_auditoria_log`.
 
 **Anulación / reversa**
 - **CA-04-13** — Anular un permiso descontable de 4 h (aprobado con `dias_descuento_efectivo = 0.6818`) → `total_dias_tomados` baja exactamente 0.6818 y `dias_x_tomar_normal` sube 0.6818.
@@ -422,10 +425,12 @@ supervisor/Admin-TH), y filtros comunes.
    `$permiso->getKey()` en `aprobar`/`negar`/`eliminar`/`anular` (antes `registro_id = NULL`).
 7. ✅ **RESUELTO (2026-09-01)** — `$permiso->nombre_emp` (columna inexistente): helper
    `nombreEmpleadoPermiso()` que arma el nombre vía la relación `empleado()`.
-8. **`store` no audita** — la creación de un permiso no deja traza en `nom_auditoria_log`. *(abierto)*
-9. **`index` con `formato` exporta sin límite** — un rango amplio genera un archivo enorme. *(abierto)*
+8. ✅ **RESUELTO (2026-09-01)** — `store` registra `SOLICITAR` en `nom_auditoria_log`.
+9. ✅ **RESUELTO (2026-09-01)** — Export de `index` con `?formato=`: exige `fecha_desde`/`fecha_hasta`
+   y tope de 5000 filas.
 10. **Patrón de autorización mixto** — helpers ad-hoc (`esAdminOTH`, `empleadosDeSupervisor`,
-    `puedeVerPermiso`, …) en vez de `requireRole` / policy unificada. *(abierto, menor)*
+    `puedeVerPermiso`, …) en vez de `requireRole` / policy unificada. Evaluado y **dejado sin tocar
+    a propósito** (funcionalmente equivalente, refactor de mayor superficie).
 
 ---
 
@@ -449,6 +454,6 @@ supervisor/Admin-TH), y filtros comunes.
 
 - ~~¿Cerrar `show` / documentos?~~ ✅ hecho 2026-09-01 (§10.1–2).
 - ~~¿Arreglar el bucle fraccionario / la fuente de verdad de `horas_decto` / la asimetría del factor?~~ ✅ hecho 2026-09-01 (§10.3–5) — `ProcesarCuadre` es ahora la única fuente de verdad.
-- ¿`store` debe auditar `SOLICITAR`? (§10.8)
+- ~~¿`store` debe auditar `SOLICITAR`? / ¿límite al export?~~ ✅ hechos 2026-09-01 (§10.8–9).
 - ¿Se debe validar que el rango de un permiso "todo el día" excluya fines de semana antes de aplicar el factor? (§9)
-- ¿Unificar el patrón de autorización (helper `requireRole` / policy) en todo el controlador? (§10.10)
+- Patrón de autorización mixto: dejado sin tocar a propósito (§10.10).

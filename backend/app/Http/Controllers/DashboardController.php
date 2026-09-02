@@ -272,6 +272,18 @@ class DashboardController extends Controller
             ] : null;
         }
 
+        // Alerta si procesar:cuadre no corrió en las últimas ~26h (cron de schedule:run
+        // caído, o nunca configurado en este servidor) — nadie se entera hoy de que el
+        // cuadre nocturno dejó de correr, no hay error, solo silencio. Visible solo Admin/TH.
+        $cuadreAlerta = null;
+        if ($esAdminOTH) {
+            $ultimoCuadre = Configuracion::find('ULTIMO_CUADRE_PROCESADO');
+            $cuadreAlerta = [
+                'ultimo_at' => $ultimoCuadre?->valor,
+                'atrasado'  => !$ultimoCuadre || Carbon::parse($ultimoCuadre->valor)->lt(now()->subHours(26)),
+            ];
+        }
+
         return response()->json([
             "total_activos"         => $totalActivos,
             "por_departamento"      => $porDepartamento,
@@ -281,6 +293,7 @@ class DashboardController extends Controller
             "es_admin_th"           => $esAdminOTH,
             "datos_supervisor"      => $datosSupervisor,
             "datos_empleado"        => $datosEmpleado,
+            "cuadre_alerta"         => $cuadreAlerta,
         ]);
     }
 

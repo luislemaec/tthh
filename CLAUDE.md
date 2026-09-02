@@ -188,6 +188,11 @@ public function store(Request $request) {
 - **`EmpleadoController` — 10 endpoints de sub-recursos sin proteger.** La tabla de arriba decía "✅ Cerrado (solo store/update/destroy)" — literal: esos 3 sí tenían `requireRole()`, pero los 10 endpoints de foto (`subirFoto`/`eliminarFoto`), hijos menores (`hijoIndex`/`hijoStore`/`hijoDestroy`), documento de persona sustituta (`subirDocSustituta`/`descargarDocSustituta`/`eliminarDocSustituta`) y teletrabajo (`teletrabajoIndex`/`teletrabajoStore`/`teletrabajoDestroy`) no tenían ningún control — cualquier empleado autenticado podía, por ejemplo, borrar la foto o los períodos de teletrabajo de otro. Cerrados con `$this->requireRole($request, self::ROLES_ADMIN)` al inicio de cada método.
 - **`ImportacionController` — sin ningún control de rol.** Los 3 endpoints (`plantilla`, `preview`, `importar`) no estaban en el alcance de la auditoría original y no tenían protección — cualquier empleado autenticado podía importar/sobrescribir el CSV masivo de empleados. Cerrados con `requireRole(self::ROLES_ADMIN)`. De paso: `importar()` ahora **omite** (con error legible, no falla la fila en silencio) a los empleados `es_externo=true` — antes el upsert por cédula los sobrescribía igual que a cualquier empleado, contradiciendo la regla de que solo se editan desde `FuncionariosExternosView` (ver sección Comisiones). También se agregó auditoría (`IMPORTACION_MASIVA` en `nom_auditoria_log`, con conteo de importados/actualizados/errores y nombre del archivo) — antes una importación masiva de decenas/cientos de empleados no dejaba ningún rastro.
 
+**Gaps encontrados en revisión de specs SDD (2026-09-01) — `EmpleadoController::importarDistributivo()`:** CSV de carga masiva de campos del distributivo (nivel, grupo ocupacional, partida, décimos, fondos de reserva) para empleados existentes. Ya tenía `requireRole()` (no era un gap de acceso), pero sí tenía 3 problemas reales:
+1. **No era transaccional** — cada `$emp->update()` se comiteaba solo; si el proceso se cortaba a mitad de camino (timeout, caída de conexión), quedaba una carga a medias sin forma de saberlo. Envuelto ahora en `DB::beginTransaction()/commit()/rollBack()` alrededor de todo el loop — los errores de fila individuales (empleado no encontrado, `update()` que falla) se siguen capturando y reportando sin abortar el resto del archivo (mismo criterio "mejor esfuerzo" que ya tenía).
+2. **Sin auditoría** — agregado `IMPORTACION_DISTRIBUTIVO` en `nom_auditoria_log` (mismo patrón que `IMPORTACION_MASIVA` de `ImportacionController`).
+3. **Índices de columna fijos (`$row[0]`, `$row[9]`)** — el CSV tiene dos columnas con el mismo nombre "PARTIDA INDIVIDUAL" (corta y presupuestaria), por lo que `array_combine()` con el header se queda solo con la última y obligaba a usar posiciones numéricas hardcodeadas, silenciosamente incorrectas si el CSV cambia de orden. Ahora se ubican ambas posiciones dinámicamente con `array_keys($header, 'PARTIDA INDIVIDUAL')` al leer el encabezado, con un 422 explícito si no aparecen las dos columnas esperadas — en vez de asumir que siempre van a estar en la posición 0 y 9.
+
 **Excepciones intencionales** — endpoints de lectura que se dejaron abiertos a propósito porque otros módulos/roles los consumen para búsquedas o dropdowns (verificado contra el uso real en el frontend antes de decidir):
 - `EmpleadoController::index/show` — usado por Tecnología, Nómina, Certificados, Comisiones, Supervisores, Adquisiciones, etc.
 - `Admin/DepartamentoController::index`, `Admin/RazonController::index` — usados en formularios de toda la app (permisos, vacaciones, reportes)
@@ -440,14 +445,54 @@ Calculado en `App\Services\SaldoVacacionesService` (única fuente de verdad desd
 
 Rutas: `GET /api/empleados/importacion/plantilla`, `POST /api/empleados/importacion/preview`, `POST /api/empleados/importacion/importar`. Vista: `views/empleados/ImportacionView.vue`. Los 3 endpoints requieren rol `ADMINISTRADOR`/`TALENTO HUMANO` (`requireRole()` — cerrado 2026-09-01, antes sin ningún control).
 
-- **Upsert por `identificacion`** — cédula existente → `update()` (sobrescribe **todos** los campos de la fila, incluidos los vacíos como `null`, no hace merge); cédula nueva → `create()` con `id_emp` autogenerado (`str_pad` correlativo de 5 dígitos). Empleados que ya existen en BD pero no están en el CSV no se tocan. **Excepción (2026-09-01):** si la cédula coincide con un empleado `es_externo=true`, la fila se **omite** (error legible: "es Funcionario Externo, se omite") en vez de sobrescribirlo — esos solo se editan desde `FuncionariosExternosView` (ver sección Comisiones).
+- **Upsert por `identificacion`** — cédula existente → `update()` (sobrescribe **todos** los campos de la fila, incluidos los vacíos como `null`, no hace merge); cédula nueva → `create()` con `id_emp` autogenerado vía `Empleado::generarSiguienteId()` (correlativo de 5 dígitos, con advisory lock — ver sección "Robustez y trazabilidad" abajo). Empleados que ya existen en BD pero no están en el CSV no se tocan. **Excepción (2026-09-01):** si la cédula coincide con un empleado `es_externo=true`, la fila se **omite** (error legible: "es Funcionario Externo, se omite") en vez de sobrescribirlo — esos solo se editan desde `FuncionariosExternosView` (ver sección Comisiones).
 - **Auditoría (2026-09-01):** cada importación deja un registro `IMPORTACION_MASIVA` en `nom_auditoria_log` con conteo de importados/actualizados/errores y el nombre del archivo — antes no quedaba ningún rastro.
+- **`id_depto` validado (2026-09-01):** tanto `preview()` como `importar()` verifican que el `id_depto` de cada fila exista en `ad_departamento` y no sea `999` (placeholder de sistema) — antes se aceptaba cualquier número sin validar, silenciosamente.
 - **48 columnas** (ampliado desde las 22 originales el 2026-08-25/26): todos los campos planos de `ad_empleado` incluidos los agregados en migraciones recientes (sexo, tipo_sangre, SERCOP, bancarios, campos sociales, `motivo_salida`/`motivo_reactivacion`, `programa`/`actividad`). **NO cubre** tablas hijas: hijos menores (`ad_empleado_hijo`), documento de persona sustituta (Alfresco), períodos de teletrabajo, roles (`admin_usuario_rol`) — esos se cargan aparte desde la ficha o el módulo correspondiente.
 - **Fechas** (`fecha_ingreso`, `fecha_salida`, `fecha_vence_sercop`, `sustituta_fecha_caducidad`): aceptan `DD/MM/AAAA`, `AAAA-MM-DD` o `DD-MM-AAAA` — mismo patrón que ya usa `Tecnologia\EquipoController::importarCsv`. Fila con fecha no reconocible se rechaza con error claro, no se guarda mal en silencio.
 - **`tipo_contrato`** normalizado: tolera tildes/mayúsculas/minúsculas y el error común "CODIGO DE TRABAJO" (sin la L de "DEL"), normaliza a `LOSEP` o `CODIGO DEL TRABAJO` exacto. Si no reconoce el valor, rechaza la fila — este campo antes se guardaba tal cual (sin `strtoupper` ni validación), y como `VacacionesController::tasaVacaciones()` compara con `===` exacto, un typo aquí rompía silenciosamente el cálculo de tasa de vacaciones del empleado.
 - **`acumula_decimos`** — una sola columna (`0`=Cobra mensualmente, `1`=Acumula) que se aplica a la vez a `acumula_decimo_tercero` y `acumula_decimo_cuarto` — replica el selector único que ya tiene `EmpleadoForm.vue` (ahí también es un solo campo que setea ambos). Ya NO son dos columnas separadas.
 - **Catálogos sociales** (`grupo_vulnerable`, `grupo_prioritario`, `tipo_discapacidad`, `enfermedad_catastrofica`) — se escribe el **nombre** (no el ID), resuelto contra el catálogo real (case-insensitive). Si no coincide con nada, se deja vacío con un aviso en la respuesta (`"Fila N: ... no encontrado en el catálogo"`) — no bloquea la fila completa.
 - **Excel + ceros a la izquierda:** clásico problema si la cédula o `partida_presupuestaria` se editan en Excel sin formatear la columna como Texto primero — Excel puede convertir a número y perder el cero inicial, o pasar a notación científica en campos numéricos largos (ej. `2.02622E+44`). El importador NO reintenta recuperar esto — si la columna llegó mal, se guarda mal (o no coincide con nadie). Recomendación siempre: formatear la columna como Texto en Excel antes de escribir/pegar.
+
+### Corrección de deuda técnica — Robustez y trazabilidad, prioridad P2 (2026-09-01)
+
+Auditoría de código detectó 7 hallazgos adicionales (revisión de specs SDD), todos corregidos el mismo día, sin cambios de schema. Uno de los 7 (validación de `id_depto` en la importación masiva) quedó documentado arriba, junto al resto de reglas de `ImportacionController` — los otros 6:
+
+1. **`EmpleadoController::destroy()` no auditaba ni forzaba `estado_puesto`.** Solo hacía `update(["estado" => "INACTIVO"])` — inconsistente con `update()`, que sí audita y sí pasa `estado_puesto=DISPONIBLE` cuando el estado cambia a INACTIVO. Un empleado desactivado por `destroy()` (no por editar la ficha) nunca aparecía en `partidasVacantes()` hasta que alguien lo corrigiera a mano. Corregido: ahora también fuerza `estado_puesto=DISPONIBLE` y audita `DESACTIVAR` en `nom_auditoria_log`.
+
+2. **`eliminarDocSustituta()` no apagaba `tiene_persona_sustituta` ni limpiaba `sustituta_fecha_caducidad`.** Solo borraba `sustituta_alfresco_id`/`sustituta_nombre_archivo` — la ficha quedaba diciendo "tiene persona sustituta" con fecha de caducidad vieja pero sin documento adjunto. Corregido: los 4 campos se limpian juntos.
+
+3. **`Empleado::generarSiguienteId()` (nuevo, en el modelo) — reemplaza el `max(id_emp)+1` sin bloqueo.** Tanto `EmpleadoController::store()` (alta individual) como `ImportacionController::importar()` (por fila, dentro del loop) calculaban el siguiente `id_emp` con `orderByRaw('id_emp DESC')->value('id_emp')` sin ningún bloqueo — dos altas simultáneas (dos admins, o un alta + una importación corriendo a la vez) podían leer el mismo "último" y chocar contra la PK al insertar. El nuevo método estático usa `pg_advisory_xact_lock()` de Postgres para serializar la generación entre transacciones concurrentes; **debe llamarse dentro de una transacción activa** (el lock se libera solo al terminar esa transacción) — por eso `EmpleadoController::store()` ahora envuelve la creación completa en `DB::transaction()` (antes no estaba en ninguna transacción).
+
+4. **`PermisosController::store()` no auditaba la solicitud inicial.** A diferencia de `aprobar/negar/eliminar/anular` (ya auditados), crear la solicitud (`SOLICITAR`) nunca quedó instrumentado. Agregado `AuditoriaService::log(..., 'SOLICITAR', ...)` al final de `store()`.
+
+5. **`sg_control_persona.procesado` nunca pasaba a `'SI'`.** Se insertaba en `'NO'` (`ZktecoController`/`AsistenciaController` al crear una marcación) y ningún punto del código lo volvía a tocar — ni siquiera `ProcesarCuadre`, que sí lee esas marcaciones para calcular el cuadre. Quedaba decorativo. Corregido: `ProcesarCuadre` marca `procesado='SI'` en las marcaciones de cada empleado/día justo después de incorporarlas al cuadre. **Nota:** no se pudo confirmar si algún sistema legado fuera de este repo lee este campo — si algo externo dependía de que quedara siempre en `'NO'`, revisar antes de considerar esto cerrado del todo en producción.
+
+6. **Sin monitoreo de que `schedule:run` esté corriendo en el servidor.** `Schedule::command('procesar:cuadre')->dailyAt('23:55')` (`routes/console.php`) depende enteramente del cron del sistema (`* * * * * php artisan schedule:run`) — si ese cron no está configurado o se cae, el cuadre nocturno deja de correr en silencio, sin ningún error visible. Mitigación agregada (sin depender de servicios externos):
+   - `ProcesarCuadre` guarda un timestamp al terminar en `d2_configuracion` (concepto `ULTIMO_CUADRE_PROCESADO`, formato `Y-m-d H:i:s`).
+   - `DashboardController::index()` calcula `cuadre_alerta` (solo para Admin/TH): `{ ultimo_at, atrasado }` — `atrasado=true` si pasaron más de 26h desde la última corrida (o si nunca corrió).
+   - `DashboardView.vue` muestra un banner ámbar arriba de las tarjetas de Admin/TH cuando `atrasado=true`, con la fecha/hora de la última corrida.
+   - Esto es un piso mínimo (revisa el dashboard, no manda alertas activas) — si más adelante quieren algo proactivo (email/Slack/healthchecks.io), este timestamp en `d2_configuracion` ya sirve de base.
+
+Ninguno de estos 7 cambios tocó `config/*.php`, `.env` ni el schema de BD — solo requieren `git pull` en el servidor (+ `npm run build` en el frontend, porque `DashboardView.vue` sí cambió esta vez), sin `migrate` ni `config:clear`.
+
+**Segunda tanda de hallazgos P2 (2026-09-01), 6 de 10 corregidos** (los otros 4 se evaluaron y se dejaron sin tocar — ver detalle):
+
+1. **`ProcesarCuadre` — fallback por posición eliminado.** `$mEntrada = $marcaciones->firstWhere('concepto','ENTRADA') ?? $marcaciones->get(0)` (y análogos para los otros 3 conceptos): si el `concepto` no calzaba, caía a la posición del array y podía atribuir una marcación al concepto equivocado. Ahora, si ninguna marcación calza con los 4 conceptos esperados, se trata como si no hubiera marcado (no se adivina) y se emite un `$this->warn()`.
+2. **`AsistenciaController::marcar()` — falla cerrado ante `modalidad_marcacion` no reconocida.** Antes, un valor fuera de `{PRESENCIAL, TEMPORAL, TELETRABAJO, BIOMETRICO}` no entraba en ningún `if` y la marcación pasaba sin restricción (mismo efecto que TEMPORAL, pero por accidente). Ahora rechaza con 422 si el valor no es uno de los 4 conocidos.
+3. **`AsistenciaController::listado()` ("Marcaciones del Día") — límite de seguridad.** `$query->limit(2000)->get()` en vez de `->get()` sin tope. **No es paginación real de UI** (el frontend espera un array plano) — es un techo de seguridad; si el volumen algún día lo justifica, cambiar a `paginate()` requiere también tocar la vista.
+4. **`jornada_id` eliminado de los `write` de `EmpleadoController::store()`/`update()`.** Campo duplicado de `id_jornada` (que sí alimenta la relación `jornada()` usada en Horas Extras/Permisos) — confirmado que `EmpleadoForm.vue` nunca lo manda, por lo que siempre se escribía `null`. La columna sigue existiendo en BD (no se tocó schema), solo se dejó de escribir el valor muerto.
+5. **`EmpleadoController::departamentos()` — excluye `999`.** Endpoint distinto al `Admin/DepartamentoController::index()` ya corregido el 2026-08-17 — este quedó fuera de aquella corrección.
+6. **Export de permisos (`PermisosController::index` con `?formato=`) — exige rango de fechas + tope de 5000 filas.** Antes `$query->get()` sin ningún límite podía traer el historial completo de permisos de la institución en una sola exportación.
+
+**Hallazgos evaluados y dejados sin tocar (a propósito):**
+- `d2_cuadre_marcacion.ip` fijo en `'127.0.0.1'` (`ProcesarCuadre`) — cosmético, es un comando CLI sin IP de cliente real que capturar.
+- Patrón de autorización mixto en `PermisosController` (`esAdminOTH()` propio en vez de `requireRole()`/`tieneAlgunRol()` de `Controller.php`) — funcionalmente equivalente, refactor de mayor superficie, no urgente.
+- `PlanificacionVacController::replanificar()` — `haysolapamiento($request->periodos)` vs. total sobre `$periodosValidos`: **no es un bug**, `haysolapamiento()` ya filtra los períodos vacíos internamente, así que da el mismo resultado con cualquiera de los dos arrays. Mismo patrón que `store()`, consistente en todo el archivo.
+- `VacacionesController::index()` sin export Excel/PDF — gap de feature (no bug), queda pendiente para cuando se priorice.
+
+Sin cambios de schema, `config/*.php` ni `.env` — solo `git pull` en el servidor, sin `migrate` ni `config:clear`.
 
 ### Acciones de Personal (`dbo.acc_accion_personal`)
 
@@ -462,7 +507,7 @@ Rutas: `GET /api/empleados/importacion/plantilla`, `POST /api/empleados/importac
 | COMISION DE SERVICIOS | ACTIVO | Del empleado | No aplica | Vacía | No | Sí | TH lo pasa a INACTIVO |
 | REINGRESO | ACTIVO *(TH reactiva primero)* | No aplica | Auto-llena del empleado | Vacía | No | Sí | Sigue ACTIVO |
 
-Auto-cierre corre en cada `index()` para SUBROGACION y VACACIONES con `fecha_fin < hoy`.
+Auto-cierre de SUBROGACION/VACACIONES/COMISION DE SERVICIOS con `fecha_fin < hoy` — comando programado `cerrar:acciones-vencidas` (`Schedule::dailyAt('06:00')`, ver corrección 2026-09-01 abajo). Antes vivía como efecto secundario de `index()` (un GET).
 
 **Búsqueda de empleado en el formulario:** `DESTITUCION` busca empleados INACTIVOS (TH los desactiva antes de crear la acción). Todos los demás tipos buscan empleados ACTIVOS.
 
@@ -482,7 +527,7 @@ Auto-cierre corre en cada `index()` para SUBROGACION y VACACIONES con `fecha_fin
 - `$deptPropuestoFinal`: INGRESO y REINGRESO usan `$deptActual` (no hay titular); resto usa `$deptPropuesto`
 - **BORRADOR**: banda roja con fondo `#b91c1c` y texto blanco en la parte superior del PDF (en flujo normal, no `position:fixed` para evitar solapamiento con DomPDF). Desaparece al procesar.
 
-**Estados del flujo:** `BORRADOR → ACTIVO` (estado final). TH ACCIONES PERSONAL crea en BORRADOR; `procesar()` pasa a ACTIVO y asigna `numero_accion`. `numero_accion` es nullable — se asigna al procesar, no al crear.
+**Estados del flujo:** `BORRADOR → ACTIVO → FINALIZADO/ANULADO`. TH ACCIONES PERSONAL crea en BORRADOR; `procesar()` pasa a ACTIVO y asigna `numero_accion` (nullable — se asigna al procesar, no al crear). `cambiarEstado()` (`PATCH /{id}/estado`, corregido 2026-09-01) solo permite `ACTIVO → FINALIZADO`/`ANULADO` — `FINALIZADO`/`ANULADO` quedan terminales, y no se puede saltar de `BORRADOR` directo a ninguno de los dos (antes sí se podía, sin validar el estado actual).
 
 **Métodos del controlador:**
 - `procesar($id)` — `PATCH /api/acciones-personal/{id}/procesar` — cambia estado a ACTIVO, asigna número de acción, sube PDF firmado a Alfresco
@@ -507,6 +552,19 @@ Flujo de firmantes:
 - En el **PDF**: usa los firmantes de la acción con fallback a `d2_configuracion` y luego a los parámetros anteriores (`DIRECTOR_TALENTO_HUMANO` / `APROBADOR_ACCION_PERSONAL`)
 - Todos los valores se guardan en MAYÚSCULAS (`strtoupper`)
 - Endpoint config para pre-llenar formulario nuevo: `GET /api/admin/configuracion/firmantes` → `{ firmante_th_nombre, firmante_th_cargo, firmante_autoridad_nombre, firmante_autoridad_cargo }`
+
+### Corrección de deuda técnica — Acciones de Personal (2026-09-01)
+
+Auditoría de código detectó 6 hallazgos en `AccionPersonalController.php` — el más grave de las rondas de este día, porque este controlador gestiona los documentos oficiales de carrera del servidor (trazabilidad ante Contraloría). Todos corregidos el mismo día, sin cambios de schema:
+
+1. **Cero auditoría en todo el controlador.** `store/procesar/editarBorrador/cambiarEstado/subirFirmado` y el auto-cierre no llamaban a `AuditoriaService::log()` — 0 coincidencias en 696 líneas. Agregado en los 5 métodos (`CREAR`, `PROCESAR`, `EDITAR_BORRADOR`, `CAMBIAR_ESTADO`, `SUBIR_FIRMADO`) + `AUTO_CERRAR` en el comando nuevo (ver punto 6). `AccionPersonalController` agregado a la tabla de "Controladores instrumentados" (sección Auditoría Centralizada).
+2. **`store()` no validaba el estado del empleado contra el tipo de acción.** El filtro ACTIVO/INACTIVO en el buscador del formulario era solo del frontend — la API permitía crear, por ejemplo, una DESTITUCION sobre un empleado ACTIVO llamando directo al endpoint. Ahora `store()` exige `INACTIVO` para DESTITUCION y `ACTIVO` para el resto (según la tabla de esta sección), con 422 si no calza.
+3. **`COMISION DE SERVICIOS` no se auto-cerraba** — inconsistente con SUBROGACION/VACACIONES, aunque `store()` sí la trata como acción con `fecha_fin` obligatoria. Corregido junto con el punto 6.
+4. **Numeración de `numero_accion` sin bloqueo.** Mismo patrón `MAX(...)+1` sin advisory lock que tenía `Empleado::generarSiguienteId()` (ver sección Empleados) — acá más sensible, porque `numero_accion` es el número de documento oficial ante Contraloría, no un ID interno. Nuevo método estático `AccionPersonal::generarSiguienteNumero($prefijo, $anio)` con el mismo patrón de `pg_advisory_xact_lock()`; `procesar()` ahora envuelve la generación + actualización en `DB::transaction()`.
+5. **`cambiarEstado()` no validaba transiciones.** Podía saltar de `BORRADOR` directo a `ANULADO` (sin `numero_accion` asignado) o recambiar un `FINALIZADO`/`ANULADO` otra vez. Corregido: solo `ACTIVO → FINALIZADO`/`ANULADO`, ambos terminales (ver "Estados del flujo" arriba).
+6. **Auto-cierre como efecto secundario de un GET (`index()`).** Violaba la semántica HTTP (un GET no debería tener side-effects) y dependía de que alguien abriera la pantalla de Acciones de Personal para que corriera — si nadie la abría por días, las acciones vencidas quedaban ACTIVAS indefinidamente. Movido a un comando nuevo, **`php artisan cerrar:acciones-vencidas`** (`app/Console/Commands/CerrarAccionesVencidas.php`), programado con `Schedule::command('cerrar:acciones-vencidas')->dailyAt('06:00')` en `routes/console.php` — mismo patrón que `procesar:cuadre`. Ahora sí incluye `COMISION DE SERVICIOS` (punto 3). Guarda `ULTIMO_CIERRE_ACCIONES` en `d2_configuracion` (mismo criterio que `ULTIMO_CUADRE_PROCESADO`, ver sección Dashboard/monitoreo) para poder detectar a futuro si el cron dejó de correr. Como es un comando CLI sin `Request`, la auditoría de `AUTO_CERRAR` se hace con `DB::table('dbo.nom_auditoria_log')->insert()` directo (mismo patrón que LOGIN/LOGOUT) en vez de `AuditoriaService::log()`.
+
+Ninguno de estos 6 cambios tocó `config/*.php`, `.env` ni el schema de BD — solo requieren `git pull` en el servidor, sin `migrate` ni `config:clear`. **Sí requiere que el cron `schedule:run` esté corriendo** para que `cerrar:acciones-vencidas` se ejecute (mismo requisito que `procesar:cuadre` — ver hallazgo K de la sección Robustez y trazabilidad).
 
 ### Vacaciones — backup al aprobar
 
@@ -535,6 +593,8 @@ Auditoría de código detectó 6 hallazgos (uno de ellos, "4 implementaciones di
 6. **Bug de auditoría — `secuencial_clave` vs `id` (bonus, encontrado al tocar el archivo, no parte de los 6 hallazgos originales).** `Vacacion::$primaryKey = "secuencial_clave"` (igual que `Permiso`, ver sección Permisos), pero `VacacionesController::aprobar()/negar()/destroy()` pasaban `$vacacion->id` (atributo inexistente → `null`) a `AuditoriaService::log()`. Corregido a `$vacacion->getKey()` en los 3 métodos + en el nuevo `anular()`.
 
 Ninguno de estos 6 cambios tocó `config/*.php`, `.env` ni el schema de BD — solo requieren `git pull` en el servidor, sin `migrate` ni `config:clear`.
+
+**Gap adicional encontrado en revisión de specs SDD (2026-09-01):** `PlanificacionVacController::store()` tenía `'periodos.*.fecha_final' => 'nullable|date|nullable|after_or_equal:...'` — `nullable` duplicado por typo. Limpiado a una sola aparición. No hay evidencia de que el duplicado desactivara `after_or_equal` (Laravel evalúa cada regla de la lista de forma independiente, un `nullable` repetido es inerte) — si la validación de fechas de períodos sigue sin comportarse como se espera después de este fix, el problema está en otro lado, no era esto.
 
 ### Permisos y Licencias (`dbo.d2_permiso`)
 
@@ -1075,7 +1135,8 @@ Implementada para trazabilidad ante la Contraloría General del Estado. Todas la
 | `ImportacionController` | IMPORTACION_MASIVA (2026-09-01) |
 | `RolController` | ASIGNAR_ROL, REVOCAR_ROL |
 | `VacacionesController` | APROBAR, NEGAR, ELIMINAR, ANULAR (2026-09-01) |
-| `PermisosController` | APROBAR, NEGAR, ELIMINAR, ANULAR |
+| `PermisosController` | APROBAR, NEGAR, ELIMINAR, ANULAR, SOLICITAR (2026-09-01) |
+| `AccionPersonalController` | CREAR, PROCESAR, EDITAR_BORRADOR, CAMBIAR_ESTADO, SUBIR_FIRMADO, AUTO_CERRAR (2026-09-01 — antes sin auditoría) |
 | `PlanificacionVacController` | CREAR, APROBAR, NEGAR, ELIMINAR, REPLANIFICAR (2026-09-01 — antes sin auditoría) |
 | `HorasExtrasController` | APROBAR, NEGAR, AUTORIZAR, CONFIRMAR, NEGAR (registro) |
 | `CertificadoLaboralController` | EMITIR |

@@ -10,3 +10,7 @@ Artisan::command('inspire', function () {
 
 // Procesar cuadre de marcaciones automáticamente cada día a las 23:55
 Schedule::command('procesar:cuadre')->dailyAt('23:55');
+
+// Cerrar acciones de personal vencidas (SUBROGACION, VACACIONES, COMISION DE SERVICIOS)
+// — antes era efecto secundario de un GET, ver AccionPersonalController::index()
+Schedule::command('cerrar:acciones-vencidas')->dailyAt('06:00');

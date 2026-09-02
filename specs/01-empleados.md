@@ -121,7 +121,7 @@ para el detalle de migraciones):
 | `cargo_empleado` | Obligatorio en store/update. |
 | `tipo_contrato` | `LOSEP` / `CODIGO DEL TRABAJO`. |
 | `modalidad_laboral` | Obligatorio. Determina reglas de vacaciones/liquidación. |
-| `jornada_id` / `id_jornada` | Ambas columnas existen; el código escribe las dos. |
+| `id_jornada` | FK de la jornada laboral; alimenta la relación `jornada()` (Permisos / Horas Extras). `jornada_id` es una columna duplicada que **ya no se escribe** (2026-09-01) y quedaba siempre en `null`. |
 | `fecha_ingreso` | Base para antigüedad y saldo de vacaciones. |
 | `fecha_salida` | Solo si `INACTIVO`. Congela acumulados. |
 | `sueldo` | `numeric`, `min:0`. Auditado. |
@@ -183,7 +183,11 @@ queries de RRHH. `password` (hidden), `clave` (hidden, legado).
 - **RN-02** — Campos obligatorios: `identificacion` (único), `nombre_emp`, `apellido_emp`,
   `id_depto`, `cargo_empleado`, `grupo_ocupacional`, `nivel`, `sueldo` (≥0),
   `partida_presupuestaria`, `partida_individual` (≥1), `proceso_institucional`, `modalidad_laboral`.
-- **RN-03** — `id_emp` se genera como `str_pad(max(id_emp)+1, 5, '0')`.
+- **RN-03 (2026-09-01)** — `id_emp` lo genera `Empleado::generarSiguienteId()` (método estático del
+  modelo) usando `pg_advisory_xact_lock()` para serializar la generación entre transacciones
+  concurrentes. **Debe llamarse dentro de una transacción activa**; por eso `store()` ahora envuelve
+  toda la creación en `DB::transaction()`. Antes: `orderByRaw('id_emp DESC')->value('id_emp') + 1`
+  sin bloqueo → dos altas simultáneas podían chocar contra la PK.
 - **RN-04** — `estado` por defecto `ACTIVO`. `nombre_emp`/`apellido_emp` → MAYÚSCULAS.
 - **RN-05** — Se fija `password = bcrypt(identificacion)`.
 - **RN-06** — Se crea `d2_cabecera_vacacion` (saldo 0) con `firstOrCreate`.
@@ -214,9 +218,10 @@ queries de RRHH. `password` (hidden), `clave` (hidden, legado).
 
 ### 5.3 Desactivación (`destroy`)
 
-- **RN-20** — Requiere rol Admin/TH. `DELETE /empleados/{id}` solo hace `update(['estado' => 'INACTIVO'])`.
-  **No borra la fila.** No fuerza `estado_puesto` (a diferencia de `update`) ni audita explícitamente
-  en este método. *(Deuda: incoherencia con RN-14; ver §10.)*
+- **RN-20 (2026-09-01)** — Requiere rol Admin/TH. `DELETE /empleados/{id}` hace
+  `estado = 'INACTIVO'` **y `estado_puesto = 'DISPONIBLE'`** (coherente con `update`, RN-14), y
+  registra auditoría `DESACTIVAR` en `nom_auditoria_log`. **No borra la fila.** Antes solo cambiaba
+  `estado` y no auditaba — un empleado desactivado por aquí no aparecía en `partidasVacantes()`.
 
 ### 5.4 Listado (`index`)
 
@@ -256,9 +261,10 @@ queries de RRHH. `password` (hidden), `clave` (hidden, legado).
 - **RN-33** — Si Alfresco responde no-exitoso → HTTP 502.
 - **RN-34** — `descargarDocSustituta`: 404 si no hay `sustituta_alfresco_id`; si hay, hace stream del
   contenido con `Content-Type: application/pdf`, `Content-Disposition: inline`.
-- **RN-35** — `eliminarDocSustituta`: borra el nodo en Alfresco (si existe) y limpia
-  `sustituta_alfresco_id` + `sustituta_nombre_archivo` (**no** cambia `tiene_persona_sustituta` ni
-  la fecha de caducidad — deuda menor, §10).
+- **RN-35 (2026-09-01)** — `eliminarDocSustituta`: borra el nodo en Alfresco (si existe) y limpia
+  **los 4 campos juntos**: `sustituta_alfresco_id`, `sustituta_nombre_archivo`,
+  `tiene_persona_sustituta = false`, `sustituta_fecha_caducidad = null`. Antes solo limpiaba los dos
+  primeros y la ficha quedaba diciendo "tiene persona sustituta" sin documento.
 
 ### 5.9 Períodos de teletrabajo
 
@@ -288,13 +294,19 @@ queries de RRHH. `password` (hidden), `clave` (hidden, legado).
   la izquierda (`str_pad`); `'0000000000'` se salta.
 - **RN-45** — Empleado no encontrado por `identificacion` → se acumula en `no_encontrados` (no
   bloquea).
-- **RN-46** — Campos actualizados por fila: `nivel` (col. "GRADO"), `grupo_ocupacional`,
-  `proceso_institucional`, `partida_individual` (col. índice 0), `partida_presupuestaria` (col.
-  índice 9), `estado_puesto`, `acumula_fondos_reserva`, `acumula_decimo_tercero`
-  (`"SI"`→true), `acumula_decimo_cuarto` (`"SI"`→true).
-- **RN-47** — Es "mejor esfuerzo": actualiza lo que puede y devuelve
-  `{ actualizados, no_encontrados[], errores[] }`. **No** es transaccional.
-- **RN-48** — No audita.
+- **RN-46 (2026-09-02)** — Campos actualizados por fila: `nivel` (col. "GRADO"), `grupo_ocupacional`,
+  `proceso_institucional`, `partida_individual`, `partida_presupuestaria`, `estado_puesto`,
+  `acumula_fondos_reserva`, `acumula_decimo_tercero` (`"SI"`→true), `acumula_decimo_cuarto`
+  (`"SI"`→true). Las **dos** columnas homónimas "PARTIDA INDIVIDUAL" se resuelven con
+  `array_keys($header, 'PARTIDA INDIVIDUAL')` calculado una vez al leer el encabezado (la 1ª =
+  `partida_individual`, la 2ª = `partida_presupuestaria`). Si no aparecen exactamente esas dos
+  columnas → HTTP 422 explícito. Antes se asumían las posiciones fijas 0 y 9 en silencio.
+- **RN-47 (2026-09-02)** — Todo el loop corre dentro de `DB::beginTransaction()` / `commit()` /
+  `rollBack()`: si el proceso se corta a mitad, **no queda nada aplicado**. Dentro, sigue el
+  criterio "mejor esfuerzo": los errores por fila (empleado no encontrado, `update()` fallido) se
+  capturan y reportan en `errores[]` / `no_encontrados[]` sin abortar el resto del archivo. Devuelve
+  `{ actualizados, no_encontrados[], errores[] }`.
+- **RN-48 (2026-09-02)** — Registra `IMPORTACION_DISTRIBUTIVO` en `nom_auditoria_log`. Antes no auditaba.
 
 ### 5.12 Partidas vacantes y catálogos
 
@@ -304,8 +316,9 @@ queries de RRHH. `password` (hidden), `clave` (hidden, legado).
   `partida_presupuestaria`.
 - **RN-50** — `catalogosSociales` (`GET /api/empleados/catalogos-sociales`): los 4 catálogos con
   `activo = true`.
-- **RN-51** — `departamentos` (`GET /api/departamentos`): todos los departamentos ordenados por
-  nombre (este endpoint **no** excluye el 999 — el filtro 999 vive en `Admin/DepartamentoController`).
+- **RN-51 (2026-09-01)** — `departamentos` (`GET /api/departamentos`): departamentos ordenados por
+  nombre, **excluyendo el 999** (antes lo incluía — este endpoint quedó fuera de la corrección del
+  2026-08-17 a `Admin/DepartamentoController::index()`).
 
 ---
 
@@ -464,15 +477,15 @@ error. Campos numéricos que llegan como número desde la BD: `String(val ?? '')
 
 | Caso | Comportamiento esperado |
 |---|---|
-| `max(id_emp)` no es numérico puro | `generarIdEmp` hace `(int) $ultimo + 1`; si la tabla tiene basura no numérica el correlativo puede colisionar. *(Deuda, §10.)* |
+| Dos altas simultáneas (dos admins, o alta + importación) | `Empleado::generarSiguienteId()` serializa con `pg_advisory_xact_lock()` dentro de la transacción de `store()` (2026-09-01) — ya no chocan contra la PK. |
 | Empleado sin `fecha_ingreso` al crear | `d2_cabecera_vacacion.fecha_proceso = hoy`. |
 | Editar empleado y **no** enviar campos personales | Se conservan (merge `?? $emp->campo`). |
 | Enviar `banco = ""` en update | `banco` pasa a `null` (RN-17). |
-| `destroy` sobre un empleado ya INACTIVO | Idempotente: queda INACTIVO; no toca `estado_puesto` (a diferencia de `update`). |
+| `destroy` sobre un empleado ya INACTIVO | Idempotente: queda INACTIVO + `estado_puesto = DISPONIBLE` + auditoría `DESACTIVAR` (2026-09-01). |
 | Subir foto > 2 MB | 422 (`max:2048` KB). |
 | PDF de sustituta que no es PDF real pero tiene extensión `.pdf` | `mimes:pdf` valida por MIME; se rechaza si el MIME no es PDF. |
 | Dos períodos de teletrabajo solapados | Ambos se guardan; spec 03 decide validez en marcación (basta con que hoy caiga en alguno). |
-| `eliminarDocSustituta` deja `tiene_persona_sustituta = true` | Sí (deuda §10) — el flag queda "encendido" sin documento. |
+| `eliminarDocSustituta` | Limpia los 4 campos de sustituta juntos (2026-09-01) — el flag ya no queda "encendido" sin documento. |
 
 ---
 
@@ -484,15 +497,21 @@ error. Campos numéricos que llegan como número desde la BD: `String(val ?? '')
    implementación). Cerrados con `$this->requireRole($request, self::ROLES_ADMIN)` al inicio de cada
    método (gap fuera del alcance de la auditoría de seguridad del 2026-08-17; ver CLAUDE.md
    §"Gaps encontrados y cerrados el 2026-09-01").
-2. **`destroy` no audita** y no fuerza `estado_puesto = DISPONIBLE` (incoherente con `update`). *(abierto)*
-3. **`eliminarDocSustituta`** no apaga `tiene_persona_sustituta` ni limpia `sustituta_fecha_caducidad`.
-4. **`importarDistributivo`** no es transaccional ni audita; usa índices de columna fijos (0 y 9)
-   frágiles ante cambios del CSV.
-5. **`generarIdEmp`** asume que `id_emp` es numérico convertible; sin bloqueo/transacción hay riesgo
-   de colisión con altas concurrentes.
-6. **`jornada_id` y `id_jornada`** coexisten; el código escribe ambas — revisar cuál usa realmente
-   el cálculo de asistencia (spec 03).
-7. **`departamentos()`** en este controlador no excluye el 999 (sí lo hace `Admin/DepartamentoController`).
+2. ✅ **RESUELTO (2026-09-01)** — `destroy` ahora audita `DESACTIVAR` y fuerza
+   `estado_puesto = DISPONIBLE` (coherente con `update`).
+3. ✅ **RESUELTO (2026-09-01)** — `eliminarDocSustituta` limpia los 4 campos de sustituta juntos
+   (`sustituta_alfresco_id`, `sustituta_nombre_archivo`, `tiene_persona_sustituta`,
+   `sustituta_fecha_caducidad`).
+4. ✅ **RESUELTO (2026-09-02)** — `importarDistributivo`: ahora transaccional
+   (`DB::beginTransaction`/`commit`/`rollBack`), audita `IMPORTACION_DISTRIBUTIVO`, y las dos columnas
+   homónimas "PARTIDA INDIVIDUAL" se resuelven con `array_keys($header, ...)` + 422 si no aparecen
+   (antes índices fijos 0 y 9).
+5. ✅ **RESUELTO (2026-09-01)** — `Empleado::generarSiguienteId()` (nuevo) con `pg_advisory_xact_lock()`
+   dentro de la transacción de `store()`; también usado por `ImportacionController::importar()`.
+6. ✅ **RESUELTO (2026-09-01)** — `jornada_id` dejó de escribirse en `store()`/`update()` (era un
+   duplicado muerto de `id_jornada`, que es el que alimenta la relación `jornada()` usada en Permisos
+   / Horas Extras). La columna sigue en BD (sin cambio de schema), solo se dejó de escribir el `null`.
+7. ✅ **RESUELTO (2026-09-01)** — `EmpleadoController::departamentos()` ahora excluye el 999.
 
 ---
 
@@ -512,8 +531,8 @@ error. Campos numéricos que llegan como número desde la BD: `String(val ?? '')
 
 ## 12. Preguntas abiertas
 
-- ~~¿Cerrar el acceso por rol a los sub-recursos (foto/hijos/sustituta/teletrabajo)?~~ ✅ hecho 2026-09-01.
-- ¿`destroy` debería registrar auditoría `DESACTIVAR` y pedir `motivo_salida`?
-- ¿Unificar `jornada_id` / `id_jornada` en una sola columna?
+- ~~¿Cerrar los sub-recursos / auditar `destroy` / unificar `jornada_id`?~~ ✅ hechos 2026-09-01.
+- ¿`destroy` debería además pedir `motivo_salida` (hoy solo audita el cambio de estado)?
+- ¿Eliminar de la BD la columna `jornada_id` ya muerta (requiere migración)?
 - ¿La importación de distributivo debería fusionarse con la importación masiva de la spec 02 (que ya
   cubre estos campos) y deprecarse?

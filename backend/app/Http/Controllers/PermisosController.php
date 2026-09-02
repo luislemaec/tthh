@@ -164,9 +164,14 @@ class PermisosController extends Controller
             $query->where("descontable", $request->descontable);
         }
 
-        // Export si se solicita
+        // Export si se solicita — exige rango de fechas para no traer el historial
+        // completo de permisos de la institución de una sola vez (mismo criterio que
+        // el resto de reportes del sistema, ej. ReportesController).
         if ($request->filled('formato')) {
-            $items = $query->get();
+            if (!$request->filled('fecha_desde') || !$request->filled('fecha_hasta')) {
+                return response()->json(['message' => 'Para exportar debes indicar fecha_desde y fecha_hasta.'], 422);
+            }
+            $items = $query->limit(5000)->get();
             return $this->exportarPermisosArchivo($items, $request->formato, $request);
         }
 
@@ -332,6 +337,11 @@ class PermisosController extends Controller
             "secuencial"     => 0,
             "principal"      => 0,
         ]);
+
+        AuditoriaService::log('dbo.d2_permiso', $permiso->getKey(), 'SOLICITAR',
+            null,
+            ['fecha_desde' => $permiso->fecha_desde, 'fecha_hasta' => $permiso->fecha_hasta, 'razon' => $permiso->razon, 'descontable' => $permiso->descontable],
+            $request, "Solicitud de permiso: {$this->nombreEmpleadoPermiso($permiso)}");
 
         return response()->json($permiso->load(["empleado", "razonPermiso"]), 201);
     }

@@ -143,7 +143,7 @@ class PlanificacionVacController extends Controller
             'anio'    => 'required|integer',
             'periodos'=> 'required|array|min:1|max:4',
             'periodos.*.fecha_inicial' => 'nullable|date',
-            'periodos.*.fecha_final'   => 'nullable|date|nullable|after_or_equal:periodos.*.fecha_inicial',
+            'periodos.*.fecha_final'   => 'nullable|date|after_or_equal:periodos.*.fecha_inicial',
         ]);
 
         $emp = $request->user();

@@ -107,7 +107,7 @@ num_hijos_mayores
 |---|---|
 | `identificacion` | Obligatorio. Cédula; al **crear** se rellena a 10 dígitos con ceros a la izquierda (`str_pad`). Al **actualizar** se busca tal cual viene. |
 | `nombre_emp`, `apellido_emp` | Obligatorios. Se guardan en MAYÚSCULAS. |
-| `id_depto` | Obligatorio. Se castea a entero. **No se valida** que el departamento exista (§9). |
+| `id_depto` | Obligatorio, entero. **Validado (2026-09-01)**: `preview()` e `importar()` verifican que exista en `ad_departamento` y no sea `999` — antes se aceptaba cualquier número en silencio. |
 | `estado` | Default `ACTIVO`. MAYÚSCULAS. |
 | `estado_puesto` | Default `OCUPADO`. MAYÚSCULAS. |
 | `tipo_contrato` | Normalizado: tolera tildes / mayúsculas y "CODIGO DE TRABAJO" (sin "DEL"). Resultado exacto: `LOSEP` o `CODIGO DEL TRABAJO`. Valor no reconocible → **error de fila** (aborta la transacción, §5.3). Vacío → `null`. |
@@ -160,9 +160,10 @@ num_hijos_mayores
   - **Upsert:**
     - Cédula existe → `$empleado->update($campos)` (sobrescribe **todos** los campos, incluidos los
       que quedaron `null`). `actualizados++`. Si viene `email`, se rota.
-    - Cédula nueva → `id_emp = str_pad(max(id_emp)+1, 5, '0')`, `identificacion` rellenada a 10
-      dígitos, `password = bcrypt(identificacion_original)`, `Empleado::create()`. Se crea
-      `d2_cabecera_vacacion` (saldo 0). Si viene `email`, se crea `ACTIVO`. `importados++`.
+    - Cédula nueva → `id_emp = Empleado::generarSiguienteId()` (con `pg_advisory_xact_lock()`,
+      dentro de la transacción — 2026-09-01; antes `max(id_emp)+1` sin bloqueo), `identificacion`
+      rellenada a 10 dígitos, `password = bcrypt(identificacion_original)`, `Empleado::create()`. Se
+      crea `d2_cabecera_vacacion` (saldo 0). Si viene `email`, se crea `ACTIVO`. `importados++`.
 - **RN-02.8** — Si se lanza una excepción **fuera** del try por fila (p. ej. error de BD irrecuperable)
   → `DB::rollBack()` y respuesta `{ message: "Error: ..." }` HTTP 500. **Nada se guarda.**
 - **RN-02.9** — Al terminar el bucle → `DB::commit()`.
@@ -214,11 +215,11 @@ La vista debe recordar al usuario formatear como Texto antes de pegar.
 |---|---|
 | CSV con delimitador `;` (Excel español) | **No soportado** — `fgetcsv(..., ',')` fijo. Las filas quedarán con "número de columnas incorrecto". *(Contrasta con el importador de Tecnología, que autodetecta `;`.)* |
 | Fila totalmente vacía | Nº de columnas ≠ cabeceras → error de fila, se salta. |
-| `id_depto` de un departamento inexistente o el 999 | Se guarda igual (no se valida FK). Riesgo de dejar empleados "huérfanos" o dentro del 999. |
+| `id_depto` de un departamento inexistente o el 999 | Fila rechazada (2026-09-01) — se valida contra `ad_departamento` y se descarta el 999. |
 | Cédula duplicada **dentro del mismo CSV** | La segunda aparición hace `update` sobre lo que dejó la primera (se procesan en orden). |
 | `sueldo = "1.500,00"` (formato es-EC) | `(float)"1.500,00"` = `1.5` → dato incorrecto silencioso. Debe venir con punto decimal. |
 | `email` inválido | **No se valida** (a diferencia de spec 01 que exige `email`). Se inserta tal cual. |
-| Muchas filas (cientos) | Todo en una transacción + `max(id_emp)` consultado por cada alta → O(n) queries; sin bloqueo, riesgo teórico de colisión de `id_emp` con altas concurrentes. |
+| Muchas filas (cientos) | Todo en una transacción; `id_emp` de cada alta vía `Empleado::generarSiguienteId()` (`pg_advisory_xact_lock`, 2026-09-01) — sin colisión con altas concurrentes. |
 | Empleado `es_externo = true` cuya cédula está en el CSV | **Se omite** con error legible (2026-09-01). Antes se actualizaba igual. |
 
 ---
@@ -231,15 +232,16 @@ La vista debe recordar al usuario formatear como Texto antes de pegar.
    `nom_auditoria_log` (conteo + nombre de archivo).
 3. ✅ **RESUELTO (2026-09-01)** — No respetaba `es_externo`: las filas con cédula de funcionario
    externo se **omiten** con error legible.
-4. **Sin validación de `id_depto`** contra `ad_departamento` ni exclusión del 999. *(abierto)*
-5. **Delimitador fijo `,`** — no autodetecta `;`; Excel en español falla.
-6. **`puede_solicitar_vehiculo` y `acumula_decimos`** usan `(bool)` del string: `"0"` → `false`
-   (ok, `"0"` es falsy en PHP), pero `"NO"` → `true`. Inconsistente con los `tiene_*` que comparan
-   `=== 'SI'`.
-7. **`sueldo` sin normalización de separador decimal** — `"1.500,00"` se corrompe.
-8. **`max(id_emp)` por fila** dentro de la transacción — ineficiente y sin bloqueo (`SELECT ... FOR UPDATE`).
-9. El `update` de una cédula existente **sobrescribe con `null`** los campos ausentes — es el diseño
-   declarado ("no hace merge"), pero es fácil borrar datos sin querer si el CSV no trae todas las columnas.
+4. ✅ **RESUELTO (2026-09-01)** — `id_depto` se valida contra `ad_departamento` y se rechaza el 999,
+   tanto en `preview()` como en `importar()`.
+5. **Delimitador fijo `,`** — no autodetecta `;`; Excel en español falla. *(abierto — P3)*
+6. **`puede_solicitar_vehiculo` y `acumula_decimos`** usan `(bool)` del string: `"NO"` → `true`.
+   Inconsistente con los `tiene_*` que comparan `=== 'SI'`. *(abierto — P3)*
+7. **`sueldo` sin normalización de separador decimal** — `"1.500,00"` se corrompe. *(abierto — P3)*
+8. ✅ **RESUELTO (2026-09-01)** — `id_emp` de cada alta vía `Empleado::generarSiguienteId()`
+   (`pg_advisory_xact_lock`), no `max(id_emp)+1` sin bloqueo.
+9. El `update` de una cédula existente **sobrescribe con `null`** los campos ausentes — diseño
+   declarado ("no hace merge"). *(abierto — riesgo aceptado)*
 
 ---
 

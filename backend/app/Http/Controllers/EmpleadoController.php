@@ -80,14 +80,6 @@ class EmpleadoController extends Controller
         return response()->json($data);
     }
 
-    // Generar id_emp correlativo
-    private function generarIdEmp(): string
-    {
-        $ultimo = Empleado::orderByRaw("id_emp DESC")->value("id_emp");
-        $numero = $ultimo ? ((int) $ultimo) + 1 : 1;
-        return str_pad($numero, 5, "0", STR_PAD_LEFT);
-    }
-
     // POST /api/empleados
     public function store(Request $request)
     {
@@ -129,15 +121,18 @@ class EmpleadoController extends Controller
 
         $usuario = auth()->user()->id_emp ?? null;
 
+        // Generación de id_emp + creación envueltas en una transacción: el advisory
+        // lock de Empleado::generarSiguienteId() solo sirve mientras dure la
+        // transacción que lo pidió (ver comentario en el modelo).
+        $emp = DB::transaction(function () use ($request, $usuario) {
         $emp = Empleado::create([
-            "id_emp"         => $this->generarIdEmp(),
+            "id_emp"         => Empleado::generarSiguienteId(),
             "identificacion" => $request->identificacion,
             "nombre_emp"     => strtoupper($request->nombre_emp),
             "apellido_emp"   => strtoupper($request->apellido_emp),
             "id_depto"       => $request->id_depto,
             "estado"         => strtoupper($request->estado ?? "ACTIVO"),
             "tipo_contrato"      => $request->tipo_contrato,
-            "jornada_id"     => $request->jornada_id,
             "fecha_ingreso"  => $request->fecha_ingreso,
             "sueldo"         => $request->sueldo,
             "nivel"          => $request->nivel,
@@ -208,6 +203,9 @@ class EmpleadoController extends Controller
                 ->where("id_emp", "!=", $emp->id_emp)
                 ->update(["estado_puesto" => "OCUPADO"]);
         }
+
+            return $emp;
+        });
 
         AuditoriaService::log('dbo.ad_empleado', $emp->id_emp, 'CREAR',
             null,
@@ -285,7 +283,6 @@ class EmpleadoController extends Controller
             "id_depto"              => $request->id_depto               ?? $emp->id_depto,
             "estado"                => $request->filled("estado")        ? strtoupper($request->estado)       : $emp->estado,
             "tipo_contrato"         => $request->tipo_contrato           ?? $emp->tipo_contrato,
-            "jornada_id"            => $request->jornada_id              ?? $emp->jornada_id,
             "fecha_ingreso"         => $request->fecha_ingreso           ?? $emp->fecha_ingreso,
             "fecha_salida"          => $request->fecha_salida            ?? $emp->fecha_salida,
             "sueldo"                => $request->sueldo                  ?? $emp->sueldo,
@@ -388,7 +385,19 @@ class EmpleadoController extends Controller
     {
         $this->requireRole($request, self::ROLES_ADMIN);
         $emp = Empleado::findOrFail($id);
-        $emp->update(["estado" => "INACTIVO"]);
+
+        $anterior = ['estado' => $emp->estado, 'estado_puesto' => $emp->estado_puesto];
+
+        // estado_puesto=DISPONIBLE es lo que hace que la partida aparezca en
+        // partidasVacantes() para reasignar — antes solo lo hacía update(), no destroy(),
+        // dejando la partida de un empleado desactivado por acá "atascada" como OCUPADO.
+        $emp->update(["estado" => "INACTIVO", "estado_puesto" => "DISPONIBLE"]);
+
+        AuditoriaService::log('dbo.ad_empleado', $emp->id_emp, 'DESACTIVAR',
+            $anterior,
+            ['estado' => 'INACTIVO', 'estado_puesto' => 'DISPONIBLE'],
+            $request, 'Desactivación de empleado: ' . trim($emp->apellido_emp . ' ' . $emp->nombre_emp));
+
         return response()->json(["message" => "Empleado desactivado correctamente."]);
     }
 
@@ -463,53 +472,80 @@ class EmpleadoController extends Controller
         // Normalizar nombres de columna
         $header = array_map(fn($h) => strtoupper(trim(preg_replace('/\s+/', ' ', $h))), $header);
 
+        // Hay dos columnas con el mismo nombre "PARTIDA INDIVIDUAL" en el CSV (la corta y la
+        // larga/presupuestaria) — array_combine() con el header se queda solo con la última,
+        // así que hace falta ubicar ambas posiciones explícitamente en vez de asumir índices
+        // fijos (0, 9) que se rompen en silencio si el CSV cambia de orden de columnas.
+        $posicionesPartida = array_keys($header, 'PARTIDA INDIVIDUAL');
+        if (count($posicionesPartida) < 2) {
+            fclose($handle);
+            return response()->json([
+                'message' => 'El CSV debe tener dos columnas "PARTIDA INDIVIDUAL" (partida corta y presupuestaria). No se encontraron ambas — revisa el encabezado del archivo.',
+            ], 422);
+        }
+        [$idxPartidaIndividual, $idxPartidaPresupuestaria] = $posicionesPartida;
+
         $actualizados = 0;
         $noEncontrados = [];
         $errores = [];
 
-        while (($row = fgetcsv($handle, 0, ',')) !== false) {
-            if (count($row) < 12) continue;
+        DB::beginTransaction();
+        try {
+            while (($row = fgetcsv($handle, 0, ',')) !== false) {
+                if (count($row) < 12) continue;
 
-            $fila = array_combine(array_slice($header, 0, count($row)), $row);
+                $fila = array_combine(array_slice($header, 0, count($row)), $row);
 
-            // La cédula puede venir sin ceros iniciales — rellenar a 10 dígitos
-            $cedula = str_pad(trim($fila['IDENTIFICACION'] ?? ''), 10, '0', STR_PAD_LEFT);
-            if (empty($cedula) || $cedula === '0000000000') continue;
+                // La cédula puede venir sin ceros iniciales — rellenar a 10 dígitos
+                $cedula = str_pad(trim($fila['IDENTIFICACION'] ?? ''), 10, '0', STR_PAD_LEFT);
+                if (empty($cedula) || $cedula === '0000000000') continue;
 
-            $emp = Empleado::where('identificacion', $cedula)->first();
-            if (!$emp) {
-                $noEncontrados[] = $cedula;
-                continue;
+                $emp = Empleado::where('identificacion', $cedula)->first();
+                if (!$emp) {
+                    $noEncontrados[] = $cedula;
+                    continue;
+                }
+
+                try {
+                    $partida_individual     = isset($row[$idxPartidaIndividual]) ? (int) trim($row[$idxPartidaIndividual]) : $emp->partida_individual;
+                    $partida_presupuestaria = isset($row[$idxPartidaPresupuestaria]) ? trim($row[$idxPartidaPresupuestaria]) : $emp->partida_presupuestaria;
+
+                    $acumulaFondos = isset($fila['ACUMULA FONDOS DE RESERVA'])
+                        ? (int) trim($fila['ACUMULA FONDOS DE RESERVA'])
+                        : $emp->acumula_fondos_reserva;
+
+                    $emp->update([
+                        'nivel'                   => isset($fila['GRADO'])                  ? (int) trim($fila['GRADO'])                  : $emp->nivel,
+                        'grupo_ocupacional'       => isset($fila['GRUPO OCUPACIONAL'])      ? trim($fila['GRUPO OCUPACIONAL'])            : $emp->grupo_ocupacional,
+                        'proceso_institucional'   => isset($fila['PROCESO INSTITUCIONAL'])  ? trim($fila['PROCESO INSTITUCIONAL'])        : $emp->proceso_institucional,
+                        'partida_individual'      => $partida_individual,
+                        'partida_presupuestaria'  => $partida_presupuestaria,
+                        'estado_puesto'           => isset($fila['ESTADO DEL PUESTO'])      ? trim($fila['ESTADO DEL PUESTO'])            : $emp->estado_puesto,
+                        'acumula_fondos_reserva'  => $acumulaFondos,
+                        'acumula_decimo_tercero'  => isset($fila['ACUMULA DÉCIMO TERCERO']) ? (strtoupper(trim($fila['ACUMULA DÉCIMO TERCERO'])) === 'SI') : $emp->acumula_decimo_tercero,
+                        'acumula_decimo_cuarto'   => isset($fila['ACUMULA DÉCIMO CUARTO'])  ? (strtoupper(trim($fila['ACUMULA DÉCIMO CUARTO']))  === 'SI') : $emp->acumula_decimo_cuarto,
+                    ]);
+                    $actualizados++;
+                } catch (\Exception $e) {
+                    $errores[] = $cedula . ': ' . $e->getMessage();
+                }
             }
 
-            try {
-                // Columna 0: partida_individual (corta), columna 9: partida_presupuestaria (larga)
-                // Hay dos columnas con el mismo nombre "PARTIDA INDIVIDUAL" en el CSV
-                $partida_individual     = isset($row[0]) ? (int) trim($row[0]) : $emp->partida_individual;
-                $partida_presupuestaria = isset($row[9]) ? trim($row[9])       : $emp->partida_presupuestaria;
-
-                $acumulaFondos = isset($fila['ACUMULA FONDOS DE RESERVA'])
-                    ? (int) trim($fila['ACUMULA FONDOS DE RESERVA'])
-                    : $emp->acumula_fondos_reserva;
-
-                $emp->update([
-                    'nivel'                   => isset($fila['GRADO'])                  ? (int) trim($fila['GRADO'])                  : $emp->nivel,
-                    'grupo_ocupacional'       => isset($fila['GRUPO OCUPACIONAL'])      ? trim($fila['GRUPO OCUPACIONAL'])            : $emp->grupo_ocupacional,
-                    'proceso_institucional'   => isset($fila['PROCESO INSTITUCIONAL'])  ? trim($fila['PROCESO INSTITUCIONAL'])        : $emp->proceso_institucional,
-                    'partida_individual'      => $partida_individual,
-                    'partida_presupuestaria'  => $partida_presupuestaria,
-                    'estado_puesto'           => isset($fila['ESTADO DEL PUESTO'])      ? trim($fila['ESTADO DEL PUESTO'])            : $emp->estado_puesto,
-                    'acumula_fondos_reserva'  => $acumulaFondos,
-                    'acumula_decimo_tercero'  => isset($fila['ACUMULA DÉCIMO TERCERO']) ? (strtoupper(trim($fila['ACUMULA DÉCIMO TERCERO'])) === 'SI') : $emp->acumula_decimo_tercero,
-                    'acumula_decimo_cuarto'   => isset($fila['ACUMULA DÉCIMO CUARTO'])  ? (strtoupper(trim($fila['ACUMULA DÉCIMO CUARTO']))  === 'SI') : $emp->acumula_decimo_cuarto,
-                ]);
-                $actualizados++;
-            } catch (\Exception $e) {
-                $errores[] = $cedula . ': ' . $e->getMessage();
-            }
+            fclose($handle);
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            fclose($handle);
+            return response()->json(['message' => 'Error al procesar el archivo: ' . $e->getMessage()], 500);
         }
 
-        fclose($handle);
+        AuditoriaService::log(
+            'dbo.ad_empleado', 0, 'IMPORTACION_DISTRIBUTIVO',
+            null,
+            ['actualizados' => $actualizados, 'no_encontrados' => count($noEncontrados), 'errores' => count($errores), 'archivo' => $request->file('archivo')->getClientOriginalName()],
+            $request,
+            "Importación de distributivo: {$actualizados} actualizados, " . count($noEncontrados) . " no encontrados, " . count($errores) . " errores"
+        );
 
         return response()->json([
             'message'        => "Importación completada.",
@@ -522,7 +558,8 @@ class EmpleadoController extends Controller
     // GET /api/departamentos
     public function departamentos()
     {
-        $deps = Departamento::orderBy("nombre_depto")->get(["id_depto", "nombre_depto"]);
+        $deps = Departamento::where('id_depto', '!=', 999)
+            ->orderBy("nombre_depto")->get(["id_depto", "nombre_depto"]);
         return response()->json($deps);
     }
 
@@ -726,8 +763,10 @@ class EmpleadoController extends Controller
                 ->delete("{$this->alfrescoBase}/nodes/{$emp->sustituta_alfresco_id}");
         }
         $emp->update([
-            'sustituta_alfresco_id'    => null,
-            'sustituta_nombre_archivo' => null,
+            'sustituta_alfresco_id'     => null,
+            'sustituta_nombre_archivo'  => null,
+            'tiene_persona_sustituta'   => false,
+            'sustituta_fecha_caducidad' => null,
         ]);
         return response()->json(['message' => 'Documento eliminado.']);
     }

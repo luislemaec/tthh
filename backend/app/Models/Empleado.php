@@ -3,11 +3,28 @@ namespace App\Models;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\HasApiTokens;
 
 class Empleado extends Authenticatable
 {
     use HasApiTokens, Notifiable;
+
+    // Genera el siguiente id_emp correlativo. Usa un advisory lock de Postgres
+    // (pg_advisory_xact_lock) para serializar la generación entre transacciones
+    // concurrentes — sin esto, dos altas simultáneas (formulario individual e
+    // importación masiva, o dos importaciones a la vez) pueden leer el mismo
+    // "último id_emp" y calcular el mismo siguiente número, chocando contra la
+    // PK al insertar. DEBE llamarse dentro de una transacción activa
+    // (DB::transaction()/beginTransaction()) — el lock se libera solo al
+    // terminar esa transacción (commit o rollback), nunca antes.
+    public static function generarSiguienteId(): string
+    {
+        DB::statement('SELECT pg_advisory_xact_lock(741852963)');
+        $ultimo = self::orderByRaw('id_emp DESC')->value('id_emp');
+        $numero = $ultimo ? ((int) $ultimo) + 1 : 1;
+        return str_pad($numero, 5, '0', STR_PAD_LEFT);
+    }
 
     protected $connection   = "pgsql";
     protected $table        = "dbo.ad_empleado";

@@ -526,15 +526,17 @@ en CLAUDE.md §`views/planificacion/`.
 7. ✅ **RESUELTO (2026-09-01)** — `store`/`replanificar` de planificación no validaban contra el
    saldo: ahora comparan `total_dias` contra `SaldoVacacionesService` (equivalente a
    `dias_disponibles`) y rechazan con 422 si excede. El tope de 30 días se mantiene como segundo límite.
-8. **Regla de validación con typo** en `PlanificacionVacController::store`:
-   `'periodos.*.fecha_final' => 'nullable|date|nullable|after_or_equal:periodos.*.fecha_inicial'`
-   (`nullable` repetido).
-9. **`replanificar` valida solapamiento sobre `$request->periodos`** (todos, incluidos los vacíos),
-   igual que `store` — `haysolapamiento` filtra los vacíos internamente, ok, pero la asimetría entre
-   "validar contra `$request->periodos`" y "calcular total sobre `$periodosValidos`" es frágil.
+8. ✅ **RESUELTO (2026-09-02)** — `nullable` duplicado en la regla `'periodos.*.fecha_final'` de
+   `PlanificacionVacController::store` eliminado. Nota (CLAUDE.md): no se halló evidencia de que el
+   duplicado realmente rompiera `after_or_equal`; si la validación de fechas de períodos sigue sin
+   comportarse como se espera, el problema está en otro punto.
+9. **`replanificar` valida solapamiento sobre `$request->periodos`** — evaluado (2026-09-01): **no es
+   un bug**. `haysolapamiento()` filtra los períodos vacíos internamente, así que da el mismo
+   resultado con `$request->periodos` o con `$periodosValidos`. Mismo patrón que `store()`,
+   consistente en todo el archivo.
 10. **`negar`/`destroy` de vacaciones no revierten saldo** — correcto (solo operan sobre `PENDIENTE`);
     la reversa de un `APROBADO` ya existe vía `anular()` (§12.3).
-11. **`index` de vacaciones sin export** (a diferencia de permisos, que sí exporta Excel/PDF). *(abierto)*
+11. **`index` de vacaciones sin export Excel/PDF** — gap de feature (no bug); pendiente para cuando se priorice.
 
 ---
 
@@ -557,6 +559,7 @@ en CLAUDE.md §`views/planificacion/`.
 ## 14. Preguntas abiertas
 
 - ~~¿Servicio único de saldo / tasa CT / anular vacaciones / auditoría de planificación / cascada de supervisores / validación contra saldo?~~ ✅ los 6 hechos el 2026-09-01 (§12.1–7).
-- ¿Corregir el typo `nullable` repetido y la asimetría de `replanificar`? (§12.8–9, menores)
+- ~~¿Corregir el typo `nullable` repetido?~~ ✅ hecho 2026-09-02 (§12.8).
+- ~~¿Alinear `replanificar`?~~ evaluado — no es un bug (§12.9).
 - ¿Definir el comportamiento de la UI para modalidades ≠ Nombramiento Definitivo con saldo negativo
   (hoy muestran "0" sin explicación y quedan bloqueadas)? (§5.4 / RN-05.12)

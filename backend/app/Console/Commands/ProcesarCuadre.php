@@ -67,15 +67,19 @@ class ProcesarCuadre extends Command
                 ->orderBy('fecha_hora')
                 ->get();
 
-            // Buscar por concepto; fallback por posición
-            $mEntrada  = $marcaciones->firstWhere('concepto', 'ENTRADA')
-                      ?? $marcaciones->get(0);
-            $mSalLunch = $marcaciones->firstWhere('concepto', 'SALIDA AL LUNCH')
-                      ?? $marcaciones->get(1);
-            $mEntLunch = $marcaciones->firstWhere('concepto', 'ENTRADA DEL LUNCH')
-                      ?? $marcaciones->get(2);
-            $mSalida   = $marcaciones->firstWhere('concepto', 'SALIDA')
-                      ?? $marcaciones->get(3);
+            // Buscar por concepto exacto — antes, si el concepto no calzaba (dato mal
+            // etiquetado), caía a la posición del array (get(0), get(1)...) y podía
+            // atribuir una marcación al concepto equivocado (ej. tomar una SALIDA como
+            // si fuera la ENTRADA). Si no calza ningún concepto esperado, se trata como
+            // si no hubiera marcado ese concepto (null) en vez de adivinar.
+            $mEntrada  = $marcaciones->firstWhere('concepto', 'ENTRADA');
+            $mSalLunch = $marcaciones->firstWhere('concepto', 'SALIDA AL LUNCH');
+            $mEntLunch = $marcaciones->firstWhere('concepto', 'ENTRADA DEL LUNCH');
+            $mSalida   = $marcaciones->firstWhere('concepto', 'SALIDA');
+
+            if ($marcaciones->isNotEmpty() && !$mEntrada && !$mSalLunch && !$mEntLunch && !$mSalida) {
+                $this->warn("  {$emp->id_emp} ({$fecha->toDateString()}): tiene marcaciones ese día pero ninguna coincide con los conceptos esperados — revisar datos en sg_control_persona.");
+            }
 
             // Horas reales en decimal
             $rEntrada  = $mEntrada  ? $this->toDecimalHours($mEntrada->fecha_hora)  : null;
@@ -248,8 +252,25 @@ class ProcesarCuadre extends Command
                 ]
             );
 
+            // Marcar como procesadas las marcaciones de este día ya incorporadas al cuadre.
+            // Antes 'procesado' se insertaba en 'NO' (ZktecoController/AsistenciaController)
+            // y nunca pasaba a 'SI' en ningún punto del código — quedaba decorativo.
+            if ($marcaciones->isNotEmpty()) {
+                DB::table('dbo.sg_control_persona')
+                    ->whereIn('secuencial', $marcaciones->pluck('secuencial'))
+                    ->update(['procesado' => 'SI']);
+            }
+
             $procesados++;
         }
+
+        // Timestamp de la última corrida exitosa — permite detectar en el Dashboard si el
+        // cron de `schedule:run` dejó de correr (nadie se entera hoy si el cuadre nocturno
+        // simplemente no corrió: no hay error, solo silencio).
+        DB::table('dbo.d2_configuracion')->updateOrInsert(
+            ['concepto' => 'ULTIMO_CUADRE_PROCESADO'],
+            ['valor' => now()->toDateTimeString(), 'descripcion' => 'Última vez que corrió procesar:cuadre (automático, no editar a mano)']
+        );
 
         $this->info("Cuadre completado: {$procesados} empleados procesados.");
         return Command::SUCCESS;

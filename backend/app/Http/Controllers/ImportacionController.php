@@ -101,6 +101,11 @@ class ImportacionController extends Controller
         $cabeceras = null;
         $fila_num  = 0;
 
+        // 999 = placeholder de sistema, nunca un depto real asignable desde el CSV
+        $deptosValidos = DB::table('dbo.ad_departamento')
+            ->where('id_depto', '!=', 999)
+            ->pluck('id_depto')->map(fn ($d) => (int) $d)->all();
+
         while (($fila = fgetcsv($handle, 2000, ',')) !== false) {
             if ($fila_num === 0) {
                 $cabeceras = array_map('trim', $fila);
@@ -116,7 +121,11 @@ class ImportacionController extends Controller
             if (empty($datos['identificacion'])) $errores[] = "Fila $fila_num: identificacion requerida";
             if (empty($datos['nombre_emp']))      $errores[] = "Fila $fila_num: nombre_emp requerido";
             if (empty($datos['apellido_emp']))    $errores[] = "Fila $fila_num: apellido_emp requerido";
-            if (empty($datos['id_depto']))        $errores[] = "Fila $fila_num: id_depto requerido";
+            if (empty($datos['id_depto'])) {
+                $errores[] = "Fila $fila_num: id_depto requerido";
+            } elseif (!in_array((int) $datos['id_depto'], $deptosValidos, true)) {
+                $errores[] = "Fila $fila_num: id_depto '{$datos['id_depto']}' no existe en Departamentos";
+            }
             $datos['_existe'] = Empleado::where('identificacion', $datos['identificacion'])->exists();
             $filas[] = $datos;
             $fila_num++;
@@ -153,6 +162,11 @@ class ImportacionController extends Controller
         $catGrupoPrioritario = $mapaCatalogo('dbo.ad_grupo_prioritario');
         $catTipoDiscapacidad = $mapaCatalogo('dbo.ad_tipo_discapacidad');
         $catEnfermedad       = $mapaCatalogo('dbo.ad_enfermedad_catastrofica');
+
+        // 999 = placeholder de sistema, nunca un depto real asignable desde el CSV
+        $deptosValidos = DB::table('dbo.ad_departamento')
+            ->where('id_depto', '!=', 999)
+            ->pluck('id_depto')->map(fn ($d) => (int) $d)->all();
 
         $buscarCatalogo = function (array $catalogo, ?string $nombre, string $etiqueta, int $filaNum, array &$errores): ?int {
             $nombre = trim((string) $nombre);
@@ -204,6 +218,10 @@ class ImportacionController extends Controller
                 }
                 $d = array_combine($cabeceras, array_map('trim', $fila));
                 try {
+                    if (!in_array((int) ($d['id_depto'] ?? 0), $deptosValidos, true)) {
+                        throw new \Exception("id_depto '{$d['id_depto']}' no existe en Departamentos");
+                    }
+
                     $campos = [
                         'nombre_emp'             => strtoupper($d['nombre_emp']),
                         'apellido_emp'           => strtoupper($d['apellido_emp']),
@@ -269,9 +287,9 @@ class ImportacionController extends Controller
                         }
                         $actualizados++;
                     } else {
-                        $ultimo = Empleado::orderByRaw('id_emp DESC')->value('id_emp');
-                        $numero = $ultimo ? ((int)$ultimo) + 1 : 1;
-                        $id_emp = str_pad($numero, 5, '0', STR_PAD_LEFT);
+                        // Genera vía advisory lock (Empleado::generarSiguienteId()) para no chocar
+                        // con otra importación o un alta individual corriendo al mismo tiempo.
+                        $id_emp = Empleado::generarSiguienteId();
                         $emp = Empleado::create(array_merge($campos, [
                             'id_emp'         => $id_emp,
                             'identificacion' => str_pad($d['identificacion'], 10, '0', STR_PAD_LEFT),

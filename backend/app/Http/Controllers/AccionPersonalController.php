@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use App\Models\AccionPersonal;
 use App\Models\Empleado;
 use App\Models\Configuracion;
+use App\Services\AuditoriaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -130,12 +131,8 @@ class AccionPersonalController extends Controller
     public function index(Request $request)
     {
         $this->requireRole($request, self::ROLES_ADMIN);
-        // Auto-cerrar acciones ACTIVAS con fecha_fin vencida (SUBROGACION, VACACIONES)
-        AccionPersonal::whereIn("tipo_accion", ["SUBROGACION", "VACACIONES"])
-            ->where("estado", "ACTIVO")
-            ->whereNotNull("fecha_fin")
-            ->where("fecha_fin", "<", now()->toDateString())
-            ->update(["estado" => "FINALIZADO", "updated_at" => now()]);
+        // El auto-cierre de acciones vencidas ya NO vive acá — ver comando
+        // cerrar:acciones-vencidas (antes era efecto secundario de este GET).
 
         $paginated = $this->queryFiltrada($request)->paginate($request->get("per_page", 15));
 
@@ -194,7 +191,19 @@ class AccionPersonalController extends Controller
             "propuesto_proceso_inst" => "nullable|string|max:30",
         ]);
 
-        $emp          = Empleado::findOrFail($request->id_emp);
+        $emp = Empleado::findOrFail($request->id_emp);
+
+        // Estado del empleado contra el tipo de acción (ver tabla en CLAUDE.md) — antes
+        // solo lo filtraba el buscador del frontend (ACTIVO vs INACTIVO), la API no lo
+        // exigía: se podía crear una DESTITUCION sobre un empleado ACTIVO, o un INGRESO
+        // sobre uno INACTIVO, llamando directo al endpoint.
+        $estadoRequerido = $request->tipo_accion === 'DESTITUCION' ? 'INACTIVO' : 'ACTIVO';
+        if (strtoupper($emp->estado) !== $estadoRequerido) {
+            return response()->json([
+                'message' => "Para {$request->tipo_accion} el empleado debe estar {$estadoRequerido} (actualmente: {$emp->estado})."
+            ], 422);
+        }
+
         $sinActual    = in_array($request->tipo_accion, ['INGRESO', 'REINGRESO']);
         $propuestoRem = (float) $request->propuesto_remuneracion;
         $actualRem    = $sinActual ? 0.0 : (float) ($request->actual_remuneracion ?? $emp->sueldo ?? 0);
@@ -240,6 +249,11 @@ class AccionPersonalController extends Controller
             "especificacion"            => $request->especificacion ? strtoupper(trim($request->especificacion)) : null,
         ]);
 
+        AuditoriaService::log('dbo.acc_accion_personal', $accion->getKey(), 'CREAR',
+            null,
+            ['tipo_accion' => $accion->tipo_accion, 'id_emp' => $accion->id_emp, 'estado' => $accion->estado],
+            $request, "Creación de acción de personal ({$accion->tipo_accion}) en BORRADOR: " . trim($emp->apellido_emp . ' ' . $emp->nombre_emp));
+
         return response()->json($accion->load(["empleado", "titular"]), 201);
     }
 
@@ -255,17 +269,25 @@ class AccionPersonalController extends Controller
 
         $prefijo = Configuracion::where("concepto", "PREFIJO_ACCION_PERSONAL")->value("valor") ?? "DATH";
         $anio    = Carbon::now()->year;
-        $ultimo  = AccionPersonal::whereYear("created_at", $anio)
-            ->whereNotNull("numero_accion")
-            ->max(DB::raw("CAST(SPLIT_PART(numero_accion, '-', 3) AS INTEGER)")) ?? 0;
-        $numero       = str_pad($ultimo + 1, 5, "0", STR_PAD_LEFT);
-        $numeroAccion = "{$prefijo}-{$anio}-{$numero}";
 
-        $accion->update([
-            'numero_accion' => $numeroAccion,
-            'estado'        => 'ACTIVO',
-            'updated_at'    => now(),
-        ]);
+        // Generación de número + actualización envueltas en transacción: el advisory
+        // lock de AccionPersonal::generarSiguienteNumero() solo sirve mientras dure la
+        // transacción que lo pidió (evita dos "procesar()" concurrentes calculando el
+        // mismo número de documento oficial).
+        $numeroAccion = DB::transaction(function () use ($accion, $prefijo, $anio) {
+            $numeroAccion = AccionPersonal::generarSiguienteNumero($prefijo, $anio);
+            $accion->update([
+                'numero_accion' => $numeroAccion,
+                'estado'        => 'ACTIVO',
+                'updated_at'    => now(),
+            ]);
+            return $numeroAccion;
+        });
+
+        AuditoriaService::log('dbo.acc_accion_personal', $accion->getKey(), 'PROCESAR',
+            ['estado' => 'BORRADOR', 'numero_accion' => null],
+            ['estado' => 'ACTIVO', 'numero_accion' => $numeroAccion],
+            $request, "Procesamiento de acción de personal: {$numeroAccion}");
 
         return response()->json([
             'message' => "Acción procesada con número {$numeroAccion}.",
@@ -294,6 +316,8 @@ class AccionPersonalController extends Controller
             return response()->json(['message' => 'Solo se pueden editar acciones en estado BORRADOR.'], 422);
         }
 
+        $anterior = ['motivacion' => $accion->motivacion, 'fecha_elaboracion' => (string) $accion->fecha_elaboracion];
+
         $accion->update([
             'motivacion'               => $request->motivacion,
             'fecha_elaboracion'        => $request->fecha_elaboracion,
@@ -305,6 +329,11 @@ class AccionPersonalController extends Controller
             'especificacion'           => $request->has('especificacion') ? ($request->especificacion ? strtoupper(trim($request->especificacion)) : null) : $accion->especificacion,
             'updated_at'               => now(),
         ]);
+
+        AuditoriaService::log('dbo.acc_accion_personal', $accion->getKey(), 'EDITAR_BORRADOR',
+            $anterior,
+            ['motivacion' => $accion->motivacion, 'fecha_elaboracion' => (string) $accion->fecha_elaboracion],
+            $request, "Edición de borrador de acción de personal (id {$accion->getKey()})");
 
         return response()->json(['message' => 'Acción actualizada.', 'accion' => $accion]);
     }
@@ -319,12 +348,32 @@ class AccionPersonalController extends Controller
         ]);
         $accion = AccionPersonal::findOrFail($id);
 
+        // Única transición válida: ACTIVO → FINALIZADO/ANULADO. BORRADOR debe pasar por
+        // procesar() primero (antes se podía saltar directo a ANULADO sin número de
+        // documento asignado); FINALIZADO/ANULADO quedan terminales.
+        if ($accion->estado !== 'ACTIVO') {
+            return response()->json([
+                'message' => "No se puede cambiar el estado de una acción en {$accion->estado} (solo se permite desde ACTIVO)."
+            ], 422);
+        }
+        if (!in_array($request->estado, ['FINALIZADO', 'ANULADO'], true)) {
+            return response()->json(['message' => 'Desde ACTIVO solo se puede pasar a FINALIZADO o ANULADO.'], 422);
+        }
+
+        $anterior = ['estado' => $accion->estado];
+
         $data = ["estado" => $request->estado, "updated_at" => now()];
         if ($request->estado === "FINALIZADO" && $request->filled("fecha_fin")) {
             $data["fecha_fin"] = $request->fecha_fin;
         }
 
         $accion->update($data);
+
+        AuditoriaService::log('dbo.acc_accion_personal', $accion->getKey(), 'CAMBIAR_ESTADO',
+            $anterior,
+            ['estado' => $request->estado],
+            $request, "Cambio de estado de acción de personal ({$accion->numero_accion}): {$anterior['estado']} → {$request->estado}");
+
         return response()->json(["message" => "Estado actualizado correctamente."]);
     }
 
@@ -669,6 +718,12 @@ class AccionPersonalController extends Controller
         }
 
         $accion->update(["pdf_firmado" => $upload->json("entry.id")]);
+
+        AuditoriaService::log('dbo.acc_accion_personal', $accion->getKey(), 'SUBIR_FIRMADO',
+            null,
+            ['numero_accion' => $accion->numero_accion, 'archivo' => $nombre],
+            $request, "PDF firmado subido para acción de personal: {$accion->numero_accion}");
+
         return response()->json(["message" => "PDF firmado subido correctamente."]);
     }
 

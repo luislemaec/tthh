@@ -257,6 +257,34 @@ usa; aquí solo el mapa general.
     planificación validada contra saldo real (spec 05 §12).
   - ZKTeco — `registrarContacto()` ya no auto-activa dispositivos; default de `activo` = `false`
     (migración `000105`) (spec 03 §12.7).
+- **Segunda tanda (2026-09-02):**
+  - `ProcesarCuadre` filtra `id_depto != 999` y `es_externo` false/null; turno incompleto →
+    atrasos en 0 + `warn` (spec 03 §12.1–2).
+  - `importarDistributivo` transaccional + auditoría `IMPORTACION_DISTRIBUTIVO` + resolución de
+    columnas por nombre (spec 01 §10.4).
+  - Typo `nullable` en la validación de períodos de planificación (spec 05 §12.8).
+- **Robustez y trazabilidad P2 (2026-09-01):**
+  - `EmpleadoController::destroy` audita `DESACTIVAR` + fuerza `estado_puesto = DISPONIBLE`;
+    `eliminarDocSustituta` limpia los 4 campos; `departamentos()` excluye el 999;
+    `jornada_id` dejó de escribirse (spec 01 §10).
+  - `Empleado::generarSiguienteId()` con `pg_advisory_xact_lock` (usado por `store` e importación) —
+    fin de la colisión de `id_emp` (spec 01/02).
+  - Importación masiva valida `id_depto` contra `ad_departamento` (spec 02 §9.4).
+  - `PermisosController::store` audita `SOLICITAR`; export de permisos con rango obligatorio + tope
+    5000 (spec 04 §10.8–9).
+  - `ProcesarCuadre` marca `procesado = 'SI'`; fallback por posición eliminado (spec 03 §12.3–4).
+  - `AsistenciaController::marcar` falla cerrado ante modalidad desconocida (spec 03 §12.5);
+    `listado()` con techo 2000 (§12.8).
+  - Monitoreo de `schedule:run`: `ULTIMO_CUADRE_PROCESADO` en `d2_configuracion` + banner en el
+    dashboard de Admin/TH si el cuadre lleva > 26 h sin correr (spec 03 §12.6).
+  - **Dejados sin tocar a propósito:** `d2_cuadre_marcacion.ip` fijo; patrón de autorización mixto
+    de `PermisosController`; `index` de vacaciones sin export.
+- **Acciones de Personal (2026-09-03):** `AccionPersonalController` instrumentado con auditoría
+  (`CREAR`/`PROCESAR`/`EDITAR_BORRADOR`/`CAMBIAR_ESTADO`/`SUBIR_FIRMADO`); `store()` valida el estado
+  del empleado según el tipo; `cambiarEstado()` solo permite `ACTIVO → FINALIZADO/ANULADO`;
+  numeración con advisory lock + `DB::transaction()`; auto-cierre movido a
+  `php artisan cerrar:acciones-vencidas` (06:00, incluye COMISION DE SERVICIOS) — ya no es efecto
+  secundario de un GET (spec 06 §11).
 - La auditoría de control de acceso (2026-08-17) se hizo por revisión de código, **sin pruebas en
   vivo por rol**. Pendiente: pasada manual con un usuario de cada rol, especialmente
   `SUPERVISOR` / `CONDUCTOR`. Igual para las correcciones del 2026-09-01 (sin `php -l` ni prueba por rol).
