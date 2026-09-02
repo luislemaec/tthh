@@ -273,19 +273,19 @@ Variable `$generadoPor` = `trim($request->user()->apellido_emp) . ' ' . trim($re
 ## Alfresco (documentos firmados)
 
 - **Configuración por ambiente (`.env`)**: `ALFRESCO_BASE_URL`, `ALFRESCO_USER`, `ALFRESCO_PASS`, `ALFRESCO_SITE` → `config('services.alfresco.*')` en `backend/config/services.php`. Cada uno de los 9 controladores que usa Alfresco (`AccionPersonalController`, `HorasExtrasController`, `EmpleadoController`, `Comisiones/InformeComisionController`, `ReportePlanificacionController`, `CertificadoLaboralController`, `Comisiones/ComisionController`, `PermisosController`, `Tecnologia/MantenimientoController`) lee estos valores en su propio `__construct()` hacia las propiedades `$alfrescoBase`/`$alfrescoUser`/`$alfrescoPass`/`$alfrescoSite` — ya no están hardcodeados. Defaults en `config/services.php` = valores de desarrollo (`192.168.26.38`, `admin`/`admin`, sitio `talentohumano`); en producción se sobrescriben con el `.env` real de ese servidor.
-- Desarrollo: `http://192.168.26.38:8080/alfresco/api/-default-/public/alfresco/versions/1`, `admin/admin`, sitio `talentohumano`
-- Producción: Alfresco propio en instalación (IP/credenciales pendientes de definir); antes de conectar la app en producción hay que crear manualmente el sitio `talentohumano` en esa instancia (las subcarpetas se autogeneran solas, ver `getOrCreateFolderNodeId()` abajo)
+- Desarrollo/pruebas: `http://192.168.26.38:8080/alfresco/api/-default-/public/alfresco/versions/1`, `admin/admin`, sitio `talentohumano`
+- **Producción: sitio `sit` (no `talentohumano`)** — decisión tomada 2026-09-02: como el mismo Alfresco recibe documentos de todos los módulos (Comisiones, Tecnología, etc., no solo Talento Humano), se nombró el sitio de producción `sit` (por el nombre del aplicativo) en vez de `talentohumano`. Confirmado que el nombre del sitio **no está hardcodeado en ningún lado del código** — los 9 controladores leen `config('services.alfresco.site')`, que a su vez lee `ALFRESCO_SITE` del `.env`; alcanza con poner `ALFRESCO_SITE=sit` en el `.env` de producción, sin tocar código. El único sitio nuevo que hay que crear manualmente en la instancia de Alfresco de producción es ese (`sit`) — las subcarpetas se autogeneran solas, ver `getOrCreateFolderNodeId()` abajo.
 - Guardar `entry.id` en DB tras subir; descargar con `GET /nodes/{id}/content`
 - Helpers `getDocLibNodeId()` y `getOrCreateFolderNodeId()` repetidos en cada controlador que usa Alfresco
 
 ### Estructura de carpetas estandarizada
 
+Dentro del sitio configurado (`talentohumano` en pruebas, `sit` en producción):
 ```
-talentohumano/
-  acciones-personal/{año}/
-  horas-extras/{año}/
-  planificacion-vacaciones/{año}/
-  permisos/{año}/{cedula_APELLIDO}/
+acciones-personal/{año}/
+horas-extras/{año}/
+planificacion-vacaciones/{año}/
+permisos/{año}/{cedula_APELLIDO}/
 ```
 
 ### Patrón de subida preferido — `relativePath`
