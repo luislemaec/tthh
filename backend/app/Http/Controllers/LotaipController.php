@@ -12,6 +12,8 @@ use PhpOffice\PhpSpreadsheet\Style\Border;
 
 class LotaipController extends Controller
 {
+    private const ROLES_ADMIN = ['ADMINISTRADOR', 'TALENTO HUMANO'];
+
     private function empleadosBase()
     {
         return DB::table('dbo.ad_empleado as e')
@@ -32,6 +34,8 @@ class LotaipController extends Controller
 
     public function directorio(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
+
         $direccionInstitucional = $this->config('DIRECCION_INSTITUCIONAL');
         $ciudad                 = $this->config('UBICACION_DEFAULT');
         $telefonoInstitucional  = $this->config('TELEFONO_INSTITUCIONAL');
@@ -81,6 +85,8 @@ class LotaipController extends Controller
 
     public function remuneraciones(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
+
         $empleados = $this->empleadosBase()
             ->select(
                 'e.identificacion', 'e.cargo_empleado', 'e.tipo_contrato', 'e.partida_individual',

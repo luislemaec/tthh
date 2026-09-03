@@ -285,6 +285,20 @@ usa; aquí solo el mapa general.
   numeración con advisory lock + `DB::transaction()`; auto-cierre movido a
   `php artisan cerrar:acciones-vencidas` (06:00, incluye COMISION DE SERVICIOS) — ya no es efecto
   secundario de un GET (spec 06 §11).
+- **Reporte de Empleados (2026-09-03):** `ReporteEmpleadosController::resumen`/`index` cerrados con
+  `requireRole(ROLES_ADMIN)` — antes exponían la nómina completa con datos sociales/salud sensibles a
+  cualquier autenticado (spec 11 §11.1). `LotaipController` / `ReportesController` ya estaban cerrados.
+- **Certificados Laborales (2026-09-03):** numeración con `CertificadoLaboral::generarSiguienteNumero()`
+  + advisory lock + `DB::transaction()`; `GET /{id}/pdf` regenera el sin-firmar; `subirFirmado`
+  audita `SUBIR_FIRMADO`; `store` rechaza `es_externo` / depto 999; nuevo `PATCH /{id}/anular`
+  (`estado` ANULADO, migración `000106`) (spec 10 §10).
+- **Liquidación de Vacaciones (2026-09-03):** `LiquidacionVacController::calcularSaldo` migrado a
+  `SaldoVacacionesService` (era la 5ª copia, con tasa CT fija 1.25); `registrar()` valida los motivos
+  con `motivosDisponiblesPara()` (arregla el flujo de comisionado entrante, antes 422); la carga de
+  saldo externo fija `cabecera.fecha_proceso = fecha_evento`, que el servicio usa como corte
+  por-empleado vía `fechaCorteEfectiva()` — **cambio compartido por los 5 consumidores del servicio,
+  pendiente de prueba de humo** en Vacaciones / Reporte / Permisos / Planificación; `registrar()`
+  audita `REGISTRAR`; `generarCertificado()` rechaza motivos sin certificado (spec 07 §11).
 - La auditoría de control de acceso (2026-08-17) se hizo por revisión de código, **sin pruebas en
   vivo por rol**. Pendiente: pasada manual con un usuario de cada rol, especialmente
   `SUPERVISOR` / `CONDUCTOR`. Igual para las correcciones del 2026-09-01 (sin `php -l` ni prueba por rol).

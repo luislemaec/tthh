@@ -192,12 +192,26 @@ class ReportesController extends Controller
             'fecha_hasta' => 'required|date',
         ]);
 
-        // Generar lista de fechas en el rango
+        // Feriados del rango — antes el reporte trataba sábados/domingos/feriados como
+        // "marcación faltante" igual que cualquier día hábil, generando falsos positivos
+        // masivos (nadie marca esos días, no hay nada que justificar).
+        $feriados = DB::table('dbo.d2_lista_fecha')
+            ->whereBetween('fecha', [$request->fecha_desde, $request->fecha_hasta])
+            ->pluck('fecha')
+            ->map(fn($f) => \Carbon\Carbon::parse($f)->toDateString())
+            ->flip();
+
+        // Generar lista de fechas en el rango, excluyendo fines de semana y feriados
         $fechas = [];
         $cursor = new \DateTime($request->fecha_desde);
         $fin    = new \DateTime($request->fecha_hasta);
         while ($cursor <= $fin) {
-            $fechas[] = $cursor->format('Y-m-d');
+            $f          = $cursor->format('Y-m-d');
+            $esFinde    = in_array((int) $cursor->format('N'), [6, 7], true); // 6=sábado, 7=domingo
+            $esFeriado  = isset($feriados[$f]);
+            if (!$esFinde && !$esFeriado) {
+                $fechas[] = $f;
+            }
             $cursor->modify('+1 day');
         }
 
@@ -411,7 +425,7 @@ class ReportesController extends Controller
                 DB::raw("v.fecha_final::date as fecha_hasta"),
                 DB::raw("(v.fecha_final::date - v.fecha_inicial::date + 1) as dias"),
                 DB::raw("'Vacaciones aprobadas' as detalle")
-            )->get();
+            )->limit(5000)->get();
             $resultado = $resultado->concat($rows);
         }
 
@@ -436,7 +450,7 @@ class ReportesController extends Controller
                 DB::raw("p.fecha_hasta::date as fecha_hasta"),
                 DB::raw("CASE WHEN p.todo_dia='SI' THEN (p.fecha_hasta::date - p.fecha_desde::date + 1) ELSE NULL END as dias"),
                 'p.razon as detalle'
-            )->get();
+            )->limit(5000)->get();
             $resultado = $resultado->concat($rows);
         }
 
@@ -461,7 +475,7 @@ class ReportesController extends Controller
                 DB::raw("p.fecha_hasta::date as fecha_hasta"),
                 DB::raw("CASE WHEN p.todo_dia='SI' THEN (p.fecha_hasta::date - p.fecha_desde::date + 1) ELSE NULL END as dias"),
                 'p.razon as detalle'
-            )->get();
+            )->limit(5000)->get();
             $resultado = $resultado->concat($rows);
         }
 
@@ -485,7 +499,7 @@ class ReportesController extends Controller
                 DB::raw("l.fecha_evento::date as fecha_hasta"),
                 DB::raw("NULL::integer as dias"),
                 'l.motivo as detalle'
-            )->get();
+            )->limit(5000)->get();
             $resultado = $resultado->concat($rows);
         }
 

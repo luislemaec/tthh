@@ -164,9 +164,15 @@ crear su planificación de ese año. CRUD: `PeriodoPlanificacionController` (rut
 > Antes: `VacacionesController::calcularSaldoDisponible()`. La fórmula no cambió; solo se movió a un
 > servicio único inyectado por los 4 controladores.
 
-- **RN-05.4** — `fechaCorte = FECHA_CORTE_VACACIONES`; si `fecha_ingreso > fechaCorte` → `fechaCorte = fecha_ingreso`.
+- **RN-05.4 (`fechaCorteEfectiva()` — ampliado 2026-09-03)** — la **más reciente** entre:
+  `FECHA_CORTE_VACACIONES` (global), `fecha_ingreso` (empleado nuevo), y **`cabecera.fecha_proceso`**
+  (nuevo — una carga de saldo puntual posterior al corte global; caso de uso: retorno de comisión,
+  spec 07 §5.6 RN-07.13). Para la gran mayoría de empleados `fecha_proceso` ≈ corte global o
+  `fecha_ingreso`, así que no cambia nada; solo pesa tras una carga de saldo individual reciente.
 - **RN-05.5** — `fechaHasta = hoy`; si el empleado está `INACTIVO` **y** tiene `fecha_salida` →
-  `fechaHasta = fecha_salida` (**el acumulado se congela** en la fecha de salida).
+  `fechaHasta = fecha_salida` (**el acumulado se congela** en la fecha de salida). `calcular()`
+  acepta además un 3º parámetro `$fechaReferencia` para calcular "el saldo como si fuera tal fecha"
+  (lo usa la liquidación de spec 07 con `fecha_evento`).
 - **RN-05.6** — `diasCalendario = max(0, diffInDays(fechaCorte, fechaHasta))`;
   `diasAcumulados = round(diasCalendario / 360 × (tasa_mensual × 12), 2)`.
 - **RN-05.7** — `disponibles = round(dias_adicionales + diasAcumulados − total_dias_tomados, 2)`.
@@ -196,9 +202,14 @@ Hasta el 2026-09-01 el cálculo de saldo estaba replicado en **4 lugares** con r
 - `calcularInterno()` — sin tope de 60 (para `PermisosController::aprobar()`).
 - `tasaVacaciones()` — tasa por antigüedad.
 
-`VacacionesController`, `PlanificacionVacController`, `ReporteVacacionesController` y
-`PermisosController` lo inyectan por constructor y delegan. La pantalla de planificación de un
-empleado CT con 6+ años ahora muestra el saldo real (antes salía menor por la tasa fija 1.25).
+`VacacionesController`, `PlanificacionVacController`, `ReporteVacacionesController`,
+`PermisosController` y **`LiquidacionVacController`** (2026-09-03) lo inyectan por constructor y
+delegan — **5 consumidores**. La pantalla de planificación de un empleado CT con 6+ años ahora
+muestra el saldo real (antes salía menor por la tasa fija 1.25).
+
+> **Cambio compartido pendiente de prueba de humo (2026-09-03):** al mover `LiquidacionVacController`
+> al servicio se añadió `fechaCorteEfectiva()` (considera `cabecera.fecha_proceso`) — validado por
+> código, no en vivo. Conviene una pasada en Vacaciones / Reporte de saldo / Permisos / Planificación.
 
 ### 5.4 Saldo negativo y Nombramiento Definitivo (mig. `000100`)
 
@@ -495,6 +506,7 @@ en CLAUDE.md §`views/planificacion/`.
 | `replanificar` con fechas del año de la cabecera pero no del año actual | 422 (la replanificación exige año actual, aunque la cabecera sea de un año pasado). |
 | `d2_detalle_vacacion` | Siempre vacía; `miSaldo.detalle` = `[]`. |
 | Empleado CT 10 años en la **pantalla de planificación** | El saldo sale correcto (con antigüedad) desde 2026-09-01 — `calcularSaldo()` delega en `SaldoVacacionesService`. Antes usaba tasa 1.25 fija. |
+| Empleado que retornó de comisión (carga de saldo externo, spec 07) | Su `cabecera.fecha_proceso = fecha del retorno` → `fechaCorteEfectiva()` la usa como corte, el devengo posterior arranca de ahí (2026-09-03). Antes se sumaba todo el período desde el corte global sobre el saldo cargado. |
 
 ---
 
@@ -505,10 +517,12 @@ en CLAUDE.md §`views/planificacion/`.
 
 1. ✅ **RESUELTO (2026-09-01)** — `PlanificacionVacController::calcularSaldo` con tasa CT fija 1.25 y
    sin congelar en `fecha_salida`: ahora delega en `SaldoVacacionesService`.
-2. ✅ **RESUELTO (2026-09-01)** — 4 implementaciones divergentes del cálculo de saldo
+2. ✅ **RESUELTO (2026-09-01 / -03)** — 5 implementaciones divergentes del cálculo de saldo
    (`VacacionesController`, `ReporteVacacionesController`, `PlanificacionVacController`,
-   `PermisosController::calcularInternoVac`): reemplazadas por `App\Services\SaldoVacacionesService`
-   (`calcular()` / `calcularInterno()` / `tasaVacaciones()`), inyectado en los 4 controladores.
+   `PermisosController::calcularInternoVac`, y `LiquidacionVacController::calcularSaldo` —
+   ésta migrada el 2026-09-03): reemplazadas por `App\Services\SaldoVacacionesService`
+   (`calcular()` / `calcularInterno()` / `tasaVacaciones()` / `fechaCorteEfectiva()`), inyectado en
+   los 5 controladores.
 3. ✅ **RESUELTO (2026-09-01)** — No existía "anular" para vacaciones `APROBADO`:
    `VacacionesController::anular()` nuevo (`PATCH /api/vacaciones/{id}/anular`, solo Admin/TH,
    `observacion_negacion` requerida) revierte los mismos días calendario que sumó `aprobar()`, pasa a

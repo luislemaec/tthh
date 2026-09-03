@@ -13,8 +13,15 @@ use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 
 class ReporteEmpleadosController extends Controller
 {
-    public function resumen()
+    private const ROLES_ADMIN = ['ADMINISTRADOR', 'TALENTO HUMANO'];
+
+    // Antes sin ningún control de rol — index() expone campos sociales/de salud
+    // sensibles (discapacidad, enfermedad catastrófica, grupo vulnerable, persona
+    // sustituta) de todos los empleados a cualquier autenticado. Cerrado 2026-09-03.
+    public function resumen(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
+
         $hoy   = now()->toDateString();
         $en30  = now()->addDays(30)->toDateString();
         $hace5 = now()->subYears(5)->toDateString();
@@ -80,7 +87,12 @@ class ReporteEmpleadosController extends Controller
 
     public function index(Request $request)
     {
-        $empleados = $this->buildQuery($request)->get();
+        $this->requireRole($request, self::ROLES_ADMIN);
+
+        // Límite de seguridad — antes ->get() sin tope. No es paginación real de UI
+        // (el frontend pagina client-side sobre el array completo); si el volumen algún
+        // día lo justifica, cambiar a paginate() requiere también tocar la vista.
+        $empleados = $this->buildQuery($request)->limit(5000)->get();
         $empleados = $this->enriquecerHijos($empleados);
 
         if ($request->formato === 'excel') return $this->exportExcel($empleados, $request);

@@ -3,14 +3,18 @@ namespace App\Http\Controllers;
 
 use App\Models\Supervisor;
 use App\Models\Empleado;
-use App\Models\CabeceraVacacion;
 use App\Models\Configuracion;
+use App\Services\SaldoVacacionesService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
+    public function __construct(private SaldoVacacionesService $saldoService)
+    {
+    }
+
     // Misma lógica que PermisosController::empleadosDeSupervisor()
     private function empleadosDeSupervisor(string $id_supervisor)
     {
@@ -46,21 +50,27 @@ class DashboardController extends Controller
         // Verificar si es supervisor
         $esSupervisor = Supervisor::where("id_supervisor", $emp->id_emp)->exists();
 
-        // Total empleados activos
-        $totalActivos = DB::table("dbo.ad_empleado")
-            ->where("estado", "ACTIVO")
-            ->where("id_depto", "!=", 999)
-            ->count();
+        // Total empleados activos + por departamento — antes se calculaban y se
+        // devolvían siempre, para cualquier autenticado; el frontend solo las ocultaba
+        // visualmente para no-admin/TH, pero la API ya las había mandado igual. Ahora
+        // solo se calculan y se incluyen en la respuesta para Admin/TH.
+        $totalActivos    = null;
+        $porDepartamento = null;
+        if ($esAdminOTH) {
+            $totalActivos = DB::table("dbo.ad_empleado")
+                ->where("estado", "ACTIVO")
+                ->where("id_depto", "!=", 999)
+                ->count();
 
-        // Empleados por departamento
-        $porDepartamento = DB::table("dbo.ad_empleado as e")
-            ->join("dbo.ad_departamento as d", "e.id_depto", "=", "d.id_depto")
-            ->where("e.estado", "ACTIVO")
-            ->where("e.id_depto", "!=", 999)
-            ->select("d.nombre_depto", DB::raw("count(*) as total"))
-            ->groupBy("d.nombre_depto")
-            ->orderByDesc("total")
-            ->get();
+            $porDepartamento = DB::table("dbo.ad_empleado as e")
+                ->join("dbo.ad_departamento as d", "e.id_depto", "=", "d.id_depto")
+                ->where("e.estado", "ACTIVO")
+                ->where("e.id_depto", "!=", 999)
+                ->select("d.nombre_depto", DB::raw("count(*) as total"))
+                ->groupBy("d.nombre_depto")
+                ->orderByDesc("total")
+                ->get();
+        }
 
         // Permisos pendientes según rol
         $queryPermisos = DB::table("dbo.d2_permiso as p")
@@ -196,34 +206,17 @@ class DashboardController extends Controller
         // Datos exclusivos para empleado sin rol especial
         $datosEmpleado = null;
         if (!$esAdminOTH && !$esSupervisor) {
-            $contrato = trim($emp->tipo_contrato ?? '');
-            if ($contrato === 'LOSEP') {
-                $tasaMensual = 2.50;
-                $diasAdicAntig = 0;
-            } elseif ($contrato === 'CODIGO DEL TRABAJO') {
-                $anios         = $emp->fecha_ingreso ? (int) Carbon::parse($emp->fecha_ingreso)->diffInYears(Carbon::today()) : 0;
-                $diasAdicAntig = min(max(0, $anios - 5), 15);
-                $tasaMensual   = (15 + $diasAdicAntig) / 12;
-            } else {
-                $tasaMensual = 0; $diasAdicAntig = 0;
-            }
-
-            $fechaCorteConfig = Configuracion::find('FECHA_CORTE_VACACIONES');
-            $fechaCorte       = $fechaCorteConfig ? Carbon::parse($fechaCorteConfig->valor) : Carbon::today();
-            if ($emp->fecha_ingreso && Carbon::parse($emp->fecha_ingreso)->gt($fechaCorte)) {
-                $fechaCorte = Carbon::parse($emp->fecha_ingreso);
-            }
-            $diasCalendario = max(0, $fechaCorte->diffInDays(Carbon::today()));
-            $diasAcumulados = round($diasCalendario / 360 * ($tasaMensual * 12), 2);
-
-            $cabecera  = CabeceraVacacion::where('id_emp', $emp->id_emp)->first();
-            $tomados   = (float) ($cabecera->total_dias_tomados ?? 0);
-            $adicional = (float) ($cabecera->dias_adicionales   ?? 0);
-            $saldo     = min(60, max(0, round($adicional + $diasAcumulados - $tomados, 2)));
-            // Igual que VacacionesView.vue: sin el piso de 0, para que Nombramiento Definitivo
-            // con saldo negativo lo vea también aquí (antes solo se veía en Personal → Vacaciones,
-            // el Dashboard lo mostraba como 0 y ocultaba la alerta).
-            $saldoReal = min(60, round($adicional + $diasAcumulados - $tomados, 2));
+            // Antes era una 6ª copia independiente de la fórmula de saldo (con la tasa de
+            // antigüedad ya correcta, pero sin considerar cabecera.fecha_proceso — un
+            // empleado recién retornado de comisión de servicios veía el saldo inflado acá
+            // aunque ya estuviera corregido en Vacaciones/Reporte/Permisos/Planificación/
+            // Liquidación). Migrado a SaldoVacacionesService — mismo shape que ya usa
+            // VacacionesView.vue, dias_disponibles_real sin piso de 0 para Nombramiento
+            // Definitivo con saldo negativo.
+            $resultado     = $this->saldoService->calcular($emp);
+            $diasAdicAntig = $resultado['dias_adicionales_antiguedad'];
+            $saldo         = $resultado['dias_disponibles'];
+            $saldoReal     = $resultado['dias_disponibles_real'];
 
             // Atrasos por mes: días con atraso en cada mes del año actual
             $anio = now()->year;
