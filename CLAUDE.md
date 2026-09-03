@@ -668,7 +668,22 @@ Ninguno de estos 5 cambios tocó `config/*.php`, `.env` ni el schema de BD — s
 - `INICIO_COMISION` / `FIN_COMISION_SALIDA` → genera certificado PDF
 - `FIN_COMISION_RETORNO` / `COMISION_ENTRANTE` → carga saldo desde certificado externo
 - `DESVINCULACION` → reporte de liquidación
-- Motivos válidos dependen de `modalidad_laboral` del empleado
+- Motivos válidos dependen de `modalidad_laboral` del empleado — más `COMISION_ENTRANTE`/`FIN_COMISION_SALIDA` si `es_comisionado_entrante=true` (independiente de la modalidad), vía el helper `motivosDisponiblesPara()` compartido entre `consultar()` y `registrar()`
+
+### Corrección de deuda técnica — Liquidación de Vacaciones (2026-09-02)
+
+Auditoría de código (revisión de spec 07) detectó 3 hallazgos de prioridad alta en `LiquidacionVacController.php`, todos corregidos el mismo día, sin cambios de schema:
+
+1. **`calcularSaldo()` era la 5ª copia divergente del cálculo de saldo — tasa fija `1.25` para Código del Trabajo, ignorando antigüedad (Art. 69).** No se migró a `SaldoVacacionesService` cuando se unificaron las otras 4 (ver sección "Vacaciones — cálculo de saldo"). Un servidor CT con 6+ años recibía un certificado/liquidación por menos días de los que le correspondían — impacto real de dinero/derechos. Migrado: `SaldoVacacionesService::calcular()` ahora acepta un `$fechaReferencia` opcional (antes solo calculaba a hoy/fecha_salida) para poder liquidar a una fecha de evento específica, y `LiquidacionVacController::calcularSaldo()` delega ahí — sigue sin aplicar el tope de 60 (correcto para liquidación, ver regla ya documentada).
+
+2. **`registrar()` rechazaba `COMISION_ENTRANTE`/`FIN_COMISION_SALIDA` con 422 siempre — flujo de comisionado entrante roto de punta a punta.** `consultar()` sí ofrecía esos dos motivos en la UI cuando `es_comisionado_entrante=true` (agregándolos aparte de `MOTIVOS_POR_MODALIDAD`), pero `registrar()` validaba contra `array_merge(...array_values(MOTIVOS_POR_MODALIDAD))`, que nunca los incluye. Corregido extrayendo la lógica a `motivosDisponiblesPara(Empleado $emp)` (un solo lugar, usado por ambos métodos) — `registrar()` ahora valida el `motivo` contra los mismos motivos que `consultar()` le mostró a ese empleado específico.
+
+3. **Tres correcciones adicionales, mismo controlador:**
+   - **Saldo inflado tras cargar un certificado externo.** Al registrar `FIN_COMISION_RETORNO`/`COMISION_ENTRANTE`, se actualizaba `dias_adicionales` en `d2_cabecera_vacacion` pero nunca se movía la base desde la que se sigue acumulando — como `FECHA_CORTE_VACACIONES` es **global** (compartida por toda la institución), no se puede simplemente adelantarla por el evento de una sola persona. Se detectó que `cabecera.fecha_proceso` se escribía pero **no lo leía nadie** en todo el sistema. Ahora `SaldoVacacionesService::fechaCorteEfectiva()` (privado, usado por `calcular()` y `calcularInterno()`) toma la fecha más reciente entre el corte global, `fecha_ingreso` y `cabecera.fecha_proceso` — actúa como corte *por empleado* sin mover el de nadie más. `registrar()` ahora graba `fecha_proceso = fecha_evento` (antes `now()`) al cargar el saldo.
+   - **`registrar()` no auditaba.** Agregado `AuditoriaService::log()` (`REGISTRAR`) con snapshot de la cabecera anterior cuando el motivo la modifica.
+   - **`generarCertificado()` no validaba el motivo.** Generaba el PDF de certificado para cualquier `historico_id`, incluida una `DESVINCULACION`. Ahora rechaza con 422 si el motivo no está en `MOTIVOS_CON_CERTIFICADO` (`INICIO_COMISION`/`FIN_COMISION_SALIDA`).
+
+Ninguno de estos cambios tocó `config/*.php`, `.env` ni el schema de BD — solo `git pull`, sin `migrate` ni `config:clear`. **Importante:** el cambio a `SaldoVacacionesService` (agregar `$fechaReferencia` a `calcular()`, y la lógica de `fecha_proceso` en `fechaCorteEfectiva()`) es compartido por los otros 4 controladores que ya lo usan (Vacaciones, Reporte, Permisos, Planificación) — revisado que es retrocompatible (parámetro opcional, `fecha_proceso` normalmente coincide con el corte global o `fecha_ingreso` para cualquier empleado que nunca pasó por una liquidación de comisión, así que no cambia nada para ellos), pero vale la pena una pasada de humo en esos 4 flujos antes de dar esto por cerrado en producción.
 
 ### Horas Extras
 

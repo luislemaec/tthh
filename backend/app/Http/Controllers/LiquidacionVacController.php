@@ -5,6 +5,8 @@ use App\Models\CabeceraVacacion;
 use App\Models\Configuracion;
 use App\Models\Empleado;
 use App\Models\LiquidacionHistorico;
+use App\Services\AuditoriaService;
+use App\Services\SaldoVacacionesService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -12,6 +14,10 @@ use Illuminate\Support\Facades\DB;
 
 class LiquidacionVacController extends Controller
 {
+    public function __construct(private SaldoVacacionesService $saldoService)
+    {
+    }
+
     // Motivos válidos por modalidad laboral
     // Nombramiento definitivo:  INICIO_COMISION, FIN_COMISION_RETORNO
     // Comisión de servicios:    COMISION_ENTRANTE, FIN_COMISION_SALIDA
@@ -52,39 +58,57 @@ class LiquidacionVacController extends Controller
             ->exists();
     }
 
+    // Motivos disponibles para un empleado — por su modalidad laboral, más los de
+    // comisionado entrante si aplica. Un solo lugar para esta lógica: antes consultar()
+    // la calculaba para mostrarla en la UI pero registrar() nunca la usaba, así que
+    // ofrecía COMISION_ENTRANTE/FIN_COMISION_SALIDA en el formulario y los rechazaba con
+    // 422 al guardar — el flujo de comisionado entrante estaba roto de punta a punta.
+    private function motivosDisponiblesPara(Empleado $emp): array
+    {
+        $modalidad = trim($emp->modalidad_laboral ?? '');
+        $motivos   = [];
+        foreach (self::MOTIVOS_POR_MODALIDAD as $key => $m) {
+            if (mb_strtolower($key) === mb_strtolower($modalidad)) {
+                $motivos = $m;
+                break;
+            }
+        }
+        if ($emp->es_comisionado_entrante) {
+            $motivos = array_unique(array_merge($motivos, self::MOTIVOS_COMISIONADO_ENTRANTE));
+        }
+        return $motivos;
+    }
+
     // ── Helper: calcula saldo hasta una fecha de referencia ──────────────────
+    // Delegado a SaldoVacacionesService (única fuente de verdad) — antes tenía su propia
+    // tasa fija 1.25 para Código del Trabajo, ignorando antigüedad (Art. 69): un servidor
+    // CT con 6+ años recibía un certificado/liquidación por menos días de los que le
+    // correspondían. También delega la fecha de corte efectiva (fechaCorteEfectiva() del
+    // servicio), que ahora considera cabecera.fecha_proceso — antes, tras cargar un saldo
+    // externo (retorno de comisión), el próximo cálculo seguía sumando desde el corte
+    // global de toda la institución encima del saldo recién cargado, inflándolo.
     private function calcularSaldo(Empleado $emp, string $fechaReferencia): array
     {
-        $tasas = [
-            'LOSEP'              => 2.50,
-            'CODIGO DEL TRABAJO' => 1.25,
-        ];
-        $tasa = $tasas[trim($emp->tipo_contrato)] ?? 0;
+        $cabecera  = CabeceraVacacion::where('id_emp', $emp->id_emp)->first();
+        $fechaRef  = Carbon::parse($fechaReferencia);
+        $resultado = $this->saldoService->calcular($emp, $cabecera, $fechaRef);
+        $tasaInfo  = $this->saldoService->tasaVacaciones($emp, $fechaRef);
 
-        $fechaCorteConfig = Configuracion::find('FECHA_CORTE_VACACIONES');
-        $fechaCorte       = $fechaCorteConfig ? Carbon::parse($fechaCorteConfig->valor) : Carbon::today();
-
-        if ($emp->fecha_ingreso && Carbon::parse($emp->fecha_ingreso)->gt($fechaCorte)) {
-            $fechaCorte = Carbon::parse($emp->fecha_ingreso);
-        }
-
-        $fechaRef       = Carbon::parse($fechaReferencia);
-        $diasCalendario = max(0, $fechaCorte->diffInDays($fechaRef));
-        $acumulado      = round($diasCalendario / 360 * ($tasa * 12), 2);
-
-        $cabecera     = CabeceraVacacion::where('id_emp', $emp->id_emp)->first();
-        $saldoInicial = (float) ($cabecera?->dias_adicionales  ?? 0);
-        $tomados      = (float) ($cabecera?->total_dias_tomados ?? 0);
-        $disponibles  = round($saldoInicial + $acumulado - $tomados, 2);
+        // LiquidacionVacController NO aplica el tope de 60 (LOSEP Art. 29) — usa el valor
+        // real acumulado, correcto para pago por cesación/comisión (ver CLAUDE.md).
+        $saldoLiquidado = max(0, round(
+            $resultado['saldo_inicial'] + $resultado['acumulado_a_hoy'] - $resultado['tomados'],
+            2
+        ));
 
         return [
-            'saldo_inicial'    => $saldoInicial,
-            'acumulado'        => $acumulado,
-            'tomados'          => $tomados,
-            'saldo_liquidado'  => max(0, $disponibles),
-            'fecha_referencia' => $fechaRef->toDateString(),
-            'fecha_corte'      => $fechaCorte->toDateString(),
-            'tasa'             => $tasa,
+            'saldo_inicial'    => $resultado['saldo_inicial'],
+            'acumulado'        => $resultado['acumulado_a_hoy'],
+            'tomados'          => $resultado['tomados'],
+            'saldo_liquidado'  => $saldoLiquidado,
+            'fecha_referencia' => $resultado['fecha_referencia'],
+            'fecha_corte'      => $resultado['fecha_corte'],
+            'tasa'             => $tasaInfo['tasa_mensual'],
             'tipo_contrato'    => trim($emp->tipo_contrato),
         ];
     }
@@ -136,27 +160,13 @@ class LiquidacionVacController extends Controller
             ->orderBy('fecha_evento', 'desc')
             ->get();
 
-        $modalidad = trim($emp->modalidad_laboral ?? '');
-        // Búsqueda case-insensitive por modalidad
-        $motivosDisponibles = [];
-        foreach (self::MOTIVOS_POR_MODALIDAD as $key => $motivos) {
-            if (mb_strtolower($key) === mb_strtolower($modalidad)) {
-                $motivosDisponibles = $motivos;
-                break;
-            }
-        }
-        // Si viene de comisión entrante, agregar sus motivos específicos
-        if ($emp->es_comisionado_entrante) {
-            $motivosDisponibles = array_unique(array_merge($motivosDisponibles, self::MOTIVOS_COMISIONADO_ENTRANTE));
-        }
-
         return response()->json([
             'empleado' => [
                 'id_emp'             => $emp->id_emp,
                 'identificacion'     => $emp->identificacion,
                 'nombre'             => $emp->apellido_emp . ', ' . $emp->nombre_emp,
                 'estado'             => $emp->estado,
-                'modalidad_laboral'  => $modalidad,
+                'modalidad_laboral'  => trim($emp->modalidad_laboral ?? ''),
                 'fecha_ingreso'      => $emp->fecha_ingreso,
                 'fecha_salida'       => $emp->fecha_salida,
                 'tipo_contrato'      => trim($emp->tipo_contrato),
@@ -164,7 +174,7 @@ class LiquidacionVacController extends Controller
             ],
             'saldo'              => $saldo,
             'historial'          => $historial,
-            'motivos_disponibles'=> $motivosDisponibles,
+            'motivos_disponibles'=> $this->motivosDisponiblesPara($emp),
             'motivos_carga_saldo'=> self::MOTIVOS_CARGA_SALDO,
         ]);
     }
@@ -176,19 +186,22 @@ class LiquidacionVacController extends Controller
             return response()->json(['message' => 'Acceso no autorizado'], 403);
         }
 
-        $todosMotivos = array_merge(...array_values(self::MOTIVOS_POR_MODALIDAD));
-
-        $request->validate([
-            'motivo'        => 'required|in:' . implode(',', $todosMotivos),
-            'fecha_evento'  => 'required|date',
-            'dias_a_cargar' => 'nullable|numeric|min:0',
-            'observacion'   => 'nullable|string|max:500',
-        ]);
-
         $emp = Empleado::with('departamento')
             ->where('id_emp', $id_emp)
             ->where('id_depto', '!=', 999)
             ->firstOrFail();
+
+        // Motivos válidos para ESTE empleado (mismo criterio que consultar(), incluye
+        // COMISION_ENTRANTE/FIN_COMISION_SALIDA si es_comisionado_entrante) — antes se
+        // validaba contra una lista fija que nunca incluía esos dos motivos.
+        $motivosValidos = $this->motivosDisponiblesPara($emp);
+
+        $request->validate([
+            'motivo'        => 'required|in:' . implode(',', $motivosValidos),
+            'fecha_evento'  => 'required|date',
+            'dias_a_cargar' => 'nullable|numeric|min:0',
+            'observacion'   => 'nullable|string|max:500',
+        ]);
 
         $motivo = $request->motivo;
 
@@ -210,15 +223,30 @@ class LiquidacionVacController extends Controller
         // Calcular saldo hasta la fecha del evento
         $saldo = $this->calcularSaldo($emp, $request->fecha_evento);
 
+        $cabeceraAnterior = null;
+        $huboCorreccionCabecera = in_array($motivo, self::MOTIVOS_CARGA_SALDO, true);
+
         // Si el motivo requiere cargar días de certificado externo, actualizar cabecera
-        if (in_array($motivo, self::MOTIVOS_CARGA_SALDO)) {
+        if ($huboCorreccionCabecera) {
+            $cabeceraPrevia   = CabeceraVacacion::where('id_emp', $emp->id_emp)->first();
+            $cabeceraAnterior = $cabeceraPrevia ? [
+                'dias_adicionales'   => $cabeceraPrevia->dias_adicionales,
+                'total_dias_tomados' => $cabeceraPrevia->total_dias_tomados,
+                'fecha_proceso'      => (string) $cabeceraPrevia->fecha_proceso,
+            ] : null;
+
             $diasACargar = (float) ($request->dias_a_cargar ?? 0);
             CabeceraVacacion::updateOrCreate(
                 ['id_emp' => $emp->id_emp],
                 [
                     'dias_adicionales'   => $diasACargar,
                     'total_dias_tomados' => 0,
-                    'fecha_proceso'      => now(),
+                    // fecha_proceso = fecha del evento (no "now()") — es la fecha real desde
+                    // la que este saldo "fresco" empieza a acumular para este empleado. La lee
+                    // SaldoVacacionesService::fechaCorteEfectiva() como corte por-empleado, así
+                    // el próximo cálculo no vuelve a sumar todo el período desde el corte global
+                    // encima del saldo recién cargado (eso era lo que inflaba el saldo).
+                    'fecha_proceso'      => $request->fecha_evento,
                 ]
             );
             // Recalcular saldo con los nuevos días cargados
@@ -242,6 +270,17 @@ class LiquidacionVacController extends Controller
             'fecha_registro'    => now(),
         ]);
 
+        AuditoriaService::log('dbo.vac_liquidacion_historico', $historico->id, 'REGISTRAR',
+            $huboCorreccionCabecera ? ['cabecera_vacacion' => $cabeceraAnterior] : null,
+            [
+                'motivo'                    => $motivo,
+                'fecha_evento'              => $request->fecha_evento,
+                'saldo_liquidado'           => $saldo['saldo_liquidado'],
+                'cabecera_vacacion_tocada'  => $huboCorreccionCabecera,
+                'dias_cargados'             => $huboCorreccionCabecera ? (float) ($request->dias_a_cargar ?? 0) : null,
+            ],
+            $request, "Liquidación de vacaciones ({$motivo}): " . trim($emp->apellido_emp . ' ' . $emp->nombre_emp));
+
         return response()->json([
             'message'              => 'Evento registrado correctamente',
             'historico'            => $historico,
@@ -258,7 +297,16 @@ class LiquidacionVacController extends Controller
         }
 
         $historico = LiquidacionHistorico::with('empleado.departamento')->findOrFail($historico_id);
-        $emp       = $historico->empleado;
+
+        // Antes generaba el PDF para cualquier motivo (ej. DESVINCULACION), aunque el
+        // template/flujo de "certificado" solo tiene sentido para comisión de servicios.
+        if (!in_array($historico->motivo, self::MOTIVOS_CON_CERTIFICADO, true)) {
+            return response()->json([
+                'message' => "El motivo '{$historico->motivo}' no genera certificado — solo aplica a " . implode('/', self::MOTIVOS_CON_CERTIFICADO) . '.',
+            ], 422);
+        }
+
+        $emp = $historico->empleado;
 
         $firmanteNombre = optional(Configuracion::find('FIRMANTE_TH_NOMBRE'))->valor
                           ?? optional(Configuracion::find('APROBADOR_INST_VACACION'))->valor
