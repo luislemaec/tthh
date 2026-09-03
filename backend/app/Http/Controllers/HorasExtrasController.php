@@ -38,7 +38,38 @@ class HorasExtrasController extends Controller
         return (int)$h * 60 + (int)$m;
     }
 
-    private function calcularHorasExtras(string $fecha, string $horaInicio, string $horaFin): array
+    // Igual patrón que ProcesarCuadre.php / PermisosController::horaTurnoDelDia() — resuelve el
+    // turno real asignado al empleado ese día vía d2_programacion (columna s{día} = id_turno),
+    // con fallback a turno 1 si no hay programación para ese mes. Devuelve la hora del concepto
+    // (ENTRADA/SALIDA) en "H:i", o null si el turno no tiene ese concepto configurado.
+    private function horaTurnoDelDia(string $id_emp, Carbon $fecha, string $concepto): ?string
+    {
+        $colTurno = 's' . (int) $fecha->format('j');
+
+        $prog = DB::table('dbo.d2_programacion')
+            ->where('id_emp', $id_emp)
+            ->whereYear('fecha', $fecha->year)
+            ->whereMonth('fecha', $fecha->month)
+            ->first();
+
+        $idTurno = $prog ? ((int) ($prog->$colTurno ?? 1)) : 1;
+
+        $turno = DB::table('dbo.d2_turno')
+            ->where('id_turno', $idTurno)
+            ->where('concepto', $concepto)
+            ->first();
+
+        return $turno ? Carbon::parse($turno->hora)->format('H:i') : null;
+    }
+
+    // $id_emp: antes la jornada "normal" venía hardcodeada 08:00-16:30 para cualquier empleado
+    // (2026-09-03) — un servidor con horario real distinto (ej. 07:30-16:00, o jornada partida)
+    // recibía la clasificación extraordinaria/suplementaria/normal equivocada. Ahora, si se pasa
+    // el empleado, se resuelve su turno real del día (ENTRADA/SALIDA vía d2_programacion →
+    // d2_turno, mismo mecanismo que ProcesarCuadre/PermisosController) y esos límites reemplazan
+    // el 08:00/16:30 fijo. Si no hay turno configurado (o no se pasa id_emp — ej. llamadas
+    // internas sin contexto de empleado) cae al default histórico 08:00-16:30.
+    private function calcularHorasExtras(string $fecha, string $horaInicio, string $horaFin, ?string $id_emp = null): array
     {
         $inicio = $this->toMinutes($horaInicio);
         $fin    = $this->toMinutes($horaFin);
@@ -57,15 +88,21 @@ class HorasExtrasController extends Controller
         if ($carbon->isWeekend() || $esFeriado) {
             $extraordinarias = ($fin - $inicio) / 60;
         } else {
-            // Lun-Vie: rangos en minutos
+            $tEntradaStr = $id_emp ? $this->horaTurnoDelDia($id_emp, $carbon, 'ENTRADA') : null;
+            $tSalidaStr  = $id_emp ? $this->horaTurnoDelDia($id_emp, $carbon, 'SALIDA')  : null;
+            $tEntrada = $tEntradaStr ? $this->toMinutes($tEntradaStr) : 480; // 08:00 default
+            $tSalida  = $tSalidaStr  ? $this->toMinutes($tSalidaStr)  : 990; // 16:30 default
+
+            // Lun-Vie: rangos en minutos. 00:00-06:00 siempre extraordinaria (jornada nocturna),
+            // el resto se arma alrededor de la ENTRADA/SALIDA real del turno del empleado.
             $rangos = [
-                [0,    360,  'extra'],  // 00:00-06:00
-                [360,  480,  'supl'],   // 06:00-08:00
-                [480,  990,  'normal'], // 08:00-16:30
-                [990,  1440, 'supl'],   // 16:30-24:00
-                // Para cruces de medianoche (fin > 1440):
-                [1440, 1800, 'extra'],  // 00:00-06:00 del día siguiente
-                [1800, 1920, 'supl'],   // 06:00-08:00 del día siguiente
+                [0,             360,             'extra'],  // 00:00-06:00
+                [360,           $tEntrada,       'supl'],   // 06:00-entrada
+                [$tEntrada,     $tSalida,        'normal'], // entrada-salida
+                [$tSalida,      1440,            'supl'],   // salida-24:00
+                // Para cruces de medianoche (fin > 1440), mismos límites del día siguiente:
+                [1440,          1800,            'extra'],  // 00:00-06:00 del día siguiente
+                [1800,          1440 + $tEntrada,'supl'],    // 06:00-entrada del día siguiente
             ];
             foreach ($rangos as [$desde, $hasta, $tipo]) {
                 $overlap = min($fin, $hasta) - max($inicio, $desde);
@@ -98,13 +135,51 @@ class HorasExtrasController extends Controller
         return Supervisor::where('id_supervisor', $id_emp)->exists();
     }
 
+    // Igual patrón que DashboardController/PermisosController/VacacionesController — un
+    // supervisor de nivel superior también ve a los empleados (y supervisores) de los
+    // departamentos HIJOS de los suyos, no solo el directo. Antes esta copia local se quedaba
+    // solo con el tramo directo (2026-09-03) — un supervisor con departamentos hijos no veía
+    // las planificaciones/registros de HE de esos equipos al aprobar/negar/confirmar.
     private function empleadosDeSupervisor($id_supervisor)
     {
         $deptos = Supervisor::where('id_supervisor', $id_supervisor)->pluck('id_depto');
-        return Empleado::whereIn('id_depto', $deptos)
+
+        $empleadosDirectos = Empleado::whereIn('id_depto', $deptos)
             ->where('estado', 'ACTIVO')
             ->where('id_depto', '!=', 999)
+            ->where('id_emp', '!=', $id_supervisor)
             ->pluck('id_emp');
+
+        $deptosHijos = DB::table('dbo.ad_departamento')
+            ->whereIn('padre_id', $deptos)
+            ->pluck('id_depto');
+
+        $supervisoresHijos = Supervisor::whereIn('id_depto', $deptosHijos)
+            ->where('id_supervisor', '!=', $id_supervisor)
+            ->pluck('id_supervisor');
+
+        return $empleadosDirectos->merge($supervisoresHijos)->unique()->values();
+    }
+
+    // Dueño de la planificación, su supervisor, o TH/Admin pueden verla/descargarla — mismo
+    // patrón que PermisosController::puedeVerPermiso(). Antes pdf()/subirFirmado()/
+    // descargarFirmado() no tenían ningún chequeo (2026-09-03): cualquier autenticado podía
+    // descargar la planificación de HE de cualquier empleado.
+    private function puedeVerPlanificacion(Request $request, HePlanificacionCab $cab): bool
+    {
+        $actor = $request->user();
+        if ($cab->id_emp === $actor->id_emp) return true;
+        if ($this->esAdminOTH($actor->id_emp)) return true;
+        return $this->empleadosDeSupervisor($actor->id_emp)->contains($cab->id_emp);
+    }
+
+    // Solo el dueño de la planificación o TH/Admin pueden subir/reemplazar el PDF firmado —
+    // antes cualquier autenticado podía subir un "PDF firmado" a la carpeta Alfresco de
+    // cualquier planificación ajena, borrando el firmado anterior si ya existía.
+    private function puedeEditarFirmadoPlanificacion(Request $request, HePlanificacionCab $cab): bool
+    {
+        $actor = $request->user();
+        return $cab->id_emp === $actor->id_emp || $this->esAdminOTH($actor->id_emp);
     }
 
     private function getOrCreateFolderNodeId(string $parentNodeId, string $folderName): string
@@ -158,7 +233,7 @@ class HorasExtrasController extends Controller
         ]);
 
         return response()->json(
-            $this->calcularHorasExtras($request->fecha, $request->hora_inicio, $request->hora_fin)
+            $this->calcularHorasExtras($request->fecha, $request->hora_inicio, $request->hora_fin, $request->user()->id_emp)
         );
     }
 
@@ -259,6 +334,10 @@ class HorasExtrasController extends Controller
             ]);
         }
 
+        AuditoriaService::log('dbo.nom_he_planificacion_cab', $cab->id, 'CREAR',
+            null, ['anio' => $cab->anio, 'mes' => $cab->mes, 'estado' => $cab->estado],
+            $request, "Creación planificación HE: empleado {$cab->id_emp} {$cab->anio}/{$cab->mes}");
+
         return response()->json($cab->load('detalles'), 201);
     }
 
@@ -300,6 +379,8 @@ class HorasExtrasController extends Controller
             return response()->json(['message' => 'Las horas suplementarias no pueden superar las 20 horas mensuales.'], 422);
         }
 
+        $anterior = ['total_extraordinarias' => $cab->total_extraordinarias, 'total_suplementarias' => $cab->total_suplementarias];
+
         // Reemplazar detalles
         HePlanificacionDet::where('cab_id', $cab->id)->delete();
         foreach ($request->detalles as $det) {
@@ -315,6 +396,10 @@ class HorasExtrasController extends Controller
             'total_extraordinarias' => $totalExtraordinarias,
             'total_suplementarias'  => $totalSupl,
         ]);
+
+        AuditoriaService::log('dbo.nom_he_planificacion_cab', $cab->id, 'ACTUALIZAR',
+            $anterior, ['total_extraordinarias' => $totalExtraordinarias, 'total_suplementarias' => $totalSupl],
+            $request, "Edición planificación HE: empleado {$cab->id_emp} {$cab->anio}/{$cab->mes}");
 
         return response()->json($cab->load('detalles'));
     }
@@ -332,7 +417,17 @@ class HorasExtrasController extends Controller
             return response()->json(['message' => 'Solo se puede eliminar una planificación en estado PENDIENTE.'], 422);
         }
 
+        // Snapshot antes de borrar — destroy() elimina físicamente la fila (a diferencia de
+        // Vacaciones/Permisos, que usan estados ANULADO/ELIMINADO), así que sin esto la
+        // auditoría no tendría de dónde leer datos_anteriores tras el delete.
+        $snapshot = ['anio' => $cab->anio, 'mes' => $cab->mes, 'estado' => $cab->estado,
+            'total_extraordinarias' => $cab->total_extraordinarias, 'total_suplementarias' => $cab->total_suplementarias];
+
         $cab->delete();
+
+        AuditoriaService::log('dbo.nom_he_planificacion_cab', $id, 'ELIMINAR',
+            $snapshot, null, $request, "Eliminación planificación HE: empleado {$cab->id_emp} {$cab->anio}/{$cab->mes}");
+
         return response()->json(['message' => 'Planificación eliminada correctamente.']);
     }
 
@@ -475,6 +570,9 @@ class HorasExtrasController extends Controller
     public function pdf(Request $request, $id)
     {
         $cab    = HePlanificacionCab::with(['detalles', 'empleado.departamento'])->findOrFail($id);
+        if (!$this->puedeVerPlanificacion($request, $cab)) {
+            return response()->json(['message' => 'Acceso no autorizado.'], 403);
+        }
         $emp    = $cab->empleado;
         $jornada = $emp->id_jornada ? Jornada::find($emp->id_jornada) : null;
 
@@ -569,6 +667,9 @@ class HorasExtrasController extends Controller
     {
         $request->validate(['archivo' => 'required|file|mimes:pdf|max:20480']);
         $cab = HePlanificacionCab::findOrFail($id);
+        if (!$this->puedeEditarFirmadoPlanificacion($request, $cab)) {
+            return response()->json(['message' => 'Acceso no autorizado.'], 403);
+        }
 
         if ($cab->pdf_aprobado) {
             Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
@@ -594,13 +695,21 @@ class HorasExtrasController extends Controller
         }
 
         $cab->update(['pdf_aprobado' => $upload->json('entry.id')]);
+
+        AuditoriaService::log('dbo.nom_he_planificacion_cab', $cab->id, 'SUBIR_FIRMADO',
+            null, ['pdf_aprobado' => $upload->json('entry.id')],
+            $request, "Subida PDF firmado HE: empleado {$cab->id_emp} {$cab->anio}/{$cab->mes}");
+
         return response()->json(['message' => 'PDF firmado subido correctamente.']);
     }
 
     // GET /api/horas-extras/planificacion/{id}/descargar-firmado
-    public function descargarFirmado($id)
+    public function descargarFirmado(Request $request, $id)
     {
         $cab = HePlanificacionCab::findOrFail($id);
+        if (!$this->puedeVerPlanificacion($request, $cab)) {
+            return response()->json(['message' => 'Acceso no autorizado.'], 403);
+        }
         if (!$cab->pdf_aprobado) {
             return response()->json(['message' => 'No hay PDF firmado disponible.'], 404);
         }
@@ -678,7 +787,7 @@ class HorasExtrasController extends Controller
         }
 
         // Calcular horas automáticamente
-        $calculado = $this->calcularHorasExtras($request->fecha, $request->hora_inicio, $request->hora_fin);
+        $calculado = $this->calcularHorasExtras($request->fecha, $request->hora_inicio, $request->hora_fin, $emp->id_emp);
         $nuevasExtraordinarias = $calculado['horas_extraordinarias'];
         $nuevasSupl            = $calculado['horas_suplementarias'];
 
@@ -719,6 +828,10 @@ class HorasExtrasController extends Controller
             'estado'                => 'EN REVISION',
         ]);
 
+        AuditoriaService::log('dbo.nom_he_registro', $registro->id, 'REGISTRAR',
+            null, ['fecha' => $request->fecha, 'horas_extraordinarias' => $nuevasExtraordinarias, 'horas_suplementarias' => $nuevasSupl],
+            $request, "Registro de horas HE: empleado {$emp->id_emp} fecha {$request->fecha}");
+
         return response()->json($registro, 201);
     }
 
@@ -742,7 +855,10 @@ class HorasExtrasController extends Controller
             return response()->json(['message' => 'Solo puede editar registros en estado EN REVISIÓN.'], 422);
         }
 
-        $calculado = $this->calcularHorasExtras($request->fecha, $request->hora_inicio, $request->hora_fin);
+        $calculado = $this->calcularHorasExtras($request->fecha, $request->hora_inicio, $request->hora_fin, $emp->id_emp);
+
+        $anterior = ['fecha' => $registro->fecha, 'hora_inicio' => $registro->hora_inicio, 'hora_fin' => $registro->hora_fin,
+            'horas_extraordinarias' => $registro->horas_extraordinarias, 'horas_suplementarias' => $registro->horas_suplementarias];
 
         $registro->update([
             'fecha'                 => $request->fecha,
@@ -753,6 +869,10 @@ class HorasExtrasController extends Controller
             'descripcion'           => $request->descripcion,
             'observacion'           => null,
         ]);
+
+        AuditoriaService::log('dbo.nom_he_registro', $registro->id, 'ACTUALIZAR',
+            $anterior, ['fecha' => $request->fecha, 'horas_extraordinarias' => $calculado['horas_extraordinarias'], 'horas_suplementarias' => $calculado['horas_suplementarias']],
+            $request, "Edición registro HE: empleado {$emp->id_emp} fecha {$request->fecha}");
 
         return response()->json($registro);
     }
@@ -782,6 +902,13 @@ class HorasExtrasController extends Controller
                 'usuario_decision' => $user->id_emp,
                 'fecha_decision'   => now(),
             ]);
+
+            // revisarRegistro es el control de nómina sobre un registro de pago (habilita o
+            // devuelve horas que luego se pagan) y no dejaba ninguna traza — corregido 2026-09-03.
+            AuditoriaService::log('dbo.nom_he_registro', $registro->id, 'REVISAR_APROBAR',
+                ['estado' => 'EN REVISION'], ['estado' => 'PENDIENTE'],
+                $request, "Revisión TH NOMINA (aprobar) registro HE: empleado {$registro->id_emp} fecha {$registro->fecha}");
+
             return response()->json(['message' => 'Registro aprobado en revisión. Pasa al supervisor.']);
         }
 
@@ -794,6 +921,11 @@ class HorasExtrasController extends Controller
             'observacion'   => $request->observacion,
             'devuelto_count'=> DB::raw('devuelto_count + 1'),
         ]);
+
+        AuditoriaService::log('dbo.nom_he_registro', $registro->id, 'REVISAR_DEVOLVER',
+            ['estado' => 'EN REVISION'], ['estado' => 'EN REVISION', 'observacion' => $request->observacion],
+            $request, "Revisión TH NOMINA (devuelve) registro HE: empleado {$registro->id_emp} fecha {$registro->fecha}");
+
         return response()->json(['message' => 'Registro devuelto al empleado para corrección.']);
     }
 

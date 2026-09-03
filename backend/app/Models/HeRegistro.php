@@ -22,6 +22,10 @@ class HeRegistro extends Model
         "usuario_decision",
         "fecha_decision",
         "observacion",
+        // Sin esto, el update() de HorasExtrasController::revisarRegistro() (devolver) descartaba
+        // en silencio el incremento de devuelto_count — Laravel no lanza excepción por defecto,
+        // solo ignora el campo no-fillable. El badge "Dev. Xv" del frontend nunca subía (2026-09-03).
+        "devuelto_count",
     ];
 
     public function planificacion()

@@ -28,15 +28,14 @@ para especificar cambios futuros.
 | 05 | Vacaciones (solicitud, saldo, planificación) | ✅ Borrador v1 | [05-vacaciones.md](05-vacaciones.md) |
 | 06 | Acciones de personal | ✅ Borrador v1 | [06-acciones-personal.md](06-acciones-personal.md) |
 | 07 | Liquidación de vacaciones | ✅ Borrador v1 | [07-liquidacion-vacaciones.md](07-liquidacion-vacaciones.md) |
-| 08 | Horas extras | ⬜ Pendiente · orden 1 | — |
-| 09 | Nómina (D13 / D14 / Fondos de Reserva / Rol de Pagos) | ⬜ Pendiente · orden 4 | — |
+| 08 | Horas extras | ✅ Borrador v1 | [08-horas-extras.md](08-horas-extras.md) |
+| 09 | Nómina (D13 / D14 / Fondos de Reserva / Rol de Pagos) | ⬜ Pendiente · orden 1 | — |
 | 10 | Certificados laborales | ✅ Borrador v1 | [10-certificados-laborales.md](10-certificados-laborales.md) |
 | 11 | Dashboard y reportes de TH | ✅ Borrador v1 | [11-dashboard-reportes.md](11-dashboard-reportes.md) |
-| 12 | Auditoría | ⬜ Pendiente · orden 5 | — |
+| 12 | Auditoría | ⬜ Pendiente · orden 2 | — |
 
-> **Orden de trabajo de las pendientes** (decidido 2026-09-03): 08 Horas extras → 10 Certificados
-> laborales → 11 Dashboard y reportes → 09 Nómina → 12 Auditoría. Los **números de spec no cambian**
-> (son identificadores permanentes); solo cambia el orden en que se escriben.
+> **Orden de trabajo de las pendientes** (2026-09-03): quedan **09 Nómina → 12 Auditoría**. Los
+> **números de spec no cambian** (son identificadores permanentes); solo cambia el orden en que se escriben.
 
 ## Convención de versionado
 

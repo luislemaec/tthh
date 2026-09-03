@@ -774,6 +774,63 @@ Porcentajes se obtienen de `dbo.d2_jornada` (campos `porc_extraordinaria`, `porc
 | PATCH | `/registro/{id}/confirmar` | Supervisor confirma → APROBADO |
 | PATCH | `/registro/{id}/negar` | Supervisor niega |
 
+### Corrección de deuda técnica — Horas Extras (2026-09-03)
+
+Auditoría de código (revisión de spec 08) detectó 5 hallazgos relevantes, todos corregidos el mismo
+día, sin cambios de schema:
+
+1. **Horas "normales" hardcodeadas 08:00–16:30, sin leer la jornada real del empleado.** Un servidor
+   con horario real distinto (ej. 07:30–16:00, o jornada partida) recibía la clasificación
+   extraordinaria/suplementaria/normal equivocada — el cálculo monetario sí usaba la jornada, pero
+   solo para los **porcentajes** de recargo, nunca para estos límites. Corregido: nuevo helper
+   `horaTurnoDelDia()` (mismo patrón que `ProcesarCuadre.php` y
+   `PermisosController::horaTurnoDelDia()` — resuelve el turno real vía `d2_programacion` (columna
+   `s{día}` → `id_turno`) → `d2_turno`, concepto ENTRADA/SALIDA); `calcularHorasExtras()` ahora
+   recibe `$id_emp` y usa esas horas reales como límites del tramo "normal" en vez del 08:00/16:30
+   fijo. Si el turno no tiene ENTRADA/SALIDA configurada (o no se pasa `$id_emp`), cae al mismo
+   default histórico 08:00–16:30 — no rompe nada para quien nunca tuvo turno especial.
+2. **Auditoría incompleta.** `store`/`update`/`destroy` (planificación) y
+   `registrar`/`actualizarRegistro`/`revisarRegistro` (registro) no llamaban a `AuditoriaService` —
+   0 coincidencias. El más grave: `revisarRegistro` es el control de nómina sobre un registro de pago
+   y no dejaba ninguna traza; `destroy` además **borra físicamente** la planificación (no usa un
+   estado tipo ANULADO como Vacaciones/Permisos), así que sin auditoría no quedaba ningún rastro de
+   que existió. Agregado en los 6 métodos (`CREAR`/`ACTUALIZAR`/`ELIMINAR`/`REGISTRAR`/`ACTUALIZAR`/
+   `REVISAR_APROBAR`/`REVISAR_DEVOLVER`) — `destroy` toma una fotografía de la cabecera *antes* del
+   `delete()` para tener `datos_anteriores` en el log. **Bonus encontrado al tocar `revisarRegistro`
+   (fuera de los 5 hallazgos originales):** `devuelto_count` no estaba en el `$fillable` de
+   `HeRegistro` — el `update()` de la rama `devolver` (`'devuelto_count' => DB::raw('devuelto_count + 1')`)
+   lo descartaba en silencio (Laravel no lanza excepción por defecto en este proyecto — ver nota de
+   `preventSilentlyDiscardingAttributes` en la sección Empleados), así que el contador **nunca
+   subía** pese a que el `update()` no daba ningún error. El badge "Dev. Xv" del frontend quedaba
+   siempre en 0. Corregido agregando `devuelto_count` al `$fillable` del modelo.
+3. **`pdf` (planificación), `subir-firmado` y `descargar-firmado` sin chequeo de propiedad ni rol** —
+   cualquier autenticado podía descargar la planificación de HE de cualquier empleado, o **subir** un
+   "PDF firmado" a la carpeta Alfresco de cualquier planificación ajena (borrando el firmado anterior
+   si ya existía). `pdf-registros` ya validaba correctamente (dueño o TH/Admin) y no se tocó. Mismo
+   tipo de gap que ya se había cerrado en Permisos y Certificados Laborales. Corregido con 2 helpers
+   nuevos (mismo patrón que `PermisosController::puedeVerPermiso()`/`puedeEditarDocumentosPermiso()`):
+   `puedeVerPlanificacion()` (dueño / su supervisor con cascada / TH-Admin) → aplicado en `pdf()` y
+   `descargarFirmado()`; `puedeEditarFirmadoPlanificacion()` (dueño / TH-Admin, **sin** supervisor) →
+   aplicado en `subirFirmado()`, que además ahora audita `SUBIR_FIRMADO`.
+4. **`empleadosDeSupervisor()` sin cascada a departamentos hijos** — copia local que solo miraba el
+   departamento directo del supervisor, a diferencia de la misma función en
+   `PermisosController`/`VacacionesController`/`DashboardController` (ya con cascada
+   `deptosHijos → supervisoresHijos`). Un coordinador con departamentos hijos no veía las
+   planificaciones/registros de HE de esos equipos al aprobar/negar/confirmar/revisar. Alineado con
+   el mismo patrón — usado también por los 2 helpers nuevos del punto 3.
+5. **El valor monetario de HE no se persiste ni fluye al rol de pagos** — se traslada a mano.
+   Evaluado y dejado **a propósito sin tocar**: es un gap de feature (no un bug), y requeriría decidir
+   dónde vive el dato persistido (¿columnas nuevas en `nom_he_registro`? ¿una tabla puente hacia
+   `nom_rol_pago_det`?) y cómo evitar doble conteo si TH edita el rol de pagos a mano mientras tanto —
+   se deja pendiente para cuando se escriba/retoque la spec 09 (Nómina).
+
+Ninguno de estos cambios tocó `config/*.php`, `.env` ni el schema de BD — solo `git pull`, sin
+`migrate` ni `config:clear`. **Sin pruebas funcionales en vivo** (mismo criterio que el resto de
+correcciones de este día): revisado por código y contra el uso real del frontend, sin `php -l` (no
+había PHP CLI disponible) ni prueba manual con usuarios reales de cada rol — antes de dar esto por
+cerrado en producción, conviene una pasada con un empleado, un supervisor con departamento hijo, y
+TH NOMINA.
+
 ### Vistas Frontend (Talento Humano)
 
 ```
@@ -1162,7 +1219,7 @@ Implementada para trazabilidad ante la Contraloría General del Estado. Todas la
 | `PermisosController` | APROBAR, NEGAR, ELIMINAR, ANULAR, SOLICITAR (2026-09-01) |
 | `AccionPersonalController` | CREAR, PROCESAR, EDITAR_BORRADOR, CAMBIAR_ESTADO, SUBIR_FIRMADO, AUTO_CERRAR (2026-09-01 — antes sin auditoría) |
 | `PlanificacionVacController` | CREAR, APROBAR, NEGAR, ELIMINAR, REPLANIFICAR (2026-09-01 — antes sin auditoría) |
-| `HorasExtrasController` | APROBAR, NEGAR, AUTORIZAR, CONFIRMAR, NEGAR (registro) |
+| `HorasExtrasController` | APROBAR, NEGAR, AUTORIZAR, CONFIRMAR, NEGAR (registro), CREAR, ACTUALIZAR, ELIMINAR (planificación), REGISTRAR, ACTUALIZAR, REVISAR_APROBAR, REVISAR_DEVOLVER (registro), SUBIR_FIRMADO (2026-09-03 — antes solo los primeros 5) |
 | `CertificadoLaboralController` | EMITIR, SUBIR_FIRMADO, ANULAR (2026-09-03) |
 | `Admin/ConfiguracionController` | ACTUALIZAR (valor anterior/nuevo) |
 | `NominaController` | (vía AuditoriaService desde registrarAuditoria()) |
