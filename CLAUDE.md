@@ -1159,7 +1159,7 @@ Implementada para trazabilidad ante la Contraloría General del Estado. Todas la
 | `AccionPersonalController` | CREAR, PROCESAR, EDITAR_BORRADOR, CAMBIAR_ESTADO, SUBIR_FIRMADO, AUTO_CERRAR (2026-09-01 — antes sin auditoría) |
 | `PlanificacionVacController` | CREAR, APROBAR, NEGAR, ELIMINAR, REPLANIFICAR (2026-09-01 — antes sin auditoría) |
 | `HorasExtrasController` | APROBAR, NEGAR, AUTORIZAR, CONFIRMAR, NEGAR (registro) |
-| `CertificadoLaboralController` | EMITIR |
+| `CertificadoLaboralController` | EMITIR, SUBIR_FIRMADO, ANULAR (2026-09-03) |
 | `Admin/ConfiguracionController` | ACTUALIZAR (valor anterior/nuevo) |
 | `NominaController` | (vía AuditoriaService desde registrarAuditoria()) |
 | `Adquisiciones/OrdenCompraController` | CONFIRMAR_INGRESO, REVERSAR_INGRESO |
@@ -1207,13 +1207,15 @@ Módulo para emitir y archivar certificados laborales. Solo accesible por ADMINI
 | `alfresco_id` | varchar(100) nullable | Node ID en Alfresco |
 | `nombre_archivo` | varchar(200) nullable | Nombre del PDF |
 | `usuario_emision` | varchar(20) | Empleado que lo emitió |
+| `estado` | varchar(20), default `EMITIDO` | `EMITIDO` / `ANULADO` — migración `000106` |
+| `observacion_anulacion` / `anulado_en` / `anulado_por` | varchar(300) / timestamp / varchar(20), nullable | Solo si `estado=ANULADO` — migración `000106` |
 | `created_at` / `updated_at` | timestamps | Auditoría automática |
 
-Migración: `000072`. Modelo: `App\Models\CertificadoLaboral` — relaciones `empleado()` y `emisor()` (ambas a `Empleado`; `emisor` evita conflicto con la columna `usuario_emision`).
+Migración: `000072` (+ `000106` para `estado`/anulación). Modelo: `App\Models\CertificadoLaboral` — relaciones `empleado()` y `emisor()` (ambas a `Empleado`; `emisor` evita conflicto con la columna `usuario_emision`).
 
 ### Numeración
 
-`DATH-CL-{SEQ}-{AÑO}` — SEQ con 3 dígitos y cero a la izquierda, reinicia a 001 cada año. Query: `MAX(CAST(SPLIT_PART(numero, '-', 3) AS INTEGER))` filtrando por `whereYear('fecha_emision', $año)`.
+`DATH-CL-{SEQ}-{AÑO}` — SEQ con 3 dígitos y cero a la izquierda, reinicia a 001 cada año. `CertificadoLaboral::generarSiguienteNumero($año)` (mismo patrón de `pg_advisory_xact_lock()` que `Empleado::generarSiguienteId()`/`AccionPersonal::generarSiguienteNumero()` — ver corrección 2026-09-03 abajo) calcula `MAX(CAST(SPLIT_PART(numero, '-', 3) AS INTEGER))` filtrando por `whereYear('fecha_emision', $año)`, serializado entre transacciones concurrentes.
 
 ### PDF (`certificado_laboral.blade.php`)
 
@@ -1236,11 +1238,27 @@ El certificado se genera y descarga **sin subir a Alfresco**. Después de imprim
 |---|---|---|
 | GET | `/api/certificados-laborales` | Historial paginado (30/pág) con filtros id_emp/fecha_desde/fecha_hasta |
 | POST | `/api/certificados-laborales` | Emitir certificado — genera PDF, guarda en BD, retorna blob con header `X-Numero` |
+| GET | `/api/certificados-laborales/{id}/pdf` | Regenera el PDF sin firmar (2026-09-03, ver corrección abajo) |
 | POST | `/api/certificados-laborales/{id}/subir-firmado` | Sube PDF firmado a Alfresco, guarda `alfresco_id` |
+| PATCH | `/api/certificados-laborales/{id}/anular` | Anula el certificado (2026-09-03) — solo TH/Admin, exige `observacion` |
 | GET | `/api/certificados-laborales/{id}/descargar` | Re-descarga desde Alfresco |
 
 Alfresco: carpeta `certificados-laborales/{año}/{cedula_APELLIDO}/` via `relativePath`.
 Si Alfresco no disponible al subir firmado, retorna error 502 (el certificado ya está en BD desde la emisión).
+
+### Corrección de deuda técnica — Certificados Laborales (2026-09-03)
+
+Auditoría de código (revisión de spec 10) detectó 5 hallazgos, todos corregidos el mismo día:
+
+1. **Numeración sin bloqueo.** Mismo patrón `MAX(...)+1` sin `pg_advisory_xact_lock()` que ya se corrigió en Empleados y Acciones de Personal — acá más grave, porque `numero` tiene constraint `UNIQUE`: dos emisiones simultáneas calculando el mismo número hacían que la segunda reventara con un 500 en vez de un error controlado. Nuevo `CertificadoLaboral::generarSiguienteNumero($año)`, `store()` envuelto en `DB::transaction()`.
+2. **El PDF sin firmar no se persistía ni se podía re-descargar.** `store()` lo generaba al vuelo y lo devolvía una sola vez en la respuesta HTTP — si TH perdía el archivo antes de firmarlo, la única salida era re-emitir (consumiendo otro número y dejando la fila anterior huérfana con `alfresco_id=null` para siempre). Nuevo `GET /{id}/pdf` que regenera el PDF sin firmar en cualquier momento a partir de los datos actuales del empleado (mismo patrón que `AccionPersonalController::pdf()`, que también funciona en cualquier estado). Se extrajo `construirPdf()` para que `store()` y `pdf()` no dupliquen la plantilla.
+3. **`subirFirmado()` no auditaba** — solo `EMITIR` quedaba en el log. Agregado `SUBIR_FIRMADO`.
+4. **`store()` no filtraba `es_externo` ni `id_depto=999`** — se le podía emitir un certificado laboral a un Funcionario Externo (sin historial laboral real que certificar) o al placeholder de sistema. Agregado el filtro + rechazo explícito con 422 para `es_externo=true`.
+5. **No había forma de anular un certificado emitido por error.** Migración `000106` agrega `estado` (`EMITIDO`/`ANULADO`), `observacion_anulacion`, `anulado_en`, `anulado_por`. Nuevo `PATCH /{id}/anular`, solo TH/Admin, exige `observacion`, con auditoría. El número anulado **no se libera/reutiliza** — mismo criterio que `numero_accion` en Acciones de Personal, queda como constancia de que existió y se invalidó. `subirFirmado()` rechaza con 422 si el certificado ya está `ANULADO`.
+
+**Pendiente de frontend:** el botón "Anular" en `CertificadosView.vue` no se agregó todavía — el hallazgo pedía la capacidad de backend, la UI queda para cuando se priorice.
+
+Sin cambios de `config/*.php` ni `.env` — sí requiere `php artisan migrate` (migración `000106`) antes de usar `anular()`, sin él `pdf()`/números/firmado/EMITIR ya funcionan con el código nuevo solo con `git pull`.
 
 ### Vista
 

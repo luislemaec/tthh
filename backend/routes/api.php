@@ -187,7 +187,9 @@ Route::middleware("auth:sanctum")->group(function () {
     // Certificados Laborales
     Route::get("/certificados-laborales",                    [\App\Http\Controllers\CertificadoLaboralController::class, "index"]);
     Route::post("/certificados-laborales",                   [\App\Http\Controllers\CertificadoLaboralController::class, "store"]);
+    Route::get("/certificados-laborales/{id}/pdf",           [\App\Http\Controllers\CertificadoLaboralController::class, "pdf"]);
     Route::post("/certificados-laborales/{id}/subir-firmado", [\App\Http\Controllers\CertificadoLaboralController::class, "subirFirmado"]);
+    Route::patch("/certificados-laborales/{id}/anular",      [\App\Http\Controllers\CertificadoLaboralController::class, "anular"]);
     Route::get("/certificados-laborales/{id}/descargar",     [\App\Http\Controllers\CertificadoLaboralController::class, "descargar"]);
 
     // Acciones de Personal

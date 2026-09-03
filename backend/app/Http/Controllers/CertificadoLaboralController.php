@@ -75,6 +75,44 @@ class CertificadoLaboralController extends Controller
         return $create->json('entry.id');
     }
 
+    // Arma el PDF del certificado (sin firmar) a partir del empleado y el número —
+    // extraído para que store() (emisión) y pdf() (re-descarga del sin-firmar, ver
+    // hallazgo 2 de la sección Certificados Laborales en CLAUDE.md) usen exactamente
+    // la misma plantilla/datos sin duplicar el bloque completo.
+    private function construirPdf(Empleado $empleado, string $numero, string $generadoPor)
+    {
+        $configRows  = DB::table('dbo.d2_configuracion')
+            ->whereRaw("LOWER(concepto) IN ('nombre_institucion','firmante_th_nombre','firmante_th_cargo','ciudad_institucion')")
+            ->get(['concepto', 'valor']);
+        $config      = collect($configRows)->mapWithKeys(fn($r) => [strtolower($r->concepto) => $r->valor]);
+        $nombreInst  = $config['nombre_institucion']  ?? 'CONSEJO DE COMUNICACIÓN';
+        $firmanteNom = $config['firmante_th_nombre']  ?? '';
+        $firmanteCar = $config['firmante_th_cargo']   ?? 'RESPONSABLE DE TALENTO HUMANO';
+        $ciudad      = $config['ciudad_institucion']  ?? 'Quito';
+
+        $meses = ['','enero','febrero','marzo','abril','mayo','junio',
+                  'julio','agosto','septiembre','octubre','noviembre','diciembre'];
+        $hoy      = Carbon::now();
+        $fechaStr = $hoy->day . ' de ' . $meses[$hoy->month] . ' de ' . $hoy->year;
+
+        $fi          = Carbon::parse($empleado->fecha_ingreso);
+        $fechaIngStr = $fi->day . ' de ' . $meses[$fi->month] . ' de ' . $fi->year;
+
+        $activo      = strtoupper($empleado->estado) === 'ACTIVO';
+        $fechaSalStr = null;
+        if (!$activo && $empleado->fecha_salida) {
+            $fs          = Carbon::parse($empleado->fecha_salida);
+            $fechaSalStr = $fs->day . ' de ' . $meses[$fs->month] . ' de ' . $fs->year;
+        }
+
+        $logo = base64_encode(file_get_contents(public_path('logo.png')));
+
+        return Pdf::loadView('reportes.certificado_laboral', compact(
+            'empleado', 'numero', 'nombreInst', 'firmanteNom', 'firmanteCar',
+            'ciudad', 'fechaStr', 'fechaIngStr', 'fechaSalStr', 'activo', 'logo', 'generadoPor'
+        ))->setPaper('a4', 'portrait');
+    }
+
     // GET /api/certificados-laborales
     public function index(Request $request)
     {
@@ -115,85 +153,81 @@ class CertificadoLaboralController extends Controller
             'id_emp' => 'required|string',
         ]);
 
-        $empleado = Empleado::with(['departamento', 'jornada'])->find($request->id_emp);
+        // Antes buscaba sin filtro — se le podía emitir un certificado laboral a un
+        // Funcionario Externo (es_externo=true, sin historial laboral real que certificar)
+        // o al placeholder de sistema (depto 999).
+        $empleado = Empleado::with(['departamento', 'jornada'])
+            ->where('id_depto', '!=', 999)
+            ->find($request->id_emp);
         if (!$empleado) {
             return response()->json(['message' => 'Empleado no encontrado'], 404);
         }
-
-        // Generar número correlativo: DATH-CL-NNN-YYYY
-        $año   = now()->year;
-        $ultimo = DB::table('dbo.d2_certificado_laboral')
-            ->whereYear('fecha_emision', $año)
-            ->selectRaw("MAX(CAST(SPLIT_PART(numero, '-', 3) AS INTEGER)) as ultimo")
-            ->value('ultimo');
-        $seq    = str_pad(($ultimo ?? 0) + 1, 3, '0', STR_PAD_LEFT);
-        $numero = "DATH-CL-{$seq}-{$año}";
-
-        // Configuración
-        $configRows  = DB::table('dbo.d2_configuracion')
-            ->whereRaw("LOWER(concepto) IN ('nombre_institucion','firmante_th_nombre','firmante_th_cargo','ciudad_institucion')")
-            ->get(['concepto', 'valor']);
-        $config      = collect($configRows)->mapWithKeys(fn($r) => [strtolower($r->concepto) => $r->valor]);
-        $nombreInst  = $config['nombre_institucion']  ?? 'CONSEJO DE COMUNICACIÓN';
-        $firmanteNom = $config['firmante_th_nombre']  ?? '';
-        $firmanteCar = $config['firmante_th_cargo']   ?? 'RESPONSABLE DE TALENTO HUMANO';
-        $ciudad      = $config['ciudad_institucion']  ?? 'Quito';
-
-        // Fecha de emisión en español
-        $meses = ['','enero','febrero','marzo','abril','mayo','junio',
-                  'julio','agosto','septiembre','octubre','noviembre','diciembre'];
-        $hoy   = Carbon::now();
-        $fechaStr = $hoy->day . ' de ' . $meses[$hoy->month] . ' de ' . $hoy->year;
-
-        // Fecha de ingreso en español
-        $fi          = Carbon::parse($empleado->fecha_ingreso);
-        $fechaIngStr = $fi->day . ' de ' . $meses[$fi->month] . ' de ' . $fi->year;
-
-        // Fecha de salida (solo inactivos)
-        $activo      = strtoupper($empleado->estado) === 'ACTIVO';
-        $fechaSalStr = null;
-        if (!$activo && $empleado->fecha_salida) {
-            $fs          = Carbon::parse($empleado->fecha_salida);
-            $fechaSalStr = $fs->day . ' de ' . $meses[$fs->month] . ' de ' . $fs->year;
+        if ($empleado->es_externo) {
+            return response()->json(['message' => 'No se emiten certificados laborales a Funcionarios Externos.'], 422);
         }
 
-        $logo        = base64_encode(file_get_contents(public_path('logo.png')));
+        $año = now()->year;
+
+        // Generación de número + creación del registro envueltas en transacción: el
+        // advisory lock de CertificadoLaboral::generarSiguienteNumero() solo sirve
+        // mientras dure la transacción que lo pidió (evita dos emisiones simultáneas
+        // calculando el mismo número — antes chocaba contra el UNIQUE con un 500).
+        $cert = DB::transaction(function () use ($empleado, $año, $actor) {
+            $numero     = CertificadoLaboral::generarSiguienteNumero($año);
+            $nombreArch = "certificado_laboral_{$numero}.pdf";
+
+            return CertificadoLaboral::create([
+                'numero'          => $numero,
+                'id_emp'          => $empleado->id_emp,
+                'fecha_emision'   => now()->toDateString(),
+                'alfresco_id'     => null,
+                'nombre_archivo'  => $nombreArch,
+                'usuario_emision' => $actor->id_emp,
+                'estado'          => 'EMITIDO',
+            ]);
+        });
+
         $generadoPor = trim($actor->apellido_emp) . ' ' . trim($actor->nombre_emp);
-
-        $pdf = Pdf::loadView('reportes.certificado_laboral', compact(
-            'empleado', 'numero', 'nombreInst', 'firmanteNom', 'firmanteCar',
-            'ciudad', 'fechaStr', 'fechaIngStr', 'fechaSalStr', 'activo', 'logo', 'generadoPor'
-        ))->setPaper('a4', 'portrait');
-
+        $pdf         = $this->construirPdf($empleado, $cert->numero, $generadoPor);
         $pdfContent  = $pdf->output();
-        $nombreArch  = "certificado_laboral_{$numero}.pdf";
-
-        // Guardar en BD (sin Alfresco — el firmado se sube manualmente después)
-        $cert = CertificadoLaboral::create([
-            'numero'          => $numero,
-            'id_emp'          => $empleado->id_emp,
-            'fecha_emision'   => $hoy->toDateString(),
-            'alfresco_id'     => null,
-            'nombre_archivo'  => $nombreArch,
-            'usuario_emision' => $actor->id_emp,
-        ]);
 
         AuditoriaService::log(
             'dbo.d2_certificado_laboral',
             $cert->id,
             'EMITIR',
             null,
-            ['numero' => $numero, 'id_emp' => $empleado->id_emp],
+            ['numero' => $cert->numero, 'id_emp' => $empleado->id_emp],
             $request,
-            "Certificado laboral {$numero} emitido para {$empleado->apellido_emp} {$empleado->nombre_emp}"
+            "Certificado laboral {$cert->numero} emitido para {$empleado->apellido_emp} {$empleado->nombre_emp}"
         );
 
         return response($pdfContent, 200, [
             'Content-Type'        => 'application/pdf',
-            'Content-Disposition' => "attachment; filename=\"{$nombreArch}\"",
+            'Content-Disposition' => "attachment; filename=\"{$cert->nombre_archivo}\"",
             'X-Certificado-Id'    => $cert->id,
-            'X-Numero'            => $numero,
+            'X-Numero'            => $cert->numero,
         ]);
+    }
+
+    // GET /api/certificados-laborales/{id}/pdf — regenera el PDF sin firmar. Antes no
+    // existía: store() lo devolvía una sola vez sin persistirlo, así que si TH perdía el
+    // archivo antes de firmarlo, la única salida era re-emitir (consumiendo otro número
+    // y dejando la fila anterior huérfana con alfresco_id=null). Funciona en cualquier
+    // estado (igual que AccionPersonalController::pdf() con sus borradores).
+    public function pdf($id, Request $request)
+    {
+        $actor = $request->user();
+        if (!$this->esAdminOTH($actor->id_emp)) {
+            return response()->json(['message' => 'Sin permisos'], 403);
+        }
+
+        $cert     = CertificadoLaboral::with('empleado.departamento')->findOrFail($id);
+        $empleado = $cert->empleado;
+
+        $generadoPor = trim($actor->apellido_emp) . ' ' . trim($actor->nombre_emp);
+        $pdf         = $this->construirPdf($empleado, $cert->numero, $generadoPor);
+
+        return $pdf->stream($cert->nombre_archivo ?? "certificado_laboral_{$cert->numero}.pdf");
     }
 
     // POST /api/certificados-laborales/{id}/subir-firmado
@@ -207,6 +241,10 @@ class CertificadoLaboralController extends Controller
         $request->validate(['archivo' => 'required|file|mimes:pdf|max:10240']);
 
         $cert = CertificadoLaboral::with('empleado')->findOrFail($id);
+
+        if ($cert->estado === 'ANULADO') {
+            return response()->json(['message' => 'Este certificado está anulado, no se puede subir un firmado.'], 422);
+        }
 
         $año         = $cert->fecha_emision->year;
         $cedula      = trim($cert->empleado->identificacion);
@@ -230,7 +268,56 @@ class CertificadoLaboralController extends Controller
 
         $cert->update(['alfresco_id' => $upload->json('entry.id')]);
 
+        AuditoriaService::log(
+            'dbo.d2_certificado_laboral',
+            $cert->id,
+            'SUBIR_FIRMADO',
+            null,
+            ['numero' => $cert->numero, 'alfresco_id' => $cert->alfresco_id],
+            $request,
+            "PDF firmado subido para certificado laboral {$cert->numero}"
+        );
+
         return response()->json(['message' => 'PDF firmado subido correctamente', 'alfresco_id' => $cert->alfresco_id]);
+    }
+
+    // PATCH /api/certificados-laborales/{id}/anular — antes no existía ninguna forma de
+    // invalidar un certificado emitido por error (empleado equivocado, dato mal cargado).
+    // El número anulado NO se libera/reutiliza — queda como constancia de que existió y
+    // se invalidó (mismo criterio que numero_accion en Acciones de Personal).
+    public function anular($id, Request $request)
+    {
+        $actor = $request->user();
+        if (!$this->esAdminOTH($actor->id_emp)) {
+            return response()->json(['message' => 'Sin permisos'], 403);
+        }
+
+        $request->validate(['observacion' => 'required|string|max:300']);
+
+        $cert = CertificadoLaboral::with('empleado')->findOrFail($id);
+
+        if ($cert->estado === 'ANULADO') {
+            return response()->json(['message' => 'Este certificado ya está anulado.'], 422);
+        }
+
+        $cert->update([
+            'estado'                => 'ANULADO',
+            'observacion_anulacion' => $request->observacion,
+            'anulado_en'            => now(),
+            'anulado_por'           => $actor->id_emp,
+        ]);
+
+        AuditoriaService::log(
+            'dbo.d2_certificado_laboral',
+            $cert->id,
+            'ANULAR',
+            ['estado' => 'EMITIDO'],
+            ['estado' => 'ANULADO', 'observacion' => $request->observacion],
+            $request,
+            "Anulación de certificado laboral {$cert->numero}: " . trim($cert->empleado->apellido_emp . ' ' . $cert->empleado->nombre_emp)
+        );
+
+        return response()->json(['message' => 'Certificado anulado correctamente']);
     }
 
     // GET /api/certificados-laborales/{id}/descargar
