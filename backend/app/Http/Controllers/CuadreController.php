@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
+use App\Services\AuditoriaService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
@@ -23,6 +24,14 @@ class CuadreController extends Controller
         Artisan::call('procesar:cuadre', ['--fecha' => $fecha]);
 
         $output = Artisan::output();
+
+        // Disparar el cuadre manualmente desde el portal recalcula atrasos/descuentos de TODA
+        // la institución para esa fecha (sobrescribe la fila de d2_cuadre_marcacion vía
+        // updateOrInsert) — antes no dejaba ninguna traza de quién lo ejecutó ni cuándo, más
+        // allá del timestamp genérico ULTIMO_CUADRE_PROCESADO (que tampoco distingue si corrió
+        // por cron o manualmente desde acá).
+        AuditoriaService::log('dbo.d2_cuadre_marcacion', 0, 'PROCESAR_CUADRE', null,
+            ['fecha' => $fecha], $request, "Reproceso manual de cuadre para {$fecha}");
 
         return response()->json([
             'message' => "Cuadre procesado para {$fecha}",

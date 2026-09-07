@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\CabTurno;
 use App\Models\Turno;
+use App\Services\AuditoriaService;
 use Illuminate\Http\Request;
 
 class TurnoController extends Controller
@@ -37,6 +38,9 @@ class TurnoController extends Controller
             "horas_25"      => $request->horas_25 ?? 0,
         ]);
 
+        AuditoriaService::log('dbo.d2_cab_turno', $turno->id_turno, 'CREAR', null,
+            ['descripcion' => $turno->descripcion], $request, "Creación turno {$turno->descripcion}");
+
         return response()->json($turno->load("horarios"), 201);
     }
 
@@ -55,12 +59,18 @@ class TurnoController extends Controller
             "descripcion" => "required|string|max:30",
         ]);
 
+        $anterior = ['descripcion' => $turno->descripcion, 'horas_normales' => $turno->horas_normales];
+
         $turno->update([
             "descripcion"    => strtoupper($request->descripcion),
             "color"          => $request->color ?? $turno->color,
             "horas_normales" => $request->horas_normales ?? $turno->horas_normales,
             "horas_25"       => $request->horas_25 ?? $turno->horas_25,
         ]);
+
+        AuditoriaService::log('dbo.d2_cab_turno', $turno->id_turno, 'ACTUALIZAR', $anterior,
+            ['descripcion' => $turno->descripcion, 'horas_normales' => $turno->horas_normales],
+            $request, "Edición turno {$turno->descripcion}");
 
         return response()->json($turno->load("horarios"));
     }
@@ -71,9 +81,16 @@ class TurnoController extends Controller
         $turno = CabTurno::findOrFail($id);
         Turno::where("id_turno", $id)->delete();
         $turno->delete();
+
+        AuditoriaService::log('dbo.d2_cab_turno', $id, 'ELIMINAR',
+            ['descripcion' => $turno->descripcion], null, $request, "Eliminación turno {$turno->descripcion}");
+
         return response()->json(["message" => "Turno eliminado correctamente"]);
     }
 
+    // Antes sin auditar — cambiar las horas de ENTRADA/SALIDA de un turno afecta de golpe el
+    // cálculo de atrasos (ProcesarCuadre, spec 03) y la clasificación de horas extras (spec 08)
+    // de todos los empleados que tengan ese turno asignado ese mes.
     public function guardarHorarios(Request $request, $id)
     {
         $this->requireRole($request, self::ROLES_ADMIN);
@@ -83,7 +100,9 @@ class TurnoController extends Controller
             "horarios.*.hora"       => "required|string",
         ]);
 
-        CabTurno::findOrFail($id);
+        $turno = CabTurno::findOrFail($id);
+
+        $anterior = Turno::where("id_turno", $id)->get(['concepto', 'hora'])->toArray();
 
         Turno::where("id_turno", $id)->delete();
 
@@ -98,6 +117,10 @@ class TurnoController extends Controller
                 "id_jornada" => $horario["id_jornada"] ?? null,
             ]);
         }
+
+        AuditoriaService::log('dbo.d2_turno', $id, 'ACTUALIZAR_HORARIOS',
+            ['horarios' => $anterior], ['horarios' => $request->horarios],
+            $request, "Edición horarios del turno {$turno->descripcion}");
 
         return response()->json(
             CabTurno::with("horarios")->find($id)

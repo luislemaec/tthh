@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\AuditoriaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class ZktecoController extends Controller
 {
+    private const ROLES_ADMIN = ['ADMINISTRADOR'];
+
     private function dispositivoAutorizado(Request $request): bool
     {
         $sn = $request->query('SN', '');
@@ -232,8 +235,14 @@ class ZktecoController extends Controller
     // ── Admin ────────────────────────────────────────────────────────────────
 
     // GET /api/admin/zkteco
-    public function index()
+    // GET /api/admin/zkteco — antes (junto con update/destroy) sin ningún requireRole(), pese a
+    // que la vista (ZktecoView.vue, "solo rol ADMINISTRADOR" según CLAUDE.md) asumía que ya
+    // estaba cerrado. Cualquier autenticado podía activar/desactivar o eliminar el registro del
+    // reloj biométrico llamando directo a la API — activar un serial no autorizado le habría
+    // permitido inyectar marcaciones falsas vía el protocolo ADMS (ver ZktecoController::cdata).
+    public function index(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $dispositivos = DB::table('dbo.d2_zkteco_dispositivo')
             ->orderBy('created_at')
             ->get();
@@ -243,10 +252,13 @@ class ZktecoController extends Controller
     // PUT /api/admin/zkteco/{id}
     public function update(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate([
             'nombre' => 'nullable|string|max:100',
             'activo' => 'required|boolean',
         ]);
+
+        $anterior = DB::table('dbo.d2_zkteco_dispositivo')->where('id', $id)->first();
 
         DB::table('dbo.d2_zkteco_dispositivo')
             ->where('id', $id)
@@ -256,13 +268,26 @@ class ZktecoController extends Controller
                 'updated_at' => now(),
             ]);
 
+        AuditoriaService::log('dbo.d2_zkteco_dispositivo', $id, 'ACTUALIZAR',
+            $anterior ? ['nombre' => $anterior->nombre, 'activo' => $anterior->activo] : null,
+            ['nombre' => $request->nombre, 'activo' => $request->activo],
+            $request, "Actualización dispositivo ZKTeco #{$id}" . ($request->activo ? ' (activado)' : ' (desactivado)'));
+
         return response()->json(['message' => 'Dispositivo actualizado']);
     }
 
     // DELETE /api/admin/zkteco/{id}
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
+        $anterior = DB::table('dbo.d2_zkteco_dispositivo')->where('id', $id)->first();
+
         DB::table('dbo.d2_zkteco_dispositivo')->where('id', $id)->delete();
+
+        AuditoriaService::log('dbo.d2_zkteco_dispositivo', $id, 'ELIMINAR',
+            $anterior ? ['serial' => $anterior->serial, 'nombre' => $anterior->nombre] : null,
+            null, $request, "Eliminación dispositivo ZKTeco #{$id}");
+
         return response()->json(['message' => 'Dispositivo eliminado']);
     }
 }

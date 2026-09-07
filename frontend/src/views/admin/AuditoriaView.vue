@@ -125,14 +125,10 @@ const cargando      = ref(false)
 const expandido     = ref(null)
 const errorMsg      = ref('')
 
-const acciones = [
-  'LOGIN', 'LOGOUT', 'LOGIN_FALLIDO',
-  'CREAR', 'ACTUALIZAR', 'ASIGNAR_ROL', 'REVOCAR_ROL',
-  'APROBAR', 'NEGAR', 'ELIMINAR', 'AUTORIZAR', 'CONFIRMAR', 'LIQUIDAR',
-  'CONFIRMAR_INGRESO', 'REVERSAR_INGRESO', 'CONFIRMAR_EGRESO', 'REVERSAR_EGRESO',
-  'APROBAR_MOV', 'NEGAR_MOV', 'ORDEN_TRABAJO', 'EN_TALLER', 'FINALIZAR_MANT',
-  'AJUSTE_POSITIVO', 'AJUSTE_NEGATIVO', 'DESPACHAR',
-]
+// Antes un array hardcodeado de ~25 acciones, desactualizado frente a las ~70+ que ya existen
+// en el código real — el filtro no servía para buscar la mayoría de acciones sin ya saber de
+// antemano la cadena exacta. Ahora se carga dinámicamente desde la tabla (cargarAcciones()).
+const acciones = ref([])
 
 const filtros = reactive({
   modulo: '', accion: '', usuario_id: '',
@@ -156,6 +152,13 @@ async function buscar(pagina = 1) {
   } finally {
     cargando.value = false
   }
+}
+
+async function cargarAcciones() {
+  try {
+    const { data } = await api.get('/admin/auditoria/acciones')
+    acciones.value = data
+  } catch { /* el filtro simplemente queda vacío, no bloquea el resto de la pantalla */ }
 }
 
 function limpiar() {
@@ -210,4 +213,5 @@ function badgeAccion(accion) {
 
 // Cargar al montar
 buscar()
+cargarAcciones()
 </script>

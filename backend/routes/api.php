@@ -133,6 +133,7 @@ Route::middleware("auth:sanctum")->group(function () {
 
         // Auditoría centralizada (solo ADMINISTRADOR)
         Route::get("auditoria", [\App\Http\Controllers\Admin\AuditoriaController::class, "index"]);
+        Route::get("auditoria/acciones", [\App\Http\Controllers\Admin\AuditoriaController::class, "acciones"]);
 
         // Dispositivos ZKTeco
         Route::get("zkteco",          [ZktecoController::class, "index"]);

@@ -7,17 +7,15 @@ use Illuminate\Support\Facades\DB;
 
 class AuditoriaController extends Controller
 {
+    // Antes este endpoint solo dejaba pasar ADMINISTRADOR/TALENTO HUMANO, mientras
+    // NominaController::auditoria() (misma tabla nom_auditoria_log, sin ningún filtro por
+    // módulo) solo dejaba pasar ADMINISTRADOR/TH NOMINA — dos guards distintos sobre los mismos
+    // datos. Unificado: ambos aceptan los 3 roles.
+    private const ROLES_AUDITORIA = ['ADMINISTRADOR', 'TALENTO HUMANO', 'TH NOMINA'];
+
     public function index(Request $request)
     {
-        $tieneAcceso = DB::table('dbo.admin_usuario_rol as ur')
-            ->join('dbo.admin_rol as r', 'ur.id_rol', '=', 'r.id')
-            ->where('ur.id_emp', $request->user()->id_emp)
-            ->whereIn('r.descripcion', ['ADMINISTRADOR', 'TALENTO HUMANO'])
-            ->exists();
-
-        if (!$tieneAcceso) {
-            return response()->json(['message' => 'Acceso restringido.'], 403);
-        }
+        $this->requireRole($request, self::ROLES_AUDITORIA);
 
         $query = DB::table('dbo.nom_auditoria_log')
             ->orderByDesc('created_at');
@@ -63,5 +61,24 @@ class AuditoriaController extends Controller
         }
 
         return response()->json($query->paginate($request->get('per_page', 50)));
+    }
+
+    // GET /api/admin/auditoria/acciones — lista canónica dinámica de valores `accion` realmente
+    // usados en la tabla, para poblar el filtro del frontend. Antes `AuditoriaView.vue` tenía un
+    // array hardcodeado de ~25 acciones que quedó desactualizado frente a las ~70+ que existen
+    // hoy en el código (faltaban CREAR_VEHICULO, REABRIR, REVISAR_APROBAR, ACTUALIZAR_DETALLE,
+    // SUBIR_FIRMADO, etc. — spec 12 §11.1) — el filtro por acción no servía para la mayoría de
+    // acciones reales sin que el usuario ya supiera de antemano la cadena exacta.
+    public function acciones(Request $request)
+    {
+        $this->requireRole($request, self::ROLES_AUDITORIA);
+
+        $acciones = DB::table('dbo.nom_auditoria_log')
+            ->select('accion')
+            ->distinct()
+            ->orderBy('accion')
+            ->pluck('accion');
+
+        return response()->json($acciones);
     }
 }

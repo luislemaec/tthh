@@ -32,9 +32,10 @@ para especificar cambios futuros.
 | 09 | Nómina (D13 / D14 / Fondos de Reserva / Rol de Pagos) | ✅ Borrador v1 | [09-nomina.md](09-nomina.md) |
 | 10 | Certificados laborales | ✅ Borrador v1 | [10-certificados-laborales.md](10-certificados-laborales.md) |
 | 11 | Dashboard y reportes de TH | ✅ Borrador v1 | [11-dashboard-reportes.md](11-dashboard-reportes.md) |
-| 12 | Auditoría | ⬜ Pendiente · última | — |
+| 12 | Auditoría | ✅ Borrador v1 | [12-auditoria.md](12-auditoria.md) |
 
-> **Última pendiente:** 12 Auditoría. Con eso queda cerrado el módulo Talento Humano (00–12).
+> **Módulo Talento Humano completo** — las 13 specs (00–12) en borrador v1. Cambios de comportamiento
+> del sistema se reflejan en la spec correspondiente en el mismo commit que el código.
 
 ## Convención de versionado
 

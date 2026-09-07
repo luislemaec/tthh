@@ -3,6 +3,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AportesIess;
+use App\Services\AuditoriaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -67,6 +68,15 @@ class AportesIessController extends Controller
             ]);
 
             DB::commit();
+
+            // Sin auditar hasta hoy — esta tasa alimenta directamente el aporte patronal/personal
+            // de TODO el Rol de Pagos (RolPagoController::tasasVigentes(), spec 09 §4.4); un
+            // cambio aquí sin traza hace imposible reconstruir después con qué tasa se calculó
+            // un rol de pagos específico.
+            AuditoriaService::log('dbo.d2_aportes_iess', $aporte->id_aporte, 'CREAR', null,
+                ['modalidad' => $aporte->modalidad, 'aporte_individual' => $aporte->aporte_individual, 'aporte_patronal' => $aporte->aporte_patronal],
+                $request, "Nueva tasa IESS {$aporte->modalidad} desde {$aporte->fecha_desde}");
+
             return response()->json($aporte, 201);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -90,6 +100,8 @@ class AportesIessController extends Controller
         ]);
 
         $aporte = AportesIess::findOrFail($id);
+        $anterior = ['modalidad' => $aporte->modalidad, 'aporte_individual' => $aporte->aporte_individual, 'aporte_patronal' => $aporte->aporte_patronal, 'fecha_hasta' => $aporte->fecha_hasta];
+
         $aporte->update([
             'modalidad'         => $request->modalidad,
             'aporte_individual' => $request->aporte_individual,
@@ -104,6 +116,10 @@ class AportesIessController extends Controller
             'updated_by'        => $request->user()->id_emp,
         ]);
 
+        AuditoriaService::log('dbo.d2_aportes_iess', $aporte->id_aporte, 'ACTUALIZAR', $anterior,
+            ['modalidad' => $aporte->modalidad, 'aporte_individual' => $aporte->aporte_individual, 'aporte_patronal' => $aporte->aporte_patronal, 'fecha_hasta' => $aporte->fecha_hasta],
+            $request, "Edición tasa IESS {$aporte->modalidad}");
+
         return response()->json($aporte);
     }
 
@@ -111,7 +127,13 @@ class AportesIessController extends Controller
     public function destroy(Request $request, $id)
     {
         $this->requireRole($request, self::ROLES_NOMINA);
-        AportesIess::findOrFail($id)->delete();
+        $aporte = AportesIess::findOrFail($id);
+        $snapshot = ['modalidad' => $aporte->modalidad, 'aporte_individual' => $aporte->aporte_individual, 'aporte_patronal' => $aporte->aporte_patronal];
+        $aporte->delete();
+
+        AuditoriaService::log('dbo.d2_aportes_iess', $id, 'ELIMINAR', $snapshot, null,
+            $request, "Eliminación tasa IESS {$snapshot['modalidad']}");
+
         return response()->json(['message' => 'Eliminado correctamente.']);
     }
 }

@@ -3,6 +3,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Departamento;
+use App\Services\AuditoriaService;
 use Illuminate\Http\Request;
 
 class DepartamentoController extends Controller
@@ -50,6 +51,10 @@ class DepartamentoController extends Controller
             'updated_by'      => $usuario,
         ]);
 
+        AuditoriaService::log('dbo.ad_departamento', $dep->id_depto, 'CREAR', null,
+            ['nombre_depto' => $dep->nombre_depto, 'padre_id' => $dep->padre_id],
+            $request, "Creación departamento {$dep->nombre_depto}");
+
         return response()->json($dep->load('padre'), 201);
     }
 
@@ -67,6 +72,8 @@ class DepartamentoController extends Controller
             return response()->json(['message' => 'Un departamento no puede ser su propio padre.'], 422);
         }
 
+        $anterior = ['nombre_depto' => $dep->nombre_depto, 'centro_de_costo' => $dep->centro_de_costo, 'padre_id' => $dep->padre_id];
+
         $dep->update([
             'nombre_depto'    => strtoupper($request->nombre_depto),
             'centro_de_costo' => strtoupper($request->centro_de_costo ?? $dep->centro_de_costo),
@@ -74,6 +81,10 @@ class DepartamentoController extends Controller
             'updated_at'      => now(),
             'updated_by'      => auth()->user()->id_emp ?? null,
         ]);
+
+        AuditoriaService::log('dbo.ad_departamento', $dep->id_depto, 'ACTUALIZAR', $anterior,
+            ['nombre_depto' => $dep->nombre_depto, 'centro_de_costo' => $dep->centro_de_costo, 'padre_id' => $dep->padre_id],
+            $request, "Edición departamento {$dep->nombre_depto}");
 
         return response()->json($dep->load('padre'));
     }
@@ -99,6 +110,10 @@ class DepartamentoController extends Controller
         }
 
         $dep->update(['estado' => 'INACTIVO']);
+
+        AuditoriaService::log('dbo.ad_departamento', $dep->id_depto, 'DESACTIVAR',
+            ['estado' => 'ACTIVO'], ['estado' => 'INACTIVO'], $request, "Inactivación departamento {$dep->nombre_depto}");
+
         return response()->json(['message' => 'Departamento inactivado correctamente.']);
     }
 
@@ -107,6 +122,10 @@ class DepartamentoController extends Controller
         $this->requireRole($request, self::ROLES_ADMIN);
         $dep = Departamento::findOrFail($id);
         $dep->update(['estado' => 'ACTIVO']);
+
+        AuditoriaService::log('dbo.ad_departamento', $dep->id_depto, 'ACTIVAR',
+            ['estado' => 'INACTIVO'], ['estado' => 'ACTIVO'], $request, "Reactivación departamento {$dep->nombre_depto}");
+
         return response()->json(['message' => 'Departamento activado correctamente.']);
     }
 }

@@ -84,21 +84,33 @@ class NominaController extends Controller
             'valor' => 'required|numeric|min:1',
         ]);
 
+        $anterior = SbuHistorico::where('anio', $request->anio)->first();
+
         $sbu = SbuHistorico::updateOrCreate(
             ['anio' => $request->anio],
             ['valor' => $request->valor, 'usuario_registro' => $request->user()->id_emp]
         );
+
+        // Sin auditar hasta hoy — cambiar el SBU de un año recalcula el Décimo Cuarto completo
+        // de toda la institución para ese año (§5.3), y no dejaba ninguna traza de quién lo
+        // cambió ni el valor anterior.
+        $this->registrarAuditoria($request, 'nom_sbu_historico', $sbu->id ?? 0, 'ACTUALIZAR',
+            $anterior ? ['valor' => $anterior->valor] : null, ['valor' => $sbu->valor],
+            "SBU {$request->anio} = {$sbu->valor}");
+
         return response()->json($sbu, 201);
     }
 
     // ── Auditoría ─────────────────────────────────────────────────────────────
 
     // GET /api/nomina/auditoria?tabla=&anio=&mes=
+    // Antes exigía esNominaOAdmin() (ADMINISTRADOR/TH NOMINA), mientras
+    // Admin/AuditoriaController::index() (misma tabla nom_auditoria_log) exigía
+    // ADMINISTRADOR/TALENTO HUMANO — dos guards distintos sobre los mismos datos. Unificado a
+    // los 3 roles, igual que el otro endpoint.
     public function auditoria(Request $request)
     {
-        if (!$this->esNominaOAdmin($request->user()->id_emp)) {
-            return response()->json(['message' => 'Sin permiso.'], 403);
-        }
+        $this->requireRole($request, ['ADMINISTRADOR', 'TALENTO HUMANO', 'TH NOMINA']);
         $query = DB::table('dbo.nom_auditoria_log')->orderByDesc('created_at');
 
         if ($request->filled('tabla'))  $query->where('tabla', $request->tabla);

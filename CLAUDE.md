@@ -1206,7 +1206,7 @@ Implementada para trazabilidad ante la Contraloría General del Estado. Todas la
 
 ### Servicio
 
-`App\Services\AuditoriaService::log($tabla, $registroId, $accion, $datosAnteriores, $datosNuevos, $request, $descripcion)` — estático, nunca lanza excepciones (try/catch interno). Insertar en cualquier controlador con `use App\Services\AuditoriaService;`.
+`App\Services\AuditoriaService::log($tabla, $registroId, $accion, $datosAnteriores, $datosNuevos, $request, $descripcion)` — estático, nunca lanza excepciones (try/catch interno, ver "Corrección de deuda técnica" abajo). Insertar en cualquier controlador con `use App\Services\AuditoriaService;`. Columna `accion` es `VARCHAR(40)` (ampliada 2026-09-07, antes `VARCHAR(20)` — ver hallazgo 1 abajo).
 
 ### Controladores instrumentados
 
@@ -1222,8 +1222,16 @@ Implementada para trazabilidad ante la Contraloría General del Estado. Todas la
 | `HorasExtrasController` | APROBAR, NEGAR, AUTORIZAR, CONFIRMAR, NEGAR (registro), CREAR, ACTUALIZAR, ELIMINAR (planificación), REGISTRAR, ACTUALIZAR, REVISAR_APROBAR, REVISAR_DEVOLVER (registro), SUBIR_FIRMADO (2026-09-03 — antes solo los primeros 5) |
 | `CertificadoLaboralController` | EMITIR, SUBIR_FIRMADO, ANULAR (2026-09-03) |
 | `Admin/ConfiguracionController` | ACTUALIZAR (valor anterior/nuevo) |
-| `NominaController` | (vía AuditoriaService desde registrarAuditoria()) |
+| `NominaController` | (vía AuditoriaService desde registrarAuditoria()); `sbuStore` audita ACTUALIZAR desde 2026-09-07 (antes sin auditar) |
 | `RolPagoController` | CALCULAR, ACTUALIZAR_DETALLE, CERRAR, REABRIR, IMPORTAR (2026-09-07 — antes sin ninguna auditoría) |
+| `CuadreController::procesar` | PROCESAR_CUADRE (2026-09-07 — antes sin auditar; ya tenía `requireRole`) |
+| `ZktecoController` | ACTUALIZAR, ELIMINAR (2026-09-07 — antes sin `requireRole()` **ni** auditoría, ver hallazgo 3 abajo) |
+| `Admin/DepartamentoController` | CREAR, ACTUALIZAR, DESACTIVAR, ACTIVAR (2026-09-07) |
+| `Admin/RazonController` | CREAR, ACTUALIZAR, DESACTIVAR (2026-09-07) |
+| `Admin/ModalidadLaboralController` | CREAR, ACTUALIZAR (2026-09-07) |
+| `Admin/TurnoController` | CREAR, ACTUALIZAR, ELIMINAR, ACTUALIZAR_HORARIOS (2026-09-07) |
+| `Admin/CalendarioController` | CREAR, ACTUALIZAR, ELIMINAR, CARGAR_FERIADOS (2026-09-07) |
+| `Admin/AportesIessController` | CREAR, ACTUALIZAR, ELIMINAR (2026-09-07 — antes sin auditar pese a alimentar todo el Rol de Pagos) |
 | `Adquisiciones/OrdenCompraController` | CONFIRMAR_INGRESO, REVERSAR_INGRESO |
 | `Adquisiciones/EgresoController` | CONFIRMAR_EGRESO, REVERSAR_EGRESO |
 | `Adquisiciones/SolicitudMaterialController` | APROBAR, NEGAR, DESPACHAR |
@@ -1232,10 +1240,13 @@ Implementada para trazabilidad ante la Contraloría General del Estado. Todas la
 
 ### Endpoint y vista
 
-- `GET /api/admin/auditoria` — roles ADMINISTRADOR o TALENTO HUMANO; filtros: `modulo`, `accion`, `usuario_id`, `fecha_desde`, `fecha_hasta`, `descripcion`; paginado 50/página
+- `GET /api/admin/auditoria` — roles ADMINISTRADOR, TALENTO HUMANO o TH NOMINA (ampliado 2026-09-07 — antes sin TH NOMINA, inconsistente con `GET /api/nomina/auditoria` que sí lo aceptaba); filtros: `modulo`, `accion`, `usuario_id`, `fecha_desde`, `fecha_hasta`, `descripcion`; paginado 50/página
+- `GET /api/admin/auditoria/acciones` (nuevo, 2026-09-07) — `SELECT DISTINCT accion` de la tabla real, mismos 3 roles; alimenta el filtro dinámico del frontend
+- `GET /api/nomina/auditoria` (`NominaController::auditoria`) — mismos 3 roles desde 2026-09-07 (antes solo ADMINISTRADOR/TH NOMINA); confirmado sin consumidor en el frontend hoy
 - Vista: `views/admin/AuditoriaView.vue` (ruta `admin/auditoria`)
 - Tabla muestra fecha/hora, usuario, tabla, acción (con badge de color), descripción, IP
 - Clic en fila expande JSON datos_anteriores / datos_nuevos
+- Filtro "Acción": select poblado dinámicamente desde `/admin/auditoria/acciones` (2026-09-07 — antes un array hardcodeado de ~25 valores, desactualizado frente a los ~70+ reales)
 - Usa `@/services/api` (no axios directamente) para enviar el token de autenticación
 
 ### Eventos de sesión auditados
@@ -1251,6 +1262,21 @@ El filtro de módulo "Talento" en `AuditoriaController` incluye `tabla = 'auth'`
 ### Si se agrega un nuevo módulo
 
 Instrumentar sus controladores con `AuditoriaService::log()` en las acciones irreversibles (aprobar, confirmar, eliminar, cambios de estado).
+
+### Corrección de deuda técnica — Auditoría (2026-09-07)
+
+Auditoría de código (revisión de spec 12, la última del módulo) detectó 6 hallazgos relevantes, corregidos el mismo día salvo uno dejado deliberadamente sin tocar:
+
+1. **`accion` sin enum, y 3 valores ya rotos en producción.** Relevamiento completo de `AuditoriaService::log()` en todo el código: ~70 valores distintos de `accion` en uso, sin lista canónica. Al medir sus longitudes se encontraron **3 que ya excedían el `VARCHAR(20)` original de la columna**: `IMPORTACION_DISTRIBUTIVO` (24 caracteres), `REGISTRAR_MANTENIMIENTO` (23) y `REGISTRAR_MANTENIMIENTO_EXTERNO` (31). Como `AuditoriaService::log()` envuelve el `insert()` en `try/catch` y solo escribe a `Log::error()` de Laravel ante un fallo (por diseño, para no reventar la acción de negocio que se está auditando), **estas 3 acciones venían fallando en silencio desde que se instrumentaron** — `EmpleadoController::importarDistributivo()` (documentado como auditado desde 2026-09-01) y las 2 de `Tecnologia\MantenimientoController` nunca dejaron una fila real en `nom_auditoria_log`, sin que nadie lo notara. Corregido con la migración `000107`: columna ampliada a `VARCHAR(40)`. También se agregó `GET /api/admin/auditoria/acciones` (`SELECT DISTINCT accion`) para que el filtro del frontend deje de depender de un array hardcodeado que tenía menos de un tercio de las acciones reales.
+2. **`datos_anteriores`/`datos_nuevos` sin formato estándar.** Unos pasan una fotografía completa, otros solo `{estado:'X'}`, otros `null`. Con ~96 llamadas ya existentes en el código, un retrofit sistemático quedó fuera de alcance — se documentó en la spec 12 §5.3 una convención para llamadas nuevas (si el cambio toca campos con impacto financiero/legal, el snapshot debe incluir esos campos, no solo el estado).
+3. **`ZktecoController::update()`/`destroy()` sin `requireRole()` — bonus encontrado al revisar el hallazgo de "controladores sensibles sin instrumentar".** No era solo falta de auditoría: **cualquier usuario autenticado, sin rol especial, podía activar/desactivar o eliminar el registro del reloj biométrico** llamando directo a `PUT`/`DELETE /api/admin/zkteco/{id}` — activar un serial no autorizado habría permitido inyectar marcaciones falsas vía el protocolo ADMS (`cdata`). Corregido con `requireRole(['ADMINISTRADOR'])` (consistente con lo que CLAUDE.md ya documentaba sobre `ZktecoView.vue`) + auditoría `ACTUALIZAR`/`ELIMINAR`. Además se instrumentó `NominaController::sbuStore`, `CuadreController::procesar`, y el CRUD completo de 6 catálogos `Admin/*` (Departamento, Razon, ModalidadLaboral, Turno —incluye `guardarHorarios`, que cambia los horarios que alimentan atrasos y horas extras de toda la institución—, Calendario, AportesIess).
+4. **Dos endpoints de lectura sobre `nom_auditoria_log` con roles distintos.** `Admin/AuditoriaController::index()` exigía ADMINISTRADOR/TALENTO HUMANO; `NominaController::auditoria()` exigía ADMINISTRADOR/TH NOMINA — ninguno cubría el rol que sí aceptaba el otro. Unificados ambos a los 3 roles. Al revisar se confirmó que `NominaController::auditoria()` no tiene ningún consumidor en el frontend hoy (código vivo sin uso activo, se dejó funcional por si se conecta a futuro).
+5. **Sin auditoría de la marcación web (`AsistenciaController::marcar`) — evaluado y dejado sin instrumentar a propósito.** Cada marcación ya queda registrada de forma append-only en `sg_control_persona` (ip, tipo_marcación, fecha_hora); duplicarla en `nom_auditoria_log` sumaría cientos de filas diarias sin agregar valor forense nuevo, y `marcar()` no tiene ninguna rama con privilegios especiales (es estrictamente de auto-servicio). Decisión documentada en spec 12 §11.5, no un descarte silencioso.
+6. **La tabla no era append-only a nivel de base de datos.** Nada impedía un `UPDATE`/`DELETE` directo por SQL sobre `nom_auditoria_log` — solo la convención de que ningún controlador lo hace. Migración `000107` agrega 2 triggers (`BEFORE UPDATE`/`BEFORE DELETE`) que bloquean cualquier intento con una excepción de Postgres, sin importar el rol de conexión a la BD (superusuario incluido, salvo que alguien deshabilite el trigger explícitamente).
+
+**Requiere `php artisan migrate`** (migración `2026_09_07_000107_widen_accion_and_protect_nom_auditoria_log.php`) antes de que las 3 acciones previamente rotas y la protección append-only tomen efecto — el resto (auditoría en los 8 controladores, `requireRole` en Zkteco, roles unificados, endpoint de acciones dinámico) ya funciona solo con `git pull`. Sin cambios a `config/*.php` ni `.env`.
+
+**Sin pruebas funcionales en vivo** (mismo criterio que el resto de correcciones de esta serie): verificado por código y con `php -l` (sin errores de sintaxis en los 12 archivos PHP tocados), pero sin correr la migración contra una base real ni confirmar en vivo que el trigger de append-only efectivamente dispara la excepción tal como está escrito. Antes de dar esto por cerrado en producción: correr la migración y probar un `UPDATE`/`DELETE` de prueba contra una fila de `nom_auditoria_log` en pruebas.
 
 ---
 

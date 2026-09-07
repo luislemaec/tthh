@@ -3,6 +3,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ModalidadLaboral;
+use App\Services\AuditoriaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -36,6 +37,9 @@ class ModalidadLaboralController extends Controller
             'updated_by' => $user,
         ]);
 
+        AuditoriaService::log('dbo.d2_modalidad_laboral', $m->id, 'CREAR', null,
+            ['nombre' => $m->nombre], $request, "Creación modalidad laboral {$m->nombre}");
+
         return response()->json($m, 201);
     }
 
@@ -50,6 +54,7 @@ class ModalidadLaboralController extends Controller
         ]);
 
         $user = Auth::user()->id_emp ?? Auth::id();
+        $anterior = ['nombre' => $m->nombre, 'estado' => $m->estado];
 
         $m->update([
             'nombre'     => trim($request->nombre),
@@ -57,6 +62,9 @@ class ModalidadLaboralController extends Controller
             'updated_at' => now(),
             'updated_by' => $user,
         ]);
+
+        AuditoriaService::log('dbo.d2_modalidad_laboral', $m->id, 'ACTUALIZAR', $anterior,
+            ['nombre' => $m->nombre, 'estado' => $m->estado], $request, "Edición modalidad laboral {$m->nombre}");
 
         return response()->json($m);
     }

@@ -3,6 +3,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ListaFecha;
+use App\Services\AuditoriaService;
 use Illuminate\Http\Request;
 
 class CalendarioController extends Controller
@@ -71,6 +72,10 @@ class CalendarioController extends Controller
             "transmitio"=> "NO",
         ]);
 
+        AuditoriaService::log('dbo.d2_lista_fecha', 0, 'CREAR', null,
+            ['fecha' => $request->fecha, 'tipo' => $fecha->tipo, 'ubicacion' => $fecha->ubicacion],
+            $request, "Creación fecha especial {$request->fecha} ({$fecha->tipo}, {$fecha->ubicacion})");
+
         return response()->json($fecha, 201);
     }
 
@@ -105,6 +110,8 @@ class CalendarioController extends Controller
             }
         }
 
+        $anterior = ['fecha' => $fecha, 'tipo' => $registro->tipo, 'factor' => $registro->factor];
+
         $registro->update([
             "fecha"     => $nuevaFecha,
             "factor"    => $request->factor,
@@ -115,6 +122,10 @@ class CalendarioController extends Controller
             "hora_25"   => $request->hora_25 ?? 0,
         ]);
 
+        AuditoriaService::log('dbo.d2_lista_fecha', 0, 'ACTUALIZAR', $anterior,
+            ['fecha' => $nuevaFecha, 'tipo' => $registro->tipo, 'factor' => $registro->factor],
+            $request, "Edición fecha especial {$fecha} → {$nuevaFecha} ({$ubicacion})");
+
         return response()->json($registro);
     }
 
@@ -122,10 +133,15 @@ class CalendarioController extends Controller
     public function destroy(Request $request, $fecha, $ubicacion)
     {
         $this->requireRole($request, self::ROLES_ADMIN);
-        ListaFecha::where("fecha", $fecha)
+        $registro = ListaFecha::where("fecha", $fecha)
             ->where("ubicacion", $ubicacion)
-            ->firstOrFail()
-            ->delete();
+            ->firstOrFail();
+        $tipo = $registro->tipo;
+        $registro->delete();
+
+        AuditoriaService::log('dbo.d2_lista_fecha', 0, 'ELIMINAR',
+            ['fecha' => $fecha, 'tipo' => $tipo, 'ubicacion' => $ubicacion], null,
+            $request, "Eliminación fecha especial {$fecha} ({$ubicacion})");
 
         return response()->json(["message" => "Fecha eliminada correctamente"]);
     }
@@ -182,6 +198,10 @@ class CalendarioController extends Controller
                 $insertados++;
             }
         }
+
+        AuditoriaService::log('dbo.d2_lista_fecha', 0, 'CARGAR_FERIADOS', null,
+            ['anio' => $anio, 'ubicacion' => $ubicacion, 'insertados' => $insertados],
+            $request, "Carga automática de feriados Ecuador {$anio} ({$ubicacion})");
 
         return response()->json([
             "message"    => "$insertados feriados cargados correctamente",

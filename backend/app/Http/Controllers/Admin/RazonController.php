@@ -3,6 +3,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Razon;
+use App\Services\AuditoriaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -44,6 +45,10 @@ class RazonController extends Controller
             'updated_by'            => $user,
         ]);
 
+        AuditoriaService::log('dbo.d2_razon', $razon->secuencial, 'CREAR', null,
+            ['descripcion' => $razon->descripcion, 'descontable' => $razon->descontable],
+            $request, "Creación razón {$razon->descripcion}");
+
         return response()->json($razon, 201);
     }
 
@@ -57,6 +62,7 @@ class RazonController extends Controller
         ]);
 
         $user = Auth::user()->id_emp ?? Auth::id();
+        $anterior = ['descripcion' => $razon->descripcion, 'descontable' => $razon->descontable];
 
         $razon->update([
             'descripcion'           => strtoupper($request->descripcion),
@@ -67,6 +73,10 @@ class RazonController extends Controller
             'updated_at'            => now(),
             'updated_by'            => $user,
         ]);
+
+        AuditoriaService::log('dbo.d2_razon', $razon->secuencial, 'ACTUALIZAR', $anterior,
+            ['descripcion' => $razon->descripcion, 'descontable' => $razon->descontable],
+            $request, "Edición razón {$razon->descripcion}");
 
         return response()->json($razon);
     }
@@ -82,6 +92,9 @@ class RazonController extends Controller
             'updated_at' => now(),
             'updated_by' => $user,
         ]);
+
+        AuditoriaService::log('dbo.d2_razon', $razon->secuencial, 'DESACTIVAR',
+            ['estado' => 'ACTIVO'], ['estado' => 'INACTIVO'], $request, "Inactivación razón {$razon->descripcion}");
 
         return response()->json(['message' => 'Razón marcada como inactiva.']);
     }
