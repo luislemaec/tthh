@@ -42,6 +42,11 @@
         Cerrar Período
       </button>
 
+      <button v-if="cab && cab.estado === 'CERRADO'" @click="abrirReabrir"
+        class="bg-red-700 text-white px-4 py-2 rounded-lg hover:bg-red-800 text-sm font-medium">
+        Reabrir Período
+      </button>
+
       <button v-if="cab" @click="generarPdf"
         class="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-800 text-sm font-medium">
         Generar PDF
@@ -292,6 +297,46 @@
 
     <div v-if="error" class="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">{{ error }}</div>
 
+    <div v-if="sinTasa.length" class="bg-amber-50 border border-amber-300 rounded-xl p-4 text-sm text-amber-800">
+      <strong>⚠ {{ sinTasa.length }} empleado(s) sin tasa IESS configurada</strong> — su aporte quedó
+      en 0% y el líquido calculado es el RMU completo, sin descontar nada. Revisar el
+      <code>tipo_contrato</code> del empleado o el catálogo en Admin → Aportes IESS antes de cerrar
+      el período:
+      <ul class="list-disc list-inside mt-1">
+        <li v-for="s in sinTasa" :key="s.id_emp">{{ s.nombre }} — tipo_contrato: "{{ s.tipo_contrato || '(vacío)' }}"</li>
+      </ul>
+    </div>
+
+    <!-- Modal reabrir período -->
+    <div v-if="modalReabrir" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-lg w-full max-w-lg overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4" style="background-color:#0b5447;">
+          <h2 class="text-lg font-semibold text-white">Reabrir Período</h2>
+          <button @click="modalReabrir = false" class="text-white hover:text-gray-200 text-xl font-bold leading-none">×</button>
+        </div>
+        <div class="p-6 space-y-4">
+          <p class="text-sm text-gray-600">
+            El período vuelve a BORRADOR y podrá editarse/recalcularse de nuevo. Esta acción queda
+            registrada en la auditoría.
+          </p>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Justificación (obligatoria)</label>
+            <textarea v-model="observacionReabrir" rows="3" maxlength="300"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]"
+              placeholder="Motivo de la reapertura..."></textarea>
+          </div>
+          <div v-if="errorReabrir" class="text-sm text-red-600">{{ errorReabrir }}</div>
+          <div class="flex justify-end gap-3 pt-2">
+            <button @click="modalReabrir = false" class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
+            <button @click="confirmarReabrir" :disabled="reabriendo"
+              class="px-4 py-2 rounded-lg bg-red-700 text-white text-sm font-medium hover:bg-red-800 disabled:opacity-50">
+              {{ reabriendo ? 'Reabriendo...' : 'Reabrir Período' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Modal importar CSV -->
     <div v-if="modalImportar" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-lg w-full max-w-lg overflow-hidden">
@@ -381,6 +426,11 @@ const editando     = ref(null)
 const inputEdicion = ref(null)
 const modalImportar = ref(false)
 const tabActivo     = ref('detalle')
+const sinTasa        = ref([])
+const modalReabrir   = ref(false)
+const observacionReabrir = ref('')
+const errorReabrir   = ref('')
+const reabriendo     = ref(false)
 const resumenes       = ref([])
 const cargandoResumenes = ref(false)
 
@@ -442,6 +492,7 @@ const cargar = async () => {
   cab.value = null
   detalles.value = []
   resumenes.value = []
+  sinTasa.value = []
   pagina.value = 1
   tabActivo.value = 'detalle'
   editando.value = null
@@ -466,10 +517,12 @@ const calcular = async () => {
   }
   calculando.value = true
   error.value = ''
+  sinTasa.value = []
   try {
     const { data } = await api.post('/nomina/rol-pago/calcular', form.value)
     cab.value      = data.cab
     detalles.value = data.detalles
+    sinTasa.value  = data.sin_tasa || []
     resumenes.value = []
     pagina.value   = 1
     tabActivo.value = 'detalle'
@@ -489,6 +542,33 @@ const cerrar = async () => {
     editando.value = null
   } catch (e) {
     alert(e.response?.data?.message || 'Error al cerrar.')
+  }
+}
+
+const abrirReabrir = () => {
+  observacionReabrir.value = ''
+  errorReabrir.value = ''
+  modalReabrir.value = true
+}
+
+const confirmarReabrir = async () => {
+  if (!observacionReabrir.value.trim()) {
+    errorReabrir.value = 'Ingrese una justificación.'
+    return
+  }
+  reabriendo.value = true
+  errorReabrir.value = ''
+  try {
+    const { data } = await api.post('/nomina/rol-pago/reabrir', {
+      anio: form.value.anio, mes: form.value.mes, observacion: observacionReabrir.value,
+    })
+    cab.value = data
+    modalReabrir.value = false
+    editando.value = null
+  } catch (e) {
+    errorReabrir.value = e.response?.data?.message || 'Error al reabrir.'
+  } finally {
+    reabriendo.value = false
   }
 }
 

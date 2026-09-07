@@ -5,19 +5,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Services\AuditoriaService;
 
 class RolPagoController extends Controller
 {
     private const ROLES_NOMINA = ['ADMINISTRADOR', 'TH NOMINA'];
-
-    private function esNominaOAdmin(string $id_emp): bool
-    {
-        return DB::table('dbo.admin_usuario_rol as ur')
-            ->join('dbo.admin_rol as r', 'ur.id_rol', '=', 'r.id')
-            ->where('ur.id_emp', $id_emp)
-            ->whereIn('r.descripcion', ['ADMINISTRADOR', 'TH NOMINA'])
-            ->exists();
-    }
 
     private function calcularDiasEnMes(?string $fechaIngreso, int $anio, int $mes): int
     {
@@ -123,13 +115,10 @@ class RolPagoController extends Controller
     // POST /api/nomina/rol-pago/calcular
     public function calcular(Request $request)
     {
+        $this->requireRole($request, self::ROLES_NOMINA);
         $request->validate(['anio' => 'required|integer', 'mes' => 'required|integer|min:1|max:12']);
 
-        $emp = $request->user();
-        if (!$this->esNominaOAdmin($emp->id_emp)) {
-            return response()->json(['message' => 'Sin permisos.'], 403);
-        }
-
+        $emp  = $request->user();
         $anio = (int)$request->anio;
         $mes  = (int)$request->mes;
 
@@ -138,14 +127,6 @@ class RolPagoController extends Controller
             ->exists();
         if ($existeCerrado) {
             return response()->json(['message' => 'El período ya está cerrado, no se puede recalcular.'], 422);
-        }
-
-        // Eliminar BORRADOR anterior
-        $cabVieja = DB::table('dbo.nom_rol_pago_cab')
-            ->where('anio', $anio)->where('mes', $mes)->first();
-        if ($cabVieja) {
-            DB::table('dbo.nom_rol_pago_det')->where('cab_id', $cabVieja->id)->delete();
-            DB::table('dbo.nom_rol_pago_cab')->where('id', $cabVieja->id)->delete();
         }
 
         $tasas = $this->tasasVigentes();
@@ -162,80 +143,111 @@ class RolPagoController extends Controller
             )
             ->get();
 
-        $cabId = DB::table('dbo.nom_rol_pago_cab')->insertGetId([
-            'anio'             => $anio,
-            'mes'              => $mes,
-            'estado'           => 'BORRADOR',
-            'total_empleados'  => 0,
-            'total_bruto'      => 0,
-            'total_patronal'   => 0,
-            'total_descuentos' => 0,
-            'total_liquido'    => 0,
-            'creado_por'       => $emp->id_emp,
-            'fecha_calculo'    => now(),
-            'created_at'       => now(),
-            'updated_at'       => now(),
-        ]);
+        // Empleados cuyo tipo_contrato no calzó con ninguna fila vigente de d2_aportes_iess —
+        // antes esto pasaba en silencio (aportes en 0%, líquido = RMU completo, sin ningún aviso
+        // ni en la respuesta ni en el PDF). Se recolectan para devolverlos en la respuesta y en
+        // la auditoría, para que TH NOMINA pueda corregir el catálogo o el dato del empleado
+        // antes de cerrar el período.
+        $sinTasa = [];
 
-        foreach ($empleados as $e) {
-            $dias = $this->calcularDiasEnMes($e->fecha_ingreso, $anio, $mes);
-            if ($dias === 0) continue;
+        // Todo el cálculo (borrar el BORRADOR anterior si existía + insertar cabecera y detalle)
+        // en una sola transacción — antes, si el proceso se cortaba a mitad del loop (timeout,
+        // caída de conexión), quedaba un rol de pagos a medias sin forma de saberlo, y la
+        // cabecera ya insertada bloqueaba un reintento limpio.
+        DB::transaction(function () use ($anio, $mes, $emp, $tasas, $empleados, &$sinTasa, &$cabId) {
+            $cabVieja = DB::table('dbo.nom_rol_pago_cab')
+                ->where('anio', $anio)->where('mes', $mes)->first();
+            if ($cabVieja) {
+                DB::table('dbo.nom_rol_pago_det')->where('cab_id', $cabVieja->id)->delete();
+                DB::table('dbo.nom_rol_pago_cab')->where('id', $cabVieja->id)->delete();
+            }
 
-            $valorRmu = round($e->sueldo * $dias / 30, 2);
-
-            $modalidad   = trim($e->tipo_contrato ?? '');
-            $tasa        = $tasas->get($modalidad);
-            $patronalPct = $tasa ? (float)$tasa->aporte_patronal  : 0;
-            $personalPct = $tasa ? (float)$tasa->aporte_individual : 0;
-            $iecePct     = $tasa ? (float)$tasa->iece_patronal     : 0;
-            $secapPct    = $tasa ? (float)$tasa->secap_patronal    : 0;
-
-            $aporte_patronal = round($valorRmu * $patronalPct / 100, 2);
-            $aporte_personal = round($valorRmu * $personalPct / 100, 2);
-            $iece            = round($valorRmu * $iecePct     / 100, 2);
-            $secap           = round($valorRmu * $secapPct    / 100, 2);
-
-            $total_descuentos = $aporte_personal;
-            $liquido          = round($valorRmu - $total_descuentos, 2);
-
-            DB::table('dbo.nom_rol_pago_det')->insert([
-                'cab_id'              => $cabId,
-                'id_emp'              => $e->id_emp,
-                'tipo_contrato'       => $e->tipo_contrato,
-                'rmu_puesto'          => $e->sueldo,
-                'dias'                => $dias,
-                'valor_rmu'           => $valorRmu,
-                'aporte_patronal_pct' => $patronalPct,
-                'aporte_patronal'     => $aporte_patronal,
-                'aporte_personal_pct' => $personalPct,
-                'aporte_personal'     => $aporte_personal,
-                'iece_pct'            => $iecePct,
-                'iece'                => $iece,
-                'secap_pct'           => $secapPct,
-                'secap'               => $secap,
-                'quirografario'       => 0,
-                'hipotecario'         => 0,
-                'impuesto_renta'      => 0,
-                'supa'                => 0,
-                'poliza_blanket'      => 0,
-                'sanciones'           => 0,
-                'otros_descuentos'    => 0,
-                'observaciones'       => null,
-                'total_descuentos'    => $total_descuentos,
-                'liquido'             => $liquido,
-                'programa'            => $e->programa,
-                'actividad'           => $e->actividad,
-                'created_at'          => now(),
-                'updated_at'          => now(),
+            $cabId = DB::table('dbo.nom_rol_pago_cab')->insertGetId([
+                'anio'             => $anio,
+                'mes'              => $mes,
+                'estado'           => 'BORRADOR',
+                'total_empleados'  => 0,
+                'total_bruto'      => 0,
+                'total_patronal'   => 0,
+                'total_descuentos' => 0,
+                'total_liquido'    => 0,
+                'creado_por'       => $emp->id_emp,
+                'fecha_calculo'    => now(),
+                'created_at'       => now(),
+                'updated_at'       => now(),
             ]);
-        }
 
-        $this->recalcularTotalesCab($cabId);
+            foreach ($empleados as $e) {
+                $dias = $this->calcularDiasEnMes($e->fecha_ingreso, $anio, $mes);
+                if ($dias === 0) continue;
+
+                $valorRmu = round($e->sueldo * $dias / 30, 2);
+
+                $modalidad   = trim($e->tipo_contrato ?? '');
+                $tasa        = $tasas->get($modalidad);
+                if (!$tasa) {
+                    $sinTasa[] = [
+                        'id_emp'        => $e->id_emp,
+                        'nombre'        => trim($e->apellido_emp . ' ' . $e->nombre_emp),
+                        'tipo_contrato' => $e->tipo_contrato,
+                    ];
+                }
+                $patronalPct = $tasa ? (float)$tasa->aporte_patronal  : 0;
+                $personalPct = $tasa ? (float)$tasa->aporte_individual : 0;
+                $iecePct     = $tasa ? (float)$tasa->iece_patronal     : 0;
+                $secapPct    = $tasa ? (float)$tasa->secap_patronal    : 0;
+
+                $aporte_patronal = round($valorRmu * $patronalPct / 100, 2);
+                $aporte_personal = round($valorRmu * $personalPct / 100, 2);
+                $iece            = round($valorRmu * $iecePct     / 100, 2);
+                $secap           = round($valorRmu * $secapPct    / 100, 2);
+
+                $total_descuentos = $aporte_personal;
+                $liquido          = round($valorRmu - $total_descuentos, 2);
+
+                DB::table('dbo.nom_rol_pago_det')->insert([
+                    'cab_id'              => $cabId,
+                    'id_emp'              => $e->id_emp,
+                    'tipo_contrato'       => $e->tipo_contrato,
+                    'rmu_puesto'          => $e->sueldo,
+                    'dias'                => $dias,
+                    'valor_rmu'           => $valorRmu,
+                    'aporte_patronal_pct' => $patronalPct,
+                    'aporte_patronal'     => $aporte_patronal,
+                    'aporte_personal_pct' => $personalPct,
+                    'aporte_personal'     => $aporte_personal,
+                    'iece_pct'            => $iecePct,
+                    'iece'                => $iece,
+                    'secap_pct'           => $secapPct,
+                    'secap'               => $secap,
+                    'quirografario'       => 0,
+                    'hipotecario'         => 0,
+                    'impuesto_renta'      => 0,
+                    'supa'                => 0,
+                    'poliza_blanket'      => 0,
+                    'sanciones'           => 0,
+                    'otros_descuentos'    => 0,
+                    'observaciones'       => null,
+                    'total_descuentos'    => $total_descuentos,
+                    'liquido'             => $liquido,
+                    'programa'            => $e->programa,
+                    'actividad'           => $e->actividad,
+                    'created_at'          => now(),
+                    'updated_at'          => now(),
+                ]);
+            }
+
+            $this->recalcularTotalesCab($cabId);
+        });
 
         $cab      = DB::table('dbo.nom_rol_pago_cab')->where('id', $cabId)->first();
         $detalles = $this->detallesConEmpleado($cabId);
 
-        return response()->json(['cab' => $cab, 'detalles' => $detalles]);
+        AuditoriaService::log('dbo.nom_rol_pago_cab', $cabId, 'CALCULAR', null,
+            ['anio' => $anio, 'mes' => $mes, 'total_empleados' => $cab->total_empleados, 'sin_tasa' => count($sinTasa)],
+            $request, "Cálculo rol de pagos {$this->nombreMes($mes)} {$anio}" . (count($sinTasa) ? ' — ' . count($sinTasa) . ' empleado(s) sin tasa IESS' : ''));
+
+        return response()->json(['cab' => $cab, 'detalles' => $detalles, 'sin_tasa' => $sinTasa]);
     }
 
     // PUT /api/nomina/rol-pago/detalle/{id}
@@ -292,18 +304,33 @@ class RolPagoController extends Controller
 
         $this->recalcularTotalesCab($det->cab_id);
 
+        // Ediciones manuales de descuentos (sanciones, impuesto renta, etc.) sobre el artefacto
+        // más sensible del módulo (líquido a pagar) no dejaban ninguna traza — corregido.
+        AuditoriaService::log('dbo.nom_rol_pago_det', $id, 'ACTUALIZAR_DETALLE',
+            [
+                'quirografario' => $det->quirografario, 'hipotecario' => $det->hipotecario,
+                'impuesto_renta' => $det->impuesto_renta, 'supa' => $det->supa,
+                'poliza_blanket' => $det->poliza_blanket, 'sanciones' => $det->sanciones,
+                'otros_descuentos' => $det->otros_descuentos, 'liquido' => $det->liquido,
+            ],
+            [
+                'quirografario' => $quirografario, 'hipotecario' => $hipotecario,
+                'impuesto_renta' => $impuesto_renta, 'supa' => $supa,
+                'poliza_blanket' => $poliza_blanket, 'sanciones' => $sanciones,
+                'otros_descuentos' => $otros_desc, 'liquido' => $liquido,
+            ],
+            $request, "Edición manual de descuentos, id_emp {$det->id_emp}, rol de pagos cab_id {$det->cab_id}");
+
         return response()->json(DB::table('dbo.nom_rol_pago_det')->where('id', $id)->first());
     }
 
     // POST /api/nomina/rol-pago/cerrar
     public function cerrar(Request $request)
     {
+        $this->requireRole($request, self::ROLES_NOMINA);
         $request->validate(['anio' => 'required|integer', 'mes' => 'required|integer|min:1|max:12']);
 
         $emp = $request->user();
-        if (!$this->esNominaOAdmin($emp->id_emp)) {
-            return response()->json(['message' => 'Sin permisos.'], 403);
-        }
 
         $cab = DB::table('dbo.nom_rol_pago_cab')
             ->where('anio', $request->anio)
@@ -321,6 +348,47 @@ class RolPagoController extends Controller
             'fecha_cierre' => now(),
             'updated_at'   => now(),
         ]);
+
+        AuditoriaService::log('dbo.nom_rol_pago_cab', $cab->id, 'CERRAR',
+            ['estado' => 'BORRADOR'], ['estado' => 'CERRADO', 'total_liquido' => $cab->total_liquido],
+            $request, "Cierre rol de pagos {$this->nombreMes((int)$request->mes)} {$request->anio}");
+
+        return response()->json(DB::table('dbo.nom_rol_pago_cab')->where('id', $cab->id)->first());
+    }
+
+    // POST /api/nomina/rol-pago/reabrir — vuelve un período CERRADO a BORRADOR
+    // No existía ningún flujo de reapertura: una vez CERRADO, el único remedio ante un error
+    // detectado después del cierre era corregirlo a mano en la BD. Restringido a los mismos
+    // roles que pueden cerrar; exige justificación y queda auditado (sin columnas nuevas — la
+    // traza vive en nom_auditoria_log, igual que el resto del módulo).
+    public function reabrir(Request $request)
+    {
+        $this->requireRole($request, self::ROLES_NOMINA);
+        $request->validate([
+            'anio'        => 'required|integer',
+            'mes'         => 'required|integer|min:1|max:12',
+            'observacion' => 'required|string|max:300',
+        ]);
+
+        $cab = DB::table('dbo.nom_rol_pago_cab')
+            ->where('anio', $request->anio)
+            ->where('mes', $request->mes)
+            ->where('estado', 'CERRADO')
+            ->first();
+
+        if (!$cab) {
+            return response()->json(['message' => 'No existe un período CERRADO para este mes/año.'], 422);
+        }
+
+        DB::table('dbo.nom_rol_pago_cab')->where('id', $cab->id)->update([
+            'estado'     => 'BORRADOR',
+            'updated_at' => now(),
+        ]);
+
+        AuditoriaService::log('dbo.nom_rol_pago_cab', $cab->id, 'REABRIR',
+            ['estado' => 'CERRADO', 'cerrado_por' => $cab->cerrado_por, 'fecha_cierre' => $cab->fecha_cierre],
+            ['estado' => 'BORRADOR', 'observacion' => $request->observacion],
+            $request, "Reapertura rol de pagos {$this->nombreMes((int)$request->mes)} {$request->anio}: {$request->observacion}");
 
         return response()->json(DB::table('dbo.nom_rol_pago_cab')->where('id', $cab->id)->first());
     }
@@ -400,6 +468,10 @@ class RolPagoController extends Controller
         }
 
         $this->recalcularTotalesCab($cab->id);
+
+        AuditoriaService::log('dbo.nom_rol_pago_cab', $cab->id, 'IMPORTAR', null,
+            ['actualizados' => count($actualizados), 'no_encontrados' => count($noEncontrados)],
+            $request, "Importación CSV de descuentos, rol de pagos {$this->nombreMes((int)$request->mes)} {$request->anio}");
 
         return response()->json([
             'actualizados'   => count($actualizados),

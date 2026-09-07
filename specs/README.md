@@ -29,13 +29,12 @@ para especificar cambios futuros.
 | 06 | Acciones de personal | ✅ Borrador v1 | [06-acciones-personal.md](06-acciones-personal.md) |
 | 07 | Liquidación de vacaciones | ✅ Borrador v1 | [07-liquidacion-vacaciones.md](07-liquidacion-vacaciones.md) |
 | 08 | Horas extras | ✅ Borrador v1 | [08-horas-extras.md](08-horas-extras.md) |
-| 09 | Nómina (D13 / D14 / Fondos de Reserva / Rol de Pagos) | ⬜ Pendiente · orden 1 | — |
+| 09 | Nómina (D13 / D14 / Fondos de Reserva / Rol de Pagos) | ✅ Borrador v1 | [09-nomina.md](09-nomina.md) |
 | 10 | Certificados laborales | ✅ Borrador v1 | [10-certificados-laborales.md](10-certificados-laborales.md) |
 | 11 | Dashboard y reportes de TH | ✅ Borrador v1 | [11-dashboard-reportes.md](11-dashboard-reportes.md) |
-| 12 | Auditoría | ⬜ Pendiente · orden 2 | — |
+| 12 | Auditoría | ⬜ Pendiente · última | — |
 
-> **Orden de trabajo de las pendientes** (2026-09-03): quedan **09 Nómina → 12 Auditoría**. Los
-> **números de spec no cambian** (son identificadores permanentes); solo cambia el orden en que se escriben.
+> **Última pendiente:** 12 Auditoría. Con eso queda cerrado el módulo Talento Humano (00–12).
 
 ## Convención de versionado
 
