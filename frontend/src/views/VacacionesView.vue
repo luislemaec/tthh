@@ -37,15 +37,18 @@
             Días disponibles<template v-if="esNombramiento && saldoReal < 0"> (negativo)</template>
           </p>
         </div>
-        <div class="text-center">
+        <!-- Días tomados / Saldo inicial (Excel) / Acumulado a hoy: ocultos para empleados sin
+             rol especial (a pedido de TH) — solo visibles para supervisor/TH/admin. Solo se
+             oculta en pantalla, el cálculo y los datos siguen igual por detrás. -->
+        <div v-if="esSupervisorOAdmin" class="text-center">
           <p class="text-3xl font-bold text-gray-400">{{ saldo.saldo_calculado.tomados ?? 0 }}</p>
           <p class="text-xs text-gray-500 mt-1">Días tomados</p>
         </div>
-        <div class="text-center">
+        <div v-if="esSupervisorOAdmin" class="text-center">
           <p class="text-xl font-semibold text-gray-500">{{ saldo.saldo_calculado.saldo_inicial ?? 0 }}</p>
           <p class="text-xs text-gray-500 mt-1">Saldo inicial (Excel)</p>
         </div>
-        <div class="text-center">
+        <div v-if="esSupervisorOAdmin" class="text-center">
           <p class="text-xl font-semibold text-green-600">+{{ saldo.saldo_calculado.acumulado_a_hoy ?? 0 }}</p>
           <p class="text-xs text-gray-500 mt-1">Acumulado a hoy</p>
         </div>
