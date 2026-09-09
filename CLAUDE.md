@@ -716,7 +716,11 @@ TH renombró varias veces las modalidades desde Admin → Modalidad Laboral (ej.
 
 **El cálculo de días de vacaciones NO cambió** — `SaldoVacacionesService` nunca leyó `modalidad_laboral`.
 
-**Deploy:** `git pull` + **`php artisan migrate`** (obligatorio — el código consulta la columna `codigo`, si no existe revienta) + `npm run build` (4 `.vue` tocados). Sin `config:clear`. **Sin pruebas en vivo** — verificado con `php -l` y tests del normalizador/slug; falta correr la migración y probar el flujo de saldo negativo + liquidación con un usuario real.
+**Deploy:** `git pull` + **`php artisan migrate`** (obligatorio — el código consulta la columna `codigo`, si no existe revienta; corre `000109` + `000110`) + `npm run build` (4 `.vue` tocados). Sin `config:clear`.
+
+> **Migración `000110` (backfill):** `000109` solo le pone `codigo` a "Contrato de Servicios Ocasionales" si el catálogo decía exactamente "Contrato Ocasional" (el estado de prod tras revertir el rename el 2026-09-09). En pruebas el catálogo ya tenía el nombre largo y quedó con `codigo` NULL — `000110` rellena cualquier `codigo` NULL matcheando varios alias normalizados del nombre. No-op donde `000109` ya funcionó.
+
+**Verificado con `php -l` + esbuild-parse + tests del normalizador; `000109` corrida en pruebas (dejó "Contrato de Servicios Ocasionales" sin codigo → de ahí `000110`).
 
 **Pendiente (no crítico):** los filtros de `modalidad_laboral` (`EmpleadosIndex.vue` + `ReporteEmpleadosController::index`) siguen comparando el texto exacto — se rompen si TH renombra sin actualizar los empleados. Pasarlos a `codigo` es otro cambio.
 
