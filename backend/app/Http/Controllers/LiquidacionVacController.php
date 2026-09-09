@@ -5,6 +5,7 @@ use App\Models\CabeceraVacacion;
 use App\Models\Configuracion;
 use App\Models\Empleado;
 use App\Models\LiquidacionHistorico;
+use App\Models\ModalidadLaboral;
 use App\Services\AuditoriaService;
 use App\Services\SaldoVacacionesService;
 use Carbon\Carbon;
@@ -32,11 +33,13 @@ class LiquidacionVacController extends Controller
         'DESVINCULACION'       => 'INACTIVO',  // ya salió
     ];
 
+    // Keyeado por el `codigo` estable de d2_modalidad_laboral (ModalidadLaboral::COD_*),
+    // no por el nombre — así TH puede renombrar la modalidad sin romper esto.
     private const MOTIVOS_POR_MODALIDAD = [
-        'Nombramiento definitivo'       => ['INICIO_COMISION', 'FIN_COMISION_RETORNO'],
-        'Contrato ocasional'            => ['DESVINCULACION'],
-        'Nombramiento provisional'      => ['DESVINCULACION'],
-        'Libre Nombramiento y Remoción' => ['DESVINCULACION'],
+        ModalidadLaboral::COD_NOMBRAMIENTO_DEFINITIVO     => ['INICIO_COMISION', 'FIN_COMISION_RETORNO'],
+        ModalidadLaboral::COD_CONTRATO_OCASIONAL          => ['DESVINCULACION'],
+        ModalidadLaboral::COD_NOMBRAMIENTO_PROVISIONAL    => ['DESVINCULACION'],
+        ModalidadLaboral::COD_LIBRE_NOMBRAMIENTO_REMOCION => ['DESVINCULACION'],
     ];
 
     // Motivos adicionales para empleados comisionados entrantes (independiente de la modalidad)
@@ -65,14 +68,8 @@ class LiquidacionVacController extends Controller
     // 422 al guardar — el flujo de comisionado entrante estaba roto de punta a punta.
     private function motivosDisponiblesPara(Empleado $emp): array
     {
-        $modalidad = trim($emp->modalidad_laboral ?? '');
-        $motivos   = [];
-        foreach (self::MOTIVOS_POR_MODALIDAD as $key => $m) {
-            if (mb_strtolower($key) === mb_strtolower($modalidad)) {
-                $motivos = $m;
-                break;
-            }
-        }
+        $codigo  = ModalidadLaboral::codigoDe($emp->modalidad_laboral);
+        $motivos = self::MOTIVOS_POR_MODALIDAD[$codigo] ?? [];
         if ($emp->es_comisionado_entrante) {
             $motivos = array_unique(array_merge($motivos, self::MOTIVOS_COMISIONADO_ENTRANTE));
         }

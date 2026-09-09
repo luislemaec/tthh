@@ -572,7 +572,7 @@ async function toggleDetalle(id_emp) {
 // Nombramiento Definitivo con saldo real negativo (migración 000100): muestra el real,
 // no el 0 con piso — mismo criterio que Dashboard y VacacionesView.vue.
 function saldoMostrar(emp) {
-  if (emp.modalidad_laboral === 'Nombramiento Definitivo' && (emp.saldo_actual_real ?? 0) < 0) {
+  if (emp.es_nombramiento_definitivo && (emp.saldo_actual_real ?? 0) < 0) {
     return emp.saldo_actual_real
   }
   return emp.saldo_actual

@@ -27,8 +27,12 @@ class ModalidadLaboralController extends Controller
         $user  = Auth::user()->id_emp ?? Auth::id();
         $now   = now();
 
+        // `codigo` se autogenera (slug del nombre) y no se vuelve a tocar al renombrar —
+        // el código del sistema compara contra `codigo`, nunca contra `nombre`. Una
+        // modalidad nueva no tiene comportamiento especial salvo que se cablee en el código.
         $m = ModalidadLaboral::create([
             'nombre'     => trim($request->nombre),
+            'codigo'     => ModalidadLaboral::generarCodigo($request->nombre),
             'estado'     => 'ACTIVO',
             'orden'      => $orden,
             'created_at' => $now,

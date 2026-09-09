@@ -699,6 +699,15 @@ const departamentos        = ref([])
 const jornadas             = ref([])
 const partidasVacantes     = ref([])
 const modalidadesLaborales = ref([])
+
+// Normaliza para comparar nombres de modalidad: minúsculas, sin tildes, espacios colapsados
+const normModalidad = (s) =>
+  String(s ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim()
+const matchModalidad = (nombre) => {
+  const n = normModalidad(nombre)
+  if (!n) return null
+  return modalidadesLaborales.value.find(m => normModalidad(m.nombre) === n)?.nombre ?? null
+}
 const modalPartidas        = ref({ show: false })
 const subiendoDocSustituta   = ref(false)
 const periodosTeletrabajo    = ref([])
@@ -1076,7 +1085,10 @@ onMounted(async () => {
     form.value.extension       = data.extension || ""
     form.value.direccion       = data.calle_y_numero || ""
     form.value.tipo_contrato     = data.tipo_contrato?.trim()     || ""
-    form.value.modalidad_laboral = data.modalidad_laboral?.trim() || ""
+    // Si TH renombró la modalidad en el catálogo, el valor guardado en el empleado puede no
+    // coincidir letra a letra con ninguna <option> y el select saldría en blanco. Se busca
+    // la opción actual del catálogo ignorando mayúsculas/tildes y se usa su nombre canónico.
+    form.value.modalidad_laboral = matchModalidad(data.modalidad_laboral) || data.modalidad_laboral?.trim() || ""
     form.value.id_jornada        = data.id_jornada                || ""
     form.value.email             = data.emails?.[0]?.mail         || ""
     form.value.grupo_ocupacional      = data.grupo_ocupacional      || ""

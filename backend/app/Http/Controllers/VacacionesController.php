@@ -5,6 +5,7 @@ use App\Models\Vacacion;
 use App\Models\CabeceraVacacion;
 use App\Models\DetalleVacacion;
 use App\Models\Empleado;
+use App\Models\ModalidadLaboral;
 use App\Models\Supervisor;
 use App\Services\AuditoriaService;
 use App\Services\SaldoVacacionesService;
@@ -90,6 +91,7 @@ class VacacionesController extends Controller
             "detalle"           => $detalle,
             "saldo_calculado"   => $saldoCalculado,
             "modalidad_laboral" => $emp->modalidad_laboral,
+            "es_nombramiento_definitivo" => ModalidadLaboral::esNombramientoDefinitivo($emp->modalidad_laboral),
         ]);
     }
 
@@ -178,7 +180,7 @@ class VacacionesController extends Controller
         $saldoReal     = $saldo ? ($saldo['dias_disponibles_real'] ?? 0) : 0;
         $saldoEfectivo = $saldoReal - $diasPendientes;
 
-        $esNombramiento = trim($emp->modalidad_laboral ?? '') === 'Nombramiento Definitivo';
+        $esNombramiento = ModalidadLaboral::esNombramientoDefinitivo($emp->modalidad_laboral);
 
         if ($saldoEfectivo < $diasSolicitados) {
             if ($esNombramiento) {

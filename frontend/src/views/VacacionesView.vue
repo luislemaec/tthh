@@ -452,9 +452,7 @@ const esSupervisorOAdmin = computed(() =>
   miRol.value.es_supervisor || miRol.value.es_admin_th
 )
 
-const esNombramiento = computed(() =>
-  (saldo.value?.modalidad_laboral ?? '').trim() === 'Nombramiento Definitivo'
-)
+const esNombramiento = computed(() => !!saldo.value?.es_nombramiento_definitivo)
 
 const saldoReal = computed(() =>
   saldo.value?.saldo_calculado?.dias_disponibles_real ?? 0

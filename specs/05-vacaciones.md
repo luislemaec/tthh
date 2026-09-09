@@ -213,11 +213,14 @@ muestra el saldo real (antes salía menor por la tasa fija 1.25).
 
 ### 5.4 Saldo negativo y Nombramiento Definitivo (mig. `000100`)
 
-- **RN-05.10** — Solo empleados con `modalidad_laboral = 'Nombramiento Definitivo'` pueden terminar
-  con saldo negativo (vía RN-05.13 o por permisos descontables no bloqueados).
+- **RN-05.10** — Solo empleados de **Nombramiento Definitivo** pueden terminar
+  con saldo negativo (vía RN-05.13 o por permisos descontables no bloqueados). Desde mig. `000109`
+  (2026-09-10) la identificación es por `codigo` del catálogo (`ModalidadLaboral::esNombramientoDefinitivo()`,
+  insensible a mayúsculas/tildes/renombres), no por el texto `modalidad_laboral`.
 - **RN-05.11** — En la UI (`VacacionesView.vue`, Dashboard, Reporte de saldo, PDF) el
-  `dias_disponibles_real` negativo se muestra **en rojo** cuando
-  `modalidad_laboral === 'Nombramiento Definitivo' && saldo_real < 0`.
+  `dias_disponibles_real` negativo se muestra **en rojo** cuando `es_nombramiento_definitivo && saldo_real < 0`
+  (el bool `es_nombramiento_definitivo` lo calcula el backend; antes de mig. `000109` el front comparaba
+  el string `=== 'Nombramiento Definitivo'`).
 - **RN-05.12** — Otras modalidades con saldo negativo (típicamente por corrección manual) quedan
   **bloqueadas** para pedir vacaciones pero la UI les muestra "0" sin explicación — decisión de
   negocio pendiente (§13).
@@ -249,7 +252,7 @@ Request: `fecha_inicial*`, `fecha_final*` (`after_or_equal:fecha_inicial`), `hor
   de las solicitudes del empleado en estado `PENDIENTE`. `saldoEfectivo = dias_disponibles_real − diasPendientes`.
   Descontar las pendientes evita que dos solicitudes simultáneas pasen la validación con el mismo saldo.
 - **RN-05.18 (bloqueo por saldo)** — si `saldoEfectivo < diasSolicitados`:
-  - `modalidad_laboral = 'Nombramiento Definitivo'` → se crea igual con `requiere_informe = true`
+  - Nombramiento Definitivo (`ModalidadLaboral::esNombramientoDefinitivo()`, ver RN-05.10) → se crea igual con `requiere_informe = true`
     (el saldo puede quedar negativo). Auditoría `SOLICITUD_CON_EXCESO`.
   - otra modalidad → HTTP 422 `"No tienes suficientes días disponibles. Disponibles: X, solicitados: Y"`.
 - **RN-05.19 (solapamiento)** — si existe otra vacación del empleado en estado ≠ `NEGADO`/`ELIMINADO`

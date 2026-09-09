@@ -391,7 +391,7 @@ const mostrarVacProximas = ref(false)
 // mismo criterio que VacacionesView.vue: se muestra en rojo en vez de esconderlo como 0.
 const saldoRealNegativo = computed(() => {
   const d = stats.value.datos_empleado
-  return !!d && d.modalidad_laboral === 'Nombramiento Definitivo' && (d.saldo_vacaciones_real ?? 0) < 0
+  return !!d && d.es_nombramiento_definitivo && (d.saldo_vacaciones_real ?? 0) < 0
 })
 const proximoPeriodo     = computed(() => stats.value.datos_empleado?.proximo_periodo ?? null)
 const enCurso            = computed(() => proximoPeriodo.value?.en_curso === true)

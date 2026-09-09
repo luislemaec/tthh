@@ -66,7 +66,7 @@
         @php
           // Nombramiento Definitivo con saldo real negativo (migración 000100): se muestra el
           // real, no el 0 con piso — mismo criterio que Dashboard y VacacionesView.vue.
-          $esNegativoReal = ($f['modalidad_laboral'] ?? null) === 'Nombramiento Definitivo' && ($f['saldo_actual_real'] ?? 0) < 0;
+          $esNegativoReal = ($f['es_nombramiento_definitivo'] ?? false) && ($f['saldo_actual_real'] ?? 0) < 0;
           $s = $esNegativoReal ? $f['saldo_actual_real'] : $f['saldo_actual'];
           $cls = $s <= 0 ? 'saldo-bad' : ($s < 5 ? 'saldo-warn' : 'saldo-ok');
         @endphp

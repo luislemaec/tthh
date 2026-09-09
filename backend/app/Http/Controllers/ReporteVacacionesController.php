@@ -5,6 +5,7 @@ use App\Models\CabeceraVacacion;
 use App\Models\Configuracion;
 use App\Models\Empleado;
 use App\Models\LiquidacionHistorico;
+use App\Models\ModalidadLaboral;
 use App\Models\Vacacion;
 use App\Services\SaldoVacacionesService;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -220,6 +221,7 @@ class ReporteVacacionesController extends Controller
                 'departamento'      => '',
                 'tipo_contrato'     => trim($emp->tipo_contrato ?? ''),
                 'modalidad_laboral' => $emp->modalidad_laboral,
+                'es_nombramiento_definitivo' => ModalidadLaboral::esNombramientoDefinitivo($emp->modalidad_laboral),
                 'tomados'           => (float)($cabecera?->total_dias_tomados ?? 0),
                 'saldo_actual'      => $this->calcularSaldoActual($emp),
                 'saldo_actual_real' => $this->calcularSaldoActualReal($emp),
@@ -254,6 +256,7 @@ class ReporteVacacionesController extends Controller
                 'departamento'      => $emp->departamento?->nombre_depto ?? '—',
                 'tipo_contrato'     => trim($emp->tipo_contrato ?? ''),
                 'modalidad_laboral' => $emp->modalidad_laboral,
+                'es_nombramiento_definitivo' => ModalidadLaboral::esNombramientoDefinitivo($emp->modalidad_laboral),
                 'tomados'           => (float)($cabecera?->total_dias_tomados ?? 0),
                 'saldo_actual'      => $this->calcularSaldoActual($emp),
                 'saldo_actual_real' => $this->calcularSaldoActualReal($emp),
@@ -414,6 +417,7 @@ class ReporteVacacionesController extends Controller
                 'departamento'    => $emp->departamento?->nombre_depto ?? '—',
                 'tipo_contrato'   => trim($emp->tipo_contrato ?? ''),
                 'modalidad_laboral' => $emp->modalidad_laboral,
+                'es_nombramiento_definitivo' => ModalidadLaboral::esNombramientoDefinitivo($emp->modalidad_laboral),
                 'tomados'         => (float)($cabecera?->total_dias_tomados ?? 0),
                 'saldo_actual'    => $this->calcularSaldoActual($emp),
                 'saldo_actual_real' => $this->calcularSaldoActualReal($emp),

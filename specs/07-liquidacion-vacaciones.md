@@ -92,15 +92,20 @@ ni se borra desde la app).
 
 ### 5.1 Catálogo de motivos
 
-**Motivos válidos por `modalidad_laboral`** (`MOTIVOS_POR_MODALIDAD`, comparación **case-insensitive**
-`mb_strtolower`):
+**Motivos válidos por modalidad laboral** — `MOTIVOS_POR_MODALIDAD` está **keyeado por el `codigo`
+estable** de `dbo.d2_modalidad_laboral` (mig. `000109`, 2026-09-10), resuelto con
+`ModalidadLaboral::codigoDe($emp->modalidad_laboral)` (insensible a mayúsculas/tildes/espacios; el
+catálogo lo puede renombrar TH sin romper esto):
 
-| `modalidad_laboral` (clave en código) | Motivos ofrecidos |
+| `codigo` de la modalidad | Motivos ofrecidos |
 |---|---|
-| `Nombramiento definitivo` | `INICIO_COMISION`, `FIN_COMISION_RETORNO` |
-| `Contrato ocasional` | `DESVINCULACION` |
-| `Nombramiento provisional` | `DESVINCULACION` |
-| `Libre Nombramiento y Remoción` | `DESVINCULACION` |
+| `NOMBRAMIENTO_DEFINITIVO` | `INICIO_COMISION`, `FIN_COMISION_RETORNO` |
+| `CONTRATO_OCASIONAL` (nombre visible: "Contrato de Servicios Ocasionales") | `DESVINCULACION` |
+| `NOMBRAMIENTO_PROVISIONAL` | `DESVINCULACION` |
+| `LIBRE_NOMBRAMIENTO_REMOCION` | `DESVINCULACION` |
+
+Una modalidad cuyo `codigo` no está en el mapa (ej. `COMISION_SERVICIOS`, o una modalidad nueva
+creada desde Admin) → sin motivos, salvo los de comisionado entrante si `es_comisionado_entrante`.
 
 **Motivos adicionales para `es_comisionado_entrante = true`** (independiente de la modalidad):
 `COMISION_ENTRANTE`, `FIN_COMISION_SALIDA`.

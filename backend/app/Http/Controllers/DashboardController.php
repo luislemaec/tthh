@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use App\Models\Supervisor;
 use App\Models\Empleado;
 use App\Models\Configuracion;
+use App\Models\ModalidadLaboral;
 use App\Services\SaldoVacacionesService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -239,6 +240,7 @@ class DashboardController extends Controller
                 'saldo_vacaciones'            => $saldo,
                 'saldo_vacaciones_real'       => $saldoReal,
                 'modalidad_laboral'           => $emp->modalidad_laboral,
+                'es_nombramiento_definitivo'  => ModalidadLaboral::esNombramientoDefinitivo($emp->modalidad_laboral),
                 'atrasos_por_mes'             => array_values($atrasosPorMes),
                 'dias_adicionales_antiguedad' => $diasAdicAntig,
             ];
