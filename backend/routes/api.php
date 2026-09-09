@@ -89,6 +89,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::patch("departamentos/{id}/activar",   [\App\Http\Controllers\Admin\DepartamentoController::class, "activar"]);
         Route::apiResource("razones",       \App\Http\Controllers\Admin\RazonController::class)->except(['destroy']);
         Route::patch("razones/{id}/inactivar", [\App\Http\Controllers\Admin\RazonController::class, "inactivar"]);
+        Route::patch("razones/{id}/activar",   [\App\Http\Controllers\Admin\RazonController::class, "activar"]);
         Route::apiResource("turnos",        \App\Http\Controllers\Admin\TurnoController::class);
         Route::post("turnos/{id}/horarios", [\App\Http\Controllers\Admin\TurnoController::class, "guardarHorarios"]);
         Route::apiResource("jornadas",      JornadaController::class);

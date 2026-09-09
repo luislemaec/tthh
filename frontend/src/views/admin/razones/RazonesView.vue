@@ -45,6 +45,8 @@
               <button @click="abrirModal(r)" class="text-yellow-600 hover:underline text-xs">Editar</button>
               <button v-if="r.estado !== 'INACTIVO'" @click="inactivar(r.secuencial)"
                 class="text-red-600 hover:underline text-xs">Inactivo</button>
+              <button v-else @click="activar(r.secuencial)"
+                class="text-green-600 hover:underline text-xs">Activar</button>
             </td>
           </tr>
         </tbody>
@@ -166,6 +168,16 @@ const inactivar = async (id) => {
     cargar()
   } catch (e) {
     alert(e.response?.data?.message || 'Error al inactivar.')
+  }
+}
+
+const activar = async (id) => {
+  if (!confirm('¿Seguro que deseas reactivar esta razón?')) return
+  try {
+    await api.patch(`/admin/razones/${id}/activar`)
+    cargar()
+  } catch (e) {
+    alert(e.response?.data?.message || 'Error al activar.')
   }
 }
 

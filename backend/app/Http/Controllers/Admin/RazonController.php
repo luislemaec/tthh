@@ -98,4 +98,25 @@ class RazonController extends Controller
 
         return response()->json(['message' => 'Razón marcada como inactiva.']);
     }
+
+    // Antes no existía forma de reactivar una razón inactivada — a diferencia de
+    // DepartamentoController, que sí tiene su par activar()/inactivar(). Una vez inactivada
+    // quedaba fuera para siempre (2026-09-09).
+    public function activar(Request $request, $id)
+    {
+        $this->requireRole($request, self::ROLES_ADMIN);
+        $razon = Razon::findOrFail($id);
+        $user  = Auth::user()->id_emp ?? Auth::id();
+
+        $razon->update([
+            'estado'     => 'ACTIVO',
+            'updated_at' => now(),
+            'updated_by' => $user,
+        ]);
+
+        AuditoriaService::log('dbo.d2_razon', $razon->secuencial, 'ACTIVAR',
+            ['estado' => 'INACTIVO'], ['estado' => 'ACTIVO'], $request, "Reactivación razón {$razon->descripcion}");
+
+        return response()->json(['message' => 'Razón reactivada correctamente.']);
+    }
 }
