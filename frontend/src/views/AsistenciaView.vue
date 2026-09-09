@@ -67,22 +67,20 @@
 
     <!-- Historial personal de marcaciones -->
     <div class="bg-white rounded-xl shadow p-6">
-      <div class="flex items-center justify-between mb-4">
-        <div>
-          <h2 class="text-lg font-bold text-gray-800">Mis Marcaciones</h2>
-          <p v-if="estado.articulo_atrasos"
-            class="text-sm font-medium text-white mt-2 px-4 py-2 rounded-lg max-w-2xl"
-            style="background-color:#0b5447;">
-            {{ estado.articulo_atrasos }}
-          </p>
-        </div>
+      <div class="mb-4 space-y-3">
+        <h2 class="text-lg font-bold text-gray-800">Mis Marcaciones</h2>
+        <p v-if="estado.articulo_atrasos"
+          class="text-sm font-medium text-white px-4 py-2 rounded-lg"
+          style="background-color:#0b5447;">
+          {{ estado.articulo_atrasos }}
+        </p>
         <div class="flex flex-wrap gap-2 items-center">
           <input v-model="histFechaDesde" type="date" @change="cargarHistorial"
-            class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+            class="w-full sm:w-auto border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           <input v-model="histFechaHasta" type="date" @change="cargarHistorial"
-            class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+            class="w-full sm:w-auto border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
           <select v-model="histTipo" @change="cargarHistorial"
-            class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
+            class="w-full sm:w-auto border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
             <option value="todos">Todos</option>
             <option value="justificados">Atrasos justificados</option>
             <option value="injustificados">Atrasos injustificados</option>
