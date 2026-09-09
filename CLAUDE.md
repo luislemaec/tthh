@@ -649,6 +649,12 @@ Ejemplos: 1 hora → 0.1705 días | 4 horas → 0.6818 días | 1 día completo �
 
 **Advertencia de tipo_horario:** un permiso con `tipo_horario = 'ENTRADA'` y horas amplias (ej. 10:00-16:30) puede hacer que el cuadre y la vista personal muestren el día como "Justificado" para la entrada aunque el rango no tenga sentido semánticamente. Verificar que el tipo_horario sea correcto al crear permisos.
 
+**Catálogo de razones (`dbo.d2_razon`, `Admin/RazonController`) — dos campos distintos, no confundir:**
+- `descripcion` — nombre corto de la razón (ej. "ENFERMEDAD", "CALAMIDAD DOMESTICA JUSTIFICADA"). Es el que se copia a `d2_permiso.razon` al crear un permiso.
+- `leyenda_justificacion` — texto largo que se muestra cuando el permiso NO es descontable (ej. "CERTIFICADO MEDICO"); sin límite de longitud en el backend (frontend con `maxlength=250` como tope físico del input, nada más).
+
+**Fix 2026-09-09 — `descripcion` truncaba plantillas de TH con nombres largos.** Tanto la columna (`dbo.d2_razon.descripcion`, schema legado sin migración propia) como la validación (`RazonController::store()/update()`) estaban en `VARCHAR(30)`/`max:30` — TH empezó a cargar razones con nombres de más de 30 caracteres (ej. "CALAMIDAD DOMESTICA JUSTIFICADA", 32) y quedaban truncadas ("...JUSTIFICAD", sin la A final) o rechazadas con 422 al editar. Migración `000108` amplía `d2_razon.descripcion` **y** `d2_permiso.razon` (la copia que se guarda al crear un permiso — si solo se ensancha el catálogo y no esta columna, la copia se sigue truncando igual) a `VARCHAR(100)`; validación del controlador actualizada a `max:100`; `maxlength="100"` agregado al input de Descripción en `RazonesView.vue` (antes sin ningún límite del lado del cliente, a diferencia de Leyenda de Justificación). **Requiere `php artisan migrate`** — sin la migración, la validación ya permite hasta 100 caracteres pero Postgres seguiría rechazando el `UPDATE`/`INSERT` con "value too long" en cuanto se supere el ancho real de la columna. Registros ya guardados truncados antes de este fix (ej. "CALAMIDAD DOMESTICA JUSTIFICAD") no se corrigen solos — hay que reeditarlos desde la UI una vez migrado.
+
 ### Corrección de deuda técnica — Permisos (2026-09-01)
 
 Auditoría de código detectó 5 hallazgos en `PermisosController.php`, todos corregidos el mismo día, sin cambios de schema:

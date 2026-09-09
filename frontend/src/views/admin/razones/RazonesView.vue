@@ -63,7 +63,7 @@
         <div class="p-6 space-y-4">
         <div>
           <label class="block text-sm font-medium text-gray-600 mb-1">Descripción *</label>
-          <input v-model="form.descripcion" type="text" placeholder="Ej: ENFERMEDAD"
+          <input v-model="form.descripcion" type="text" maxlength="100" placeholder="Ej: ENFERMEDAD"
             class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
         </div>
         <div class="grid grid-cols-2 gap-3">

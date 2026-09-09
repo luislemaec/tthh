@@ -20,7 +20,7 @@ class RazonController extends Controller
     {
         $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate([
-            'descripcion' => 'required|string|max:30',
+            'descripcion' => 'required|string|max:100',
             'descontable' => 'required|in:SI,NO',
             'tipo_razon'  => 'nullable|string|max:20',
         ]);
@@ -57,7 +57,7 @@ class RazonController extends Controller
         $this->requireRole($request, self::ROLES_ADMIN);
         $razon = Razon::findOrFail($id);
         $request->validate([
-            'descripcion' => 'required|string|max:30',
+            'descripcion' => 'required|string|max:100',
             'descontable' => 'required|in:SI,NO',
         ]);
 
