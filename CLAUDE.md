@@ -2431,5 +2431,6 @@ Al llegar el reloj:
 ## Environment
 
 - `VITE_API_URL` en `frontend/.env` — URL base de la API
+- `VITE_APP_AMBIENTE` en `frontend/.env` — indicador de ambiente (2026-09-10). `App.vue` muestra una cinta flotante ámbar fija arriba-centro ("AMBIENTE DE PRUEBAS") en **todo** el sistema (login, launcher y los 5 layouts, sin tocar cada uno) cuando el valor es distinto de `produccion`/`production` o está ausente. En el servidor de **pruebas** el `.env` lleva `VITE_APP_AMBIENTE=pruebas`; en **producción** se deja ausente (o `=produccion`) y no aparece nada. Se eligió `frontend/.env` (no `d2_configuracion`) a propósito: `d2_configuracion` se copia prod←pruebas en el bootstrap `pg_dump`/`pg_restore`, así que un valor ahí quedaría igual en ambos ambientes; `frontend/.env` está en `.gitignore` y es propio de cada servidor. La cinta es `pointer-events:none`, `z-index 9997` (bajo la pantalla de mantenimiento 9998/9999, sobre el chatbot y modales) y no empuja el layout. Cambiarla requiere `npm run build` en el servidor.
 - Backend `.env`: `DB_CONNECTION=pgsql`, credenciales BD
 - Session y cache driver: `database`
