@@ -203,6 +203,10 @@ class ImportacionController extends Controller
             throw new \Exception("$campo '$valor' no es una fecha válida (use DD/MM/AAAA)");
         };
 
+        // Interpreta un valor "sí/no" del CSV. `(bool)` a secas trata cualquier texto no vacío
+        // como true — "NO" incluido — así que hay que comparar explícitamente.
+        $boolSi = fn ($v) => in_array(strtoupper(trim((string) $v)), ['SI', 'SÍ', '1', 'TRUE', 'X'], true);
+
         DB::beginTransaction();
         try {
             while (($fila = fgetcsv($handle, 2000, ',')) !== false) {
@@ -245,10 +249,10 @@ class ImportacionController extends Controller
                         'motivo_salida'          => !empty($d['motivo_salida'])        ? $d['motivo_salida']        : null,
                         'motivo_reactivacion'    => !empty($d['motivo_reactivacion'])  ? $d['motivo_reactivacion']  : null,
                         'institucion_comision'   => !empty($d['institucion_comision']) ? $d['institucion_comision'] : null,
-                        'acumula_decimo_tercero' => (bool)($d['acumula_decimos'] ?? false),
-                        'acumula_decimo_cuarto'  => (bool)($d['acumula_decimos'] ?? false),
+                        'acumula_decimo_tercero' => $boolSi($d['acumula_decimos'] ?? ''),
+                        'acumula_decimo_cuarto'  => $boolSi($d['acumula_decimos'] ?? ''),
                         'acumula_fondos_reserva' => (int)($d['acumula_fondos_reserva'] ?? 0),
-                        'puede_solicitar_vehiculo' => (bool)($d['puede_solicitar_vehiculo'] ?? false),
+                        'puede_solicitar_vehiculo' => $boolSi($d['puede_solicitar_vehiculo'] ?? ''),
                         'sexo'                   => !empty($d['sexo'])        ? strtoupper($d['sexo'])        : null,
                         'tipo_sangre'            => !empty($d['tipo_sangre']) ? strtoupper($d['tipo_sangre']) : null,
                         'num_sercop'             => !empty($d['num_sercop']) ? $d['num_sercop'] : null,

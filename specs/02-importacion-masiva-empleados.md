@@ -22,7 +22,7 @@ institución). Reemplaza la digitación uno por uno en la ficha (`EmpleadoForm.v
 | | Este CSV (spec 02) | `importarDistributivo` (spec 01) |
 |---|---|---|
 | Crea empleados nuevos | **Sí** (upsert) | No (solo actualiza existentes) |
-| Columnas | 48 (todos los campos planos de `ad_empleado`) | ~7 campos del distributivo |
+| Columnas | 47 (todos los campos planos de `ad_empleado`) | ~7 campos del distributivo |
 | Transaccional | **Sí** (`DB::transaction`, todo o nada) | No (mejor esfuerzo) |
 | Nombres de columna | Por cabecera (`array_combine`) | Por cabecera + índices fijos (0, 9) |
 | Preview previo | **Sí** (`preview`) | No |
@@ -73,7 +73,7 @@ con upsert por cédula, normalización de fechas / `tipo_contrato` / catálogos 
 
 ## 4. Formato del archivo
 
-### 4.1 Columnas (48, en este orden en la plantilla)
+### 4.1 Columnas (47, en este orden en la plantilla)
 
 Delimitador **coma** (`,`). Codificación con BOM UTF-8 (la plantilla lo incluye). Primera fila =
 cabeceras; el mapeo es **por nombre de cabecera**, no por posición (el orden puede variar mientras
@@ -118,7 +118,7 @@ num_hijos_mayores
 | `fecha_ingreso`, `fecha_salida`, `fecha_vence_sercop`, `sustituta_fecha_caducidad` | Formatos aceptados: `DD/MM/AAAA`, `AAAA-MM-DD`, `DD-MM-AAAA`, `DD/MM/AA`. Se guardan como `AAAA-MM-DD`. Formato irreconocible → **error de fila**. Vacío → `null`. |
 | `acumula_decimos` | Una sola columna. `(bool)` del valor → se aplica **a la vez** a `acumula_decimo_tercero` y `acumula_decimo_cuarto`. (`0`/vacío = false = cobra mensual; cualquier otro = true = acumula.) |
 | `acumula_fondos_reserva` | Entero (default 0). |
-| `puede_solicitar_vehiculo`, `tiene_discapacidad`, `tiene_enfermedad_catastrofica`, `tiene_persona_sustituta` | Los tres `tiene_*` y `puede_solicitar_vehiculo`: `tiene_*` se evalúan como `strtoupper(trim(valor)) === 'SI'`. *(`puede_solicitar_vehiculo` usa `(bool)` del string — cualquier texto no vacío es `true`; ver §9.)* |
+| `puede_solicitar_vehiculo`, `acumula_decimos`, `tiene_discapacidad`, `tiene_enfermedad_catastrofica`, `tiene_persona_sustituta` | Se evalúan con `$boolSi()` (2026-09-10): `true` solo si el valor es `SI`/`SÍ`/`1`/`TRUE`/`X` (mayús/minús indistinto); `NO`, `0`, vacío → `false`. Antes `puede_solicitar_vehiculo` y `acumula_decimos` usaban `(bool)` del string → `"NO"` daba `true` (ver §9). |
 | `porcentaje_discapacidad` | Float o `null`. |
 | `num_hijos_mayores` | Entero (default 0). |
 | `grupo_vulnerable`, `grupo_prioritario`, `tipo_discapacidad`, `enfermedad_catastrofica` | Se escribe el **nombre** (no el ID). Se resuelve contra el catálogo real (`ad_grupo_vulnerable` / `ad_grupo_prioritario` / `ad_tipo_discapacidad` / `ad_enfermedad_catastrofica`) case-insensitive. Si no coincide → se deja `null` y se agrega un **aviso** a `errores[]` (no aborta). Vacío → `null`. |
@@ -196,7 +196,7 @@ La vista debe recordar al usuario formatear como Texto antes de pegar.
 
 ## 7. Criterios de aceptación
 
-- **CA-02-1** — La plantilla descargada abre en Excel con las 48 cabeceras correctas y una fila de ejemplo, sin corrupción de tildes (BOM presente).
+- **CA-02-1** — La plantilla descargada abre en Excel con las 47 cabeceras correctas y una fila de ejemplo, sin corrupción de tildes (BOM presente).
 - **CA-02-2** — `preview` de un CSV con una fila a la que le falta `id_depto` devuelve esa fila en `filas` y un `errores[]` con "Fila N: id_depto requerido", y **no** crea ningún empleado.
 - **CA-02-3** — Dado un CSV con 10 filas válidas y 1 con fecha inválida, `importar` guarda las 10 válidas, reporta la fallida en `errores[]` y responde `total = 10`. *(La fila con error no aborta la transacción — solo se omite.)*
 - **CA-02-4** — Dado un CSV donde una fila provoca un error de BD irrecuperable (p. ej. violación de constraint no capturada), `importar` hace rollback: **ninguna** de las filas del archivo queda persistida y responde HTTP 500.
@@ -235,8 +235,10 @@ La vista debe recordar al usuario formatear como Texto antes de pegar.
 4. ✅ **RESUELTO (2026-09-01)** — `id_depto` se valida contra `ad_departamento` y se rechaza el 999,
    tanto en `preview()` como en `importar()`.
 5. **Delimitador fijo `,`** — no autodetecta `;`; Excel en español falla. *(abierto — P3)*
-6. **`puede_solicitar_vehiculo` y `acumula_decimos`** usan `(bool)` del string: `"NO"` → `true`.
-   Inconsistente con los `tiene_*` que comparan `=== 'SI'`. *(abierto — P3)*
+6. ✅ **RESUELTO (2026-09-10)** — `puede_solicitar_vehiculo` y `acumula_decimos` usaban `(bool)` del
+   string (`"NO"` → `true`). Ahora usan `$boolSi()` (`true` solo con `SI`/`1`/`TRUE`/`X`). Se
+   corrigió justo antes del import masivo del paso a producción, donde la plantilla traía
+   `puede_solicitar_vehiculo = "NO"` en las 94 filas.
 7. **`sueldo` sin normalización de separador decimal** — `"1.500,00"` se corrompe. *(abierto — P3)*
 8. ✅ **RESUELTO (2026-09-01)** — `id_emp` de cada alta vía `Empleado::generarSiguienteId()`
    (`pg_advisory_xact_lock`), no `max(id_emp)+1` sin bloqueo.
