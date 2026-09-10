@@ -85,7 +85,7 @@ class EmpleadoController extends Controller
     {
         $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate([
-            "identificacion"         => "required|string|max:15|unique:dbo.ad_empleado,identificacion",
+            "identificacion"         => "required|string|max:15|unique:pgsql.dbo.ad_empleado,identificacion",
             "nombre_emp"             => "required|string|max:240",
             "apellido_emp"           => "required|string|max:240",
             "id_depto"               => "required|integer",
