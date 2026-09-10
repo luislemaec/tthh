@@ -1009,6 +1009,13 @@ views/permisos/         # Permisos y licencias — fecha_desde/fecha_hasta defau
                         #   Si la fecha es futura o el cuadre aún no procesó ese día → sin_atraso=false (sin aviso).
                         #   No bloquea la aprobación, es informativo. Solo permisos de tipo ENTRADA o SALIDA.
 DashboardView.vue       # Admin/TH: métricas globales (Empleados, Departamentos, Permisos)
+                        #   Tarjeta "Departamentos" = `total_departamentos` (COUNT del catálogo
+                        #   dbo.ad_departamento, estado ACTIVO, sin el 999) desde 2026-09-10 —
+                        #   antes era `por_departamento.length`, que solo contaba departamentos
+                        #   con ≥1 empleado activo, así que uno sin dotación (ej. AUDITORÍA INTERNA)
+                        #   no se contaba y el número no coincidía con Admin → Departamentos.
+                        #   `por_departamento` (nombre + total por depto con gente) se sigue
+                        #   devolviendo pero ya no se usa en el frontend.
                         # Supervisor (no admin): 4 tarjetas pendientes (permisos/vacaciones/HE/materiales)
                         #   + widget "Mi equipo hoy" (presentes/permiso/vacaciones/sin marcar + barra)
                         #   + atrasos del mes del equipo

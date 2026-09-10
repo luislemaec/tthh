@@ -55,8 +55,9 @@ class DashboardController extends Controller
         // devolvían siempre, para cualquier autenticado; el frontend solo las ocultaba
         // visualmente para no-admin/TH, pero la API ya las había mandado igual. Ahora
         // solo se calculan y se incluyen en la respuesta para Admin/TH.
-        $totalActivos    = null;
-        $porDepartamento = null;
+        $totalActivos       = null;
+        $porDepartamento    = null;
+        $totalDepartamentos = null;
         if ($esAdminOTH) {
             $totalActivos = DB::table("dbo.ad_empleado")
                 ->where("estado", "ACTIVO")
@@ -71,6 +72,16 @@ class DashboardController extends Controller
                 ->groupBy("d.nombre_depto")
                 ->orderByDesc("total")
                 ->get();
+
+            // Cuenta real de departamentos del catálogo (estado ACTIVO, sin el placeholder 999).
+            // Antes la tarjeta "Departamentos" del dashboard mostraba $porDepartamento->length,
+            // que solo cuenta los departamentos con al menos un empleado activo asignado — un
+            // departamento del catálogo sin dotación (ej. AUDITORÍA INTERNA) no se contaba y el
+            // número no coincidía con Admin → Departamentos.
+            $totalDepartamentos = DB::table("dbo.ad_departamento")
+                ->where("id_depto", "!=", 999)
+                ->where("estado", "ACTIVO")
+                ->count();
         }
 
         // Permisos pendientes según rol
@@ -282,6 +293,7 @@ class DashboardController extends Controller
         return response()->json([
             "total_activos"         => $totalActivos,
             "por_departamento"      => $porDepartamento,
+            "total_departamentos"   => $totalDepartamentos,
             "permisos_pendientes"   => $permisosPendientes,
             "vacaciones_pendientes" => $vacacionesPendientes,
             "es_supervisor"         => $esSupervisor,

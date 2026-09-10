@@ -130,7 +130,7 @@
         </div>
         <div>
           <p class="text-sm text-gray-500">Departamentos</p>
-          <p class="text-2xl font-bold text-gray-800">{{ stats.por_departamento.length }}</p>
+          <p class="text-2xl font-bold text-gray-800">{{ stats.total_departamentos ?? stats.por_departamento.length }}</p>
         </div>
       </div>
 
@@ -345,6 +345,7 @@ const MESES_CORTOS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct
 const stats = ref({
   total_activos: 0,
   por_departamento: [],
+  total_departamentos: 0,
   permisos_pendientes: 0,
   vacaciones_pendientes: 0,
   es_supervisor: false,
