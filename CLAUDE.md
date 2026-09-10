@@ -214,6 +214,7 @@ public function store(Request $request) {
 ## Base de Datos
 
 - Schema `dbo` → Talento Humano | Schema `adq` → Adquisiciones (misma BD PostgreSQL)
+- **Reglas de validación `unique`/`exists` sobre tablas con schema — SIEMPRE con el prefijo de conexión `pgsql.`**: `'unique:pgsql.dbo.ad_empleado,identificacion'` (no `'unique:dbo.ad_empleado,...'`). Laravel interpreta lo que va **antes del primer `.`** como el nombre de la conexión — sin el `pgsql.`, toma `dbo` como conexión, que no existe → `Database connection [dbo] not configured` en cuanto la validación llega a esa regla (falla recién ahí, no antes, así que puede quedar latente mucho tiempo). Bug real 2026-08-03→2026-09-10 en `EmpleadoController::store()`. Todo el resto del código ya usa `unique:pgsql.<schema>.<tabla>,...`.
 - Empleados: PK = `id_emp` (string); estados `ACTIVO`/`INACTIVO` (nunca eliminar)
 - Depto 999 excluido de todas las consultas (placeholder de sistema). `Admin/DepartamentoController::index()` no lo excluía (aparecía "ADMINISTRACIÓN DEL SISTEMA" en el listado de Departamentos y en cualquier dropdown que consume ese mismo endpoint) — corregido 2026-08-17.
 - `dbo.d2_configuracion` → parámetros globales (clave/valor/descripcion). Campos de auditoría: `created_at`, `created_by`, `updated_at`, `updated_by`. La query siempre usa `LOWER(concepto)` porque los conceptos se guardan en MAYÚSCULAS. Migración `000030` agregó `descripcion`, migración `000031` agregó auditoría.
