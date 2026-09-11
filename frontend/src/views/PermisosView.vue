@@ -173,11 +173,11 @@
 
     <!-- Modal Solicitar Permiso -->
     <div v-if="modalNuevo" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-lg w-full max-w-lg overflow-hidden">
-        <div class="px-6 py-4" style="background-color:#0b5447;">
+      <div class="bg-white rounded-xl shadow-lg w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+        <div class="px-6 py-4 flex-shrink-0" style="background-color:#0b5447;">
           <h2 class="text-lg font-semibold text-white">Solicitar Permiso</h2>
         </div>
-        <div class="p-6">
+        <div class="p-6 overflow-y-auto">
         <div class="space-y-4">
           <div class="space-y-2">
             <label class="block text-sm font-medium text-gray-600">Descontable *</label>
@@ -248,15 +248,15 @@
               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]"></textarea>
           </div>
           <div v-if="errorNuevo" class="text-red-600 text-sm bg-red-50 rounded p-2">{{ errorNuevo }}</div>
-          <div class="flex justify-end gap-3 pt-2">
-            <button type="button" @click="modalNuevo = false"
-              class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
-            <button type="button" @click="guardarPermiso" :disabled="guardando"
-              class="px-4 py-2 rounded-lg bg-[#0b5447] text-white text-sm hover:bg-[#00372e] disabled:opacity-50">
-              {{ guardando ? "Enviando..." : "Solicitar" }}
-            </button>
-          </div>
         </div>
+        </div>
+        <div class="flex justify-end gap-3 px-6 py-4 border-t flex-shrink-0">
+          <button type="button" @click="modalNuevo = false"
+            class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
+          <button type="button" @click="guardarPermiso" :disabled="guardando"
+            class="px-4 py-2 rounded-lg bg-[#0b5447] text-white text-sm hover:bg-[#00372e] disabled:opacity-50">
+            {{ guardando ? "Enviando..." : "Solicitar" }}
+          </button>
         </div>
       </div>
     </div>

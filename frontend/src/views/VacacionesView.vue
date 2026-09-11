@@ -176,8 +176,11 @@
 
     <!-- Modal Solicitar -->
     <div v-if="modalNuevo" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-lg space-y-4">
-        <h2 class="text-lg font-semibold text-gray-700">Solicitar Vacaciones</h2>
+      <div class="bg-white rounded-xl shadow-lg w-full max-w-lg overflow-hidden">
+        <div class="px-6 py-4" style="background-color:#0b5447;">
+          <h2 class="text-lg font-semibold text-white">Solicitar Vacaciones</h2>
+        </div>
+        <div class="p-6 space-y-4">
 
         <!-- Recordatorio períodos planificados -->
         <div v-if="periodosPlani.length" class="bg-[#0b5447]/5 border border-[#0b5447]/20 rounded-lg px-4 py-3">
@@ -219,6 +222,7 @@
               {{ guardando ? "Enviando..." : "Solicitar" }}
             </button>
           </div>
+        </div>
         </div>
       </div>
     </div>
