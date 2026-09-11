@@ -217,7 +217,7 @@ usa; aquí solo el mapa general.
 | # | Sub-spec | Alcance resumido |
 |---|---|---|
 | 01 | **Empleados** | CRUD del expediente, foto, hijos, doc. persona sustituta, períodos de teletrabajo, datos sociales/bancarios, partidas vacantes, reset de contraseña, importación de distributivo (CSV legado). |
-| 02 | **Importación masiva de empleados** | `ImportacionController`: plantilla de 48 columnas, preview, upsert por cédula, normalización de fechas/tipos/catálogos. |
+| 02 | **Importación masiva de empleados** | `ImportacionController`: plantilla de 47 columnas, preview, upsert por cédula, normalización de fechas/tipos/catálogos. |
 | 03 | **Control de asistencia** | `sg_control_persona`, secuencia diaria, modalidades de marcación, validación de IP/VLAN, integración ZKTeco, `d2_cuadre_marcacion`, `ProcesarCuadre`, vista personal y de administrador. |
 | 04 | **Permisos y licencias** | `d2_permiso`, estados, `tipo_horario`, descuento de vacaciones al aprobar, factor fin de semana, `dias_descuento_efectivo`, anulación, documentos de respaldo. |
 | 05 | **Vacaciones** | Solicitud, cálculo de saldo (`calcularSaldoDisponible`), tasa por antigüedad CT, tope 60 días, saldo negativo + informe favorable, backup al aprobar, planificación anual, reporte de saldo, carga de saldos por CSV. |

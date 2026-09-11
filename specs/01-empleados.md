@@ -35,7 +35,7 @@ Incluye:
 - Importación del distributivo por CSV legado (`importarDistributivo`).
 
 Excluye (otras sub-specs):
-- Importación masiva completa de 48 columnas → **spec 02**.
+- Importación masiva completa de 47 columnas → **spec 02**.
 - Asignación/revocación de roles → `RolController` (spec 00 / futura spec de administración).
 - Modalidad de marcación *en tiempo de marcación* y validación de teletrabajo activo → **spec 03**.
 - Reporte de empleados con alertas y gráficos (`ReporteEmpleadosController`) → **spec 11**.
@@ -522,7 +522,7 @@ error. Campos numéricos que llegan como número desde la BD: `String(val ?? '')
 - **Spec 05** — consume `fecha_ingreso`, `tipo_contrato`, `modalidad_laboral`, `fecha_salida`,
   `d2_cabecera_vacacion`; aquí solo se inicializa la cabecera.
 - **Spec 09** — consume `acumula_*`, `sueldo`, `tipo_contrato`, `programa`, `actividad`.
-- **Spec 02** — importación masiva (48 columnas) hace upsert sobre esta misma tabla.
+- **Spec 02** — importación masiva (47 columnas) hace upsert sobre esta misma tabla.
 - `RolController` — asignación de roles (rutas `/empleados/{id}/roles`), fuera de esta spec.
 - Alfresco — `config('services.alfresco.*')`.
 - Storage local `public` — fotos (`php artisan storage:link` requerido en el servidor).
