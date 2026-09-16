@@ -9,9 +9,9 @@
           {{ iniciales }}
         </div>
         <div>
-          <p class="font-semibold text-gray-800">{{ auth.empleado?.apellido_emp }}, {{ auth.empleado?.nombre_emp }}</p>
+          <p class="font-semibold text-gray-800">{{ auth.empleado?.apellido }}, {{ auth.empleado?.nombre }}</p>
           <p class="text-sm text-gray-500">{{ auth.empleado?.identificacion }}</p>
-          <p class="text-sm text-gray-500">{{ auth.empleado?.cargo_empleado || '—' }}</p>
+          <p class="text-sm text-gray-500">{{ auth.empleado?.cargo || '—' }}</p>
         </div>
       </div>
     </div>
@@ -62,8 +62,8 @@ const exito     = ref('')
 const form      = ref({ password_actual: '', password_nuevo: '', password_confirmar: '' })
 
 const iniciales = computed(() => {
-  const n = auth.empleado?.nombre_emp?.[0] || ''
-  const a = auth.empleado?.apellido_emp?.[0] || ''
+  const n = auth.empleado?.nombre?.[0] || ''
+  const a = auth.empleado?.apellido?.[0] || ''
   return (a + n).toUpperCase()
 })
 

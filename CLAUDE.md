@@ -126,6 +126,7 @@ $autenticado = $empleado && (
 - Pensado como híbrido a propósito: los Funcionarios Externos (`es_externo=true`, ver sección Comisiones) no van a tener cuenta en el AD — siguen entrando con su clave local aunque el AD esté configurado, porque el AD simplemente no los encuentra por el atributo de cédula y el fallback local los cubre.
 - Requiere la extensión `php8.x-ldap` instalada en el servidor (agregar al `apt install` del deploy).
 - **`views/PerfilView.vue` ("Mi Perfil" → cambiar contraseña) — decisión tomada 2026-09-02: se mantiene, no sacarlo.** Con el AD ya en producción se evaluó sacar esta opción del menú (ya no hace falta para el login normal), pero se decidió conservarla a propósito: mientras el login siga siendo híbrido (no AD-only), si el AD llega a fallar el sistema cae a la clave local — y sin esta pantalla, un empleado normal (no externo) no tendría ninguna forma de saber/establecer esa clave de respaldo. Los Funcionarios Externos igual tienen su propia vía de reset vía "Dar acceso" en Funcionarios Externos, pero los empleados normales no tienen otro camino — de ahí que esta pantalla siga siendo necesaria como red de contingencia.
+- **Fix 2026-09-16 — nombre/apellido/cargo no se mostraban en "Mi Perfil".** `AuthController::login()` arma el objeto `empleado` a mano con claves cortas (`nombre`, `apellido`, `cargo`, ver el bloque `'empleado' => [...]` de `login()`), distintas a las columnas reales de la tabla (`nombre_emp`, `apellido_emp`, `cargo_empleado`). `stores/auth.js` guarda ese objeto tal cual viene del login (nunca lo repuebla desde `/me`, que sí devuelve el modelo Eloquent crudo con los nombres largos) — así que `auth.empleado` en toda la sesión del frontend **siempre** tiene las claves cortas. `PerfilView.vue` leía `auth.empleado?.apellido_emp`/`nombre_emp`/`cargo_empleado` (los nombres largos, que no existen ahí) — mostraba una coma sola donde iba el nombre y "—" donde iba el cargo, para **cualquier** usuario, no un caso puntual. `identificacion` sí se veía bien porque esa clave coincide en ambos lados por casualidad. Corregido a `auth.empleado?.apellido`/`nombre`/`cargo` (también en el cómputo de `iniciales` del avatar, mismo bug). Ojo si se toca `AuthController::login()`/`auth.js` más adelante: el objeto `empleado` del login y el de `/me` tienen **formas distintas** — cualquier pantalla que lea `auth.empleado` debe usar las claves cortas del login, no las columnas crudas de `ad_empleado`.
 
 **Datos reales del AD institucional, confirmados en la práctica (2026-08-28):**
 - Servidor: `192.168.26.6:389` (mismo AD/NTP que ya se usaba para sincronización horaria)
@@ -361,7 +362,7 @@ setTimeout(() => URL.revokeObjectURL(url), 60000)   // revocar después de 60s, 
 | `ReportePlanificacionController` | PDF planificación + subida Alfresco |
 | `PermisosController` | Permisos y licencias — incluye `anular()` para TH/Admin |
 | `AsistenciaController` | Marcaciones y reportes de asistencia |
-| `CuadreController` | Conciliación de asistencia (atrasos) |
+| `CuadreController` | Conciliación de asistencia (atrasos) — el botón "▶ Procesar Cuadre" de `CuadreView.vue` (`POST /api/cuadre/procesar`) dispara manualmente el mismo cálculo que corre solo a las 23:55; en el **menú** la opción está renombrada por TH como **"Sincronizar Marcación"** (no dice "Cuadre" en ningún lado visible al usuario — el nombre `Cuadre`/`CuadreController` es solo interno) |
 | `HorasExtrasController` | Planificación y registro de horas extras |
 | `DashboardController` | Estadísticas del dashboard — Admin/TH: métricas globales; Supervisor: pendientes + equipo hoy; TH: gráfico atrasos por coordinación |
 | `ReportesController` | Reportes de atrasos, marcaciones no realizadas y movimientos de personal — todos con export Excel/PDF |
@@ -1272,7 +1273,7 @@ Implementada para trazabilidad ante la Contraloría General del Estado. Todas la
 | `Admin/DepartamentoController` | CREAR, ACTUALIZAR, DESACTIVAR, ACTIVAR (2026-09-07) |
 | `Admin/RazonController` | CREAR, ACTUALIZAR, DESACTIVAR, ACTIVAR (2026-09-09 — antes no existía forma de reactivar una razón inactivada) |
 | `Admin/ModalidadLaboralController` | CREAR, ACTUALIZAR (2026-09-07) |
-| `Admin/TurnoController` | CREAR, ACTUALIZAR, ELIMINAR, ACTUALIZAR_HORARIOS (2026-09-07) |
+| `Admin/TurnoController` | CREAR, ACTUALIZAR, ELIMINAR, ACTUALIZAR_HORARIOS (2026-09-07) — catálogo de Turnos; en el **menú** la opción está renombrada por TH como **"Horarios"** (no "Turnos y Horarios" ni "Turnos") |
 | `Admin/CalendarioController` | CREAR, ACTUALIZAR, ELIMINAR, CARGAR_FERIADOS (2026-09-07) |
 | `Admin/AportesIessController` | CREAR, ACTUALIZAR, ELIMINAR (2026-09-07 — antes sin auditar pese a alimentar todo el Rol de Pagos) |
 | `Adquisiciones/OrdenCompraController` | CONFIRMAR_INGRESO, REVERSAR_INGRESO |
