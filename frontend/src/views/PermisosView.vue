@@ -129,13 +129,10 @@
                   Ver
                 </button>
                 <template v-if="esSupervisorOAdmin && tabActivo === 'equipo' && p.estado_permiso === 'PENDIENTE'">
-                  <!-- Oculto a pedido (2026-09-17): un permiso sigue siendo válido aunque el
-                       empleado no registre atraso ese día, no aporta valor mostrarlo como aviso.
                   <span v-if="p.sin_atraso" title="Este empleado no registra atraso ese día"
                     class="inline-flex items-center px-2 py-1 rounded-md bg-amber-100 text-amber-700 text-xs font-medium">
                     ⚠ Sin atraso
                   </span>
-                  -->
                   <button @click="abrirModalAprobar(p)"
                     class="inline-flex items-center px-2.5 py-1 rounded-md border border-green-300 text-xs text-green-700 hover:bg-green-50 font-medium transition-colors">
                     Aprobar
@@ -422,7 +419,7 @@
           {{ permisoParaAprobar?.empleado?.apellido_emp }}, {{ permisoParaAprobar?.empleado?.nombre_emp }}
           &mdash; {{ permisoParaAprobar?.fecha_desde?.substring(0,10) }}
         </p>
-        <p class="text-sm text-gray-600">¿Confirmás la aprobación de este permiso?</p>
+        <p class="text-sm text-gray-600">Confirmar aprobación</p>
         <div class="flex justify-end gap-3">
           <button @click="modalAprobar = false"
             class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
@@ -438,6 +435,10 @@
     <div v-if="modalNegar" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md space-y-4">
         <h2 class="text-lg font-semibold text-gray-700">Negar Permiso</h2>
+        <p class="text-sm text-gray-500">
+          {{ permisoSeleccionado?.empleado?.apellido_emp }}, {{ permisoSeleccionado?.empleado?.nombre_emp }}
+          &mdash; {{ permisoSeleccionado?.fecha_desde?.substring(0,10) }}
+        </p>
         <div>
           <label class="block text-sm font-medium text-gray-600 mb-1">Motivo de negacion</label>
           <textarea v-model="motivoNegacion" rows="3" maxlength="120"
@@ -458,6 +459,10 @@
     <div v-if="modalEliminar" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md space-y-4">
         <h2 class="text-lg font-semibold text-gray-700">Eliminar Permiso</h2>
+        <p class="text-sm text-gray-500">
+          {{ permisoSeleccionado?.empleado?.apellido_emp }}, {{ permisoSeleccionado?.empleado?.nombre_emp }}
+          &mdash; {{ permisoSeleccionado?.fecha_desde?.substring(0,10) }}
+        </p>
         <div>
           <label class="block text-sm font-medium text-gray-600 mb-1">Motivo de eliminación <span class="text-red-500">*</span></label>
           <textarea v-model="motivoEliminacion" rows="3" maxlength="120"
