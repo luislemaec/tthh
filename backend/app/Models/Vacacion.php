@@ -45,4 +45,9 @@ class Vacacion extends Model
     {
         return $this->belongsTo(Empleado::class, "aprobado_por", "id_emp");
     }
+
+    public function informador()
+    {
+        return $this->belongsTo(Empleado::class, "informe_por", "id_emp");
+    }
 }

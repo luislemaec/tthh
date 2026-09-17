@@ -289,6 +289,26 @@
               </span>
             </dd>
           </div>
+          <div v-if="seleccionado?.requiere_informe" class="col-span-2">
+            <dt class="text-gray-500">Informe TH (saldo insuficiente)</dt>
+            <dd>
+              <span v-if="seleccionado?.informe_estado === 'FAVORABLE'"
+                class="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                Favorable
+              </span>
+              <span v-else-if="seleccionado?.informe_estado === 'DESFAVORABLE'"
+                class="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                Desfavorable
+              </span>
+              <span v-else class="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
+                Pendiente
+              </span>
+              <span v-if="seleccionado?.informador" class="text-xs text-gray-500 ml-2">
+                {{ seleccionado.informador.apellido_emp }}, {{ seleccionado.informador.nombre_emp }}
+                <template v-if="seleccionado?.informe_fecha">— {{ seleccionado.informe_fecha.substring(0, 10) }}</template>
+              </span>
+            </dd>
+          </div>
           <div class="col-span-2">
             <dt class="text-gray-500">Observaciones</dt>
             <dd class="font-medium">{{ seleccionado?.observaciones || "—" }}</dd>
