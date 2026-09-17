@@ -136,24 +136,32 @@
               <span v-else class="text-gray-300">—</span>
             </td>
             <td class="px-4 py-3">
-              <div class="flex gap-2">
+              <div class="flex gap-1 flex-wrap">
                 <button @click="verVacacion(v)"
-                  class="text-[#0b5447] hover:underline text-xs font-medium">Ver</button>
+                  class="inline-flex items-center px-2.5 py-1 rounded-md border border-[#0b5447] text-xs text-[#0b5447] hover:bg-[#f0faf8] font-medium transition-colors">
+                  Ver
+                </button>
                 <template v-if="esSupervisorOAdmin && tabActivo === 'equipo' && v.estado_permiso === 'PENDIENTE'">
                   <button v-if="miRol.es_admin_th && v.requiere_informe"
                     @click="abrirModalInforme(v)"
-                    class="text-orange-600 hover:underline text-xs font-medium">Informe</button>
+                    class="inline-flex items-center px-2.5 py-1 rounded-md border border-orange-300 text-xs text-orange-700 hover:bg-orange-50 font-medium transition-colors">
+                    Informe
+                  </button>
                   <button @click="v.requiere_informe && v.informe_estado !== 'FAVORABLE' ? null : abrirModalBackup(v.secuencial_clave)"
                     :class="v.requiere_informe && v.informe_estado !== 'FAVORABLE'
-                      ? 'text-gray-300 cursor-not-allowed text-xs font-medium'
-                      : 'text-green-600 hover:underline text-xs font-medium'"
+                      ? 'inline-flex items-center px-2.5 py-1 rounded-md border border-gray-200 text-xs text-gray-300 cursor-not-allowed font-medium'
+                      : 'inline-flex items-center px-2.5 py-1 rounded-md border border-green-300 text-xs text-green-700 hover:bg-green-50 font-medium transition-colors'"
                     :title="v.requiere_informe && v.informe_estado !== 'FAVORABLE' ? 'Requiere informe favorable de TH' : ''">
                     Aprobar
                   </button>
                   <button @click="abrirModalNegar(v)"
-                    class="text-red-500 hover:underline text-xs font-medium">Negar</button>
+                    class="inline-flex items-center px-2.5 py-1 rounded-md border border-red-200 text-xs text-red-600 hover:bg-red-50 font-medium transition-colors">
+                    Negar
+                  </button>
                   <button @click="abrirModalEliminar(v)"
-                    class="text-gray-500 hover:underline text-xs font-medium">Eliminar</button>
+                    class="inline-flex items-center px-2.5 py-1 rounded-md border border-gray-200 text-xs text-gray-500 hover:bg-gray-50 font-medium transition-colors">
+                    Eliminar
+                  </button>
                 </template>
               </div>
             </td>

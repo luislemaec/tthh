@@ -1205,6 +1205,15 @@ VacacionesView.vue      # Solicitudes de vacaciones del empleado y supervisor
                         # "Ver detalle por período" eliminado — tabla d2_detalle_vacacion vacía (sin migración)
                         # Modelo Vacacion.php: relación aprobador() → belongsTo(Empleado, 'aprobado_por', 'id_emp')
                         # VacacionesController::index() eager-load aprobador junto con empleado.departamento
+                        # Fix 2026-09-17 — botones de acciones (Ver/Informe/Aprobar/Negar/Eliminar) pasados
+                        #   de texto plano subrayado a píldora con borde, mismo estilo que ya usa Permisos
+                        #   (Ver=borde verde institucional, Informe=naranja, Aprobar=verde claro, Negar=rojo,
+                        #   Eliminar=gris; Aprobar deshabilitado por informe pendiente ahora es píldora gris
+                        #   en vez de solo texto gris). Solo diseño, sin cambios de lógica.
+                        # Gap detectado, no corregido (fuera de alcance del fix de diseño): no hay botón
+                        #   "Anular" en esta vista para vacaciones ya APROBADO, aunque
+                        #   VacacionesController::anular() sí existe en el backend — a diferencia de
+                        #   Permisos, que sí tiene el botón conectado. Pendiente si se prioriza.
 views/certificados/
   CertificadosView.vue    # Certificados laborales — solo TH / ADMINISTRADOR
                           # Panel superior: buscador de empleado con debounce 300ms + dropdown de resultados
