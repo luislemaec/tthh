@@ -71,7 +71,7 @@
 
     <!-- Filtros -->
     <div class="bg-white rounded-xl shadow p-4 flex flex-wrap gap-3">
-      <select v-model="filtros.estado" @change="cargar"
+      <select v-model="filtros.estado" @change="pagina = 1; cargar()"
         class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
         <option value="">Todos los estados</option>
         <option value="PENDIENTE">Pendiente</option>
@@ -79,9 +79,9 @@
         <option value="NEGADO">Negado</option>
         <option value="ELIMINADO">Eliminado</option>
       </select>
-      <input v-model="filtros.fecha_desde" type="date" @change="cargar"
+      <input v-model="filtros.fecha_desde" type="date" @change="pagina = 1; cargar()"
         class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
-      <input v-model="filtros.fecha_hasta" type="date" @change="cargar"
+      <input v-model="filtros.fecha_hasta" type="date" @change="pagina = 1; cargar()"
         class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
       <button @click="limpiarFiltros"
         class="border rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-50">
@@ -163,7 +163,7 @@
 
       <!-- Paginación -->
       <div class="flex justify-between items-center px-4 py-3 border-t text-sm text-gray-600">
-        <span>Mostrando {{ vacaciones.length }} de {{ total }} solicitudes</span>
+        <span>Mostrando {{ rangoDesde }}-{{ rangoHasta }} de {{ total }} solicitudes</span>
         <div class="flex gap-2">
           <button @click="pagina--; cargar()" :disabled="pagina === 1"
             class="px-3 py-1 border rounded-lg disabled:opacity-50 hover:bg-gray-50">Anterior</button>
@@ -455,6 +455,12 @@ const formNuevo = ref({
 const esSupervisorOAdmin = computed(() =>
   miRol.value.es_supervisor || miRol.value.es_admin_th
 )
+
+// Rango mostrado en el pie de la tabla (ej. "16-30 de 70") — antes se mostraba solo
+// vacaciones.length, que es igual (15) en cualquier página completa y daba la falsa
+// impresión de que el contador no avanzaba al paginar.
+const rangoDesde = computed(() => total.value === 0 ? 0 : (pagina.value - 1) * 15 + 1)
+const rangoHasta = computed(() => (pagina.value - 1) * 15 + vacaciones.value.length)
 
 const esNombramiento = computed(() => !!saldo.value?.es_nombramiento_definitivo)
 

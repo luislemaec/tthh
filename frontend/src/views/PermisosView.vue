@@ -26,7 +26,7 @@
 
     <!-- Filtros -->
     <div class="bg-white rounded-xl shadow p-4 flex flex-wrap gap-3">
-      <select v-model="filtros.estado" @change="cargar"
+      <select v-model="filtros.estado" @change="pagina = 1; cargar()"
         class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
         <option value="">Todos los estados</option>
         <option value="PENDIENTE">Pendiente</option>
@@ -38,20 +38,20 @@
       <label class="flex items-center gap-2 cursor-pointer select-none text-sm text-gray-700 border rounded-lg px-3 py-2 hover:bg-gray-50"
         :class="filtros.descontable === 'SI' ? 'border-[#579186] bg-[#f0faf8]' : ''">
         <input type="checkbox" :checked="filtros.descontable === 'SI'"
-          @change="filtros.descontable = filtros.descontable === 'SI' ? '' : 'SI'; cargar()"
+          @change="filtros.descontable = filtros.descontable === 'SI' ? '' : 'SI'; pagina = 1; cargar()"
           class="accent-[#0b5447]" />
         Descontables
       </label>
       <label class="flex items-center gap-2 cursor-pointer select-none text-sm text-gray-700 border rounded-lg px-3 py-2 hover:bg-gray-50"
         :class="filtros.descontable === 'NO' ? 'border-[#579186] bg-[#f0faf8]' : ''">
         <input type="checkbox" :checked="filtros.descontable === 'NO'"
-          @change="filtros.descontable = filtros.descontable === 'NO' ? '' : 'NO'; cargar()"
+          @change="filtros.descontable = filtros.descontable === 'NO' ? '' : 'NO'; pagina = 1; cargar()"
           class="accent-[#0b5447]" />
         No descontables
       </label>
-      <input v-model="filtros.fecha_desde" type="date" @change="cargar"
+      <input v-model="filtros.fecha_desde" type="date" @change="pagina = 1; cargar()"
         class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
-      <input v-model="filtros.fecha_hasta" type="date" @change="cargar"
+      <input v-model="filtros.fecha_hasta" type="date" @change="pagina = 1; cargar()"
         class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
       <button @click="limpiarFiltros"
         class="border rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-50">
@@ -133,7 +133,7 @@
                     class="inline-flex items-center px-2 py-1 rounded-md bg-amber-100 text-amber-700 text-xs font-medium">
                     ⚠ Sin atraso
                   </span>
-                  <button @click="aprobar(p.secuencial_clave)"
+                  <button @click="abrirModalAprobar(p)"
                     class="inline-flex items-center px-2.5 py-1 rounded-md border border-green-300 text-xs text-green-700 hover:bg-green-50 font-medium transition-colors">
                     Aprobar
                   </button>
@@ -160,7 +160,7 @@
 
       <!-- Paginacion -->
       <div class="flex justify-between items-center px-4 py-3 border-t text-sm text-gray-600">
-        <span>Mostrando {{ permisos.length }} de {{ total }} permisos</span>
+        <span>Mostrando {{ rangoDesde }}-{{ rangoHasta }} de {{ total }} permisos</span>
         <div class="flex gap-2">
           <button @click="pagina--; cargar()" :disabled="pagina === 1"
             class="px-3 py-1 border rounded-lg disabled:opacity-50 hover:bg-gray-50">Anterior</button>
@@ -411,6 +411,26 @@
       </div>
     </div>
 
+    <!-- Modal Aprobar -->
+    <div v-if="modalAprobar" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md space-y-4">
+        <h2 class="text-lg font-semibold text-gray-700">Aprobar Permiso</h2>
+        <p class="text-sm text-gray-500">
+          {{ permisoParaAprobar?.empleado?.apellido_emp }}, {{ permisoParaAprobar?.empleado?.nombre_emp }}
+          &mdash; {{ permisoParaAprobar?.fecha_desde?.substring(0,10) }}
+        </p>
+        <p class="text-sm text-gray-600">¿Confirmás la aprobación de este permiso?</p>
+        <div class="flex justify-end gap-3">
+          <button @click="modalAprobar = false"
+            class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
+          <button @click="confirmarAprobar" :disabled="aprobando"
+            class="px-4 py-2 rounded-lg bg-green-600 text-white text-sm hover:bg-green-700 disabled:opacity-50">
+            {{ aprobando ? "Aprobando..." : "Confirmar Aprobación" }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Modal Negar -->
     <div v-if="modalNegar" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md space-y-4">
@@ -579,6 +599,9 @@ const guardando           = ref(false)
 const exportando          = ref(false)
 const modalNuevo          = ref(false)
 const modalVer            = ref(false)
+const modalAprobar        = ref(false)
+const permisoParaAprobar  = ref(null)
+const aprobando           = ref(false)
 const modalNegar          = ref(false)
 const modalEliminar       = ref(false)
 const permisoSeleccionado = ref(null)
@@ -623,6 +646,12 @@ const razonesFiltradas = computed(() =>
 const esSupervisorOAdmin = computed(() =>
   miRol.value.es_supervisor || miRol.value.es_admin_th
 )
+
+// Rango mostrado en el pie de la tabla (ej. "16-30 de 70") — antes se mostraba solo
+// permisos.length, que es igual (15) en cualquier página completa y daba la falsa
+// impresión de que el contador no avanzaba al paginar.
+const rangoDesde = computed(() => total.value === 0 ? 0 : (pagina.value - 1) * 15 + 1)
+const rangoHasta = computed(() => (pagina.value - 1) * 15 + permisos.value.length)
 
 const colorEstado = (estado) => {
   const colores = {
@@ -754,13 +783,21 @@ const descargarDocumento = async (doc) => {
   }
 }
 
-const aprobar = async (id) => {
-  if (!confirm("¿Aprobar este permiso?")) return
+const abrirModalAprobar = (permiso) => {
+  permisoParaAprobar.value = permiso
+  modalAprobar.value       = true
+}
+
+const confirmarAprobar = async () => {
+  aprobando.value = true
   try {
-    await api.patch("/permisos/" + id + "/aprobar")
+    await api.patch("/permisos/" + permisoParaAprobar.value.secuencial_clave + "/aprobar")
+    modalAprobar.value = false
     cargar()
   } catch (e) {
     alert(e.response?.data?.message || "Error al aprobar")
+  } finally {
+    aprobando.value = false
   }
 }
 

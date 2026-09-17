@@ -1007,6 +1007,28 @@ views/permisos/         # Permisos y licencias — fecha_desde/fecha_hasta defau
                         # Estado ANULADO: badge naranja en tabla; botón "Anular" visible para TH/Admin
                         #   en permisos con estado APROBADO; abre modal con campo motivo obligatorio
                         # Filtro de estado incluye opción "ANULADO" en el select de estados
+                        # Fix 2026-09-17 — filtros (estado, fecha_desde, fecha_hasta, descontable) no
+                        #   reiniciaban `pagina` a 1 antes de recargar. El backend sí filtraba bien sobre
+                        #   todos los registros (WHERE antes de paginate), pero si el usuario estaba en la
+                        #   página 2+ al cambiar un filtro, pedía esa misma página del nuevo resultado
+                        #   filtrado (más chico) — salía vacía o con menos filas, dando la falsa impresión
+                        #   de que el filtro solo miraba la página actual. Mismo bug en VacacionesView.vue.
+                        #   Corregido: los 4 (Permisos) / 3 (Vacaciones) controles de filtro ahora hacen
+                        #   `pagina = 1; cargar()` en vez de solo `cargar()`.
+                        # Fix 2026-09-17 — contador "Mostrando X de Y" no daba sensación de avance al
+                        #   paginar: X era el largo de la página actual (15 en cualquier página completa),
+                        #   así que se veía "15 de 70" igual en la página 1, 2 y 3. Cambiado a rango
+                        #   "Mostrando 16-30 de 70" (computed `rangoDesde`/`rangoHasta`, basado en `pagina`
+                        #   y el `per_page=15` fijo del front) — mismo fix en Permisos y Vacaciones.
+                        # Fix 2026-09-17 — botón "Aprobar" usaba `confirm()` nativo del navegador en vez
+                        #   de un modal propio (a diferencia de Negar/Eliminar/Anular, que sí tienen su
+                        #   modal). El navegador le pone como título la IP/dominio del sitio a cualquier
+                        #   `confirm()`, dando la impresión de una ventana "rota" con la IP en el título.
+                        #   Nuevo `modalAprobar` (mismo estilo simple de Negar: título + detalle del
+                        #   empleado/fecha + Cancelar/Confirmar), botón "Aprobar" ahora abre
+                        #   `abrirModalAprobar(p)` en vez de llamar `aprobar(id)` directo. Solo en
+                        #   Permisos — en Vacaciones "Aprobar" ya abría un modal propio (pide backup del
+                        #   departamento), nunca tuvo este problema.
                         # Aviso "⚠ Sin atraso" (badge ámbar) visible SOLO para el supervisor en tab "equipo",
                         #   junto al botón Aprobar, cuando el permiso es descontable=SI, tipo ENTRADA/SALIDA,
                         #   la fecha ya pasó (≤ hoy) Y d2_cuadre_marcacion muestra atraso=0 ese día.
