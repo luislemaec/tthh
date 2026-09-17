@@ -340,7 +340,9 @@ class PermisosController extends Controller
 
         AuditoriaService::log('dbo.d2_permiso', $permiso->getKey(), 'SOLICITAR',
             null,
-            ['fecha_desde' => $permiso->fecha_desde, 'fecha_hasta' => $permiso->fecha_hasta, 'razon' => $permiso->razon, 'descontable' => $permiso->descontable],
+            ['fecha_desde' => $permiso->fecha_desde, 'fecha_hasta' => $permiso->fecha_hasta,
+             'hora_desde' => $permiso->hora_desde, 'hora_hasta' => $permiso->hora_hasta,
+             'razon' => $permiso->razon, 'descontable' => $permiso->descontable],
             $request, "Solicitud de permiso: {$this->nombreEmpleadoPermiso($permiso)}");
 
         return response()->json($permiso->load(["empleado", "razonPermiso"]), 201);
@@ -472,7 +474,8 @@ class PermisosController extends Controller
 
         AuditoriaService::log('dbo.d2_permiso', $permiso->getKey(), 'APROBAR',
             ['estado_permiso' => 'PENDIENTE'],
-            ['estado_permiso' => 'APROBADO', 'fecha_desde' => $permiso->fecha_desde, 'fecha_hasta' => $permiso->fecha_hasta, 'descontable' => $permiso->descontable],
+            ['estado_permiso' => 'APROBADO', 'fecha_desde' => $permiso->fecha_desde, 'fecha_hasta' => $permiso->fecha_hasta,
+             'hora_desde' => $permiso->hora_desde, 'hora_hasta' => $permiso->hora_hasta, 'descontable' => $permiso->descontable],
             $request, "Aprobación de permiso: {$this->nombreEmpleadoPermiso($permiso)}");
 
         return response()->json([
@@ -560,7 +563,8 @@ class PermisosController extends Controller
         ]);
 
         AuditoriaService::log('dbo.d2_permiso', $permiso->getKey(), 'ELIMINAR',
-            ['estado_permiso' => 'PENDIENTE', 'fecha_desde' => $permiso->fecha_desde, 'fecha_hasta' => $permiso->fecha_hasta],
+            ['estado_permiso' => 'PENDIENTE', 'fecha_desde' => $permiso->fecha_desde, 'fecha_hasta' => $permiso->fecha_hasta,
+             'hora_desde' => $permiso->hora_desde, 'hora_hasta' => $permiso->hora_hasta],
             ['estado_permiso' => 'ELIMINADO', 'observacion' => $request->observacion_negacion],
             $request, "Eliminación de permiso: {$this->nombreEmpleadoPermiso($permiso)}");
 

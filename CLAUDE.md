@@ -645,6 +645,8 @@ Ejemplos: 1 hora → 0.1705 días | 4 horas → 0.6818 días | 1 día completo �
 - **Ya NO revierte nada en `d2_cuadre_marcacion` directamente** (ver corrección 2026-09-01 más abajo) — al pasar a `ANULADO`, el próximo `php artisan procesar:cuadre --fecha=X` para esa fecha deja de contar el permiso automáticamente
 - Uso: permiso aprobado que el empleado no utilizó (ej. salió a su hora normal)
 
+**Fix 2026-09-17 — Auditoría de permisos no mostraba `hora_desde`/`hora_hasta`.** `SOLICITAR`/`APROBAR`/`ELIMINAR` (en `nom_auditoria_log`) solo guardaban `fecha_desde`/`fecha_hasta` (la fecha del día, sin hora — por eso en la UI de Auditoría se veían con `00:00:00`, generando confusión al parecer que las horas del permiso se "perdieron"). Las horas reales del permiso vivían siempre bien en el registro de `d2_permiso` — nunca hubo pérdida de datos, solo faltaban en el snapshot de auditoría. Agregado `hora_desde`/`hora_hasta` al `datos_nuevos`/`datos_anteriores` de esos 3 métodos. `NEGAR`/`ANULAR` quedaron sin tocar (nunca capturaron `fecha_desde`/`fecha_hasta` tampoco, fuera del alcance de este fix puntual).
+
 **Vista personal de asistencia:** muestra `atraso` (minutos medidos) + `justificado`:
 - `"TOTAL"` si `minutos_permiso >= atraso` → badge verde "Justificado"
 - `"PARCIAL"` si `minutos_permiso > 0 pero < atraso` → badge naranja
