@@ -129,10 +129,13 @@
                   Ver
                 </button>
                 <template v-if="esSupervisorOAdmin && tabActivo === 'equipo' && p.estado_permiso === 'PENDIENTE'">
+                  <!-- Oculto a pedido (2026-09-17): un permiso sigue siendo válido aunque el
+                       empleado no registre atraso ese día, no aporta valor mostrarlo como aviso.
                   <span v-if="p.sin_atraso" title="Este empleado no registra atraso ese día"
                     class="inline-flex items-center px-2 py-1 rounded-md bg-amber-100 text-amber-700 text-xs font-medium">
                     ⚠ Sin atraso
                   </span>
+                  -->
                   <button @click="abrirModalAprobar(p)"
                     class="inline-flex items-center px-2.5 py-1 rounded-md border border-green-300 text-xs text-green-700 hover:bg-green-50 font-medium transition-colors">
                     Aprobar

@@ -1029,12 +1029,13 @@ views/permisos/         # Permisos y licencias — fecha_desde/fecha_hasta defau
                         #   `abrirModalAprobar(p)` en vez de llamar `aprobar(id)` directo. Solo en
                         #   Permisos — en Vacaciones "Aprobar" ya abría un modal propio (pide backup del
                         #   departamento), nunca tuvo este problema.
-                        # Aviso "⚠ Sin atraso" (badge ámbar) visible SOLO para el supervisor en tab "equipo",
-                        #   junto al botón Aprobar, cuando el permiso es descontable=SI, tipo ENTRADA/SALIDA,
-                        #   la fecha ya pasó (≤ hoy) Y d2_cuadre_marcacion muestra atraso=0 ese día.
-                        #   Lógica en PermisosController::index() post-pagination — campo `sin_atraso` bool.
-                        #   Si la fecha es futura o el cuadre aún no procesó ese día → sin_atraso=false (sin aviso).
-                        #   No bloquea la aprobación, es informativo. Solo permisos de tipo ENTRADA o SALIDA.
+                        # Aviso "⚠ Sin atraso" (badge ámbar) — OCULTO en el HTML desde 2026-09-17 (a
+                        #   pedido: un permiso sigue siendo válido aunque el empleado no registre atraso
+                        #   ese día, no aportaba valor mostrarlo). El `<span>` quedó comentado dentro del
+                        #   `<template>` en vez de borrado, por si se quiere reactivar más adelante — la
+                        #   lógica que lo calcula sigue viva sin cambios (campo `sin_atraso` bool que
+                        #   PermisosController::index() sigue devolviendo post-pagination: descontable=SI,
+                        #   tipo ENTRADA/SALIDA, fecha ≤ hoy, atraso=0 en d2_cuadre_marcacion ese día).
 DashboardView.vue       # Admin/TH: métricas globales (Empleados, Departamentos, Permisos)
                         #   Tarjeta "Departamentos" = `total_departamentos` (COUNT del catálogo
                         #   dbo.ad_departamento, estado ACTIVO, sin el 999) desde 2026-09-10 —
