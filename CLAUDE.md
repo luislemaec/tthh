@@ -100,6 +100,34 @@ Servidores de producción, **todos distintos a los de pruebas**: aplicación `19
 
 **Incidente real — Fase 3 del despliegue a producción (2026-09-02):** al ejecutar el `pg_dump`/`pg_restore`, `public.migrations` en producción quedó con solo 25 filas contra 125 archivos reales en `database/migrations/` — porque **pruebas mismo** (el origen del dump) ya tenía ese hueco: 100 migraciones con su cambio de esquema aplicado (Tecnología, Comisiones, teletrabajo, nómina, etc. — todo funcionando) pero nunca registradas en la tabla, aplicadas en algún momento por fuera de `php artisan migrate`. Mismo patrón que el incidente de Adquisiciones del 2026-06-24, a mayor escala. Se corrigió insertando las 100 filas faltantes a mano con un `batch` nuevo (incluida la migración de ZKTeco del 2026-09-01, confirmada como ya corrida en pruebas también) — con eso `php artisan migrate` dio `Nothing to migrate`, confirmando el esquema al día sin re-ejecutar nada. **Pendiente:** aplicar el mismo fix en pruebas (sigue con el hueco de 25/125) antes de que alguien corra `migrate` ahí sin darse cuenta. Postgres de producción también resultó tener otra IP real (`192.168.26.78`) distinta a la que se tenía documentada (`.31`) — corregida en todo este archivo.
 
+**`fail2ban` instalado en el servidor de aplicaciones de producción (`192.168.26.23`)** — protección contra fuerza bruta a nivel de sistema operativo, independiente de la aplicación. Configurado en `/etc/fail2ban/jail.local`, servicio activo (`systemctl restart fail2ban` + verificado con `fail2ban-client status`). **3 jails activos** (`sudo fail2ban-client status`):
+- `sshd` — banea IPs con intentos fallidos repetidos de login SSH al servidor. **`jail.local` no lo toca en absoluto** — corre con los valores por defecto de fail2ban (`jail.conf` de fábrica), no fue personalizado a propósito ni por descuido, simplemente nadie lo sobrescribió.
+- `apache-auth` — banea IPs con fallos repetidos de autenticación HTTP básica en Apache. `maxretry = 5`, `bantime = 600` (10 min).
+- `apache-badbots` — banea IPs identificadas como bots/scrapers maliciosos conocidos contra Apache. `maxretry = 2`, `bantime = 86400` (24 h — más estricto porque un bad bot no es tráfico legítimo que valga la pena tolerar).
+
+`/etc/fail2ban/jail.local` completo (2026-09-17, con whitelist agregada — ver abajo):
+```ini
+[DEFAULT]
+ignoreip = 127.0.0.1/8 ::1 10.10.12.0/24 10.10.26.0/24 10.10.5.0/24 10.10.6.0/24 10.10.100.0/24 10.10.8.0/24 192.168.26.0/24
+
+#APACHE SERVE
+[apache-auth]
+enabled = true
+port = http,https
+maxretry = 5
+bantime = 600
+
+[apache-badbots]
+enabled = true
+port = http,https
+maxretry = 2
+bantime = 86400
+```
+
+**`ignoreip` (2026-09-17)** — whitelist de rangos internos que ningún jail puede banear, sin importar qué disparen (aplica a los 3 jails a la vez, va en `[DEFAULT]`). Se agregó tras detectar el riesgo de que varios empleados salgan por una misma IP compartida y una sola detección de bot en `apache-badbots` (`bantime` de 24h) bloqueara a todos de golpe, sin relación con nada que hicieran ellos. Incluye: `10.10.12.0/24`/`10.10.26.0/24` (mismos prefijos que `VLANS_PERMITIDAS`, la red de empleados para marcación PRESENCIAL), `10.10.5.0/24`/`10.10.6.0/24`/`10.10.100.0/24`/`10.10.8.0/24` (otras VLANs institucionales, no documentadas en detalle en este archivo) y `192.168.26.0/24` (red de los propios servidores — BD, Alfresco, AD/NTP, ZKTeco — para que el tráfico servidor-a-servidor tampoco corra riesgo).
+
+No confundir con la autenticación de la aplicación (login híbrido AD/clave local, ver sección Autenticación abajo) — `fail2ban` opera a nivel de servidor/red, bloqueando la IP de origen directamente vía firewall (`iptables`/`nftables`) antes de que la request llegue a Apache o Laravel. **Duda abierta:** `apache-auth` vigila fallos de HTTP Basic Auth de Apache — no se confirmó si algo en el servidor de producción realmente usa Basic Auth (el login de la app pasa por Laravel/Sanctum, no por `.htpasswd`); si no hay nada protegido así, esta jail está activa pero sin tráfico real que capturar. Si hace falta ajustar algún jail (ej. porque una IP legítima quedó baneada por error, o para desbanear a mano): `sudo fail2ban-client set <jail> unbanip <IP>`.
+
 ---
 
 ## Autenticación
