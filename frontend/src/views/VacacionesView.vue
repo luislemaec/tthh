@@ -142,7 +142,7 @@
                   Ver
                 </button>
                 <template v-if="esSupervisorOAdmin && tabActivo === 'equipo' && v.estado_permiso === 'PENDIENTE'">
-                  <button v-if="miRol.es_admin_th && v.requiere_informe"
+                  <button v-if="miRol.es_admin_th && v.requiere_informe && v.informe_estado !== 'FAVORABLE'"
                     @click="abrirModalInforme(v)"
                     class="inline-flex items-center px-2.5 py-1 rounded-md border border-orange-300 text-xs text-orange-700 hover:bg-orange-50 font-medium transition-colors">
                     Informe
