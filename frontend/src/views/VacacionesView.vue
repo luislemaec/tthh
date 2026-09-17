@@ -353,11 +353,11 @@
     <div v-if="modalBackup.show" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md space-y-4">
         <h2 class="text-lg font-semibold text-gray-700">Aprobar Vacación</h2>
-        <p class="text-sm text-gray-500">Puede seleccionar un empleado de respaldo (backup) para cubrir al solicitante durante su ausencia.</p>
+        <p class="text-sm text-gray-500">Puede seleccionar una persona de respaldo (backup) para cubrir al solicitante durante su ausencia.</p>
 
         <div v-if="modalBackup.cargando" class="text-center py-4 text-sm text-gray-400">Cargando empleados...</div>
         <div v-else>
-          <label class="block text-sm font-medium text-gray-600 mb-1">Empleado de respaldo (opcional)</label>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Persona de respaldo</label>
           <select v-model="modalBackup.seleccionado"
             class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
             <option :value="null">— Sin backup —</option>

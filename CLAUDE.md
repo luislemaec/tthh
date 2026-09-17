@@ -609,7 +609,7 @@ Ninguno de estos 6 cambios tocó `config/*.php`, `.env` ni el schema de BD — s
 
 ### Vacaciones — backup al aprobar
 
-Al aprobar una solicitud de vacaciones, el supervisor debe seleccionar un empleado de backup del mismo departamento. Campos en `dbo.d2_vacacion`: `backup_id` (VARCHAR 20, nullable), `backup_nombre` (VARCHAR 300, nullable). Migración `000055`. El endpoint `PATCH /api/vacaciones/{id}/aprobar` acepta `backup_id` y `backup_nombre` opcionales. Endpoint auxiliar: `GET /api/vacaciones/{id}/empleados-depto` — lista empleados activos del mismo departamento del solicitante.
+Al aprobar una solicitud de vacaciones, el supervisor **puede** (no es obligatorio — botones "Aprobar sin backup" / "Aprobar con backup" en el modal) seleccionar un empleado de backup del mismo departamento. Campos en `dbo.d2_vacacion`: `backup_id` (VARCHAR 20, nullable), `backup_nombre` (VARCHAR 300, nullable). Migración `000055`. El endpoint `PATCH /api/vacaciones/{id}/aprobar` acepta `backup_id` y `backup_nombre` opcionales. Endpoint auxiliar: `GET /api/vacaciones/{id}/empleados-depto` — lista empleados activos del mismo departamento del solicitante. Texto del modal (2026-09-17, editado directo por el usuario en `VacacionesView.vue`): "Puede seleccionar una persona de respaldo (backup) para cubrir al solicitante durante su ausencia." + label "Persona de respaldo" — antes decía algo distinto que sonaba a obligatorio, contradiciendo el botón "Aprobar sin backup" que siempre existió.
 
 ### Corrección de deuda técnica — Vacaciones y Planificación (2026-09-01)
 
