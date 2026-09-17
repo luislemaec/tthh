@@ -25,6 +25,20 @@ class ProcesarCuadre extends Command
         // Cargar todos los turnos indexados
         $turnos = DB::table('dbo.d2_turno')->get()->groupBy('id_turno');
 
+        // Minutos de tolerancia para el regreso del almuerzo, institución-wide (ver
+        // concepto TIEMPO_CASTIGO_LUNCH en Admin > Configuración General). Antes estaba
+        // fijo en 30 acá mismo, sin ninguna relación con esa variable de configuración
+        // (que existía en la tabla pero ningún código la leía) — ahora un cambio de
+        // política de almuerzo se ajusta desde la pantalla de Configuración, sin tocar
+        // código. Default 30 si la variable no existe o no es numérica, para no romper
+        // el cálculo en un ambiente donde todavía no se haya cargado.
+        $tiempoCastigoLunch = (int) (DB::table('dbo.d2_configuracion')
+            ->whereRaw("LOWER(concepto) = 'tiempo_castigo_lunch'")
+            ->value('valor') ?? 30);
+        if ($tiempoCastigoLunch <= 0) {
+            $tiempoCastigoLunch = 30;
+        }
+
         // depto 999 = placeholder de sistema; es_externo=true siempre vive en depto 999 por diseño,
         // pero se filtra explícito también por si esa invariante alguna vez cambia. Ninguno de los
         // dos necesita cuadre de asistencia.
@@ -140,9 +154,10 @@ class ProcesarCuadre extends Command
                     $atrasoEntrada = 0;
                 }
 
-                // Lunch = 30 minutos desde que timbró salida al lunch (sin importar la hora)
+                // Lunch = $tiempoCastigoLunch minutos desde que timbró salida al lunch
+                // (sin importar la hora) — ver TIEMPO_CASTIGO_LUNCH arriba.
                 if ($rEntLunch !== null && $rSalLunch !== null) {
-                    $limiteRegreso = $rSalLunch + (30 / 60);
+                    $limiteRegreso = $rSalLunch + ($tiempoCastigoLunch / 60);
                     $atrasoLunch   = max(0, round((min($rEntLunch, $tSalida) - $limiteRegreso) * 60));
                 } else {
                     $atrasoLunch = 0;

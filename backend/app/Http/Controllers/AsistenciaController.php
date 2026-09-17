@@ -39,6 +39,14 @@ class AsistenciaController extends Controller
             ->whereRaw("LOWER(concepto) = 'articulo_atrasos'")
             ->value('valor');
 
+        // Minutos de tolerancia para el regreso del almuerzo — mismo concepto que usa
+        // ProcesarCuadre.php para calcular el atraso real; se expone acá solo para que
+        // el frontend muestre la hora "Debió regresar" coherente con el cálculo real
+        // (antes ambos tenían el 30 fijo por separado, sin relación entre sí).
+        $tiempoCastigoLunch = (int) (DB::table('dbo.d2_configuracion')
+            ->whereRaw("LOWER(concepto) = 'tiempo_castigo_lunch'")
+            ->value('valor') ?? 30);
+
         $modalidad = $emp->modalidad_marcacion ?? 'PRESENCIAL';
 
         // Determinar si puede marcar desde el web
@@ -73,6 +81,7 @@ class AsistenciaController extends Controller
             "marcaciones"      => $marcaciones,
             "siguiente"        => $siguiente,
             "articulo_atrasos" => $articuloAtrasos,
+            "tiempo_castigo_lunch" => $tiempoCastigoLunch,
             "modalidad"        => $modalidad,
             "puede_marcar"     => $puedeMarcar,
             "mensaje_bloqueo"  => $mensajeBloqueo,

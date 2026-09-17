@@ -239,7 +239,10 @@ const horaDebiRegresarLunch = (fecha) => {
   )
   if (!salidaLunch) return null
   const [h, m] = salidaLunch.hora.split(':').map(Number)
-  const totalMin = h * 60 + m + 30
+  // Minutos de tolerancia del almuerzo — vienen de d2_configuracion (TIEMPO_CASTIGO_LUNCH),
+  // mismo valor que usa el backend en ProcesarCuadre para calcular el atraso real. Antes
+  // era un 30 fijo acá, sin relación con el cálculo real del servidor.
+  const totalMin = h * 60 + m + (estado.value.tiempo_castigo_lunch ?? 30)
   const hh = String(Math.floor(totalMin / 60) % 24).padStart(2, '0')
   const mm = String(totalMin % 60).padStart(2, '0')
   return `${hh}:${mm}`
