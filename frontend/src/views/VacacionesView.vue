@@ -358,6 +358,7 @@
           <textarea v-model="motivoNegacion" rows="3" maxlength="120"
             class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]"></textarea>
         </div>
+        <div v-if="errorNegar" class="text-red-600 text-sm bg-red-50 rounded p-2">{{ errorNegar }}</div>
         <div class="flex justify-end gap-3">
           <button @click="modalNegar = false"
             class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
@@ -386,6 +387,8 @@
             </option>
           </select>
         </div>
+
+        <div v-if="errorBackup" class="text-red-600 text-sm bg-red-50 rounded p-2">{{ errorBackup }}</div>
 
         <div class="flex justify-end gap-3">
           <button @click="modalBackup.show = false"
@@ -465,6 +468,8 @@ const motivoNegacion      = ref("")
 const motivoEliminacion   = ref("")
 const errorEliminar       = ref("")
 const errorNuevo          = ref("")
+const errorNegar          = ref("")
+const errorBackup         = ref("")
 const modalInforme        = ref(false)
 const vacInforme          = ref(null)
 const guardandoInforme    = ref(false)
@@ -598,6 +603,7 @@ const verVacacion = (v) => {
 }
 
 const abrirModalBackup = async (id) => {
+  errorBackup.value = ""
   modalBackup.value = { show: true, vacId: id, empleados: [], seleccionado: null, cargando: true }
   try {
     const { data } = await api.get("/vacaciones/" + id + "/empleados-depto")
@@ -616,22 +622,25 @@ const confirmarAprobar = async (conBackup) => {
     payload.backup_id     = emp.id_emp
     payload.backup_nombre = (emp.apellido_emp + " " + emp.nombre_emp).trim()
   }
+  errorBackup.value = ""
   try {
     await api.patch("/vacaciones/" + modalBackup.value.vacId + "/aprobar", payload)
     modalBackup.value.show = false
     cargar()
   } catch (e) {
-    alert(e.response?.data?.message || "Error al aprobar")
+    errorBackup.value = e.response?.data?.message || "Error al aprobar"
   }
 }
 
 const abrirModalNegar = (v) => {
   seleccionado.value   = v
   motivoNegacion.value = ""
+  errorNegar.value     = ""
   modalNegar.value     = true
 }
 
 const confirmarNegar = async () => {
+  errorNegar.value = ""
   try {
     await api.patch("/vacaciones/" + seleccionado.value.secuencial_clave + "/negar", {
       observacion_negacion: motivoNegacion.value
@@ -639,7 +648,7 @@ const confirmarNegar = async () => {
     modalNegar.value = false
     cargar()
   } catch (e) {
-    alert(e.response?.data?.message || "Error al negar")
+    errorNegar.value = e.response?.data?.message || "Error al negar"
   }
 }
 
@@ -662,7 +671,7 @@ const confirmarEliminar = async () => {
     modalEliminar.value = false
     cargar()
   } catch (e) {
-    alert(e.response?.data?.message || "Error al eliminar")
+    errorEliminar.value = e.response?.data?.message || "Error al eliminar"
   }
 }
 
