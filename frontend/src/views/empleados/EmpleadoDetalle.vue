@@ -127,23 +127,26 @@
         </div>
 
         <!-- Asignar nuevo rol -->
-        <div class="flex gap-2">
-          <select v-model="rolSeleccionado"
-            class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
-            <option value="">Seleccionar rol...</option>
-            <option v-for="r in rolesDisponibles" :key="r.id" :value="r.id">
-              {{ r.descripcion }}
-            </option>
-          </select>
-          <button @click="asignarRol" :disabled="!rolSeleccionado || asignando"
-            class="bg-[#0b5447] text-white px-4 py-2 rounded-lg text-sm hover:bg-[#00372e] disabled:opacity-50">
-            {{ asignando ? "Asignando..." : "Asignar Rol" }}
-          </button>
-        </div>
+        <div class="mt-4 pt-4 border-t">
+          <p class="text-sm text-gray-500 mb-2">Asignar nuevo rol:</p>
+          <div class="flex gap-2">
+            <select v-model="rolSeleccionado"
+              class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
+              <option value="">Seleccionar rol...</option>
+              <option v-for="r in rolesDisponibles" :key="r.id" :value="r.id">
+                {{ r.descripcion }}
+              </option>
+            </select>
+            <button @click="asignarRol" :disabled="!rolSeleccionado || asignando"
+              class="bg-[#0b5447] text-white px-4 py-2 rounded-lg text-sm hover:bg-[#00372e] disabled:opacity-50">
+              {{ asignando ? "Asignando..." : "Asignar Rol" }}
+            </button>
+          </div>
 
-        <div v-if="mensajeRol"
-          class="mt-3 text-sm text-green-600 bg-green-50 px-3 py-2 rounded-lg">
-          {{ mensajeRol }}
+          <div v-if="mensajeRol"
+            class="mt-3 text-sm text-green-600 bg-green-50 px-3 py-2 rounded-lg">
+            {{ mensajeRol }}
+          </div>
         </div>
       </div>
 
