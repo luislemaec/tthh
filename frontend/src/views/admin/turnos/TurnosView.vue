@@ -32,7 +32,7 @@
               class="bg-blue-100 text-[#0b5447] px-3 py-1 rounded-lg text-xs font-medium hover:bg-blue-200">
               Editar
             </button>
-            <button @click="eliminar(t.id_turno)"
+            <button @click="abrirModalEliminar(t)"
               class="bg-red-100 text-red-700 px-3 py-1 rounded-lg text-xs font-medium hover:bg-red-200">
               Eliminar
             </button>
@@ -53,6 +53,24 @@
               </span>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Eliminar turno -->
+    <div v-if="modalEliminar.show" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md space-y-4">
+        <h2 class="text-lg font-semibold text-gray-700">Eliminar Turno</h2>
+        <p class="text-sm text-gray-500">{{ modalEliminar.turno?.descripcion }}</p>
+        <p class="text-sm text-gray-600">Se eliminará el turno junto con todos sus horarios. Confirmar eliminación</p>
+        <div v-if="modalEliminar.error" class="text-red-600 text-sm bg-red-50 rounded p-2">{{ modalEliminar.error }}</div>
+        <div class="flex justify-end gap-3">
+          <button @click="modalEliminar.show = false"
+            class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
+          <button @click="confirmarEliminar" :disabled="modalEliminar.procesando"
+            class="px-4 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 disabled:opacity-50">
+            {{ modalEliminar.procesando ? "Procesando..." : "Confirmar Eliminación" }}
+          </button>
         </div>
       </div>
     </div>
@@ -252,13 +270,23 @@ const guardarHorarios = async () => {
   }
 }
 
-const eliminar = async (id) => {
-  if (!confirm("Seguro que deseas eliminar este turno y sus horarios?")) return
+const modalEliminar = ref({ show: false, turno: null, error: "", procesando: false })
+
+const abrirModalEliminar = (t) => {
+  modalEliminar.value = { show: true, turno: t, error: "", procesando: false }
+}
+
+const confirmarEliminar = async () => {
+  modalEliminar.value.procesando = true
+  modalEliminar.value.error = ""
   try {
-    await api.delete("/admin/turnos/" + id)
+    await api.delete("/admin/turnos/" + modalEliminar.value.turno.id_turno)
+    modalEliminar.value.show = false
     cargar()
   } catch (e) {
-    alert(e.response?.data?.message || "Error al eliminar.")
+    modalEliminar.value.error = e.response?.data?.message || "Error al eliminar."
+  } finally {
+    modalEliminar.value.procesando = false
   }
 }
 

@@ -8,7 +8,7 @@
           class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
           <option v-for="a in anios" :key="a" :value="a">{{ a }}</option>
         </select>
-        <button @click="cargarFeriados"
+        <button @click="abrirModalFeriados"
           class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm font-medium">
           Cargar Feriados Ecuador
         </button>
@@ -60,13 +60,63 @@
             <td class="px-6 py-3 text-gray-600">{{ f.hora_desde }}</td>
             <td class="px-6 py-3 text-gray-600">{{ f.hora_hasta }}</td>
             <td class="px-6 py-3 text-gray-600">{{ f.ubicacion }}</td>
-            <td class="px-6 py-3 flex gap-2">
-              <button @click="abrirModal(f)" class="text-[#0b5447] hover:underline text-xs">Editar</button>
-              <button @click="eliminar(f.fecha, f.ubicacion)" class="text-red-600 hover:underline text-xs">Eliminar</button>
+            <td class="px-6 py-3">
+              <div class="flex gap-1 flex-wrap">
+                <button @click="abrirModal(f)"
+                  class="inline-flex items-center px-2.5 py-1 rounded-md border border-amber-300 text-xs text-amber-700 hover:bg-amber-50 font-medium transition-colors">
+                  Editar
+                </button>
+                <button @click="abrirModalEliminar(f)"
+                  class="inline-flex items-center px-2.5 py-1 rounded-md border border-red-200 text-xs text-red-600 hover:bg-red-50 font-medium transition-colors">
+                  Eliminar
+                </button>
+              </div>
             </td>
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <!-- Modal Cargar Feriados Ecuador -->
+    <div v-if="modalFeriados.show" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md space-y-4">
+        <h2 class="text-lg font-semibold text-gray-700">Cargar Feriados Ecuador</h2>
+        <p v-if="!modalFeriados.mensaje" class="text-sm text-gray-600">
+          Cargar feriados nacionales de Ecuador para el año {{ anioSeleccionado }}
+        </p>
+        <div v-if="modalFeriados.mensaje" class="text-green-700 text-sm bg-green-50 rounded p-2">{{ modalFeriados.mensaje }}</div>
+        <div v-if="modalFeriados.error" class="text-red-600 text-sm bg-red-50 rounded p-2">{{ modalFeriados.error }}</div>
+        <div class="flex justify-end gap-3">
+          <button @click="modalFeriados.show = false"
+            class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">
+            {{ modalFeriados.mensaje ? "Cerrar" : "Cancelar" }}
+          </button>
+          <button v-if="!modalFeriados.mensaje" @click="confirmarFeriados" :disabled="modalFeriados.procesando"
+            class="px-4 py-2 rounded-lg bg-green-600 text-white text-sm hover:bg-green-700 disabled:opacity-50">
+            {{ modalFeriados.procesando ? "Cargando..." : "Confirmar Carga" }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Eliminar fecha -->
+    <div v-if="modalEliminar.show" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md space-y-4">
+        <h2 class="text-lg font-semibold text-gray-700">Eliminar Fecha</h2>
+        <p class="text-sm text-gray-500">
+          {{ modalEliminar.fecha?.fecha }} &mdash; {{ modalEliminar.fecha?.tipo }}
+        </p>
+        <p class="text-sm text-gray-600">Confirmar eliminación</p>
+        <div v-if="modalEliminar.error" class="text-red-600 text-sm bg-red-50 rounded p-2">{{ modalEliminar.error }}</div>
+        <div class="flex justify-end gap-3">
+          <button @click="modalEliminar.show = false"
+            class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
+          <button @click="confirmarEliminar" :disabled="modalEliminar.procesando"
+            class="px-4 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 disabled:opacity-50">
+            {{ modalEliminar.procesando ? "Procesando..." : "Confirmar Eliminación" }}
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Modal -->
@@ -221,27 +271,47 @@ const guardar = async () => {
   }
 }
 
-const eliminar = async (fecha, ubicacion) => {
-  if (!confirm("Seguro que deseas eliminar esta fecha?")) return
+const modalEliminar = ref({ show: false, fecha: null, error: "", procesando: false })
+
+const abrirModalEliminar = (f) => {
+  modalEliminar.value = { show: true, fecha: f, error: "", procesando: false }
+}
+
+const confirmarEliminar = async () => {
+  const f = modalEliminar.value.fecha
+  modalEliminar.value.procesando = true
+  modalEliminar.value.error = ""
   try {
-    await api.delete("/admin/calendario/" + fecha + "/" + ubicacion)
+    await api.delete("/admin/calendario/" + f.fecha + "/" + f.ubicacion)
+    modalEliminar.value.show = false
     cargar()
   } catch (e) {
-    alert(e.response?.data?.message || "Error al eliminar.")
+    modalEliminar.value.error = e.response?.data?.message || "Error al eliminar."
+  } finally {
+    modalEliminar.value.procesando = false
   }
 }
 
-const cargarFeriados = async () => {
-  if (!confirm("Cargar feriados nacionales de Ecuador para el año " + anioSeleccionado.value + "?")) return
+const modalFeriados = ref({ show: false, mensaje: "", error: "", procesando: false })
+
+const abrirModalFeriados = () => {
+  modalFeriados.value = { show: true, mensaje: "", error: "", procesando: false }
+}
+
+const confirmarFeriados = async () => {
+  modalFeriados.value.procesando = true
+  modalFeriados.value.error = ""
   try {
     const { data } = await api.post("/admin/calendario/feriados-ecuador", {
       anio: anioSeleccionado.value,
       ubicacion: "Quito"
     })
-    alert(data.message)
+    modalFeriados.value.mensaje = data.message || "Feriados cargados."
     cargar()
   } catch (e) {
-    alert("Error al cargar feriados.")
+    modalFeriados.value.error = e.response?.data?.message || "Error al cargar feriados."
+  } finally {
+    modalFeriados.value.procesando = false
   }
 }
 
