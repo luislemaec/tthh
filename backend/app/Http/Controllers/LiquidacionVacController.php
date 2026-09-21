@@ -295,14 +295,6 @@ class LiquidacionVacController extends Controller
 
         $historico = LiquidacionHistorico::with('empleado.departamento')->findOrFail($historico_id);
 
-        // Antes generaba el PDF para cualquier motivo (ej. DESVINCULACION), aunque el
-        // template/flujo de "certificado" solo tiene sentido para comisión de servicios.
-        if (!in_array($historico->motivo, self::MOTIVOS_CON_CERTIFICADO, true)) {
-            return response()->json([
-                'message' => "El motivo '{$historico->motivo}' no genera certificado — solo aplica a " . implode('/', self::MOTIVOS_CON_CERTIFICADO) . '.',
-            ], 422);
-        }
-
         $emp = $historico->empleado;
 
         $firmanteNombre = optional(Configuracion::find('FIRMANTE_TH_NOMBRE'))->valor
