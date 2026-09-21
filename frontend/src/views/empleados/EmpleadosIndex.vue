@@ -41,7 +41,7 @@
       </select>
       <select v-model="filtro.es_comisionado_entrante" @change="cargarEmpleados"
         class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
-        <option value="">Comisión entrante: Todos</option>
+        <option value="">Todas las comisiones</option>
         <option value="1">Viene de comisión</option>
         <option value="0">No viene de comisión</option>
       </select>
