@@ -43,9 +43,29 @@
             class="text-xs text-gray-600 hover:text-gray-900 font-medium border border-gray-300 px-3 py-1 rounded-lg">
             Editar
           </button>
-          <button @click="eliminar(a)"
+          <button @click="abrirModalEliminar(a)"
             class="text-xs text-red-500 hover:text-red-700 font-medium border border-red-200 px-3 py-1 rounded-lg">
             Eliminar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Eliminar aviso -->
+    <div v-if="modalEliminar.show" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md space-y-4">
+        <h2 class="text-lg font-semibold text-gray-700">Eliminar Aviso</h2>
+        <p class="text-sm text-gray-500 break-words">
+          {{ modalEliminar.aviso?.texto?.slice(0, 120) }}{{ modalEliminar.aviso?.texto?.length > 120 ? '...' : '' }}
+        </p>
+        <p class="text-sm text-gray-600">Confirmar eliminación</p>
+        <div v-if="modalEliminar.error" class="text-red-600 text-sm bg-red-50 rounded p-2">{{ modalEliminar.error }}</div>
+        <div class="flex justify-end gap-3">
+          <button @click="modalEliminar.show = false"
+            class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
+          <button @click="confirmarEliminar" :disabled="modalEliminar.procesando"
+            class="px-4 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 disabled:opacity-50">
+            {{ modalEliminar.procesando ? 'Procesando...' : 'Confirmar Eliminación' }}
           </button>
         </div>
       </div>
@@ -142,10 +162,24 @@ async function guardar() {
   }
 }
 
-async function eliminar(a) {
-  if (!confirm(`¿Eliminar el aviso "${a.texto.slice(0, 50)}..."?`)) return
-  await api.delete(`/admin/avisos/${a.id}`)
-  await cargar()
+const modalEliminar = ref({ show: false, aviso: null, error: '', procesando: false })
+
+function abrirModalEliminar(a) {
+  modalEliminar.value = { show: true, aviso: a, error: '', procesando: false }
+}
+
+async function confirmarEliminar() {
+  modalEliminar.value.procesando = true
+  modalEliminar.value.error = ''
+  try {
+    await api.delete(`/admin/avisos/${modalEliminar.value.aviso.id}`)
+    modalEliminar.value.show = false
+    await cargar()
+  } catch (e) {
+    modalEliminar.value.error = e.response?.data?.message || 'Error al eliminar el aviso.'
+  } finally {
+    modalEliminar.value.procesando = false
+  }
 }
 
 async function guardarDireccion() {
