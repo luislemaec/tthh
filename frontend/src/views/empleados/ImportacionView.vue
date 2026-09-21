@@ -1,7 +1,13 @@
 <template>
   <div class="space-y-6 max-w-4xl mx-auto">
     <div class="flex items-center justify-between">
-      <h1 class="text-2xl font-bold text-gray-800">Importacion Masiva de Empleados</h1>
+      <div class="flex items-center gap-3">
+        <router-link to="/empleados"
+          class="inline-flex items-center px-3 py-1.5 rounded-lg border border-gray-300 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+          ← Volver a Empleados
+        </router-link>
+        <h1 class="text-2xl font-bold text-gray-800">Importacion Masiva de Empleados</h1>
+      </div>
       <button @click="descargarPlantilla"
         class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm font-medium">
         Descargar Plantilla CSV

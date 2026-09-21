@@ -83,13 +83,19 @@
               </span>
             </td>
             <td class="px-6 py-3">
-              <div class="flex gap-2">
+              <div class="flex gap-1 flex-wrap">
                 <router-link :to="`/empleados/${emp.id_emp}`"
-                  class="text-[#0b5447] hover:underline text-xs">Ver</router-link>
+                  class="inline-flex items-center px-2.5 py-1 rounded-md border border-[#0b5447] text-xs text-[#0b5447] hover:bg-[#f0faf8] font-medium transition-colors">
+                  Ver
+                </router-link>
                 <router-link :to="`/empleados/${emp.id_emp}/editar`"
-                  class="text-yellow-600 hover:underline text-xs">Editar</router-link>
-                <button @click="eliminar(emp.id_emp)"
-                  class="text-red-600 hover:underline text-xs">Eliminar</button>
+                  class="inline-flex items-center px-2.5 py-1 rounded-md border border-amber-300 text-xs text-amber-700 hover:bg-amber-50 font-medium transition-colors">
+                  Editar
+                </router-link>
+                <button @click="abrirModalDesactivar(emp)"
+                  class="inline-flex items-center px-2.5 py-1 rounded-md border border-red-200 text-xs text-red-600 hover:bg-red-50 font-medium transition-colors">
+                  Eliminar
+                </button>
               </div>
             </td>
           </tr>
@@ -105,6 +111,27 @@
           <span class="px-3 py-1">{{ pagina }}</span>
           <button @click="pagina++" :disabled="pagina * porPagina >= total"
             class="px-3 py-1 rounded border hover:bg-gray-100 disabled:opacity-40">Siguiente</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Desactivar empleado -->
+    <div v-if="modalDesactivar.show" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md space-y-4">
+        <h2 class="text-lg font-semibold text-gray-700">Desactivar Empleado</h2>
+        <p class="text-sm text-gray-500">
+          {{ modalDesactivar.emp?.apellido_emp }}, {{ modalDesactivar.emp?.nombre_emp }}
+          &mdash; {{ modalDesactivar.emp?.identificacion }}
+        </p>
+        <p class="text-sm text-gray-600">Confirmar desactivación</p>
+        <div v-if="modalDesactivar.error" class="text-red-600 text-sm bg-red-50 rounded p-2">{{ modalDesactivar.error }}</div>
+        <div class="flex justify-end gap-3">
+          <button @click="modalDesactivar.show = false"
+            class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
+          <button @click="confirmarDesactivar" :disabled="modalDesactivar.procesando"
+            class="px-4 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 disabled:opacity-50">
+            {{ modalDesactivar.procesando ? 'Procesando...' : 'Confirmar Desactivación' }}
+          </button>
         </div>
       </div>
     </div>
@@ -147,10 +174,24 @@ const cargarEmpleados = async () => {
   }
 }
 
-const eliminar = async (id) => {
-  if (!confirm('¿Seguro que deseas desactivar este empleado?')) return
-  await api.delete(`/empleados/${id}`)
-  cargarEmpleados()
+const modalDesactivar = ref({ show: false, emp: null, error: '', procesando: false })
+
+const abrirModalDesactivar = (emp) => {
+  modalDesactivar.value = { show: true, emp, error: '', procesando: false }
+}
+
+const confirmarDesactivar = async () => {
+  modalDesactivar.value.procesando = true
+  modalDesactivar.value.error = ''
+  try {
+    await api.delete(`/empleados/${modalDesactivar.value.emp.id_emp}`)
+    modalDesactivar.value.show = false
+    cargarEmpleados()
+  } catch (e) {
+    modalDesactivar.value.error = e.response?.data?.message || 'Error al desactivar el empleado.'
+  } finally {
+    modalDesactivar.value.procesando = false
+  }
 }
 
 watch(pagina, cargarEmpleados)

@@ -41,16 +41,49 @@
               <span :class="r.estado === 'ACTIVO' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
                 class="px-2 py-0.5 rounded-full text-xs font-medium">{{ r.estado ?? 'ACTIVO' }}</span>
             </td>
-            <td class="px-6 py-3 flex gap-3">
-              <button @click="abrirModal(r)" class="text-yellow-600 hover:underline text-xs">Editar</button>
-              <button v-if="r.estado !== 'INACTIVO'" @click="inactivar(r.secuencial)"
-                class="text-red-600 hover:underline text-xs">Inactivo</button>
-              <button v-else @click="activar(r.secuencial)"
-                class="text-green-600 hover:underline text-xs">Activar</button>
+            <td class="px-6 py-3">
+              <div class="flex gap-1 flex-wrap">
+                <button @click="abrirModal(r)"
+                  class="inline-flex items-center px-2.5 py-1 rounded-md border border-amber-300 text-xs text-amber-700 hover:bg-amber-50 font-medium transition-colors">
+                  Editar
+                </button>
+                <button v-if="r.estado !== 'INACTIVO'" @click="abrirModalEstado(r, 'inactivar')"
+                  class="inline-flex items-center px-2.5 py-1 rounded-md border border-red-200 text-xs text-red-600 hover:bg-red-50 font-medium transition-colors">
+                  Inactivo
+                </button>
+                <button v-else @click="abrirModalEstado(r, 'activar')"
+                  class="inline-flex items-center px-2.5 py-1 rounded-md border border-green-300 text-xs text-green-700 hover:bg-green-50 font-medium transition-colors">
+                  Activar
+                </button>
+              </div>
             </td>
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <!-- Modal Activar / Inactivar -->
+    <div v-if="modalEstado.show" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md space-y-4">
+        <h2 class="text-lg font-semibold text-gray-700">
+          {{ modalEstado.accion === 'inactivar' ? 'Inactivar Razón' : 'Activar Razón' }}
+        </h2>
+        <p class="text-sm text-gray-500">{{ modalEstado.razon?.descripcion }}</p>
+        <p class="text-sm text-gray-600">
+          {{ modalEstado.accion === 'inactivar' ? 'Confirmar inactivación' : 'Confirmar activación' }}
+        </p>
+        <div v-if="modalEstado.error" class="text-red-600 text-sm bg-red-50 rounded p-2">{{ modalEstado.error }}</div>
+        <div class="flex justify-end gap-3">
+          <button @click="modalEstado.show = false"
+            class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
+          <button @click="confirmarEstado" :disabled="modalEstado.procesando"
+            :class="modalEstado.accion === 'inactivar' ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'"
+            class="px-4 py-2 rounded-lg text-white text-sm disabled:opacity-50">
+            {{ modalEstado.procesando ? 'Procesando...'
+               : (modalEstado.accion === 'inactivar' ? 'Confirmar Inactivación' : 'Confirmar Activación') }}
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Modal -->
@@ -161,23 +194,24 @@ const guardar = async () => {
   }
 }
 
-const inactivar = async (id) => {
-  if (!confirm('¿Seguro que deseas marcar esta razón como inactiva?')) return
-  try {
-    await api.patch(`/admin/razones/${id}/inactivar`)
-    cargar()
-  } catch (e) {
-    alert(e.response?.data?.message || 'Error al inactivar.')
-  }
+const modalEstado = ref({ show: false, razon: null, accion: '', error: '', procesando: false })
+
+const abrirModalEstado = (razon, accion) => {
+  modalEstado.value = { show: true, razon, accion, error: '', procesando: false }
 }
 
-const activar = async (id) => {
-  if (!confirm('¿Seguro que deseas reactivar esta razón?')) return
+const confirmarEstado = async () => {
+  const { razon, accion } = modalEstado.value
+  modalEstado.value.procesando = true
+  modalEstado.value.error = ''
   try {
-    await api.patch(`/admin/razones/${id}/activar`)
+    await api.patch(`/admin/razones/${razon.secuencial}/${accion}`)
+    modalEstado.value.show = false
     cargar()
   } catch (e) {
-    alert(e.response?.data?.message || 'Error al activar.')
+    modalEstado.value.error = e.response?.data?.message || `Error al ${accion}.`
+  } finally {
+    modalEstado.value.procesando = false
   }
 }
 

@@ -64,16 +64,41 @@
             </td>
             <td class="px-4 py-3 text-gray-500">{{ s.fecha_registro?.substring(0,10) }}</td>
             <td class="px-4 py-3">
-              <div class="flex gap-2">
+              <div class="flex gap-1 flex-wrap">
                 <button @click="editar(s)"
-                  class="text-[#0b5447] hover:underline text-xs font-medium">Editar</button>
-                <button @click="eliminar(s.id)"
-                  class="text-red-500 hover:underline text-xs font-medium">Eliminar</button>
+                  class="inline-flex items-center px-2.5 py-1 rounded-md border border-amber-300 text-xs text-amber-700 hover:bg-amber-50 font-medium transition-colors">
+                  Editar
+                </button>
+                <button @click="abrirModalEliminar(s)"
+                  class="inline-flex items-center px-2.5 py-1 rounded-md border border-red-200 text-xs text-red-600 hover:bg-red-50 font-medium transition-colors">
+                  Eliminar
+                </button>
               </div>
             </td>
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <!-- Modal Eliminar -->
+    <div v-if="modalEliminar.show" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md space-y-4">
+        <h2 class="text-lg font-semibold text-gray-700">Eliminar Jefe de Área</h2>
+        <p class="text-sm text-gray-500">
+          {{ modalEliminar.sup?.departamento?.nombre_depto }}
+          &mdash; {{ modalEliminar.sup?.supervisor?.apellido_emp }}, {{ modalEliminar.sup?.supervisor?.nombre_emp }}
+        </p>
+        <p class="text-sm text-gray-600">Confirmar eliminación del jefe de esta área</p>
+        <div v-if="modalEliminar.error" class="text-red-600 text-sm bg-red-50 rounded p-2">{{ modalEliminar.error }}</div>
+        <div class="flex justify-end gap-3">
+          <button @click="modalEliminar.show = false"
+            class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
+          <button @click="confirmarEliminar" :disabled="modalEliminar.procesando"
+            class="px-4 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 disabled:opacity-50">
+            {{ modalEliminar.procesando ? 'Procesando...' : 'Confirmar Eliminación' }}
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Modal -->
@@ -257,13 +282,23 @@ const guardar = async () => {
   }
 }
 
-const eliminar = async (id) => {
-  if (!confirm("Eliminar el supervisor de esta area?")) return
+const modalEliminar = ref({ show: false, sup: null, error: "", procesando: false })
+
+const abrirModalEliminar = (s) => {
+  modalEliminar.value = { show: true, sup: s, error: "", procesando: false }
+}
+
+const confirmarEliminar = async () => {
+  modalEliminar.value.procesando = true
+  modalEliminar.value.error = ""
   try {
-    await api.delete("/supervisores/" + id)
+    await api.delete("/supervisores/" + modalEliminar.value.sup.id)
+    modalEliminar.value.show = false
     cargar()
   } catch (e) {
-    alert("Error al eliminar")
+    modalEliminar.value.error = e.response?.data?.message || "Error al eliminar"
+  } finally {
+    modalEliminar.value.procesando = false
   }
 }
 

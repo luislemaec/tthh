@@ -26,7 +26,7 @@
             <th class="text-left px-6 py-3 text-gray-600 font-medium">#</th>
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Nombre</th>
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Área Padre</th>
-            <th class="text-left px-6 py-3 text-gray-600 font-medium">Centro de Costo</th>
+            <th class="text-left px-6 py-3 text-gray-600 font-medium">Siglas</th>
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Estado</th>
             <th class="text-left px-6 py-3 text-gray-600 font-medium">Acciones</th>
           </tr>
@@ -54,16 +54,49 @@
                 {{ dep.estado }}
               </span>
             </td>
-            <td class="px-6 py-3 flex gap-3">
-              <button @click="abrirModal(dep)" class="text-yellow-600 hover:underline text-xs">Editar</button>
-              <button v-if="dep.estado === 'ACTIVO'" @click="inactivar(dep.id_depto)"
-                class="text-red-600 hover:underline text-xs">Inactivar</button>
-              <button v-else @click="activar(dep.id_depto)"
-                class="text-green-600 hover:underline text-xs">Activar</button>
+            <td class="px-6 py-3">
+              <div class="flex gap-1 flex-wrap">
+                <button @click="abrirModal(dep)"
+                  class="inline-flex items-center px-2.5 py-1 rounded-md border border-amber-300 text-xs text-amber-700 hover:bg-amber-50 font-medium transition-colors">
+                  Editar
+                </button>
+                <button v-if="dep.estado === 'ACTIVO'" @click="abrirModalEstado(dep, 'inactivar')"
+                  class="inline-flex items-center px-2.5 py-1 rounded-md border border-red-200 text-xs text-red-600 hover:bg-red-50 font-medium transition-colors">
+                  Inactivar
+                </button>
+                <button v-else @click="abrirModalEstado(dep, 'activar')"
+                  class="inline-flex items-center px-2.5 py-1 rounded-md border border-green-300 text-xs text-green-700 hover:bg-green-50 font-medium transition-colors">
+                  Activar
+                </button>
+              </div>
             </td>
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <!-- Modal Activar / Inactivar -->
+    <div v-if="modalEstado.show" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md space-y-4">
+        <h2 class="text-lg font-semibold text-gray-700">
+          {{ modalEstado.accion === 'inactivar' ? 'Inactivar Departamento' : 'Activar Departamento' }}
+        </h2>
+        <p class="text-sm text-gray-500">{{ modalEstado.dep?.nombre_depto }}</p>
+        <p class="text-sm text-gray-600">
+          {{ modalEstado.accion === 'inactivar' ? 'Confirmar inactivación' : 'Confirmar activación' }}
+        </p>
+        <div v-if="modalEstado.error" class="text-red-600 text-sm bg-red-50 rounded p-2">{{ modalEstado.error }}</div>
+        <div class="flex justify-end gap-3">
+          <button @click="modalEstado.show = false"
+            class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
+          <button @click="confirmarEstado" :disabled="modalEstado.procesando"
+            :class="modalEstado.accion === 'inactivar' ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'"
+            class="px-4 py-2 rounded-lg text-white text-sm disabled:opacity-50">
+            {{ modalEstado.procesando ? 'Procesando...'
+               : (modalEstado.accion === 'inactivar' ? 'Confirmar Inactivación' : 'Confirmar Activación') }}
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Modal -->
@@ -175,23 +208,24 @@ const guardar = async () => {
   }
 }
 
-const inactivar = async (id) => {
-  if (!confirm('¿Seguro que deseas inactivar este departamento?')) return
-  try {
-    await api.patch(`/admin/departamentos/${id}/inactivar`)
-    cargar()
-  } catch (e) {
-    alert(e.response?.data?.message || 'Error al inactivar.')
-  }
+const modalEstado = ref({ show: false, dep: null, accion: '', error: '', procesando: false })
+
+const abrirModalEstado = (dep, accion) => {
+  modalEstado.value = { show: true, dep, accion, error: '', procesando: false }
 }
 
-const activar = async (id) => {
-  if (!confirm('¿Seguro que deseas activar este departamento?')) return
+const confirmarEstado = async () => {
+  const { dep, accion } = modalEstado.value
+  modalEstado.value.procesando = true
+  modalEstado.value.error = ''
   try {
-    await api.patch(`/admin/departamentos/${id}/activar`)
+    await api.patch(`/admin/departamentos/${dep.id_depto}/${accion}`)
+    modalEstado.value.show = false
     cargar()
   } catch (e) {
-    alert(e.response?.data?.message || 'Error al activar.')
+    modalEstado.value.error = e.response?.data?.message || `Error al ${accion}.`
+  } finally {
+    modalEstado.value.procesando = false
   }
 }
 
