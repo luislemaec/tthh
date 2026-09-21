@@ -60,9 +60,9 @@
     <!-- Modal Eliminar turno -->
     <div v-if="modalEliminar.show" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md space-y-4">
-        <h2 class="text-lg font-semibold text-gray-700">Eliminar Turno</h2>
+        <h2 class="text-lg font-semibold text-gray-700">Eliminar Horario</h2>
         <p class="text-sm text-gray-500">{{ modalEliminar.turno?.descripcion }}</p>
-        <p class="text-sm text-gray-600">Se eliminará el turno junto con todos sus horarios. Confirmar eliminación</p>
+        <p class="text-sm text-gray-600">Se eliminará el horario y todas sus horas definidas. Confirmar eliminación</p>
         <div v-if="modalEliminar.error" class="text-red-600 text-sm bg-red-50 rounded p-2">{{ modalEliminar.error }}</div>
         <div class="flex justify-end gap-3">
           <button @click="modalEliminar.show = false"
