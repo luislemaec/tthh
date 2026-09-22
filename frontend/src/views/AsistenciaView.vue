@@ -65,6 +65,23 @@
       </div>
     </Teleport>
 
+    <!-- Modal confirmar salida antes de las 16:30 -->
+    <div v-if="modalSalidaTemprana" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md space-y-4">
+        <h2 class="text-lg font-semibold text-gray-700">Marcar Salida</h2>
+        <p class="text-sm text-gray-600">La hora de salida es antes de las 16:30. ¿Está seguro de realizar esta marcación?</p>
+        <div class="flex justify-end gap-3">
+          <button @click="modalSalidaTemprana = false"
+            class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
+          <button @click="confirmarSalidaTemprana" :disabled="marcando"
+            class="px-4 py-2 rounded-lg text-white text-sm disabled:opacity-50"
+            style="background-color:#0b5447;">
+            {{ marcando ? "Registrando..." : "Confirmar" }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Historial personal de marcaciones -->
     <div class="bg-white rounded-xl shadow p-6">
       <div class="mb-4 space-y-3">
@@ -357,14 +374,26 @@ const cargarListado = async () => {
   }
 }
 
+const modalSalidaTemprana = ref(false)
+
 const marcar = async (concepto) => {
   if (concepto === 'SALIDA') {
     const ahora = new Date()
     const minutos = ahora.getHours() * 60 + ahora.getMinutes()
     if (minutos < 16 * 60 + 30) {
-      if (!window.confirm('¿Está seguro de realizar esta marcación? La hora de salida es antes de las 16:30.')) return
+      modalSalidaTemprana.value = true
+      return
     }
   }
+  await ejecutarMarcar(concepto)
+}
+
+const confirmarSalidaTemprana = async () => {
+  await ejecutarMarcar('SALIDA')
+  modalSalidaTemprana.value = false
+}
+
+const ejecutarMarcar = async (concepto) => {
   marcando.value     = true
   mensajeExito.value = ""
   mensajeError.value = ""
