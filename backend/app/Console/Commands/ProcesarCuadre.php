@@ -109,50 +109,31 @@ class ProcesarCuadre extends Command
                 ->whereDate('fecha_hasta', '>=', $fecha->toDateString())
                 ->get();
 
-            // Límites justificados por permisos (en horas decimales)
-            $entradaJustificada = null; // hora máxima justificada de llegada tardía
-            $salidaJustificada  = null; // hora mínima justificada de salida anticipada
-            foreach ($permisosHoy as $perm) {
-                if ($perm->todo_dia === 'SI') {
-                    // Permiso de día completo: no hay atrasos
-                    $entradaJustificada = 99.0;
-                    $salidaJustificada  = 0.0;
-                    break;
-                }
-                $hDesde = $this->toDecimalHours($perm->hora_desde);
-                $hHasta = $this->toDecimalHours($perm->hora_hasta);
-                if ($perm->tipo_horario === 'ENTRADA') {
-                    // Permiso de llegada tardía: justifica hasta hora_hasta
-                    if ($entradaJustificada === null || $hHasta > $entradaJustificada) {
-                        $entradaJustificada = $hHasta;
-                    }
-                } elseif ($perm->tipo_horario === 'SALIDA') {
-                    // Permiso de salida anticipada: justifica desde hora_desde
-                    if ($salidaJustificada === null || $hDesde < $salidaJustificada) {
-                        $salidaJustificada = $hDesde;
-                    }
-                }
-                // ENTRE JORNADA: afecta almuerzo o ausencia parcial — no se ajusta atraso_entrada/salida
-            }
-
-            // Atrasos en minutos (ajustados por permisos aprobados) — si el turno está incompleto
-            // (algún concepto sin configurar), no se calcula ningún atraso: no hay con qué comparar
-            // la hora real, y calcularlo igual producía atrasos falsos de horas enteras.
+            // Atrasos en minutos — SIEMPRE contra la hora programada del turno, sin importar
+            // si hay un permiso aprobado ese día. Antes, si la marcación caía dentro de la
+            // ventana de un permiso (ej. permiso 08:00-09:21 y marcó exactamente a las 09:21,
+            // el caso más común al justificar un atraso ya ocurrido: TH pone como hora final
+            // la hora real de llegada), el atraso se recalculaba contra el fin del permiso en
+            // vez de contra el turno, dando 0 — se perdía el registro de que hubo un atraso
+            // real, y con eso "Mis Marcaciones" dejaba de mostrar "Justificado" (solo se
+            // pinta si atraso > 0), el Reporte de Atrasos y el aviso "⚠ Sin atraso" al
+            // supervisor (PermisosController::sin_atraso) quedaban con datos falsos, y el
+            // gráfico de trámites personales del Dashboard tampoco contaba el día. Todos esos
+            // consumidores ya comparan el atraso contra los minutos justificados en d2_permiso
+            // por su cuenta — lo único que hacía falta corregir era dejar de adulterar acá el
+            // atraso real antes de que les llegue.
+            //
+            // Si el turno está incompleto (algún concepto sin configurar), no se calcula ningún
+            // atraso: no hay con qué comparar la hora real, y calcularlo igual producía atrasos
+            // falsos de horas enteras.
             if ($turnoIncompleto) {
                 $atrasoEntrada = 0;
                 $atrasoLunch   = 0;
                 $atrasoSalida  = 0;
             } else {
-                if ($rEntrada !== null) {
-                    if ($entradaJustificada !== null && $rEntrada <= $entradaJustificada) {
-                        // Llegó dentro del permiso: atraso = 0 o solo lo que exceda el permiso
-                        $atrasoEntrada = max(0, round(($rEntrada - $entradaJustificada) * 60));
-                    } else {
-                        $atrasoEntrada = max(0, round(($rEntrada - $tEntrada) * 60));
-                    }
-                } else {
-                    $atrasoEntrada = 0;
-                }
+                $atrasoEntrada = $rEntrada !== null
+                    ? max(0, round(($rEntrada - $tEntrada) * 60))
+                    : 0;
 
                 // Lunch = $tiempoCastigoLunch minutos desde que timbró salida al lunch
                 // (sin importar la hora) — ver TIEMPO_CASTIGO_LUNCH arriba.
@@ -163,19 +144,9 @@ class ProcesarCuadre extends Command
                     $atrasoLunch = 0;
                 }
 
-                if ($rSalida !== null) {
-                    if ($salidaJustificada !== null && $rSalida >= $salidaJustificada) {
-                        // Salió a la hora del permiso o después: atraso = 0
-                        $atrasoSalida = 0;
-                    } elseif ($salidaJustificada !== null && $rSalida < $salidaJustificada) {
-                        // Salió antes de que empiece el permiso: solo los minutos entre salida real y inicio permiso
-                        $atrasoSalida = max(0, round(($salidaJustificada - $rSalida) * 60));
-                    } else {
-                        $atrasoSalida = max(0, round(($tSalida - $rSalida) * 60));
-                    }
-                } else {
-                    $atrasoSalida = 0;
-                }
+                $atrasoSalida = $rSalida !== null
+                    ? max(0, round(($tSalida - $rSalida) * 60))
+                    : 0;
             }
 
             // Horas a descontar (atrasos)
