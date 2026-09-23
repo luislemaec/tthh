@@ -7,8 +7,11 @@ use Illuminate\Http\Request;
 
 class CoeficientePaisController extends Controller
 {
-    public function index(): \Illuminate\Http\JsonResponse
+    private const ROLES_ADMIN = ['ADMINISTRADOR'];
+
+    public function index(Request $request): \Illuminate\Http\JsonResponse
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         return response()->json(
             ComCoeficientePais::orderBy('region')->orderBy('pais')->get()
         );
@@ -16,6 +19,7 @@ class CoeficientePaisController extends Controller
 
     public function store(Request $request): \Illuminate\Http\JsonResponse
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate([
             'pais'        => 'required|string|max:100|unique:pgsql.dbo.com_coeficiente_pais,pais',
             'region'      => 'required|string|max:50',
@@ -34,6 +38,7 @@ class CoeficientePaisController extends Controller
 
     public function update(Request $request, int $id): \Illuminate\Http\JsonResponse
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $p = ComCoeficientePais::findOrFail($id);
 
         $request->validate([

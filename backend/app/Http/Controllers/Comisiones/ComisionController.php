@@ -38,6 +38,28 @@ class ComisionController extends Controller
             ->exists();
     }
 
+    // Mismo criterio de visibilidad que index(): dueño, admin/financiero (ven todas),
+    // o supervisor del departamento de la solicitud.
+    private function puedeVerSolicitud(Request $request, string $idEmpDueno, ?string $idDepto): bool
+    {
+        $idEmp = $request->user()->id_emp;
+        if ($idEmpDueno === $idEmp) return true;
+        if ($this->tieneRol($request, 'ADMINISTRADOR')
+            || $this->tieneRol($request, 'CONTABILIDAD')
+            || $this->tieneRol($request, 'PRESUPUESTO')
+            || $this->tieneRol($request, 'DIRECTOR FINANCIERO')
+            || $this->tieneRol($request, 'TESORERIA')) {
+            return true;
+        }
+        if ($idDepto !== null) {
+            return DB::table('dbo.supervisor_area')
+                ->where('id_supervisor', $idEmp)
+                ->where('id_depto', $idDepto)
+                ->exists();
+        }
+        return false;
+    }
+
     private function getDocLibNodeId(): string
     {
         $resp = Http::withBasicAuth($this->alfrescoUser, $this->alfrescoPass)
@@ -211,9 +233,9 @@ class ComisionController extends Controller
         }
     }
 
-    public function show(int $id): \Illuminate\Http\JsonResponse
+    public function show(Request $request, int $id): \Illuminate\Http\JsonResponse
     {
-        return $this->detalle($id);
+        return $this->detalle($request, $id);
     }
 
     public function update(Request $request, int $id): \Illuminate\Http\JsonResponse
@@ -270,7 +292,7 @@ class ComisionController extends Controller
             $this->syncTransportes('solicitud', $id, $request->transportes ?? []);
 
             DB::commit();
-            return $this->detalle($id);
+            return $this->detalle($request, $id);
         } catch (\Throwable $e) {
             DB::rollBack();
             return response()->json(['message' => 'Error al actualizar: ' . $e->getMessage()], 500);
@@ -351,6 +373,11 @@ class ComisionController extends Controller
 
     public function descargarDocumento(Request $request, int $id, int $docId)
     {
+        $solicitud = ComSolicitud::findOrFail($id);
+        if (!$this->puedeVerSolicitud($request, $solicitud->id_emp, $solicitud->id_depto)) {
+            abort(403, 'No autorizado.');
+        }
+
         $doc = DB::table('dbo.com_solicitud_documento')
             ->where('id', $docId)
             ->where('solicitud_id', $id)
@@ -611,9 +638,12 @@ class ComisionController extends Controller
         return "CS-{$centroCosto}-{$anio}-{$seq}";
     }
 
-    public function detalle(int $id): \Illuminate\Http\JsonResponse
+    public function detalle(Request $request, int $id): \Illuminate\Http\JsonResponse
     {
         $s = ComSolicitud::with(['empleado', 'servidores.empleado', 'transportes', 'informe', 'anticipo', 'fichaLiquidacion'])->findOrFail($id);
+        if (!$this->puedeVerSolicitud($request, $s->id_emp, $s->id_depto)) {
+            abort(403, 'No autorizado.');
+        }
 
         $documentos = DB::table('dbo.com_solicitud_documento')
             ->where('solicitud_id', $id)

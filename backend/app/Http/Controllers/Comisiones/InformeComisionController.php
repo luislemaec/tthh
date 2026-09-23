@@ -34,6 +34,16 @@ class InformeComisionController extends Controller
         return $resp->json('entry.id');
     }
 
+    // Dueño de la solicitud, o un rol financiero/administrador que revisa comisiones ajenas
+    // (mismo criterio que ComisionController::index() para ver solicitudes de otros).
+    private function puedeVerSolicitud(Request $request, string $idEmpDueno): bool
+    {
+        if ($idEmpDueno === $request->user()->id_emp) return true;
+        return $this->tieneAlgunRol($request, [
+            'ADMINISTRADOR', 'CONTABILIDAD', 'PRESUPUESTO', 'DIRECTOR FINANCIERO', 'TESORERIA',
+        ]);
+    }
+
     public function store(Request $request, int $solicitudId): \Illuminate\Http\JsonResponse
     {
         $solicitud = ComSolicitud::findOrFail($solicitudId);
@@ -211,6 +221,9 @@ class InformeComisionController extends Controller
 
     public function descargarFirmado(Request $request, int $solicitudId)
     {
+        $solicitud = ComSolicitud::findOrFail($solicitudId);
+        if (!$this->puedeVerSolicitud($request, $solicitud->id_emp)) abort(403, 'No autorizado.');
+
         $informe = DB::table('dbo.com_informe')
             ->where('solicitud_id', $solicitudId)
             ->first();
@@ -231,6 +244,8 @@ class InformeComisionController extends Controller
     public function pdf(Request $request, int $id)
     {
         $solicitud = ComSolicitud::with(['empleado', 'servidores.empleado', 'informe.transportes'])->findOrFail($id);
+        if (!$this->puedeVerSolicitud($request, $solicitud->id_emp)) abort(403, 'No autorizado.');
+
         $informe   = $solicitud->informe;
 
         if (!$informe) {

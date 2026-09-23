@@ -7,8 +7,11 @@ use Illuminate\Support\Facades\DB;
 
 class ProvinciaCiudadController extends Controller
 {
-    public function index()
+    private const ROLES_ADMIN = ['ADMINISTRADOR'];
+
+    public function index(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $rows = DB::table('dbo.com_provincia as p')
             ->join('dbo.com_ciudad as c', 'c.provincia_id', '=', 'p.id')
             ->orderBy('p.nombre')->orderBy('c.nombre')
@@ -26,6 +29,7 @@ class ProvinciaCiudadController extends Controller
 
     public function storeProvincia(Request $request)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate(['nombre' => 'required|string|max:100']);
         $id = DB::table('dbo.com_provincia')->insertGetId(['nombre' => strtoupper($request->nombre)]);
         return response()->json(['id' => $id, 'nombre' => strtoupper($request->nombre)], 201);
@@ -33,13 +37,15 @@ class ProvinciaCiudadController extends Controller
 
     public function updateProvincia(Request $request, int $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate(['nombre' => 'required|string|max:100']);
         DB::table('dbo.com_provincia')->where('id', $id)->update(['nombre' => strtoupper($request->nombre)]);
         return response()->json(['message' => 'Actualizado']);
     }
 
-    public function destroyProvincia(int $id)
+    public function destroyProvincia(Request $request, int $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         DB::table('dbo.com_ciudad')->where('provincia_id', $id)->delete();
         DB::table('dbo.com_provincia')->where('id', $id)->delete();
         return response()->json(['message' => 'Eliminado']);
@@ -47,6 +53,7 @@ class ProvinciaCiudadController extends Controller
 
     public function storeCiudad(Request $request, int $provinciaId)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate(['nombre' => 'required|string|max:100']);
         $id = DB::table('dbo.com_ciudad')->insertGetId([
             'provincia_id' => $provinciaId,
@@ -57,13 +64,15 @@ class ProvinciaCiudadController extends Controller
 
     public function updateCiudad(Request $request, int $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate(['nombre' => 'required|string|max:100']);
         DB::table('dbo.com_ciudad')->where('id', $id)->update(['nombre' => strtoupper($request->nombre)]);
         return response()->json(['message' => 'Actualizado']);
     }
 
-    public function destroyCiudad(int $id)
+    public function destroyCiudad(Request $request, int $id)
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         DB::table('dbo.com_ciudad')->where('id', $id)->delete();
         return response()->json(['message' => 'Eliminado']);
     }

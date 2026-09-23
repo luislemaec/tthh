@@ -8,13 +8,17 @@ use Illuminate\Http\Request;
 
 class TarifaViaticosController extends Controller
 {
-    public function index(): \Illuminate\Http\JsonResponse
+    private const ROLES_ADMIN = ['ADMINISTRADOR'];
+
+    public function index(Request $request): \Illuminate\Http\JsonResponse
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         return response()->json(ComTarifaViatico::orderBy('tipo')->orderBy('descripcion')->get());
     }
 
     public function store(Request $request): \Illuminate\Http\JsonResponse
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate([
             'descripcion' => 'required|string|max:200',
             'valor_dia'   => 'required|numeric|min:0',
@@ -33,6 +37,7 @@ class TarifaViaticosController extends Controller
 
     public function update(Request $request, int $id): \Illuminate\Http\JsonResponse
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         $request->validate([
             'descripcion' => 'required|string|max:200',
             'valor_dia'   => 'required|numeric|min:0',
@@ -51,8 +56,9 @@ class TarifaViaticosController extends Controller
         return response()->json($tarifa);
     }
 
-    public function destroy(int $id): \Illuminate\Http\JsonResponse
+    public function destroy(Request $request, int $id): \Illuminate\Http\JsonResponse
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
         ComTarifaViatico::findOrFail($id)->delete();
         return response()->json(['message' => 'Eliminado']);
     }
