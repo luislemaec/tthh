@@ -128,6 +128,7 @@ const routes = [
   {
     path: '/comisiones',
     component: () => import('@/layouts/ComisionesLayout.vue'),
+    meta: { requiresAuth: true },
     children: [
       { path: '',               redirect: '/comisiones/solicitudes' },
       { path: 'solicitudes',           name: 'ComSolicitudes',          component: () => import('@/views/comisiones/ComisionesView.vue') },
@@ -144,11 +145,28 @@ const router = createRouter({
   routes,
 })
 
+// Rutas accesibles para cualquier usuario autenticado, sin importar su rol o menú asignado.
+const RUTAS_SIEMPRE_PERMITIDAS = ['/dashboard', '/perfil', '/launcher']
+
+// Las URLs de admin_opcion (auth.menu) ya vienen filtradas por rol desde el backend
+// (AuthController::login) — son la fuente de verdad de qué puede ver cada usuario.
+// `puede_solicitar_vehiculo` es la única excepción real: es un booleano en ad_empleado,
+// no un rol, así que nunca aparece en admin_opcion/menu (ver LauncherView.vue).
+function rutaPermitida(path, auth) {
+  if (RUTAS_SIEMPRE_PERMITIDAS.includes(path)) return true
+  if (path === '/transporte/movilizacion' && auth.empleado?.puede_solicitar_vehiculo) return true
+
+  const segmento = path.replace(/^\//, '')
+  return auth.menu.some(item => segmento === item.url || segmento.startsWith(item.url + '/'))
+}
+
 router.beforeEach((to, _from, next) => {
   const auth = useAuthStore()
   if (to.meta.requiresAuth && !auth.isAuthenticated) return next('/login')
   if (to.meta.guest && auth.isAuthenticated) return next('/launcher')
-  if (to.meta.rol && !auth.roles.includes(to.meta.rol.toUpperCase())) return next('/')
+  if (to.meta.requiresAuth && auth.isAuthenticated && !rutaPermitida(to.path, auth)) {
+    return next('/launcher')
+  }
   next()
 })
 
