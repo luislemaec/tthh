@@ -24,6 +24,29 @@ class VacacionesController extends Controller
         return Supervisor::where("id_supervisor", $id_emp)->exists();
     }
 
+    // Mismo patrón que PermisosController/HorasExtrasController::horaTurnoDelDia() —
+    // resuelve el turno real del empleado ese día vía d2_programacion (columna s{día} → id_turno)
+    // → d2_turno (concepto ENTRADA/SALIDA). Si no hay turno configurado, cae a un default fijo.
+    private function horaTurnoDelDia(string $id_emp, Carbon $fecha, string $concepto): ?string
+    {
+        $colTurno = 's' . (int) $fecha->format('j');
+
+        $prog = DB::table('dbo.d2_programacion')
+            ->where('id_emp', $id_emp)
+            ->whereYear('fecha', $fecha->year)
+            ->whereMonth('fecha', $fecha->month)
+            ->first();
+
+        $idTurno = $prog ? ((int) ($prog->$colTurno ?? 1)) : 1;
+
+        $turno = DB::table('dbo.d2_turno')
+            ->where('id_turno', $idTurno)
+            ->where('concepto', $concepto)
+            ->first();
+
+        return $turno ? Carbon::parse($turno->hora)->format('H:i') : null;
+    }
+
     private function esAdminOTH($id_emp)
     {
         return DB::table("dbo.admin_usuario_rol as ur")
@@ -208,14 +231,19 @@ class VacacionesController extends Controller
             return response()->json(["message" => "Ya tienes vacaciones registradas en esas fechas"], 422);
         }
 
+        // Hora real del turno del empleado (ENTRADA del primer día / SALIDA del último), no la
+        // hora fija 08:00-17:00 que mandaba el formulario — mismo criterio ya aplicado en Permisos.
+        $horaEntrada = $this->horaTurnoDelDia($emp->id_emp, Carbon::parse($request->fecha_inicial), 'ENTRADA') ?? '08:00';
+        $horaSalida  = $this->horaTurnoDelDia($emp->id_emp, Carbon::parse($request->fecha_final), 'SALIDA') ?? '17:00';
+
         $vacacion = Vacacion::create([
             "id_emp"          => $emp->id_emp,
             "fecha_hora"      => now(),
             "nombre_emp"      => trim($emp->apellido_emp) . " " . trim($emp->nombre_emp),
             "fecha_inicial"   => $request->fecha_inicial,
             "fecha_final"     => $request->fecha_final,
-            "hora_desde"      => $request->fecha_inicial . " " . $request->hora_desde . ":00",
-            "hora_hasta"      => $request->fecha_final   . " " . $request->hora_hasta . ":00",
+            "hora_desde"      => $request->fecha_inicial . " " . $horaEntrada . ":00",
+            "hora_hasta"      => $request->fecha_final   . " " . $horaSalida . ":00",
             "observaciones"   => $request->observaciones,
             "todo_dia"        => $request->todo_dia ?? "SI",
             "estado_permiso"  => "PENDIENTE",
