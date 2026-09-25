@@ -419,6 +419,10 @@ class EmpleadoController extends Controller
         $emp->password = bcrypt($emp->identificacion);
         $emp->save();
 
+        AuditoriaService::log('dbo.ad_empleado', $emp->id_emp, 'RESETEAR_PASSWORD',
+            null, null, $request,
+            'Reseteo de contraseña a la cédula: ' . trim($emp->apellido_emp . ' ' . $emp->nombre_emp));
+
         return response()->json(['message' => "Contraseña reseteada a la cédula del empleado."]);
     }
 
@@ -439,6 +443,10 @@ class EmpleadoController extends Controller
 
         $emp->password = bcrypt($request->password_nuevo);
         $emp->save();
+
+        AuditoriaService::log('dbo.ad_empleado', $emp->id_emp, 'CAMBIAR_PASSWORD',
+            null, null, $request,
+            'Cambio de contraseña propio: ' . trim($emp->apellido_emp . ' ' . $emp->nombre_emp));
 
         return response()->json(['message' => 'Contraseña actualizada correctamente.']);
     }

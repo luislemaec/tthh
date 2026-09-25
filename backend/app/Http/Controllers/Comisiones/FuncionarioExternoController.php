@@ -3,13 +3,18 @@ namespace App\Http\Controllers\Comisiones;
 
 use App\Http\Controllers\Controller;
 use App\Models\ComFuncionarioExterno;
+use App\Services\AuditoriaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class FuncionarioExternoController extends Controller
 {
-    public function index(): \Illuminate\Http\JsonResponse
+    private const ROLES_ADMIN = ['ADMINISTRADOR', 'TALENTO HUMANO'];
+
+    public function index(Request $request): \Illuminate\Http\JsonResponse
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
+
         $lista = ComFuncionarioExterno::orderBy('nombres')->get()->map(function ($f) {
             $tieneAcceso = DB::table('dbo.ad_empleado')
                 ->where('id_emp', $f->cedula)
@@ -23,6 +28,8 @@ class FuncionarioExternoController extends Controller
 
     public function store(Request $request): \Illuminate\Http\JsonResponse
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
+
         $request->validate([
             'cedula'  => 'required|string|max:20|unique:pgsql.dbo.com_funcionario_externo,cedula',
             'nombres' => 'required|string|max:200',
@@ -46,6 +53,8 @@ class FuncionarioExternoController extends Controller
 
     public function update(Request $request, int $id): \Illuminate\Http\JsonResponse
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
+
         $f = ComFuncionarioExterno::findOrFail($id);
 
         $request->validate([
@@ -70,6 +79,8 @@ class FuncionarioExternoController extends Controller
 
     public function destroy(Request $request, int $id): \Illuminate\Http\JsonResponse
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
+
         $f = ComFuncionarioExterno::findOrFail($id);
         $f->update(['activo' => false]);
 
@@ -82,6 +93,8 @@ class FuncionarioExternoController extends Controller
 
     public function darAcceso(Request $request, int $id): \Illuminate\Http\JsonResponse
     {
+        $this->requireRole($request, self::ROLES_ADMIN);
+
         $request->validate(['password' => 'required|string|min:6']);
 
         $externo = ComFuncionarioExterno::findOrFail($id);
@@ -129,6 +142,10 @@ class FuncionarioExternoController extends Controller
                 ]);
             }
         }
+
+        AuditoriaService::log('dbo.ad_empleado', $externo->cedula, 'DAR_ACCESO',
+            null, ['es_externo' => true, 'ya_existia' => $existe], $request,
+            'Acceso (contraseña temporal) otorgado a funcionario externo: ' . $externo->nombres);
 
         return response()->json(['message' => 'Acceso otorgado correctamente.']);
     }
