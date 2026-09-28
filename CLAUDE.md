@@ -1398,6 +1398,8 @@ Implementada para trazabilidad ante la Contraloría General del Estado. Todas la
 - Filtro "Acción": select poblado dinámicamente desde `/admin/auditoria/acciones` (2026-09-07 — antes un array hardcodeado de ~25 valores, desactualizado frente a los ~70+ reales)
 - Usa `@/services/api` (no axios directamente) para enviar el token de autenticación
 
+**Fix 2026-09-28 — filtro "Usuario (cédula)" nunca encontraba nada.** `usuario_id` en `nom_auditoria_log` guarda el `id_emp` (código interno corto, ej. `00002`) — nunca la cédula, aunque la etiqueta del input en `AuditoriaView.vue` dice literalmente "Usuario (cédula)" con placeholder `Ej: 1234567890`. Filtrar por cédula (lo único que la UI invita a hacer) comparaba contra una columna que jamás la contiene, así que el filtro devolvía vacío siempre, sin importar que el usuario hubiera iniciado sesión segundos antes. Mismo bug duplicado en `NominaController::auditoria()` (mismo criterio de "endpoint gemelo" ya documentado el 2026-09-07). Corregido en ambos: se resuelve la cédula a `id_emp` contra `dbo.ad_empleado` antes de filtrar; si la cédula no existe, el filtro devuelve vacío limpio (`whereRaw('1 = 0')`) en vez de arriesgarse a comparar contra `NULL`. Sin cambios de schema — solo `git pull`.
+
 ### Eventos de sesión auditados
 
 LOGIN, LOGOUT y LOGIN_FALLIDO se registran con `tabla = 'auth'` y `registro_id = 0`. Como no hay usuario autenticado en el momento del login, se inserta **directamente** con `DB::table('dbo.nom_auditoria_log')->insert([...])` — no se puede usar `AuditoriaService::log()` porque `$request->user()` es null. El LOGOUT sí usa `AuditoriaService::log()` porque el token todavía es válido en ese momento.

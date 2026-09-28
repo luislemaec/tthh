@@ -115,7 +115,12 @@ class NominaController extends Controller
 
         if ($request->filled('tabla'))  $query->where('tabla', $request->tabla);
         if ($request->filled('anio'))   $query->where('descripcion', 'like', "%{$request->anio}%");
-        if ($request->filled('usuario_id')) $query->where('usuario_id', $request->usuario_id);
+        if ($request->filled('usuario_id')) {
+            // Mismo fix que Admin/AuditoriaController::index() (2026-09-28) — usuario_id
+            // guarda el id_emp, no la cédula que pide el filtro del frontend.
+            $idEmp = DB::table('dbo.ad_empleado')->where('identificacion', $request->usuario_id)->value('id_emp');
+            $idEmp ? $query->where('usuario_id', $idEmp) : $query->whereRaw('1 = 0');
+        }
 
         return response()->json($query->paginate(50));
     }

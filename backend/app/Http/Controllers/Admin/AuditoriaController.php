@@ -27,7 +27,11 @@ class AuditoriaController extends Controller
             $query->where('accion', $request->accion);
         }
         if ($request->filled('usuario_id')) {
-            $query->where('usuario_id', $request->usuario_id);
+            // `usuario_id` en nom_auditoria_log guarda el id_emp (código interno corto,
+            // ej. "00002"), nunca la cédula — aunque el filtro del frontend diga
+            // "Usuario (cédula)" (fix 2026-09-28, antes nunca coincidía con nada).
+            $idEmp = DB::table('dbo.ad_empleado')->where('identificacion', $request->usuario_id)->value('id_emp');
+            $idEmp ? $query->where('usuario_id', $idEmp) : $query->whereRaw('1 = 0');
         }
         if ($request->filled('fecha_desde')) {
             $query->whereDate('created_at', '>=', $request->fecha_desde);
