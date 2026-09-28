@@ -643,6 +643,23 @@ Al aprobar una solicitud de vacaciones, el supervisor **puede** (no es obligator
 
 Sin cambios de schema, `config/*.php` ni `.env` — solo `git pull`, sin `migrate` ni `npm run build`.
 
+### Vacaciones — validación de solapamiento incompleta, permitía dos APROBADO cruzados (fix 2026-09-29)
+
+Reportado por TH: un empleado tenía APROBADO un período 30-sep al 14-oct (15 días) y su supervisor aprobó también una segunda solicitud del mismo empleado, 5-oct al 9-oct (5 días) — completamente **contenida dentro** del primer período, sin ningún bloqueo ni aviso.
+
+**Causa:** `VacacionesController::store()` validaba solapamiento con `whereBetween` sobre `fecha_inicial`/`fecha_final` del registro **existente** contra el rango de la solicitud **nueva** — cubre solo 2 de los 4 casos posibles de solapamiento entre intervalos. Con las fechas del caso real: ¿el 30-sep (inicio del existente) cae entre el 5 y el 9 de octubre? No. ¿El 14-oct (fin del existente) cae entre el 5 y el 9 de octubre? Tampoco. La consulta nunca detecta el caso donde la solicitud nueva queda **contenida** dentro de una ya aprobada (el más común en la práctica, justo el que se reportó) ni el caso inverso (la nueva engloba a la vieja) — solo detecta solapamientos parciales por un extremo.
+
+**Fix:** reemplazada por la comparación de intervalos correcta y completa, una sola condición sin `OR`:
+```php
+->where("fecha_inicial", "<=", $request->fecha_final)
+->where("fecha_final", ">=", $request->fecha_inicial)
+```
+Cubre los 4 casos (solapa por la izquierda, por la derecha, la nueva contenida en la existente, o viceversa).
+
+**Efecto colateral no corregido, documentado:** con dos períodos `APROBADO` superpuestos, el saldo de vacaciones probablemente descontó los días superpuestos **dos veces** (`aprobar()` suma días calendario cada vez que se aprueba, sin chequear solapamiento contra otras aprobaciones). No se corrigió el saldo del empleado del caso real — decisión explícita del usuario, el fix **aplica solo hacia adelante**.
+
+Sin cambios de schema, `config/*.php` ni `.env` — solo `git pull`, sin `migrate` ni `npm run build`. **Pendiente evaluar** si `PlanificacionVacController::haysolapamiento()` (la planificación anual, no las solicitudes) tiene el mismo tipo de hueco — no se revisó en esta corrección, fuera del alcance de lo reportado.
+
 ### Corrección de deuda técnica — Vacaciones y Planificación (2026-09-01)
 
 Auditoría de código detectó 6 hallazgos (uno de ellos, "4 implementaciones divergentes de saldo", cubría 4 puntos distintos por sí solo) — todos corregidos el mismo día, sin cambios de schema:

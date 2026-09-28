@@ -219,13 +219,22 @@ class VacacionesController extends Controller
             $requiereInforme = false;
         }
 
-        // Verificar que no tenga vacaciones en las mismas fechas
+        // Verificar que no tenga vacaciones en las mismas fechas — condición de solapamiento
+        // de intervalos completa (fix 2026-09-29): la versión anterior (whereBetween de
+        // fecha_inicial/fecha_final del registro existente contra el rango nuevo) solo
+        // detectaba 2 de los 4 casos de solapamiento — se le escapaba justo el más común
+        // en la práctica: una solicitud nueva completamente CONTENIDA dentro de un período
+        // ya APROBADO (ej. aprobado 30-sep al 14-oct, nueva solicitud 5-oct al 9-oct — ni
+        // el 30-sep ni el 14-oct caen dentro del 5-9 oct, así que nunca coincidía). Esto
+        // permitía dos solicitudes APROBADO superpuestas y el consecuente doble descuento
+        // de saldo sobre los mismos días. La condición correcta (cubre los 4 casos: solapa
+        // por la izquierda, por la derecha, la nueva contenida en la existente, o viceversa)
+        // es una sola comparación de intervalos, sin OR.
         $existe = Vacacion::where("id_emp", $emp->id_emp)
             ->whereNotIn("estado_permiso", ["NEGADO", "ELIMINADO"])
-            ->where(function ($q) use ($request) {
-                $q->whereBetween("fecha_inicial", [$request->fecha_inicial, $request->fecha_final])
-                  ->orWhereBetween("fecha_final", [$request->fecha_inicial, $request->fecha_final]);
-            })->exists();
+            ->where("fecha_inicial", "<=", $request->fecha_final)
+            ->where("fecha_final", ">=", $request->fecha_inicial)
+            ->exists();
 
         if ($existe) {
             return response()->json(["message" => "Ya tienes vacaciones registradas en esas fechas"], 422);
