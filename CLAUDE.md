@@ -1080,6 +1080,10 @@ views/permisos/         # Permisos y licencias — fecha_desde/fecha_hasta defau
                         #   así que se veía "15 de 70" igual en la página 1, 2 y 3. Cambiado a rango
                         #   "Mostrando 16-30 de 70" (computed `rangoDesde`/`rangoHasta`, basado en `pagina`
                         #   y el `per_page=15` fijo del front) — mismo fix en Permisos y Vacaciones.
+                        #   Fix 2026-09-28 — el mismo bug seguía sin corregirse en `EmpleadosIndex.vue`
+                        #   (fuera del alcance del 2026-09-17): `Mostrando {{ empleados.length }} de {{ total }}`
+                        #   mostraba "10 de 94" igual en cualquier página completa (`porPagina=10`). Mismo
+                        #   fix: `rangoDesde`/`rangoHasta` computed.
                         # Fix 2026-09-17 — botón "Aprobar" usaba `confirm()` nativo del navegador en vez
                         #   de un modal propio (a diferencia de Negar/Eliminar/Anular, que sí tienen su
                         #   modal). El navegador le pone como título la IP/dominio del sitio a cualquier

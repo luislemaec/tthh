@@ -104,7 +104,7 @@
 
       <!-- Paginación -->
       <div class="px-6 py-4 flex items-center justify-between border-t text-sm text-gray-600">
-        <span>Mostrando {{ empleados.length }} de {{ total }} empleados</span>
+        <span>Mostrando {{ rangoDesde }}-{{ rangoHasta }} de {{ total }} empleados</span>
         <div class="flex gap-2">
           <button @click="pagina--" :disabled="pagina === 1"
             class="px-3 py-1 rounded border hover:bg-gray-100 disabled:opacity-40">Anterior</button>
@@ -139,7 +139,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import api from '@/services/api'
 
 const empleados         = ref([])
@@ -151,6 +151,11 @@ const pagina            = ref(1)
 const porPagina         = 10
 
 const filtro = ref({ buscar: '', departamento: '', estado: '', tipo_contrato: '', modalidad_laboral: '', es_comisionado_entrante: '' })
+
+// "Mostrando X-Y de Z" con rango real (no el largo de la página actual, que
+// siempre es 10 en cualquier página completa) — mismo patrón que Permisos/Vacaciones.
+const rangoDesde = computed(() => total.value === 0 ? 0 : (pagina.value - 1) * porPagina + 1)
+const rangoHasta = computed(() => Math.min(pagina.value * porPagina, total.value))
 
 const cargarEmpleados = async () => {
   cargando.value = true
