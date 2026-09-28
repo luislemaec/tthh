@@ -3,6 +3,7 @@ namespace App\Http\Controllers\Transporte;
 
 use App\Http\Controllers\Controller;
 use App\Models\Adq\Proveedor;
+use App\Services\AuditoriaService;
 use Illuminate\Http\Request;
 
 class TallerController extends Controller
@@ -49,6 +50,10 @@ class TallerController extends Controller
             'es_proveedor_bienes' => $request->boolean('es_proveedor_bienes', false),
         ]);
 
+        AuditoriaService::log('adq.proveedor', $proveedor->id, 'CREAR', null,
+            ['nombre' => $proveedor->nombre, 'ruc' => $proveedor->ruc], $request,
+            'Taller creado: ' . $proveedor->nombre);
+
         return response()->json($proveedor, 201);
     }
 
@@ -56,6 +61,7 @@ class TallerController extends Controller
     {
         $this->requireRole($request, self::ROLES_TRANSPORTE);
         $proveedor = Proveedor::findOrFail($id);
+        $anterior  = $proveedor->only(['nombre', 'ruc', 'estado']);
 
         $request->validate([
             'nombre'              => 'required|string|max:100',
@@ -80,6 +86,10 @@ class TallerController extends Controller
             'es_taller'           => $request->boolean('es_taller', $proveedor->es_taller),
             'es_proveedor_bienes' => $request->boolean('es_proveedor_bienes', $proveedor->es_proveedor_bienes),
         ]);
+
+        AuditoriaService::log('adq.proveedor', $proveedor->id, 'ACTUALIZAR',
+            $anterior, $proveedor->only(['nombre', 'ruc', 'estado']), $request,
+            'Taller actualizado: ' . $proveedor->nombre);
 
         return response()->json($proveedor);
     }

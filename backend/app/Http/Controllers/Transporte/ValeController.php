@@ -3,6 +3,7 @@ namespace App\Http\Controllers\Transporte;
 
 use App\Http\Controllers\Controller;
 use App\Models\Transporte\ValeCombustible;
+use App\Services\AuditoriaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -55,35 +56,42 @@ class ValeController extends Controller
             'pu_diesel'   => 'nullable|numeric|min:0',
         ]);
 
-        // Número correlativo: MAX(numero) + 1; si no hay registros usa VALE_COMBUSTIBLE_INICIO
-        $inicio  = (int) DB::table('dbo.d2_configuracion')
+        // Número correlativo: si no hay registros usa VALE_COMBUSTIBLE_INICIO
+        $inicio = (int) DB::table('dbo.d2_configuracion')
             ->whereRaw("LOWER(concepto) = 'vale_combustible_inicio'")
             ->value('valor') ?? 0;
-        $maxNum  = ValeCombustible::max('numero') ?? $inicio;
-        $numero  = $maxNum + 1;
 
-        $vale = ValeCombustible::create([
-            'numero'           => $numero,
-            'gasolinera'       => $request->gasolinera,
-            'id_emp_conductor' => $this->emp($request)->id_emp,
-            'vehiculo_id'      => $request->vehiculo_id,
-            'kilometraje'       => $request->kilometraje,
-            'fecha'             => $request->fecha,
-            'fecha_comprobante' => $request->fecha_comprobante ?? null,
-            'glns_extra'       => $request->glns_extra,
-            'pu_extra'         => $request->pu_extra,
-            'valor_extra'      => $request->glns_extra && $request->pu_extra
-                                    ? round($request->glns_extra * $request->pu_extra, 2) : null,
-            'glns_super'       => $request->glns_super,
-            'pu_super'         => $request->pu_super,
-            'valor_super'      => $request->glns_super && $request->pu_super
-                                    ? round($request->glns_super * $request->pu_super, 2) : null,
-            'glns_diesel'      => $request->glns_diesel,
-            'pu_diesel'        => $request->pu_diesel,
-            'valor_diesel'     => $request->glns_diesel && $request->pu_diesel
-                                    ? round($request->glns_diesel * $request->pu_diesel, 2) : null,
-            'estado'           => 'EMITIDO',
-        ]);
+        $vale = DB::transaction(function () use ($request, $inicio) {
+            $numero = ValeCombustible::generarSiguienteNumero($inicio);
+
+            return ValeCombustible::create([
+                'numero'           => $numero,
+                'gasolinera'       => $request->gasolinera,
+                'id_emp_conductor' => $this->emp($request)->id_emp,
+                'vehiculo_id'      => $request->vehiculo_id,
+                'kilometraje'       => $request->kilometraje,
+                'fecha'             => $request->fecha,
+                'fecha_comprobante' => $request->fecha_comprobante ?? null,
+                'glns_extra'       => $request->glns_extra,
+                'pu_extra'         => $request->pu_extra,
+                'valor_extra'      => $request->glns_extra && $request->pu_extra
+                                        ? round($request->glns_extra * $request->pu_extra, 2) : null,
+                'glns_super'       => $request->glns_super,
+                'pu_super'         => $request->pu_super,
+                'valor_super'      => $request->glns_super && $request->pu_super
+                                        ? round($request->glns_super * $request->pu_super, 2) : null,
+                'glns_diesel'      => $request->glns_diesel,
+                'pu_diesel'        => $request->pu_diesel,
+                'valor_diesel'     => $request->glns_diesel && $request->pu_diesel
+                                        ? round($request->glns_diesel * $request->pu_diesel, 2) : null,
+                'estado'           => 'EMITIDO',
+            ]);
+        });
+
+        AuditoriaService::log('dbo.trans_vale_combustible', $vale->id, 'CREAR',
+            null,
+            ['numero' => $vale->numero, 'vehiculo_id' => $vale->vehiculo_id, 'fecha' => $vale->fecha, 'gasolinera' => $vale->gasolinera],
+            $request, 'Vale de combustible N° ' . $vale->numero . ' emitido');
 
         return response()->json($vale->load(['conductor', 'vehiculo']), 201);
     }
@@ -98,6 +106,10 @@ class ValeController extends Controller
         }
 
         $vale->update(['estado' => 'ANULADO']);
+
+        AuditoriaService::log('dbo.trans_vale_combustible', $vale->id, 'ANULAR',
+            ['estado' => 'EMITIDO'], ['estado' => 'ANULADO'], $request,
+            'Vale de combustible N° ' . $vale->numero . ' anulado');
 
         return response()->json($vale);
     }

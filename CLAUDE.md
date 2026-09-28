@@ -1386,6 +1386,10 @@ Implementada para trazabilidad ante la Contraloría General del Estado. Todas la
 | `Adquisiciones/SolicitudMaterialController` | APROBAR, NEGAR, DESPACHAR |
 | `Adquisiciones/AjusteController` | AJUSTE_POSITIVO / AJUSTE_NEGATIVO |
 | `TransporteController` | APROBAR_MOV, NEGAR_MOV, HOJA_RUTA, ORDEN_TRABAJO, NEGAR_MANT, EN_TALLER, FINALIZAR_MANT, CREAR_VEHICULO, ACTUALIZAR_VEHICULO |
+| `Transporte/ValeController` | CREAR, ANULAR (2026-09-28 — antes sin ninguna auditoría) |
+| `Transporte/TallerController` | CREAR, ACTUALIZAR (2026-09-28 — tabla `adq.proveedor`) |
+| `Transporte/TipoMantenimientoController` | CREAR, ACTUALIZAR (2026-09-28) |
+| `Transporte/PlanPreventivoController` | CREAR, ACTUALIZAR, IMPORTAR_CSV (2026-09-28) |
 
 ### Endpoint y vista
 
@@ -1837,11 +1841,21 @@ Importación CSV: columnas `placa,km_hito,nombre,tipo_actividad,actividad,cantid
 ### Vales de Combustible
 
 Formato oficial FR05-PRO.GA-TR.001. PDF media carta (`[0, 0, 396, 504]`).
-- Numeración secuencial: `MAX(numero) + 1`, semilla desde `VALE_COMBUSTIBLE_INICIO` en `dbo.d2_configuracion`
+- Numeración secuencial: `ValeCombustible::generarSiguienteNumero()` (con `pg_advisory_xact_lock()`, ver corrección 2026-09-28 abajo — antes era `MAX(numero) + 1` sin bloqueo), semilla desde `VALE_COMBUSTIBLE_INICIO` en `dbo.d2_configuracion`
 - Agregar `VALE_COMBUSTIBLE_INICIO` en Admin > Configuración con el último número de vale en papel
 - Combustibles: Extra (glns/pu/valor), Super, Diesel — valor se calcula automáticamente
 - PDF se abre en nueva pestaña al guardar (para imprimir y firmar)
 - Conductor ve solo sus propios vales; TRANSPORTE ve todos
+
+### Corrección de deuda técnica — Vales y catálogos sin auditoría (2026-09-28)
+
+Origen: el usuario preguntó por qué un vale de combustible recién creado no aparecía en Auditoría — confirmado que `ValeController` no tenía ninguna llamada a `AuditoriaService::log()`, ni en `store()` ni en `anular()`. Al revisar el resto del módulo se encontraron 2 hallazgos más, incluidos en la misma corrección con confirmación del usuario:
+
+1. **`ValeController::store()`/`anular()` sin auditoría (lo preguntado).** Cerrado: `store()` audita `CREAR`, `anular()` audita `ANULAR` — mismo patrón que el resto del sistema (snapshot de `estado` antes/después en la anulación).
+2. **Numeración de vales sin bloqueo — mismo patrón ya corregido en Empleados/Acciones de Personal/Certificados Laborales.** `$maxNum = ValeCombustible::max('numero') ?? $inicio;` sin `pg_advisory_xact_lock()`: dos vales creados casi al mismo tiempo (dos conductores, o doble clic en el formulario) podían calcular el mismo "siguiente" número. Nuevo `ValeCombustible::generarSiguienteNumero($inicioDefault)` en el modelo (lock `456789123`, distinto a los ya usados por `Empleado`/`AccionPersonal`/`CertificadoLaboral`); `ValeController::store()` ahora envuelve la generación + `create()` en `DB::transaction()`.
+3. **3 catálogos de Transportes sin ninguna auditoría.** `TallerController` (CREAR/ACTUALIZAR — opera sobre `adq.proveedor`, la tabla compartida de proveedores/talleres), `TipoMantenimientoController` (CREAR/ACTUALIZAR) y `PlanPreventivoController` (CREAR/ACTUALIZAR/IMPORTAR_CSV) no dejaban ningún rastro de sus altas/ediciones/importaciones masivas.
+
+Sin cambios de schema, `config/*.php` ni `.env` — solo `git pull`, sin `migrate` ni `npm run build`. Verificado con `php -l` en los 5 archivos tocados (`ValeController`, `ValeCombustible`, `TallerController`, `TipoMantenimientoController`, `PlanPreventivoController`). **Sin pruebas funcionales en vivo** (mismo criterio que el resto de correcciones de esta serie).
 
 ### Flujos
 

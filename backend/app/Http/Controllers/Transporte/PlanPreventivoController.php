@@ -5,6 +5,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Transporte\PlanPreventivoCab;
 use App\Models\Transporte\PlanPreventivoDet;
 use App\Models\Transporte\Vehiculo;
+use App\Services\AuditoriaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -74,6 +75,10 @@ class PlanPreventivoController extends Controller
             ]);
         }
 
+        AuditoriaService::log('dbo.trans_plan_preventivo_cab', $cab->id, 'CREAR', null,
+            ['vehiculo_id' => $cab->vehiculo_id, 'km_hito' => $cab->km_hito, 'nombre' => $cab->nombre],
+            $request, 'Plan preventivo creado: ' . $cab->nombre);
+
         return response()->json($cab->load('actividades'), 201);
     }
 
@@ -81,6 +86,7 @@ class PlanPreventivoController extends Controller
     {
         $this->requireRole($request, self::ROLES_TRANSPORTE);
         $cab = PlanPreventivoCab::findOrFail($id);
+        $anterior = $cab->only(['km_hito', 'nombre', 'estado']);
 
         $request->validate([
             'km_hito'      => 'required|integer|min:1',
@@ -109,6 +115,10 @@ class PlanPreventivoController extends Controller
                 'actividad'      => $act['actividad'],
             ]);
         }
+
+        AuditoriaService::log('dbo.trans_plan_preventivo_cab', $cab->id, 'ACTUALIZAR',
+            $anterior, $cab->only(['km_hito', 'nombre', 'estado']), $request,
+            'Plan preventivo actualizado: ' . $cab->nombre);
 
         return response()->json($cab->load('actividades'));
     }
@@ -187,6 +197,11 @@ class PlanPreventivoController extends Controller
         });
 
         $total = count($grupos);
+
+        AuditoriaService::log('dbo.trans_plan_preventivo_cab', 0, 'IMPORTAR_CSV', null,
+            ['planes_importados' => $total, 'archivo' => $request->file('archivo')->getClientOriginalName()],
+            $request, "Importación CSV de plan preventivo: $total plan(es)");
+
         return response()->json(['message' => "Se importaron $total plan(es) correctamente."]);
     }
 }

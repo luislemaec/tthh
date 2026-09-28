@@ -3,6 +3,7 @@ namespace App\Http\Controllers\Transporte;
 
 use App\Http\Controllers\Controller;
 use App\Models\Transporte\TipoMantenimiento;
+use App\Services\AuditoriaService;
 use Illuminate\Http\Request;
 
 class TipoMantenimientoController extends Controller
@@ -34,6 +35,9 @@ class TipoMantenimientoController extends Controller
             'estado' => 'ACTIVO',
         ]);
 
+        AuditoriaService::log('dbo.trans_tipo_mantenimiento', $tipo->id, 'CREAR',
+            null, ['nombre' => $tipo->nombre], $request, 'Tipo de mantenimiento creado: ' . $tipo->nombre);
+
         return response()->json($tipo, 201);
     }
 
@@ -41,6 +45,7 @@ class TipoMantenimientoController extends Controller
     {
         $this->requireRole($request, self::ROLES_TRANSPORTE);
         $tipo = TipoMantenimiento::findOrFail($id);
+        $anterior = $tipo->only(['nombre', 'estado']);
 
         $request->validate([
             'nombre' => 'required|in:PREVENTIVO,CORRECTIVO,PREVENTIVO Y CORRECTIVO',
@@ -51,6 +56,9 @@ class TipoMantenimientoController extends Controller
             'nombre' => $request->nombre,
             'estado' => $request->estado ?? $tipo->estado,
         ]);
+
+        AuditoriaService::log('dbo.trans_tipo_mantenimiento', $tipo->id, 'ACTUALIZAR',
+            $anterior, $tipo->only(['nombre', 'estado']), $request, 'Tipo de mantenimiento actualizado: ' . $tipo->nombre);
 
         return response()->json($tipo);
     }
