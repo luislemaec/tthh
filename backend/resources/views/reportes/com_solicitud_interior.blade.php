@@ -19,8 +19,7 @@
     text-align: center; line-height: 11px; font-size: 9pt; margin-right: 3px; vertical-align: middle; }
 
   .firmas td { border: 1px solid #555; padding: 50px 8px 6px 8px; text-align: center;
-    font-weight: bold; font-size: 8pt; text-transform: uppercase;
-    background-color: #ede9f3; }
+    font-weight: bold; font-size: 8pt; text-transform: uppercase; }
 
   .gen-line { font-size: 7.5pt; color: #555; margin-top: 12px; text-align: right; }
 </style>
@@ -69,6 +68,22 @@
   @endforeach
 </table>
 
+{{-- Beneficios --}}
+<div class="section-title">Beneficios Solicitados</div>
+<table class="info-table" style="margin-bottom:6px;">
+  <tr>
+    <td class="check-td" style="width:33%;">
+      <span class="check-box">{!! $solicitud->tiene_viaticos ? 'X' : '&nbsp;' !!}</span> Viáticos
+    </td>
+    <td class="check-td" style="width:33%;">
+      <span class="check-box">{!! $solicitud->tiene_movilizaciones ? 'X' : '&nbsp;' !!}</span> Movilizaciones
+    </td>
+    <td class="check-td" style="width:34%;">
+      <span class="check-box">{!! $solicitud->tiene_anticipo ? 'X' : '&nbsp;' !!}</span> Anticipo de Viáticos
+    </td>
+  </tr>
+</table>
+
 <div class="section-title">Datos de la Comisión</div>
 <table class="info-table" style="margin-bottom:6px;">
   <tr>
@@ -113,22 +128,6 @@
   </tbody>
 </table>
 @endif
-
-{{-- Beneficios --}}
-<div class="section-title">Beneficios Solicitados</div>
-<table class="info-table" style="margin-bottom:6px;">
-  <tr>
-    <td class="check-td" style="width:33%;">
-      <span class="check-box">{{ $solicitud->tiene_viaticos ? '✓' : '&nbsp;' }}</span> Viáticos
-    </td>
-    <td class="check-td" style="width:33%;">
-      <span class="check-box">{{ $solicitud->tiene_movilizaciones ? '✓' : '&nbsp;' }}</span> Movilizaciones
-    </td>
-    <td class="check-td" style="width:34%;">
-      <span class="check-box">{{ $solicitud->tiene_anticipo ? '✓' : '&nbsp;' }}</span> Anticipo de Viáticos
-    </td>
-  </tr>
-</table>
 
 {{-- Datos bancarios --}}
 @if($solicitud->banco || $solicitud->numero_cuenta)

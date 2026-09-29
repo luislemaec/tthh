@@ -19,7 +19,7 @@
     text-align: center; line-height: 11px; font-size: 9pt; margin-right: 3px; vertical-align: middle; }
 
   .firmas td { border: 1px solid #555; padding: 50px 8px 6px 8px; text-align: center;
-    font-weight: bold; font-size: 8pt; text-transform: uppercase; background-color: #e5f0f7; }
+    font-weight: bold; font-size: 8pt; text-transform: uppercase; }
 
   .gen-line { font-size: 7.5pt; color: #555; margin-top: 12px; text-align: right; }
 </style>
@@ -65,6 +65,18 @@
     <td>{{ strtoupper($srv->puesto ?? '') }}</td>
   </tr>
   @endforeach
+</table>
+
+<div class="section-title">Beneficios Solicitados</div>
+<table class="info-table" style="margin-bottom:6px;">
+  <tr>
+    <td class="check-td" style="width:50%;">
+      <span class="check-box">{!! $solicitud->tiene_viaticos ? 'X' : '&nbsp;' !!}</span> Viáticos Internacionales
+    </td>
+    <td class="check-td" style="width:50%;">
+      <span class="check-box">{!! $solicitud->tiene_anticipo ? 'X' : '&nbsp;' !!}</span> Anticipo de Viáticos
+    </td>
+  </tr>
 </table>
 
 <div class="section-title">Datos de la Comisión Internacional</div>
@@ -122,18 +134,6 @@
   </tbody>
 </table>
 @endif
-
-<div class="section-title">Beneficios Solicitados</div>
-<table class="info-table" style="margin-bottom:6px;">
-  <tr>
-    <td class="check-td" style="width:50%;">
-      <span class="check-box">{!! $solicitud->tiene_viaticos ? '&#10003;' : '&nbsp;' !!}</span> Viáticos Internacionales
-    </td>
-    <td class="check-td" style="width:50%;">
-      <span class="check-box">{!! $solicitud->tiene_anticipo ? '&#10003;' : '&nbsp;' !!}</span> Anticipo de Viáticos
-    </td>
-  </tr>
-</table>
 
 @if($solicitud->banco || $solicitud->numero_cuenta)
 <div class="section-title">Datos Bancarios para Pago</div>
