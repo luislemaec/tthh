@@ -500,7 +500,7 @@
           <template v-if="stepperPasoVisible === 'informe'">
 
             <!-- Informe APROBADO -->
-            <div v-if="stepperData?.informe?.estado === 'APROBADO'" class="flex flex-col items-center py-8 text-center gap-4">
+            <div v-if="stepperData?.informe?.estado === 'APROBADO' && !informeReabrible" class="flex flex-col items-center py-8 text-center gap-4">
               <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
                 <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
@@ -519,6 +519,13 @@
             <!-- Formulario informe -->
             <template v-else>
               <div class="space-y-3">
+                <div v-if="informeReabrible" class="text-sm bg-red-50 border border-red-200 text-red-700 rounded-lg p-3">
+                  Este informe ya estaba aprobado, pero la solicitud fue devuelta para corrección.
+                  Ajuste los datos que correspondan y vuelva a generar y firmar el PDF.
+                  <span v-if="stepperData?.observacion_devolucion" class="block mt-1 font-medium">
+                    Motivo: {{ stepperData.observacion_devolucion }}
+                  </span>
+                </div>
                 <div class="grid grid-cols-2 gap-3">
                   <div>
                     <label class="text-xs font-semibold text-gray-600 mb-1 block">Fecha del Informe *</label>
@@ -645,8 +652,8 @@
             style="background-color:#5c4a6e;">
             {{ guardando ? 'Guardando...' : (modoEdicionId ? 'Actualizar' : 'Guardar') }}
           </button>
-          <!-- Paso 2: Guardar Informe (cuando no está APROBADO) -->
-          <button v-if="stepperPasoVisible === 'informe' && stepperData?.informe?.estado !== 'APROBADO'"
+          <!-- Paso 2: Guardar Informe (cuando no está APROBADO, o se reabrió tras una devolución) -->
+          <button v-if="stepperPasoVisible === 'informe' && (stepperData?.informe?.estado !== 'APROBADO' || informeReabrible)"
             @click="guardarInforme" :disabled="guardando"
             class="px-5 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-50 hover:opacity-90 transition"
             style="background-color:#5c4a6e;">
@@ -829,9 +836,18 @@ const esFinanciero = computed(() =>
   || miRol.value.es_admin
 )
 
+// La solicitud regresó a estos estados por una devolución financiera después de que el
+// informe ya había sido APROBADO — únicos casos donde tiene sentido reabrirlo sin pasar
+// de nuevo por todo el Paso 1 (procesar + volver a firmar la solicitud).
+const informeReabrible = computed(() =>
+  stepperData.value?.informe?.estado === 'APROBADO' &&
+  ['DEVUELTO', 'PROCESADO', 'APROBADO'].includes(stepperData.value?.estado)
+)
+
 // Stepper pasos
 const pasoActivoPorEstado = computed(() => {
   const e = stepperData.value?.estado
+  if (informeReabrible.value) return 'informe'
   if (!e || ['BORRADOR', 'PROCESADO', 'DEVUELTO'].includes(e)) return 'solicitud'
   if (e === 'APROBADO') return 'informe'
   if (e === 'INFORME_APROBADO') return 'pago'
@@ -849,7 +865,8 @@ const pasos = computed(() => {
     : !e || ['BORRADOR', 'PROCESADO'].includes(e) ? 'activo'
     : 'completo'
 
-  const estadoPaso2 = !e || ['BORRADOR', 'PROCESADO', 'DEVUELTO'].includes(e) ? 'pendiente'
+  const estadoPaso2 = informeReabrible.value ? 'activo'
+    : !e || ['BORRADOR', 'PROCESADO', 'DEVUELTO'].includes(e) ? 'pendiente'
     : e === 'APROBADO' ? 'activo'
     : 'completo'
 

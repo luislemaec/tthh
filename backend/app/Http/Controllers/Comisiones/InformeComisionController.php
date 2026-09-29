@@ -112,15 +112,22 @@ class InformeComisionController extends Controller
         }
     }
 
+    // Solicitud regresó a estos estados por una devolución financiera, después de que
+    // el informe ya había sido APROBADO — son los únicos donde tiene sentido reabrirlo.
+    private const ESTADOS_SOLICITUD_CON_REAPERTURA = ['DEVUELTO', 'PROCESADO', 'APROBADO'];
+
     public function update(Request $request, int $id): \Illuminate\Http\JsonResponse
     {
-        $informe = ComInforme::findOrFail($id);
+        $informe   = ComInforme::findOrFail($id);
+        $solicitud = ComSolicitud::findOrFail($informe->solicitud_id);
 
-        if ($informe->estado !== 'PRESENTADO') {
-            return response()->json(['message' => 'Solo se puede editar un informe en PRESENTADO'], 422);
+        $reabreInformeAprobado = $informe->estado === 'APROBADO'
+            && in_array($solicitud->estado, self::ESTADOS_SOLICITUD_CON_REAPERTURA, true);
+
+        if ($informe->estado !== 'PRESENTADO' && !$reabreInformeAprobado) {
+            return response()->json(['message' => 'Solo se puede editar un informe en PRESENTADO, o uno ya APROBADO cuando la solicitud está en corrección tras una devolución.'], 422);
         }
 
-        $solicitud = ComSolicitud::findOrFail($informe->solicitud_id);
         if ($solicitud->id_emp !== $request->user()->id_emp) {
             return response()->json(['message' => 'No autorizado'], 403);
         }
@@ -132,6 +139,8 @@ class InformeComisionController extends Controller
 
         DB::beginTransaction();
         try {
+            $estadoAnteriorInforme = $informe->estado;
+
             $informe->update([
                 'fecha_informe' => $request->fecha_informe,
                 'actividades'   => $request->actividades,
@@ -140,8 +149,18 @@ class InformeComisionController extends Controller
                 'hora_salida'   => $request->hora_salida,
                 'fecha_llegada' => $request->fecha_llegada,
                 'hora_llegada'  => $request->hora_llegada,
+                // Si se corrige un informe ya APROBADO, vuelve a PRESENTADO: la firma vieja
+                // no debe quedar cubriendo datos ya corregidos, hay que volver a firmarlo.
+                'estado'        => $reabreInformeAprobado ? 'PRESENTADO' : $informe->estado,
                 'updated_by'    => $request->user()->id_emp,
             ]);
+
+            if ($reabreInformeAprobado) {
+                AuditoriaService::log('dbo.com_informe', $informe->id, 'REABRIR',
+                    ['estado' => $estadoAnteriorInforme],
+                    ['estado' => 'PRESENTADO'],
+                    $request, 'Informe reabierto para corrección tras devolución de la solicitud');
+            }
 
             DB::table('dbo.com_informe_transporte')->where('informe_id', $id)->delete();
             foreach ($request->transportes ?? [] as $i => $trn) {
