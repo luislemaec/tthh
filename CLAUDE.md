@@ -707,7 +707,14 @@ $diasDescuento = round($diasBase * $factorFds, 4);
 ```
 Ejemplos: 1 hora → 0.1705 días | 4 horas → 0.6818 días | 1 día completo → 1.3636 días
 
-**Validación de solapamiento:** la validación al crear un permiso filtra por `tipo_horario` — un permiso ENTRADA **no bloquea** la creación de un permiso SALIDA del mismo día aunque compartan rango de fechas. Solo bloquea permisos del **mismo tipo** que se crucen en horario.
+**Validación de solapamiento:** la validación al crear un permiso filtra por `tipo_horario` — un permiso ENTRADA **no bloquea** la creación de un permiso SALIDA del mismo día aunque compartan rango de fechas. Solo bloquea permisos del **mismo tipo** que se crucen en horario. Si el nuevo permiso no es "todo el día", además exige que las horas se crucen.
+
+**Fix 2026-09-29 — comparación de intervalos incompleta (mismo bug que tenía Vacaciones, ver esa sección).** `PermisosController::store()` detectaba el choque de fechas con `whereBetween("fecha_desde", [...])->orWhereBetween("fecha_hasta", [...])` sobre el rango del permiso existente — cubre solo 2 de los 4 casos posibles de solapamiento entre intervalos: se le escapaba el caso donde el permiso nuevo queda **contenido dentro** de uno ya aprobado del mismo `tipo_horario` (y el inverso, que lo engloba). Detectado por revisión proactiva tras corregir el mismo bug en Vacaciones el mismo día — no hubo un caso reportado en producción como en Vacaciones. Reemplazado por la comparación de intervalos completa, una sola condición sin `OR`:
+```php
+->where("fecha_desde", "<=", $request->fecha_hasta)
+->where("fecha_hasta", ">=", $request->fecha_desde)
+```
+El resto de la lógica (filtro por `tipo_horario`, cruce de horas cuando no es "todo el día") no se tocó. Sin cambios de schema, `config/*.php` ni `.env` — solo `git pull`, sin `migrate` ni `npm run build`. **Sin pruebas funcionales en vivo.**
 
 **Tope de 60 días (LOSEP Art. 29) y descuento de permisos — REGLA CRÍTICA:** el saldo visible al empleado es máximo 60 días (`min(60, saldoInterno)`). Al aprobar un permiso descontable, el descuento se aplica **desde los 60 días visibles**, no desde el saldo interno real (que puede ser 70, 80, etc.). Implementado con campo `dias_descuento_efectivo DECIMAL(10,4) NULL` en `dbo.d2_permiso` (migración `000094`):
 - `aprobar()`: calcula `internoSaldo` (sin tope), `exceso = max(0, internoSaldo - 60)`, `efectivo = exceso + diasDescuento` → suma `efectivo` a `total_dias_tomados` y lo guarda en `dias_descuento_efectivo`

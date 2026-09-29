@@ -272,13 +272,15 @@ class PermisosController extends Controller
 
         // Verificar que no tenga un permiso del mismo tipo con fechas/horas que se crucen.
         // Permisos de distinto tipo_horario (ej. ENTRADA y SALIDA) pueden coexistir el mismo día.
+        // Condición de solapamiento de intervalos completa (mismo fix que Vacaciones, 2026-09-29):
+        // la versión anterior (whereBetween de fecha_desde/fecha_hasta del registro existente
+        // contra el rango nuevo) solo detectaba 2 de los 4 casos — se le escapaba el más común
+        // en la práctica: un permiso nuevo completamente CONTENIDO dentro de uno ya aprobado.
         $queryExiste = Permiso::where("id_emp", $emp->id_emp)
             ->whereNotIn("estado_permiso", ["NEGADO", "ELIMINADO", "ANULADO"])
             ->where("tipo_horario", $request->tipo_horario)
-            ->where(function($q) use ($request) {
-                $q->whereBetween("fecha_desde", [$request->fecha_desde, $request->fecha_hasta])
-                  ->orWhereBetween("fecha_hasta", [$request->fecha_desde, $request->fecha_hasta]);
-            });
+            ->where("fecha_desde", "<=", $request->fecha_hasta)
+            ->where("fecha_hasta", ">=", $request->fecha_desde);
 
         // Si el nuevo permiso NO es todo el día, solo bloquear si hay cruce de horas
         if ($request->todo_dia !== "SI") {
