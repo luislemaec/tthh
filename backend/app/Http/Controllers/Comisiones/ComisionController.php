@@ -413,14 +413,23 @@ class ComisionController extends Controller
 
         if ($docsCount < 3) abort(422, 'Debe subir los 3 documentos requeridos antes de procesar.');
 
-        $numero = $this->generarNumero($solicitud->id_depto);
+        // Si ya tenía número (reproceso tras una devolución), se mantiene — es la misma
+        // solicitud corregida, no una nueva; no debe consumir otro número de la secuencia.
+        DB::beginTransaction();
+        try {
+            $numero = $solicitud->numero_solicitud ?: $this->generarNumero($solicitud->id_depto);
 
-        DB::table('dbo.com_solicitud')->where('id', $id)->update([
-            'estado'           => 'PROCESADO',
-            'numero_solicitud' => $numero,
-            'updated_by'       => $request->user()->id_emp,
-            'updated_at'       => now(),
-        ]);
+            DB::table('dbo.com_solicitud')->where('id', $id)->update([
+                'estado'           => 'PROCESADO',
+                'numero_solicitud' => $numero,
+                'updated_by'       => $request->user()->id_emp,
+                'updated_at'       => now(),
+            ]);
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            throw $e;
+        }
 
         AuditoriaService::log('dbo.com_solicitud', $id, 'PROCESAR', ['estado' => 'BORRADOR'], ['estado' => 'PROCESADO', 'numero' => $numero], $request, 'Solicitud procesada');
 
@@ -475,14 +484,22 @@ class ComisionController extends Controller
             'created_at'     => now(),
         ]);
 
-        $numero = $this->generarNumero($solicitud->id_depto);
+        // Mismo criterio que procesar(): si ya tenía número, se conserva.
+        DB::beginTransaction();
+        try {
+            $numero = $solicitud->numero_solicitud ?: $this->generarNumero($solicitud->id_depto);
 
-        DB::table('dbo.com_solicitud')->where('id', $id)->update([
-            'estado'           => 'APROBADO',
-            'numero_solicitud' => $numero,
-            'updated_by'       => $emp->id_emp,
-            'updated_at'       => now(),
-        ]);
+            DB::table('dbo.com_solicitud')->where('id', $id)->update([
+                'estado'           => 'APROBADO',
+                'numero_solicitud' => $numero,
+                'updated_by'       => $emp->id_emp,
+                'updated_at'       => now(),
+            ]);
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            throw $e;
+        }
 
         AuditoriaService::log('dbo.com_solicitud', $id, 'APROBAR', ['estado' => 'BORRADOR'], ['estado' => 'APROBADO', 'numero' => $numero], $request, 'Solicitud aprobada con PDF firmado');
 
@@ -630,8 +647,14 @@ class ComisionController extends Controller
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
+    // Mismo patrón de pg_advisory_xact_lock() que Empleado::generarSiguienteId() /
+    // AccionPersonal::generarSiguienteNumero() / CertificadoLaboral::generarSiguienteNumero() /
+    // ValeCombustible::generarSiguienteNumero() — serializa la generación entre transacciones
+    // concurrentes. Debe llamarse dentro de una transacción activa (DB::transaction()).
     private function generarNumero(int $idDepto): string
     {
+        DB::statement('SELECT pg_advisory_xact_lock(159753486)');
+
         $centroCosto = DB::table('dbo.ad_departamento')
             ->where('id_depto', $idDepto)
             ->value('centro_de_costo') ?? $idDepto;
