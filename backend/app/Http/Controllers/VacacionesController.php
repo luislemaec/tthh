@@ -125,7 +125,7 @@ class VacacionesController extends Controller
         $esAdminOTH   = $this->esAdminOTH($emp->id_emp);
         $esSupervisor = $this->esSupervisor($emp->id_emp);
 
-        $query = Vacacion::with(["empleado.departamento", "aprobador", "informador"])
+        $query = Vacacion::with(["empleado.departamento", "aprobador", "informador", "modificadoPor"])
             ->orderBy("fecha_hora", "desc");
 
         $vista = $request->query("vista", ""); // "mia" | "equipo" | ""
@@ -364,6 +364,8 @@ class VacacionesController extends Controller
         $vacacion->update([
             "estado_permiso"       => "NEGADO",
             "observacion_negacion" => $request->observacion_negacion,
+            "updated_at"           => now(),
+            "updated_by"           => $supervisor->id_emp,
         ]);
 
         AuditoriaService::log('dbo.d2_vacacion', $vacacion->getKey(), 'NEGAR',
@@ -446,6 +448,8 @@ class VacacionesController extends Controller
         $vacacion->update([
             "estado_permiso"       => "ELIMINADO",
             "observacion_negacion" => $request->observacion_negacion,
+            "updated_at"           => now(),
+            "updated_by"           => $supervisor->id_emp,
         ]);
 
         AuditoriaService::log('dbo.d2_vacacion', $vacacion->getKey(), 'ELIMINAR',

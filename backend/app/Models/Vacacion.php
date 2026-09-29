@@ -50,4 +50,9 @@ class Vacacion extends Model
     {
         return $this->belongsTo(Empleado::class, "informe_por", "id_emp");
     }
+
+    public function modificadoPor()
+    {
+        return $this->belongsTo(Empleado::class, "updated_by", "id_emp");
+    }
 }

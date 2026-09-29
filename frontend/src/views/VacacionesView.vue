@@ -99,7 +99,7 @@
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Fecha Fin</th>
             <th class="text-center px-4 py-3 text-gray-600 font-medium">Días</th>
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Estado</th>
-            <th class="text-left px-4 py-3 text-gray-600 font-medium">Aprobado por</th>
+            <th class="text-left px-4 py-3 text-gray-600 font-medium">Aprobado/Negado por</th>
             <th class="text-left px-4 py-3 text-gray-600 font-medium">Acciones</th>
           </tr>
         </thead>
@@ -132,6 +132,9 @@
             <td class="px-4 py-3 text-sm text-gray-600">
               <template v-if="v.aprobador">
                 {{ v.aprobador.apellido_emp }}, {{ v.aprobador.nombre_emp }}
+              </template>
+              <template v-else-if="v.modificado_por">
+                {{ v.modificado_por.apellido_emp }}, {{ v.modificado_por.nombre_emp }}
               </template>
               <span v-else class="text-gray-300">—</span>
             </td>
@@ -313,9 +316,20 @@
             <dt class="text-gray-500">Observaciones</dt>
             <dd class="font-medium">{{ seleccionado?.observaciones || "—" }}</dd>
           </div>
+          <div v-if="['NEGADO', 'ELIMINADO', 'ANULADO'].includes(seleccionado?.estado_permiso)">
+            <dt class="text-gray-500">
+              {{ seleccionado?.estado_permiso === 'ELIMINADO' ? 'Eliminado por' : seleccionado?.estado_permiso === 'ANULADO' ? 'Anulado por' : 'Negado por' }}
+            </dt>
+            <dd class="font-medium">
+              <template v-if="seleccionado?.modificado_por">
+                {{ seleccionado.modificado_por.apellido_emp }}, {{ seleccionado.modificado_por.nombre_emp }}
+              </template>
+              <span v-else class="text-gray-400">—</span>
+            </dd>
+          </div>
           <div v-if="seleccionado?.observacion_negacion" class="col-span-2">
             <dt class="text-gray-500">
-              {{ seleccionado?.estado_permiso === 'ELIMINADO' ? 'Motivo de eliminación' : 'Motivo de negación' }}
+              {{ seleccionado?.estado_permiso === 'ELIMINADO' ? 'Motivo de eliminación' : seleccionado?.estado_permiso === 'ANULADO' ? 'Motivo de anulación' : 'Motivo de negación' }}
             </dt>
             <dd class="font-medium text-red-600">{{ seleccionado?.observacion_negacion }}</dd>
           </div>

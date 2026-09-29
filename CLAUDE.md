@@ -1255,8 +1255,10 @@ views/reportes/
                              #   Accesible por roles TH/ADMIN a través del menú "Reportes y Marcaciones"
                              #   Mismos datos que ve el ADMINISTRADOR en AsistenciaView; cuadre nocturnamente
 VacacionesView.vue      # Solicitudes de vacaciones del empleado y supervisor
-                        # Tabla muestra: Empleado, Fecha Inicio, Fecha Fin, Días (calculado), Estado, Aprobado por, Acciones
-                        #   Columna "Aprobado por": apellido+nombre del supervisor que aprobó (campo aprobado_por en d2_vacacion)
+                        # Tabla muestra: Empleado, Fecha Inicio, Fecha Fin, Días (calculado), Estado, Aprobado/Negado por, Acciones
+                        #   Columna "Aprobado/Negado por": apellido+nombre de quien aprobó (aprobador, campo aprobado_por)
+                        #     o, si no hay aprobador, de quien negó/eliminó/anuló (modificado_por, campo updated_by) — mismo
+                        #     campo genérico de "última modificación" que ya usaban otras pantallas del sistema
                         #   Columna "Días" = diferencia en días inclusiva (fecha_final - fecha_inicial + 1)
                         #   "Todo el día" eliminado de tabla y modal — vacaciones siempre son día completo
                         # Modal "Solicitar Vacaciones": solo fechas + observaciones (sin checkbox todo_dia ni horas)
@@ -1264,7 +1266,14 @@ VacacionesView.vue      # Solicitudes de vacaciones del empleado y supervisor
                         #   actual, muestra sus períodos planificados como referencia (GET /planificacion/mi-planificacion)
                         # "Ver detalle por período" eliminado — tabla d2_detalle_vacacion vacía (sin migración)
                         # Modelo Vacacion.php: relación aprobador() → belongsTo(Empleado, 'aprobado_por', 'id_emp')
-                        # VacacionesController::index() eager-load aprobador junto con empleado.departamento
+                        #   + modificadoPor() → belongsTo(Empleado, 'updated_by', 'id_emp') (fix 2026-09-29, ver abajo)
+                        # VacacionesController::index() eager-load aprobador + modificadoPor junto con empleado.departamento
+                        # Fix 2026-09-29 — negar()/eliminar() no dejaban registro de quién ejecutó la acción, a
+                        #   diferencia de Permisos (que sí reutiliza su columna `usuario` para aprobar/negar/anular).
+                        #   `updated_by`/`updated_at` en d2_vacacion ya existían (migración 000051) pero solo los
+                        #   escribía `anular()` — negar()/destroy() ahora también los setean con el id_emp del actor.
+                        #   Modal "Ver" agrega fila "Negado por"/"Eliminado por"/"Anulado por" junto al motivo, y la
+                        #   tabla cae a modificado_por cuando no hay aprobador. Sin migración — columnas preexistentes.
                         # Fix 2026-09-17 — botones de acciones (Ver/Informe/Aprobar/Negar/Eliminar) pasados
                         #   de texto plano subrayado a píldora con borde, mismo estilo que ya usa Permisos
                         #   (Ver=borde verde institucional, Informe=naranja, Aprobar=verde claro, Negar=rojo,
