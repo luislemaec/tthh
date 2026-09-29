@@ -671,7 +671,7 @@ class ComisionController extends Controller
 
     public function detalle(Request $request, int $id): \Illuminate\Http\JsonResponse
     {
-        $s = ComSolicitud::with(['empleado', 'servidores.empleado', 'transportes', 'informe', 'anticipo', 'fichaLiquidacion'])->findOrFail($id);
+        $s = ComSolicitud::with(['empleado', 'servidores.empleado', 'transportes', 'informe.transportes', 'anticipo', 'fichaLiquidacion'])->findOrFail($id);
         if (!$this->puedeVerSolicitud($request, $s->id_emp, $s->id_depto)) {
             abort(403, 'No autorizado.');
         }

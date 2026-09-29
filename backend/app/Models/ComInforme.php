@@ -9,7 +9,7 @@ class ComInforme extends Model
     protected $table = 'dbo.com_informe';
 
     protected $fillable = [
-        'solicitud_id', 'fecha_informe', 'actividades', 'productos',
+        'solicitud_id', 'fecha_informe', 'destino', 'actividades', 'productos',
         'fecha_salida', 'hora_salida', 'fecha_llegada', 'hora_llegada',
         'estado', 'observacion', 'created_by', 'updated_by',
     ];

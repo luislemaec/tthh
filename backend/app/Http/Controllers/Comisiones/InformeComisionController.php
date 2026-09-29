@@ -62,12 +62,14 @@ class InformeComisionController extends Controller
 
         $request->validate([
             'fecha_informe' => 'required|date',
+            'destino'       => 'nullable|string|max:200',
             'actividades'   => 'required|string',
             'productos'     => 'nullable|string',
             'fecha_salida'  => 'required|date',
             'hora_salida'   => 'required',
             'fecha_llegada' => 'required|date',
             'hora_llegada'  => 'required',
+            'observacion'   => 'nullable|string|max:500',
             'transportes'   => 'array',
         ]);
 
@@ -76,12 +78,15 @@ class InformeComisionController extends Controller
             $informe = ComInforme::create([
                 'solicitud_id'  => $solicitudId,
                 'fecha_informe' => $request->fecha_informe,
+                // Si el empleado no manda destino (form viejo sin desplegar), usa el de la solicitud.
+                'destino'       => $request->destino ?: $solicitud->destino,
                 'actividades'   => $request->actividades,
                 'productos'     => $request->productos,
                 'fecha_salida'  => $request->fecha_salida,
                 'hora_salida'   => $request->hora_salida,
                 'fecha_llegada' => $request->fecha_llegada,
                 'hora_llegada'  => $request->hora_llegada,
+                'observacion'   => $request->observacion,
                 'estado'        => 'PRESENTADO',
                 'created_by'    => $request->user()->id_emp,
                 'updated_by'    => $request->user()->id_emp,
@@ -134,7 +139,9 @@ class InformeComisionController extends Controller
 
         $request->validate([
             'fecha_informe' => 'required|date',
+            'destino'       => 'nullable|string|max:200',
             'actividades'   => 'required|string',
+            'observacion'   => 'nullable|string|max:500',
         ]);
 
         DB::beginTransaction();
@@ -143,12 +150,14 @@ class InformeComisionController extends Controller
 
             $informe->update([
                 'fecha_informe' => $request->fecha_informe,
+                'destino'       => $request->destino ?: $solicitud->destino,
                 'actividades'   => $request->actividades,
                 'productos'     => $request->productos,
                 'fecha_salida'  => $request->fecha_salida,
                 'hora_salida'   => $request->hora_salida,
                 'fecha_llegada' => $request->fecha_llegada,
                 'hora_llegada'  => $request->hora_llegada,
+                'observacion'   => $request->observacion,
                 // Si se corrige un informe ya APROBADO, vuelve a PRESENTADO: la firma vieja
                 // no debe quedar cubriendo datos ya corregidos, hay que volver a firmarlo.
                 'estado'        => $reabreInformeAprobado ? 'PRESENTADO' : $informe->estado,

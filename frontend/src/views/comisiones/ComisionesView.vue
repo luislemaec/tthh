@@ -534,7 +534,11 @@
                     <input v-model="informeForm.fecha_informe" type="date"
                       class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none"/>
                   </div>
-                  <div></div>
+                  <div>
+                    <label class="text-xs font-semibold text-gray-600 mb-1 block">Destino</label>
+                    <input v-model="informeForm.destino" type="text" placeholder="Destino de la comisión"
+                      class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none" style="text-transform:uppercase"/>
+                  </div>
                   <div>
                     <label class="text-xs font-semibold text-gray-600 mb-1 block">Fecha Real de Salida *</label>
                     <input v-model="informeForm.fecha_salida" type="date"
@@ -557,6 +561,38 @@
                   </div>
                 </div>
                 <div>
+                  <label class="text-xs font-semibold text-gray-600 mb-1 block">Itinerario de Transporte</label>
+                  <p class="text-xs text-gray-400 mb-2">Prellenado desde la solicitud — corrija si el viaje real fue distinto.</p>
+                  <div v-for="(trn, i) in informeForm.transportes" :key="i" class="border border-gray-100 rounded-lg p-3 space-y-2 mb-2">
+                    <div class="flex justify-between items-center">
+                      <span class="text-xs font-semibold text-gray-500">Tramo {{ i+1 }}</span>
+                      <button @click="informeForm.transportes.splice(i,1)" class="text-red-400 hover:text-red-600">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                      </button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                      <input v-model="trn.tipo" type="text" placeholder="Tipo (Aéreo, Terrestre...)"
+                        class="text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none" style="text-transform:uppercase"/>
+                      <input v-model="trn.nombre" type="text" placeholder="Empresa / Vuelo"
+                        class="text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none" style="text-transform:uppercase"/>
+                    </div>
+                    <input v-model="trn.ruta" type="text" placeholder="Ruta (Ej: Quito - Guayaquil)"
+                      class="w-full text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none" style="text-transform:uppercase"/>
+                    <div class="grid grid-cols-4 gap-2">
+                      <input v-model="trn.salida_fecha" type="date" class="text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none"/>
+                      <input v-model="trn.salida_hora" type="time" class="text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none"/>
+                      <input v-model="trn.llegada_fecha" type="date" class="text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none"/>
+                      <input v-model="trn.llegada_hora" type="time" class="text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none"/>
+                    </div>
+                  </div>
+                  <button @click="informeForm.transportes.push({tipo:'',nombre:'',ruta:'',salida_fecha:'',salida_hora:'',llegada_fecha:'',llegada_hora:''})"
+                    class="text-sm font-medium" style="color:#5c4a6e;">
+                    + Agregar tramo
+                  </button>
+                </div>
+                <div>
                   <label class="text-xs font-semibold text-gray-600 mb-1 block">Actividades Realizadas *</label>
                   <textarea v-model="informeForm.actividades" rows="4" placeholder="Describa las actividades realizadas..."
                     class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none resize-none" style="text-transform:uppercase"/>
@@ -564,6 +600,12 @@
                 <div>
                   <label class="text-xs font-semibold text-gray-600 mb-1 block">Productos / Resultados</label>
                   <textarea v-model="informeForm.productos" rows="2" placeholder="Resultados obtenidos..."
+                    class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none resize-none" style="text-transform:uppercase"/>
+                </div>
+                <div>
+                  <label class="text-xs font-semibold text-gray-600 mb-1 block">Observaciones</label>
+                  <p class="text-xs text-gray-400 mb-1">Si el destino, fechas u horas reales no coinciden con lo planificado en la solicitud, explique aquí el motivo (ej. atraso o cambio de vuelo).</p>
+                  <textarea v-model="informeForm.observacion" rows="2" placeholder="Explique cualquier diferencia con lo planificado..."
                     class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none resize-none" style="text-transform:uppercase"/>
                 </div>
 
@@ -767,12 +809,15 @@ const form = ref(formVacio())
 
 const informeForm = ref({
   fecha_informe: new Date().toISOString().slice(0, 10),
+  destino: '',
   actividades: '',
   productos: '',
   fecha_salida: '',
   hora_salida: '',
   fecha_llegada: '',
   hora_llegada: '',
+  observacion: '',
+  transportes: [],
 })
 
 const formTabs = ['Datos Generales', 'Servidores', 'Transporte', 'Documentos']
@@ -916,6 +961,16 @@ function miniPasoLabel(sol) {
 }
 
 // ── Helpers ──────────────────────────────────────────────────
+// Copia tramos de transporte (de la solicitud o del propio informe) al formato plano
+// que usa el editor — sin id/orden, para que quede como un array editable nuevo.
+function mapTransportesInforme(transportes) {
+  return (transportes ?? []).map(t => ({
+    tipo: t.tipo || '', nombre: t.nombre || '', ruta: t.ruta || '',
+    salida_fecha: t.salida_fecha || '', salida_hora: t.salida_hora || '',
+    llegada_fecha: t.llegada_fecha || '', llegada_hora: t.llegada_hora || '',
+  }))
+}
+
 function badgeEstado(estado) {
   const mapa = {
     BORRADOR:         { class: 'bg-gray-100 text-gray-600',        label: 'Borrador' },
@@ -1040,22 +1095,32 @@ async function abrirStepper(sol) {
     if (data.informe) {
       informeForm.value = {
         fecha_informe: data.informe.fecha_informe || new Date().toISOString().slice(0, 10),
+        destino:       data.informe.destino       || data.destino,
         actividades:   data.informe.actividades   || '',
         productos:     data.informe.productos      || '',
         fecha_salida:  data.informe.fecha_salida   || data.fecha_salida,
         hora_salida:   data.informe.hora_salida    || data.hora_salida,
         fecha_llegada: data.informe.fecha_llegada  || data.fecha_llegada,
         hora_llegada:  data.informe.hora_llegada   || data.hora_llegada,
+        observacion:   data.informe.observacion    || '',
+        // Si el informe todavía no tiene tramos propios (informes creados antes de esta
+        // función), se parte del itinerario de la solicitud como referencia editable.
+        transportes:   data.informe.transportes?.length ? mapTransportesInforme(data.informe.transportes) : mapTransportesInforme(data.transportes),
       }
     } else {
       informeForm.value = {
         fecha_informe: new Date().toISOString().slice(0, 10),
+        destino:       data.destino,
         actividades:   '',
         productos:     '',
         fecha_salida:  data.fecha_salida,
         hora_salida:   data.hora_salida,
         fecha_llegada: data.fecha_llegada,
         hora_llegada:  data.hora_llegada,
+        observacion:   '',
+        // Punto de partida: el itinerario planificado en la solicitud, editable —
+        // si el viaje real difirió (vuelo cambiado, etc.), se corrige aquí.
+        transportes:   mapTransportesInforme(data.transportes),
       }
     }
 

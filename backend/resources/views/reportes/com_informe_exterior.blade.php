@@ -61,7 +61,7 @@
 <table class="info-table" style="margin-bottom:6px;">
   <tr>
     <td class="info-label">Destino (Ciudad - País)</td>
-    <td colspan="3">{{ strtoupper($solicitud->destino) }}</td>
+    <td colspan="3">{{ strtoupper($informe->destino ?? $solicitud->destino) }}</td>
   </tr>
   <tr>
     <td class="info-label">Fecha y Hora de Salida</td>
@@ -115,6 +115,15 @@
 <table class="info-table" style="margin-bottom:6px;">
   <tr>
     <td style="white-space:pre-line;">{{ $informe->productos }}</td>
+  </tr>
+</table>
+@endif
+
+@if($informe->observacion)
+<div class="section-title">Observaciones</div>
+<table class="info-table" style="margin-bottom:6px;">
+  <tr>
+    <td style="white-space:pre-line;">{{ $informe->observacion }}</td>
   </tr>
 </table>
 @endif
