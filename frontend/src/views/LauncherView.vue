@@ -96,7 +96,7 @@
       </button>
 
       <!-- Comisiones de Servicio -->
-      <button v-if="tieneAccesoComisiones" @click="irA('/comisiones/solicitudes')" @animationend="onAnimEnd"
+      <button v-if="tieneAccesoComisiones" @click="irA(rutaComisiones)" @animationend="onAnimEnd"
         :class="cardAnimClass"
         class="bg-white rounded-xl shadow-lg p-3 w-36 flex flex-col items-center gap-3 hover:scale-105 transition-transform cursor-pointer">
         <div class="w-10 h-10 rounded-full flex items-center justify-center"
@@ -288,6 +288,17 @@ const tieneAccesoTecnologia = computed(() =>
 const rutaTransportes = computed(() => {
   if (store.tieneRol('TRANSPORTE')) return '/transporte/vehiculos'
   return '/transporte/movilizacion'
+})
+
+// Roles financieros no tienen comisiones/solicitudes en su menú — solo comisiones/liquidaciones.
+// Ver CLAUDE.md sección "Módulo Comisiones de Servicios" > "Opciones de menú".
+const rutaComisiones = computed(() => {
+  const esFinanciero = store.tieneRol('CONTABILIDAD') || store.tieneRol('PRESUPUESTO') ||
+    store.tieneRol('DIRECTOR FINANCIERO') || store.tieneRol('TESORERIA')
+  if (esFinanciero && !store.tieneRol('COMISIONES') && !store.tieneRol('ADMINISTRADOR')) {
+    return '/comisiones/liquidaciones'
+  }
+  return '/comisiones/solicitudes'
 })
 
 onMounted(async () => {
