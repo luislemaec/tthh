@@ -428,7 +428,15 @@
                     class="w-full py-2 text-sm font-semibold rounded border-2 border-[#5c4a6e] text-[#5c4a6e] hover:bg-purple-50 transition">
                     Generar PDF de Solicitud
                   </button>
-                  <div v-if="!docFirmadoSubido">
+                  <!-- Nota informativa: puede ser de un ciclo anterior (ej. una devolución) — el
+                       upload de abajo siempre está disponible para reemplazarlo si hace falta. -->
+                  <div v-if="docFirmadoSubido" class="flex items-center gap-2 text-green-700 text-sm font-medium p-3 bg-green-50 rounded-lg border border-green-200">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    Ya hay un PDF firmado subido. Si necesita reemplazarlo, suba uno nuevo abajo.
+                  </div>
+                  <div>
                     <p class="text-xs text-gray-500 mb-2">Una vez firmado, suba el PDF:</p>
                     <label class="cursor-pointer block">
                       <input type="file" accept=".pdf" class="hidden" @change="subirPdfFirmado($event)" :disabled="subiendoFirmado"/>
@@ -437,12 +445,6 @@
                         {{ subiendoFirmado ? 'Procesando...' : 'Subir PDF Firmado → APROBADO' }}
                       </span>
                     </label>
-                  </div>
-                  <div v-else class="flex items-center gap-2 text-green-700 text-sm font-medium p-3 bg-green-50 rounded-lg border border-green-200">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                    </svg>
-                    PDF Firmado subido correctamente
                   </div>
                 </div>
               </template>

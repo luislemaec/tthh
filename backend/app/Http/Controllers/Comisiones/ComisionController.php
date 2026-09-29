@@ -361,7 +361,7 @@ class ComisionController extends Controller
             ->first();
 
         if (!$solicitud) abort(403, 'No autorizado');
-        if ($solicitud->estado !== 'BORRADOR') abort(422, 'No se puede eliminar documentos fuera de BORRADOR.');
+        if (!in_array($solicitud->estado, ['BORRADOR', 'DEVUELTO'])) abort(422, 'Solo se pueden eliminar documentos en BORRADOR o DEVUELTO.');
 
         DB::table('dbo.com_solicitud_documento')
             ->where('id', $docId)
@@ -457,6 +457,14 @@ class ComisionController extends Controller
             ]);
 
         if (!$upload->successful()) abort(502, 'No se pudo subir el documento a Alfresco.');
+
+        // Un solo FIRMADO vigente por solicitud — si esta es una re-firma tras una
+        // devolución, el PDF firmado del ciclo anterior queda obsoleto (mismo criterio
+        // que uploadDocumento() ya aplica a AUTORIZACION/PASAJES/CERTIFICACION).
+        DB::table('dbo.com_solicitud_documento')
+            ->where('solicitud_id', $id)
+            ->where('tipo_doc', 'FIRMADO')
+            ->delete();
 
         DB::table('dbo.com_solicitud_documento')->insert([
             'solicitud_id'   => $id,
