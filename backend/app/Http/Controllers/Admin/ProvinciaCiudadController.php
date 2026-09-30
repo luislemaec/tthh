@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 
 class ProvinciaCiudadController extends Controller
 {
-    private const ROLES_ADMIN = ['ADMINISTRADOR'];
+    private const ROLES_ADMIN = ['ADMINISTRADOR', 'TALENTO HUMANO'];
 
     public function index(Request $request)
     {
