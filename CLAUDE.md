@@ -508,6 +508,8 @@ Calculado en `App\Services\SaldoVacacionesService` (única fuente de verdad desd
   - **Ruta nueva:** `PATCH /api/vacaciones/{id}/marcar-informe` → `VacacionesController::marcarInforme()` (solo ADMINISTRADOR / TALENTO HUMANO).
   - Todo registrado en `nom_auditoria_log`: `SOLICITUD_CON_EXCESO` al crear, `INFORME_FAVORABLE` / `INFORME_DESFAVORABLE` al marcar.
 
+**Fix 2026-10-01 — `store()` no auditaba la solicitud normal de vacaciones.** Detectado por el usuario al notar que la Auditoría de un empleado sin rol especial no mostraba nada más que LOGIN/LOGOUT. `VacacionesController::store()` solo llamaba a `AuditoriaService::log()` dentro del `if ($requiereInforme)` (caso `SOLICITUD_CON_EXCESO`, Nombramiento Definitivo) — el caso normal (solicitud sin exceder saldo, la gran mayoría) no dejaba ningún rastro, a diferencia de `PermisosController::store()`, que sí audita `SOLICITAR` desde el 2026-09-01. Agregado el mismo patrón en la rama `else`: `AuditoriaService::log(..., 'SOLICITAR', ...)` con `fecha_inicial`/`fecha_final`/`dias`. Sin cambios de schema — solo `git pull`, sin `migrate` ni `npm run build`.
+
 ### Importación Masiva de Empleados (`ImportacionController`)
 
 Rutas: `GET /api/empleados/importacion/plantilla`, `POST /api/empleados/importacion/preview`, `POST /api/empleados/importacion/importar`. Vista: `views/empleados/ImportacionView.vue`. Los 3 endpoints requieren rol `ADMINISTRADOR`/`TALENTO HUMANO` (`requireRole()` — cerrado 2026-09-01, antes sin ningún control).
@@ -1399,7 +1401,7 @@ Implementada para trazabilidad ante la Contraloría General del Estado. Todas la
 | `Comisiones/FuncionarioExternoController` | DAR_ACCESO (2026-09-25 — el controlador además no tenía ningún `requireRole`) |
 | `ImportacionController` | IMPORTACION_MASIVA (2026-09-01) |
 | `RolController` | ASIGNAR_ROL, REVOCAR_ROL |
-| `VacacionesController` | APROBAR, NEGAR, ELIMINAR, ANULAR (2026-09-01) |
+| `VacacionesController` | APROBAR, NEGAR, ELIMINAR, ANULAR (2026-09-01), SOLICITAR (2026-10-01) |
 | `PermisosController` | APROBAR, NEGAR, ELIMINAR, ANULAR, SOLICITAR (2026-09-01) |
 | `AccionPersonalController` | CREAR, PROCESAR, EDITAR_BORRADOR, CAMBIAR_ESTADO, SUBIR_FIRMADO, AUTO_CERRAR (2026-09-01 — antes sin auditoría) |
 | `PlanificacionVacController` | CREAR, APROBAR, NEGAR, ELIMINAR, REPLANIFICAR (2026-09-01 — antes sin auditoría) |

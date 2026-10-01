@@ -265,6 +265,12 @@ class VacacionesController extends Controller
                 null,
                 ['id_emp' => $emp->id_emp, 'dias_solicitados' => $diasSolicitados, 'saldo_efectivo' => $saldoEfectivo],
                 $request, "Solicitud de vacaciones con exceso de saldo (requiere informe TH): {$vacacion->nombre_emp}");
+        } else {
+            AuditoriaService::log('dbo.d2_vacacion', $vacacion->getKey(), 'SOLICITAR',
+                null,
+                ['fecha_inicial' => $vacacion->fecha_inicial, 'fecha_final' => $vacacion->fecha_final,
+                 'dias' => $diasSolicitados],
+                $request, "Solicitud de vacaciones: {$vacacion->nombre_emp}");
         }
 
         return response()->json($vacacion->load("empleado"), 201);
