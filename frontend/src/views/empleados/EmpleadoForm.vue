@@ -87,7 +87,7 @@
             </div>
             <div class="sm:col-span-2">
               <label class="label-field">Dirección</label>
-              <input v-model="form.direccion" type="text" class="input-field" />
+              <input v-model="form.direccion" type="text" maxlength="50" class="input-field" />
             </div>
             <div>
               <label class="label-field">Sexo</label>

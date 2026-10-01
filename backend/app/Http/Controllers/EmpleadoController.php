@@ -117,6 +117,9 @@ class EmpleadoController extends Controller
             "tiene_persona_sustituta"       => "nullable|boolean",
             "sustituta_fecha_caducidad"     => "nullable|date",
             "num_hijos_mayores"             => "nullable|integer|min:0",
+            "calle_y_numero"                => "nullable|string|max:50",
+            "numero_cuenta"                 => "nullable|string|max:50",
+            "tipo_cuenta"                   => "nullable|string|max:50",
         ]);
 
         $usuario = auth()->user()->id_emp ?? null;
@@ -274,6 +277,9 @@ class EmpleadoController extends Controller
             "tiene_persona_sustituta"       => "nullable|boolean",
             "sustituta_fecha_caducidad"     => "nullable|date",
             "num_hijos_mayores"             => "nullable|integer|min:0",
+            "calle_y_numero"                => "nullable|string|max:50",
+            "numero_cuenta"                 => "nullable|string|max:50",
+            "tipo_cuenta"                   => "nullable|string|max:50",
         ]);
 
         $emp->update([
