@@ -358,7 +358,9 @@ const menuGrupos = computed(() => {
   const grupos = []
   for (const [categoria, items] of Object.entries(auth.menuAgrupado)) {
     const adqItems = items
-      .filter(item => item.url.startsWith('adquisiciones/'))
+      // El Dashboard ya tiene su enlace fijo arriba; si existe como opción de menú en BD
+      // (la necesita el guard del router) no se repite dentro del grupo.
+      .filter(item => item.url.startsWith('adquisiciones/') && item.url !== 'adquisiciones/dashboard')
       .map(item => ({
         to: '/' + item.url,
         label: item.descripcion,
