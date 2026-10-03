@@ -84,7 +84,7 @@ Confirmado con `systemctl status chrony` → `disabled; preset: enabled` + `inac
 ```
 (subido de cada hora a cada 15 min el 2026-10-02 — el de cada hora, aunque ya habría sido suficiente sin la interferencia de `chrony`, se dejó así por seguridad para minimizar cualquier desfase residual).
 
-**Pendiente de confirmar:** verificar 2-3 ciclos más de `/var/log/ntpdate_check.log` (archivo de diagnóstico temporal, se borra después de confirmar) para comprobar que el offset se mantiene en milisegundos sin `chrony` interfiriendo — si se confirma, la tasa real de deriva de esta VM (sin interferencia) resulta ser mucho menor al ~2.5%/15min observado, que probablemente era solo la diferencia fija AD-vs-internet redescubierta repetidamente, no deriva real acumulándose.
+**Confirmado (2026-10-02):** con `chrony` deshabilitado la corrección funciona en producción — el reloj ya no se desvía. La tasa de ~2.5%/15min observada antes era la diferencia fija AD-vs-internet redescubierta en cada ciclo, no deriva real de la VM. (Si todavía existe `/var/log/ntpdate_check.log`, es solo diagnóstico temporal y se puede borrar.)
 
 **Qué pasa si el AD (`192.168.26.6`) se cae:** el cron de `ntpdate` falla en silencio (timeout, la salida va a `/dev/null`) y el reloj del servidor queda sin corrección hasta que el AD vuelva — no hay alerta automática de esto. En cuanto el AD se restablece, el siguiente ciclo (máx. 15 min) corrige solo, sin intervención manual. Evaluado y descartado agregar un mecanismo de alerta tipo `ULTIMO_CUADRE_PROCESADO` para esto por ahora — se prioriza confirmar primero si la VM realmente deriva poco por sí sola sin `chrony` interfiriendo.
 
