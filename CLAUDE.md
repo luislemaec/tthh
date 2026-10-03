@@ -57,8 +57,36 @@ Después de cualquier cambio: Push → Pull en servidor → `npm run build` (sol
   ```
   0 * * * * /usr/sbin/ntpdate -u 192.168.26.6 > /dev/null 2>&1
   ```
-- **Nota:** `chrony` está instalado pero no sincroniza (AD bloquea UDP 123); por eso se usa `ntpdate` vía cron
+- **Nota:** `chrony` está instalado pero no sincroniza en **pruebas** (`192.168.26.19`, AD bloquea UDP 123); por eso se usa `ntpdate` vía cron ahí. **En producción (`192.168.26.23`) esto NO aplica — ver incidente 2026-10-02 abajo, `chrony` ahí sí tenía salida a internet y había que desactivarlo a mano.**
 - **Reloj ZKTeco:** tiene su propio reloj interno — sincronizar manualmente desde el menú Red/Fecha y Hora apuntando al NTP `192.168.26.6`, o ajustar manualmente cuando se desvíe. Las marcaciones biométricas usan la hora del reloj, no la del servidor.
+
+### Incidente 2026-10-02 — reloj del servidor de producción (`192.168.26.23`) desviándose ~22.6 seg cada 15 minutos, por `chrony` sincronizando contra internet en vez del AD
+
+**Síntoma reportado:** en `AsistenciaView.vue`, el reloj en pantalla (calculado en el navegador con `new Date()`, reloj de la PC del usuario) mostraba una hora distinta a la que quedaba registrada al marcar (`AsistenciaController::marcar()`, usa `now()` del servidor) — con una diferencia de 20-30 segundos.
+
+**Diagnóstico:**
+1. Corriendo `ntpdate` manualmente se confirmó que el reloj del servidor estaba adelantado ~30 seg respecto al AD — se corrigió al toque, confirmando que el cron (entonces cada hora) sí servía pero no corregía con suficiente frecuencia.
+2. Se subió la frecuencia del cron a cada 15 minutos (`*/15 * * * *`) y se activó un log temporal (`>> /var/log/ntpdate_check.log 2>&1`, reemplazando el `/dev/null`) para monitorear. El patrón resultó **consistente y no decreciente**: `-22.641943`, `-22.650485`, `-22.694636` segundos de offset, prácticamente el mismo número cada ciclo de 15 min — una tasa de ~2.5%, demasiado alta y demasiado *constante* para ser deriva orgánica de hardware (una deriva real sería más proporcional al tiempo transcurrido, no casi idéntica ciclo tras ciclo).
+3. Se descartó la sincronización de hora de VMware por las dos vías posibles: `vmware-toolbox-cmd timesync status` → ya decía `Desactivado`, y la casilla **"Synchronize guest time with host"** en vCenter (Edit Settings → VM Options → VMware Tools) → ya estaba desmarcada. Ninguna de las dos era la causa.
+4. **Causa real encontrada:** `systemctl status chrony` mostró el servicio **activo y corriendo** (`chrony.service`, PID vivo, 2+ semanas arriba) — contradiciendo lo que este archivo documentaba para pruebas ("no sincroniza, AD bloquea UDP 123"). El log de `journalctl`/`systemctl status chrony` mostró que, en producción, `chronyd` **sí tiene salida a internet** y estaba sincronizando contra servidores públicos de Ubuntu (`4.ntp.ubuntu.com`, `1.ntp.ubuntu.com`), no contra el AD institucional. Cada vez que el cron de `ntpdate` corregía el reloj para que coincidiera con el AD, `chronyd` — comparando contra su propia fuente (internet público) — detectaba "`System clock wrong by ~22.6 seconds`" y hacía un salto hacia atrás (`Backward time jump detected!`), deshaciendo la corrección. Los dos servicios de hora se peleaban entre sí cada ~15 minutos, uno contra el AD y otro contra internet, con esas dos fuentes desfasadas ~22.6 seg entre sí.
+
+**Solución aplicada:**
+```bash
+sudo systemctl stop chrony
+sudo systemctl disable chrony
+```
+Confirmado con `systemctl status chrony` → `disabled; preset: enabled` + `inactive (dead)` — no debería volver a arrancar solo ni tras un reinicio del servidor. El cron de `ntpdate` contra el AD (ahora cada 15 min, ver línea de cron abajo) queda como única fuente de sincronización de hora en producción.
+
+**Cron final en producción (`sudo crontab -l` en `192.168.26.23`):**
+```
+*/15 * * * * /usr/sbin/ntpdate -u 192.168.26.6 > /dev/null 2>&1
+0 2 * * * /usr/local/bin/backup_rrhh.sh
+```
+(subido de cada hora a cada 15 min el 2026-10-02 — el de cada hora, aunque ya habría sido suficiente sin la interferencia de `chrony`, se dejó así por seguridad para minimizar cualquier desfase residual).
+
+**Pendiente de confirmar:** verificar 2-3 ciclos más de `/var/log/ntpdate_check.log` (archivo de diagnóstico temporal, se borra después de confirmar) para comprobar que el offset se mantiene en milisegundos sin `chrony` interfiriendo — si se confirma, la tasa real de deriva de esta VM (sin interferencia) resulta ser mucho menor al ~2.5%/15min observado, que probablemente era solo la diferencia fija AD-vs-internet redescubierta repetidamente, no deriva real acumulándose.
+
+**Qué pasa si el AD (`192.168.26.6`) se cae:** el cron de `ntpdate` falla en silencio (timeout, la salida va a `/dev/null`) y el reloj del servidor queda sin corrección hasta que el AD vuelva — no hay alerta automática de esto. En cuanto el AD se restablece, el siguiente ciclo (máx. 15 min) corrige solo, sin intervención manual. Evaluado y descartado agregar un mecanismo de alerta tipo `ULTIMO_CUADRE_PROCESADO` para esto por ahora — se prioriza confirmar primero si la VM realmente deriva poco por sí sola sin `chrony` interfiriendo.
 
 ### Incidente 2026-06-24 — pérdida de datos adq
 
@@ -1401,6 +1429,7 @@ Implementada para trazabilidad ante la Contraloría General del Estado. Todas la
 | `Comisiones/FuncionarioExternoController` | DAR_ACCESO (2026-09-25 — el controlador además no tenía ningún `requireRole`) |
 | `ImportacionController` | IMPORTACION_MASIVA (2026-09-01) |
 | `RolController` | ASIGNAR_ROL, REVOCAR_ROL |
+| `SupervisorController` | CREAR, ACTUALIZAR (cambio de supervisor del área), ELIMINAR (2026-10-02 — tabla `dbo.supervisor_area`; antes sin ninguna auditoría) |
 | `VacacionesController` | APROBAR, NEGAR, ELIMINAR, ANULAR (2026-09-01), SOLICITAR (2026-10-01) |
 | `PermisosController` | APROBAR, NEGAR, ELIMINAR, ANULAR, SOLICITAR (2026-09-01) |
 | `AccionPersonalController` | CREAR, PROCESAR, EDITAR_BORRADOR, CAMBIAR_ESTADO, SUBIR_FIRMADO, AUTO_CERRAR (2026-09-01 — antes sin auditoría) |
@@ -1449,7 +1478,11 @@ El filtro de módulo "Talento" en `AuditoriaController` incluye `tabla = 'auth'`
 
 ### Auditoría de ACTUALIZAR empleado
 
-`EmpleadoController::update()` captura en `$anterior` y `datos_nuevos`: `sueldo`, `estado`, `id_depto`, `cargo_empleado`, `tipo_contrato`, `modalidad_laboral`, `partida_individual`, `programa`, `actividad`, `modalidad_marcacion`.
+`EmpleadoController::update()` captura en `$anterior` y `datos_nuevos`: `sueldo`, `estado`, `id_depto`, `cargo_empleado`, `tipo_contrato`, `modalidad_laboral`, `partida_individual`, `programa`, `actividad`, `modalidad_marcacion`, `motivo_salida`, `motivo_reactivacion`, `institucion_comision`, `es_comisionado_entrante`.
+
+**Fix 2026-10-02 — `CREAR` empleado auditaba muy poco, y `SupervisorController` no auditaba nada.**
+- `EmpleadoController::store()` solo guardaba `identificacion`, nombre, `id_depto` y `sueldo` en `datos_nuevos`. Ahora guarda el mismo conjunto de campos que `update()` (más `identificacion` y `nombre`), y la descripción incluye el nombre del empleado. Si se agrega un campo auditable a `update()`, agregarlo también a `store()`.
+- `SupervisorController` (`store`/`destroy`, asignación de jefe de área/supervisor en `dbo.supervisor_area`) no llamaba a `AuditoriaService` — los cambios de supervisor no dejaban rastro, pese a que determinan quién aprueba permisos/vacaciones/HE de todo un departamento. Ahora `store()` audita `CREAR` (área sin supervisor) o `ACTUALIZAR` (cambio, con el supervisor anterior en `datos_anteriores`) y `destroy()` audita `ELIMINAR`. Sin cambios de schema — solo `git pull`.
 
 ### Si se agrega un nuevo módulo
 
