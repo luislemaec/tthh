@@ -1364,6 +1364,12 @@ layouts/MainLayout.vue  # Layout del módulo RRHH (menú colapsado, se abre el g
                         #   no solo a los casos puntuales detectados.
 ```
 
+### Pie del menú lateral y "Cerrar sesión" (2026-10-02)
+
+- **`LauncherView.vue`**: "Cerrar sesión" es un botón estilo **píldora** (`rounded-full`, borde y fondo `white/10`, ícono de salida; hover relleno blanco con texto `#0b5447`). Es el único botón de este estilo — decisión del usuario.
+- **Menú lateral de los 5 layouts** (`MainLayout`, `AdqLayout`, `TransporteLayout`, `ComisionesLayout`, `TecnologiaLayout`): "Inicio", "Mi Perfil" (solo TH) y "Cerrar sesión" se quedan como **texto con ícono**, sin forma de botón, los tres iguales. Solo llevan la animación `transition-all duration-150 origin-left active:scale-110` (crecen al presionar). Se probó la píldora aquí y se descartó: pesaba más que las opciones del menú de arriba. No volver a convertirlos en botones.
+- **`AdqLayout.vue`**: `menuGrupos` excluye `adquisiciones/dashboard` — ya existe el enlace fijo "Dashboard" arriba; la opción de menú en BD debe seguir existiendo (la necesita el guard del router vía `auth.menu`), solo no se repite dentro del grupo.
+
 ### Estándar de modales (OBLIGATORIO en todos los modales nuevos)
 
 ```html
