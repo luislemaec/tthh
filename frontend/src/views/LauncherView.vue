@@ -149,13 +149,8 @@
         </div>
 
         <!-- Boton Cerrar sesión -->
-        <div class="mt-10 flex justify-center">
-          <button @click="logout"
-            class="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-white/40 bg-white/10 text-white text-sm font-medium transition hover:bg-white hover:text-[#0b5447] hover:border-white focus:outline-none focus:ring-2 focus:ring-white/60">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-            </svg>
+        <div class="mt-10 text-center text-green-200 text-sm">
+          <button @click="logout" class="mt-2 text-green-300 hover:text-white underline text-xs">
             Cerrar sesión
           </button>
         </div>
