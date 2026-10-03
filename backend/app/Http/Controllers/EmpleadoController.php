@@ -212,8 +212,25 @@ class EmpleadoController extends Controller
 
         AuditoriaService::log('dbo.ad_empleado', $emp->id_emp, 'CREAR',
             null,
-            ['identificacion' => $emp->identificacion, 'nombre' => $emp->apellido_emp . ' ' . $emp->nombre_emp, 'id_depto' => $emp->id_depto, 'sueldo' => $emp->sueldo],
-            $request, 'Creación de empleado');
+            [
+                'identificacion'          => $emp->identificacion,
+                'nombre'                  => $emp->apellido_emp . ' ' . $emp->nombre_emp,
+                'sueldo'                  => $emp->sueldo,
+                'estado'                  => $emp->estado,
+                'id_depto'                => $emp->id_depto,
+                'cargo_empleado'          => $emp->cargo_empleado,
+                'tipo_contrato'           => $emp->tipo_contrato,
+                'modalidad_laboral'       => $emp->modalidad_laboral,
+                'partida_individual'      => $emp->partida_individual,
+                'programa'                => $emp->programa,
+                'actividad'               => $emp->actividad,
+                'modalidad_marcacion'     => $emp->modalidad_marcacion,
+                'motivo_salida'           => $emp->motivo_salida,
+                'motivo_reactivacion'     => $emp->motivo_reactivacion,
+                'institucion_comision'    => $emp->institucion_comision,
+                'es_comisionado_entrante' => $emp->es_comisionado_entrante,
+            ],
+            $request, 'Creación de empleado: ' . trim($emp->apellido_emp . ' ' . $emp->nombre_emp));
 
         return response()->json($emp->load(["departamento", "emails"]), 201);
     }

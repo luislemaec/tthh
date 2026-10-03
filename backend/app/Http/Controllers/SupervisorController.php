@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use App\Models\Supervisor;
 use App\Models\Empleado;
 use App\Models\Departamento;
+use App\Services\AuditoriaService;
 use Illuminate\Http\Request;
 
 class SupervisorController extends Controller
@@ -31,6 +32,9 @@ class SupervisorController extends Controller
         ]);
 
 
+        $previo   = Supervisor::where("id_depto", $request->id_depto)->first();
+        $anterior = $previo ? ["id_depto" => $previo->id_depto, "id_supervisor" => $previo->id_supervisor] : null;
+
         // Si ya existe actualiza, si no crea
         $supArea = Supervisor::updateOrCreate(
             ["id_depto" => $request->id_depto],
@@ -41,6 +45,15 @@ class SupervisorController extends Controller
             ]
         );
 
+        $depto = Departamento::find($request->id_depto);
+        $sup   = Empleado::find($request->id_supervisor);
+        AuditoriaService::log('dbo.supervisor_area', $supArea->getKey(), $previo ? 'ACTUALIZAR' : 'CREAR',
+            $anterior,
+            ["id_depto" => (int) $request->id_depto, "id_supervisor" => $request->id_supervisor],
+            $request,
+            ($previo ? 'Cambio' : 'Asignación') . ' de supervisor en ' . ($depto->nombre_depto ?? $request->id_depto)
+                . ': ' . trim(($sup->apellido_emp ?? '') . ' ' . ($sup->nombre_emp ?? '')));
+
         return response()->json(
             $supArea->load(["departamento", "supervisor.departamento"]), 201
         );
@@ -50,7 +63,14 @@ class SupervisorController extends Controller
     public function destroy(Request $request, $id)
     {
         $this->requireRole($request, self::ROLES_ADMIN);
-        Supervisor::findOrFail($id)->delete();
+        $supArea = Supervisor::with("departamento")->findOrFail($id);
+        $datos   = ["id_depto" => $supArea->id_depto, "id_supervisor" => $supArea->id_supervisor];
+        $nombre  = $supArea->departamento->nombre_depto ?? $supArea->id_depto;
+        $supArea->delete();
+
+        AuditoriaService::log('dbo.supervisor_area', $id, 'ELIMINAR', $datos, null, $request,
+            'Eliminación de supervisor del área ' . $nombre);
+
         return response()->json(["message" => "Supervisor eliminado del area correctamente"]);
     }
 
