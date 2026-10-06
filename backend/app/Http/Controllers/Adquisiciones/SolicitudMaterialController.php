@@ -38,6 +38,20 @@ class SolicitudMaterialController extends Controller
             ->pluck('id_emp');
     }
 
+    // El supervisor solo puede aprobar/negar solicitudes de empleados de SUS áreas (mismo alcance que
+    // ve en index()), no las de cualquier área; y nunca la propia. Antes bastaba con ser supervisor de
+    // alguna área. Retorna la respuesta de error, o null si puede decidir.
+    private function denegarSiNoEsDeSuEquipo($emp, SolicitudMaterial $solicitud)
+    {
+        if ($solicitud->id_emp === $emp->id_emp) {
+            return response()->json(['message' => 'No puedes aprobar o negar tu propia solicitud.'], 403);
+        }
+        if (!$this->empleadosDeSupervidor($emp->id_emp)->contains($solicitud->id_emp)) {
+            return response()->json(['message' => 'Esta solicitud no pertenece a tu equipo.'], 403);
+        }
+        return null;
+    }
+
     // GET /api/adquisiciones/solicitudes
     public function index(Request $request)
     {
@@ -123,6 +137,7 @@ class SolicitudMaterialController extends Controller
         }
 
         $solicitud = SolicitudMaterial::with('detalles')->findOrFail($id);
+        if ($resp = $this->denegarSiNoEsDeSuEquipo($emp, $solicitud)) return $resp;
         if ($solicitud->estado !== 'PENDIENTE') {
             return response()->json(['message' => 'Solo se pueden aprobar solicitudes PENDIENTES.'], 422);
         }
@@ -163,6 +178,7 @@ class SolicitudMaterialController extends Controller
         }
 
         $solicitud = SolicitudMaterial::findOrFail($id);
+        if ($resp = $this->denegarSiNoEsDeSuEquipo($emp, $solicitud)) return $resp;
         if ($solicitud->estado !== 'PENDIENTE') {
             return response()->json(['message' => 'Solo se pueden negar solicitudes PENDIENTES.'], 422);
         }
