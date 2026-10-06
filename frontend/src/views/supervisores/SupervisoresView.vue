@@ -45,7 +45,16 @@
             :class="s.supervisor?.estado === 'INACTIVO'
               ? 'bg-red-50 hover:bg-red-100'
               : 'hover:bg-gray-50'">
-            <td class="px-4 py-3 font-medium">{{ s.departamento?.nombre_depto }}</td>
+            <td class="px-4 py-3 font-medium">
+              {{ s.departamento?.nombre_depto }}
+              <span v-if="posicion(s)"
+                class="ml-2 text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">
+                {{ posicion(s) }}
+              </span>
+              <p v-if="dobleConPadre(s)" class="text-xs font-normal text-amber-600 mt-0.5">
+                ⚠ Esta área ya no es raíz y tiene 2 supervisores. Se recomienda dejar uno.
+              </p>
+            </td>
             <td class="px-4 py-3">
               <div class="flex items-center gap-2">
                 <span :class="s.supervisor?.estado === 'INACTIVO' ? 'font-medium text-red-700' : 'font-medium text-[#0b5447]'">
@@ -142,6 +151,15 @@
           </p>
         </div>
 
+        <div v-if="avisoAsignacion" class="text-sm rounded p-2 border"
+          :class="{
+            'bg-blue-50 border-blue-200 text-blue-700': avisoAsignacion.tipo === 'info',
+            'bg-amber-50 border-amber-200 text-amber-700': avisoAsignacion.tipo === 'warn',
+            'bg-red-50 border-red-200 text-red-700': avisoAsignacion.tipo === 'error',
+          }">
+          {{ avisoAsignacion.texto }}
+        </div>
+
         <div v-if="error" class="text-red-600 text-sm bg-red-50 rounded p-2">{{ error }}</div>
 
         <div class="flex justify-end gap-3 pt-2">
@@ -183,6 +201,33 @@ const form = ref({
 const tieneInactivos = computed(() =>
   supervisores.value.some(s => s.supervisor?.estado === 'INACTIVO')
 )
+
+// Áreas sin padre (ej. PRESIDENCIA) pueden tener 2 supervisores: "Principal" = el primero registrado (menor id)
+const filasDeArea = (idDepto) =>
+  supervisores.value.filter(x => Number(x.id_depto) === Number(idDepto)).sort((a, b) => a.id - b.id)
+
+const posicion = (s) => {
+  const filas = filasDeArea(s.id_depto)
+  if (filas.length < 2) return null
+  return filas[0].id === s.id ? 'Principal' : 'Segundo'
+}
+
+const dobleConPadre = (s) => filasDeArea(s.id_depto).length > 1 && !!s.departamento?.padre_id
+
+const avisoAsignacion = computed(() => {
+  if (form.value.editando || !form.value.id_depto) return null
+  const filas = filasDeArea(form.value.id_depto)
+  if (filas.length === 0) return null
+  const raiz = !filas[0].departamento?.padre_id
+  if (filas.length === 1) {
+    return raiz
+      ? { tipo: 'info', texto: 'Esta área ya tiene un supervisor. El nuevo se agregará como segundo supervisor (máximo 2): cualquiera de los dos podrá aprobar. Debe pertenecer a esta área.' }
+      : { tipo: 'warn', texto: 'Esta área ya tiene un supervisor. Al guardar se reemplazará por el nuevo.' }
+  }
+  return raiz
+    ? { tipo: 'error', texto: 'Esta área ya tiene 2 supervisores (máximo). Edita o elimina uno.' }
+    : { tipo: 'error', texto: 'Esta área tiene 2 supervisores y ya no es un área sin padre. Elimina uno antes de asignar otro.' }
+})
 
 const supervisoresFiltrados = computed(() => {
   const b = filtroBuscar.value.toLowerCase().trim()
@@ -272,6 +317,7 @@ const guardar = async () => {
     await api.post("/supervisores", {
       id_depto:      form.value.id_depto,
       id_supervisor: form.value.id_supervisor,
+      id:            form.value.editando ? form.value.id : undefined,   // editar solo esa fila
     })
     modal.value = false
     cargar()

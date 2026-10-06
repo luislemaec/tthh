@@ -135,6 +135,20 @@ class HorasExtrasController extends Controller
         return Supervisor::where('id_supervisor', $id_emp)->exists();
     }
 
+    // Supervisor que firma los PDF de HE (2026-10-06). Un área sin padre puede tener 2 supervisores:
+    // firma el que aprobó (si es supervisor de esa área); si no se sabe quién aprobó, o aprobó
+    // Talento Humano/Administrador, firma el principal = el primero registrado (menor id).
+    private function firmanteSupervisor($idDepto, ?string $idAprobador): ?Empleado
+    {
+        $filas = Supervisor::where('id_depto', $idDepto)->orderBy('id')->get();
+        if ($filas->isEmpty()) return null;
+
+        $elegida = $idAprobador ? $filas->firstWhere('id_supervisor', $idAprobador) : null;
+        $elegida = $elegida ?? $filas->first();
+
+        return Empleado::find($elegida->id_supervisor);
+    }
+
     // Igual patrón que DashboardController/PermisosController/VacacionesController — un
     // supervisor de nivel superior también ve a los empleados (y supervisores) de los
     // departamentos HIJOS de los suyos, no solo el directo. Antes esta copia local se quedaba
@@ -581,9 +595,8 @@ class HorasExtrasController extends Controller
             'DIRECTOR_TALENTO_HUMANO',
         ])->pluck('valor', 'concepto');
 
-        // Buscar supervisor del departamento del empleado
-        $supervisorEmp = Supervisor::where('id_depto', $emp->id_depto)->first();
-        $supervisorObj = $supervisorEmp ? Empleado::find($supervisorEmp->id_supervisor) : null;
+        // Supervisor del departamento del empleado: el que aprobó la planificación, o el principal
+        $supervisorObj = $this->firmanteSupervisor($emp->id_depto, $cab->usuario_decision);
         $nombreSupervisor = $supervisorObj
             ? strtoupper(($supervisorObj->apellido_emp ?? '') . ' ' . ($supervisorObj->nombre_emp ?? ''))
             : ($config['DIRECTOR_TALENTO_HUMANO'] ?? '');
@@ -642,8 +655,10 @@ class HorasExtrasController extends Controller
             9 => 'SEPTIEMBRE', 10 => 'OCTUBRE', 11 => 'NOVIEMBRE', 12 => 'DICIEMBRE',
         ];
 
-        $supervisorEmp = Supervisor::where('id_depto', $emp->id_depto)->first();
-        $supervisorObj = $supervisorEmp ? Empleado::find($supervisorEmp->id_supervisor) : null;
+        // Firma el último supervisor del área que confirmó registros; si no hay, el principal
+        $ultimoConfirmo = $registros->where('estado', 'APROBADO')
+            ->sortByDesc('fecha_decision')->first()?->usuario_decision;
+        $supervisorObj = $this->firmanteSupervisor($emp->id_depto, $ultimoConfirmo);
         $nombreSupervisor = $supervisorObj
             ? strtoupper(($supervisorObj->apellido_emp ?? '') . ' ' . ($supervisorObj->nombre_emp ?? ''))
             : ($config['DIRECTOR_TALENTO_HUMANO'] ?? '');
