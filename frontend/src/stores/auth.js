@@ -10,6 +10,20 @@ export const useAuthStore = defineStore('auth', () => {
   const empleado = ref(JSON.parse(sessionStorage.getItem('empleado') || 'null'))
   const roles    = ref(JSON.parse(sessionStorage.getItem('roles')    || '[]'))
   const menu     = ref(JSON.parse(sessionStorage.getItem('menu')     || '[]'))
+  let expiryTimer
+
+  function programarExpiracion(fecha) {
+    clearTimeout(expiryTimer)
+    const restante = Date.parse(fecha) - Date.now()
+    if (!Number.isFinite(restante)) return
+    expiryTimer = setTimeout(() => {
+      token.value = null; empleado.value = null; roles.value = []; menu.value = []
+      sessionStorage.clear()
+      window.location.assign('/login')
+    }, Math.max(0, restante))
+  }
+  const expiraGuardado = sessionStorage.getItem('expires_at')
+  if (token.value && expiraGuardado) programarExpiracion(expiraGuardado)
 
   const isAuthenticated = computed(() => !!token.value)
   const isAdmin = computed(() => roles.value.includes('ADMINISTRADOR'))
@@ -42,11 +56,14 @@ export const useAuthStore = defineStore('auth', () => {
     sessionStorage.setItem('empleado', JSON.stringify(data.empleado))
     sessionStorage.setItem('roles',    JSON.stringify(data.roles))
     sessionStorage.setItem('menu',     JSON.stringify(data.menu))
+    sessionStorage.setItem('expires_at', data.expires_at)
+    programarExpiracion(data.expires_at)
 
     return data
   }
 
   async function logout() {
+    clearTimeout(expiryTimer)
     try { await api.post('/logout') } catch {}
     token.value = null; empleado.value = null
     roles.value = [];   menu.value = []

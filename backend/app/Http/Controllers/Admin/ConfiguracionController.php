@@ -28,6 +28,7 @@ class ConfiguracionController extends Controller
             "valor"       => "required|string|max:150",
             "descripcion" => "nullable|string|max:300",
         ]);
+        $this->validarUbicacion($request, $concepto);
 
         $config = Configuracion::findOrFail($concepto);
         $valorAnterior = $config->valor;
@@ -55,6 +56,7 @@ class ConfiguracionController extends Controller
             "valor"       => "required|string|max:150",
             "descripcion" => "nullable|string|max:300",
         ]);
+        $this->validarUbicacion($request, $request->concepto);
 
         $existe = Configuracion::where("concepto", $request->concepto)->exists();
         if ($existe) {
@@ -74,6 +76,20 @@ class ConfiguracionController extends Controller
         ]);
 
         return response()->json($config, 201);
+    }
+
+    private function validarUbicacion(Request $request, string $concepto): void
+    {
+        $reglas = [
+            'app_latitud' => 'numeric|between:-90,90',
+            'app_longitud' => 'numeric|between:-180,180',
+            'app_radio_m' => 'numeric|gt:0',
+            'app_precision_m' => 'numeric|gt:0',
+            'app_antiguedad_s' => 'integer|gt:0',
+        ];
+        if (isset($reglas[$concepto])) {
+            $request->validate(['valor' => $reglas[$concepto]]);
+        }
     }
 
     // Eliminar parámetro
@@ -106,6 +122,11 @@ class ConfiguracionController extends Controller
     {
         $this->requireRole($request, self::ROLES_ADMIN);
         $parametros = [
+            ['concepto' => 'app_latitud', 'valor' => '-0.1805373', 'descripcion' => 'Latitud de la sede para marcación móvil'],
+            ['concepto' => 'app_longitud', 'valor' => '-78.4892070', 'descripcion' => 'Longitud de la sede para marcación móvil'],
+            ['concepto' => 'app_radio_m', 'valor' => '50', 'descripcion' => 'Radio autorizado de marcación móvil, metros'],
+            ['concepto' => 'app_precision_m', 'valor' => '25', 'descripcion' => 'Precisión máxima del GPS, metros'],
+            ['concepto' => 'app_antiguedad_s', 'valor' => '30', 'descripcion' => 'Antigüedad máxima de la ubicación, segundos'],
             ["concepto" => "Tiempo castigo lunch",   "valor" => "30"],
             ["concepto" => "FLOREQUISA CONSUMO",      "valor" => "NO"],
             ["concepto" => "HCC CONSUMO",             "valor" => "NO"],

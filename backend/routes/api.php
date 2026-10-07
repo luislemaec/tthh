@@ -39,7 +39,8 @@ use App\Http\Controllers\Comisiones\CoeficientePaisController;
 use Illuminate\Support\Facades\Route;
 
 // Rutas PÚBLICAS
-Route::post("/login", [AuthController::class, "login"])->name("login");
+Route::post("/login", [AuthController::class, "login"])->middleware('throttle:sit-login')->name("login");
+Route::post('/mobile/login', [AuthController::class, 'login'])->middleware('throttle:sit-login')->name('mobile.login');
 
 Route::get("/modo-mantenimiento", function (\Illuminate\Http\Request $request) {
     $modulo   = strtolower($request->get('modulo', 'th'));
@@ -69,7 +70,8 @@ Route::get("/storage-file/{path}", function (string $path) {
 })->where('path', '.*');
 
 // Rutas PROTEGIDAS
-Route::middleware("auth:sanctum")->group(function () {
+Route::middleware(['auth:sanctum', 'sesion.sit'])->group(function () {
+    Route::get('/mobile/session', [AuthController::class, 'mobileSession']);
 
     // Sesión
     Route::post("/logout", [AuthController::class, "logout"]);

@@ -2,16 +2,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\Empleado;
-use App\Services\ActiveDirectoryService;
 use App\Services\AuditoriaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
     public function login(Request $request)
     {
+        if ($request->routeIs('mobile.login') && app()->environment('production') && ! $request->isSecure()) {
+            return response()->json(['message' => 'La autenticación móvil requiere HTTPS.'], 403);
+        }
         $request->validate([
             'identificacion' => 'required|string',
             'password'       => 'required|string',
@@ -21,13 +22,7 @@ class AuthController extends Controller
             ->where('estado', 'ACTIVO')
             ->first();
 
-        // Híbrido: intenta AD primero (cédula = employeeID); si no aplica o falla,
-        // cae a la clave local — así los externos sin cuenta AD (es_externo=true)
-        // y cualquier ambiente sin AD configurado (ej. pruebas) siguen funcionando igual.
-        $autenticado = $empleado && (
-            ActiveDirectoryService::autenticar($request->identificacion, $request->password)
-            || Hash::check($request->password, $empleado->password)
-        );
+        $autenticado = app(\App\Services\AutenticacionService::class)->autenticar($request->identificacion, $request->password);
 
         if (!$autenticado) {
             // Registrar intento fallido si el empleado existe
@@ -48,6 +43,7 @@ class AuthController extends Controller
             }
             return response()->json(['message' => 'Credenciales incorrectas'], 401);
         }
+        $empleado = $autenticado;
 
         $roles = DB::table('dbo.admin_usuario_rol as ur')
             ->join('dbo.admin_rol as r', 'ur.id_rol', '=', 'r.id')
@@ -67,7 +63,9 @@ class AuthController extends Controller
             ->orderBy('o.secuencia')
             ->get();
 
-        $token = $empleado->createToken('auth_token')->plainTextToken;
+        $movil = $request->routeIs('mobile.login');
+        $sesion = app(\App\Services\SesionSitService::class)->emitir($empleado, $movil);
+        $token = $sesion['token'];
 
         DB::table('dbo.d2_auditoria')->insert([
             'fecha_hora' => now(),
@@ -91,7 +89,11 @@ class AuthController extends Controller
             ]);
         } catch (\Exception) {}
 
+        if ($movil) {
+            return response()->json(array_merge($sesion, $this->mobilePayload($empleado)));
+        }
         return response()->json([
+            'expires_at' => $sesion['expires_at'],
             'token'    => $token,
             'empleado' => [
                 'id_emp'         => $empleado->id_emp,
@@ -143,5 +145,27 @@ class AuthController extends Controller
             ->get();
 
         return response()->json(['empleado' => $emp, 'menu' => $menu]);
+    }
+
+    public function mobileSession(Request $request)
+    {
+        return response()->json(array_merge($this->mobilePayload($request->user()), [
+            'expires_at' => $request->user()->currentAccessToken()->created_at->copy()->addMinutes(15)->toIso8601String(),
+        ]));
+    }
+
+    private function mobilePayload(Empleado $emp): array
+    {
+        $bloqueo = app(\App\Services\AutorizacionMarcacionService::class)->bloqueo($emp);
+        return [
+            'empleado' => [
+                'id_emp' => $emp->id_emp,
+                'nombre' => trim($emp->nombre_emp),
+                'apellido' => trim($emp->apellido_emp),
+                'modalidad_marcacion' => $emp->modalidad_marcacion ?? 'PRESENCIAL',
+            ],
+            'capacidades' => ['marcacion' => $bloqueo === null],
+            'mensaje_bloqueo' => $bloqueo,
+        ];
     }
 }

@@ -49,26 +49,10 @@ class AsistenciaController extends Controller
 
         $modalidad = $emp->modalidad_marcacion ?? 'PRESENCIAL';
 
-        // Determinar si puede marcar desde el web
-        $puedeMarcar = true;
-        $mensajeBloqueo = null;
-
-        if ($modalidad === 'BIOMETRICO') {
-            $puedeMarcar = false;
-            $mensajeBloqueo = 'Tu marcación es exclusivamente por reloj biométrico.';
-        } elseif ($modalidad === 'TELETRABAJO') {
-            $periodoActivo = DB::table('dbo.ad_empleado_teletrabajo')
-                ->where('id_emp', $emp->id_emp)
-                ->where('fecha_desde', '<=', now()->toDateString())
-                ->where('fecha_hasta', '>=', now()->toDateString())
-                ->first();
-
-            if (!$periodoActivo) {
-                $puedeMarcar = false;
-                $mensajeBloqueo = 'Tu período de teletrabajo ha vencido o no está habilitado. Contacta a Talento Humano.';
-            }
-        }
-
+        $autorizacion = app(\App\Services\AutorizacionMarcacionService::class);
+        $mensajeBloqueo = $autorizacion->bloqueo($emp);
+        $puedeMarcar = $mensajeBloqueo === null;
+        $movil = $emp->currentAccessToken()->name === \App\Services\SesionSitService::APP;
         return response()->json([
             "empleado"    => [
                 "id_emp"     => $emp->id_emp,
@@ -85,143 +69,24 @@ class AsistenciaController extends Controller
             "modalidad"        => $modalidad,
             "puede_marcar"     => $puedeMarcar,
             "mensaje_bloqueo"  => $mensajeBloqueo,
+            'fecha_hora_servidor' => now()->toIso8601String(),
+            'requiere_ubicacion' => $movil && $modalidad === 'PRESENCIAL',
+            'desafio' => $movil && $puedeMarcar && $modalidad === 'PRESENCIAL'
+                ? app(\App\Services\UbicacionMarcacionService::class)->desafio($request) : null,
         ]);
     }
 
-    // Registrar marcación
-    public function marcar(Request $request)
+    // Web y App utilizan la misma lógica central.
+    public function marcar(Request $request, \App\Services\MarcacionService $service)
     {
-        $request->validate([
-            "concepto" => "required|in:ENTRADA,SALIDA AL LUNCH,ENTRADA DEL LUNCH,SALIDA",
-            "motivo"   => "nullable|string|max:120",
-        ]);
-
-        $emp  = $request->user();
-        $hoy  = now()->toDateString();
-        $concepto = $request->concepto;
-
-        // Validar modalidad de marcación
-        $modalidad = $emp->modalidad_marcacion ?? 'PRESENCIAL';
-
-        // Falla cerrado ante un valor no reconocido — antes, cualquier valor que no
-        // fuera exactamente BIOMETRICO/TELETRABAJO/PRESENCIAL no entraba en ningún if
-        // y la marcación pasaba sin restricción (mismo efecto que TEMPORAL, pero
-        // llegado por accidente en vez de a propósito).
-        if (!in_array($modalidad, ['PRESENCIAL', 'TEMPORAL', 'TELETRABAJO', 'BIOMETRICO'], true)) {
-            return response()->json([
-                'message' => 'Tu modalidad de marcación no está configurada correctamente. Contacta a Talento Humano.',
-            ], 422);
-        }
-
-        if ($modalidad === 'BIOMETRICO') {
-            return response()->json([
-                'message' => 'Tu marcación es exclusivamente por reloj biométrico. Contacta a Talento Humano si necesitas cambiar tu modalidad.',
-            ], 403);
-        }
-
-        if ($modalidad === 'TELETRABAJO') {
-            $periodoActivo = DB::table('dbo.ad_empleado_teletrabajo')
-                ->where('id_emp', $emp->id_emp)
-                ->where('fecha_desde', '<=', $hoy)
-                ->where('fecha_hasta', '>=', $hoy)
-                ->exists();
-
-            if (!$periodoActivo) {
-                return response()->json([
-                    'message' => 'Tu período de teletrabajo ha vencido o no está habilitado. Contacta a Talento Humano.',
-                ], 403);
-            }
-        }
-
-        if ($modalidad === 'PRESENCIAL') {
-            $vlansConf = DB::table('dbo.d2_configuracion')
-                ->whereRaw("LOWER(concepto) = 'vlans_permitidas'")
-                ->value('valor');
-
-            $vlans    = array_filter(array_map('trim', explode(',', $vlansConf ?? '')));
-            $ip       = $request->ip();
-            $permitida = empty($vlans) || collect($vlans)->contains(fn($v) => str_starts_with($ip, $v));
-
-            if (!$permitida) {
-                return response()->json([
-                    'message' => 'Solo puede registrar asistencia desde las instalaciones de la institución.',
-                ], 403);
-            }
-        }
-
-        // Validar que la IP no haya sido usada por otro empleado hoy (si está habilitado)
-        $controlIp = DB::table('dbo.d2_configuracion')
-            ->whereRaw("LOWER(concepto) = 'control_ip_marcacion'")
-            ->value('valor');
-
-        if (trim($controlIp ?? '0') === '1') {
-            $ip = $request->ip();
-            $ipUsada = SgControlPersona::whereDate('fecha_hora', $hoy)
-                ->where('ip', $ip)
-                ->where('nro_documento', '!=', $emp->id_emp)
-                ->exists();
-
-            if ($ipUsada) {
-                return response()->json([
-                    'message' => 'Esta computadora ya fue utilizada por otro empleado hoy.',
-                ], 403);
-            }
-        }
-
-        // Validar que no haya marcado el mismo concepto hoy
-        $yaMarcado = SgControlPersona::where("nro_documento", $emp->id_emp)
-            ->whereDate("fecha_hora", $hoy)
-            ->where("concepto", $concepto)
-            ->exists();
-
-        if ($yaMarcado) {
-            return response()->json([
-                "message" => "Ya registraste $concepto hoy"
-            ], 422);
-        }
-
-        // Validar orden correcto de marcaciones
-        $marcaciones = SgControlPersona::where("nro_documento", $emp->id_emp)
-            ->whereDate("fecha_hora", $hoy)
-            ->pluck("concepto")
-            ->toArray();
-
-        $orden = ["ENTRADA", "SALIDA AL LUNCH", "ENTRADA DEL LUNCH", "SALIDA"];
-        $idxActual = array_search($concepto, $orden);
-
-        if ($idxActual > 0) {
-            $conceptoAnterior = $orden[$idxActual - 1];
-            if (!in_array($conceptoAnterior, $marcaciones)) {
-                return response()->json([
-                    "message" => "Debes registrar $conceptoAnterior primero"
-                ], 422);
-            }
-        }
-
-        // Registrar marcación
-        $marcacion = SgControlPersona::create([
-            "identificador"  => 0,
-            "clasificacion"  => $concepto === "ENTRADA" || $concepto === "ENTRADA DEL LUNCH"
-                                ? "ENTRADA" : "SALIDA",
-            "nro_documento"  => $emp->id_emp,
-            "lugar"          => "WEB",
-            "fecha_hora"     => now(),
-            "concepto"       => $concepto,
-            "motivo"         => $request->motivo ?? null,
-            "tipo_marcacion" => $modalidad === 'TELETRABAJO' ? 'TELETRABAJO' : 'WEB',
-            "ip"             => $request->ip(),
-            "ubicacion"      => $emp->ubicacion ?? "Quito",
-            "procesado"      => "NO",
-            "origen"         => "WEB",
-        ]);
-
+        $marcacion = $service->registrar($request);
         return response()->json([
-            "message"   => "$concepto registrado correctamente",
-            "marcacion" => $marcacion,
-            "hora"      => now()->format("H:i:s"),
+            'message' => $marcacion->concepto.' registrado correctamente',
+            'marcacion' => $marcacion,
+            'fecha' => \Carbon\Carbon::parse($marcacion->fecha_hora)->toDateString(),
+            'hora' => \Carbon\Carbon::parse($marcacion->fecha_hora)->format('H:i:s'),
         ], 201);
     }
-
     // Listar marcaciones del día para administrador
     public function listado(Request $request)
     {

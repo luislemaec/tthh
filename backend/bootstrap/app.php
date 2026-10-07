@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         // Apache corre en localhost → leer X-Forwarded-For para obtener la IP real del cliente
         $middleware->trustProxies(at: '127.0.0.1');
+        $middleware->alias(['sesion.sit' => \App\Http\Middleware\ValidarSesionSit::class]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
