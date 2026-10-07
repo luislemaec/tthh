@@ -86,12 +86,15 @@ git pull
 cd backend
 php artisan config:clear
 php artisan route:clear
-php artisan migrate --path=database/migrations/2026_10_07_000113_fix_control_persona_origen_type.php
+php artisan rrhh:adoptar-baseline --actualizar-supervisores
+# Solo si pasa la verificación y es la primera transición al historial consolidado:
+php artisan rrhh:adoptar-baseline --actualizar-supervisores --registrar
+php artisan migrate --database=pgsql
 cd ../frontend
 npm run build
 ```
 
-La lógica móvil no cambia las credenciales AD/BD. La migración `2026_10_07_000113_fix_control_persona_origen_type.php` corrige el relleno de espacios de `origen`: convierte `CHAR(120)` a `VARCHAR(120)` y elimina los espacios finales existentes, conservando las filas y los valores NULL. Se aplicó únicamente esta migración en la BD local; en producción debe ejecutarla el usuario. No ejecutar migraciones pendientes ajenas a este cambio. Conservar las rutinas de caché del despliegue existente después de limpiar la configuración. Comprobar `APP_ENV=production`, certificado HTTPS, proxies de confianza y `vlans_permitidas`. Tras desplegar, las sesiones antiguas de más de 15 minutos exigirán volver a ingresar.
+La lógica móvil conserva las credenciales AD/BD. La 000113 se incorporó a la estructura inicial y fue retirada: las nuevas instalaciones crean `origen` como VARCHAR. Adoptar el historial de una BD existente no convierte sus columnas CHAR ni limpia sus valores; ese cambio requiere una entrega incremental revisada. Para la transición del historial, seguir `backend/database/baseline/README.md` y detenerse si la verificación falla. Conservar las rutinas de caché del despliegue existente. Comprobar `APP_ENV=production`, certificado HTTPS, proxies de confianza y `vlans_permitidas`. Tras desplegar, las sesiones antiguas de más de 15 minutos exigirán volver a ingresar.
 
 En el proyecto Flutter:
 

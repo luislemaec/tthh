@@ -1,0 +1,546 @@
+{
+  "previous_commit": "e1926eca7e72c3174bc18552d89da7205f1cdbae",
+  "baseline_migrations": [
+    "0000_01_01_000000_create_initial_rrhh_structure",
+    "0000_01_01_000001_load_initial_rrhh_base_data"
+  ],
+  "retained_migrations": [],
+  "retired_migrations": [
+    {
+      "name": "2026_09_29_000111_add_destino_to_com_informe",
+      "sha256": "9d6760bbadc0bcac63e5e5373a85693cf456e0aca0dd1fb52d3d046c6c4c2206"
+    },
+    {
+      "name": "2026_09_10_000110_backfill_modalidad_laboral_codigo",
+      "sha256": "71c625e759f0a94aabc45486bf399b606e227bee1f380fe1a7ec30432281cb23"
+    },
+    {
+      "name": "2026_09_10_000109_add_codigo_to_d2_modalidad_laboral",
+      "sha256": "4c383effeb0b05e38991392f74fd23d4246e95a7dc298fbae69deedc5d36f2b2"
+    },
+    {
+      "name": "2026_09_09_000108_widen_razon_descripcion_and_permiso_razon",
+      "sha256": "905ee69917543d0aa51249f116fa87066c453ac680a0b26857f3928ac5b38b7c"
+    },
+    {
+      "name": "2026_09_07_000107_widen_accion_and_protect_nom_auditoria_log",
+      "sha256": "7301c633dc10d237a4274cb06bec78e8f544d4b6a524a4b1b9fb3777c1f8a148"
+    },
+    {
+      "name": "2026_09_03_000106_add_estado_to_d2_certificado_laboral",
+      "sha256": "eab94929382aef5398131fa89033131f173a3002c655e446a7d605e0533d8033"
+    },
+    {
+      "name": "2026_08_28_000105_fix_zkteco_activo_default",
+      "sha256": "8c6d36b565c314cf9bd0ba7b699c58f8028b339526c1efb2770d5c62a54f9d3a"
+    },
+    {
+      "name": "2026_08_25_000104_add_rol_comisiones",
+      "sha256": "795fcf0d3c264aa3cf855197974269524c29052e4270203ffd2155c138b1381b"
+    },
+    {
+      "name": "2026_08_25_000103_add_rol_suministros",
+      "sha256": "debc38bae5da406263c5ce12c1c14ceb58386b6e77e793445e256afc04d87ff1"
+    },
+    {
+      "name": "2026_08_25_000102_add_es_comisionado_entrante_to_empleado",
+      "sha256": "1ef847ac1b0b4af4fd8fc9ceb221f3d4be501555c165775ce936ce3421b516f2"
+    },
+    {
+      "name": "2026_08_25_000101_add_otros_to_enfermedad_catastrofica",
+      "sha256": "03a6c50f0844204ab08722b592909a4ef6608818ea9fdbcc04f9242d975574b5"
+    },
+    {
+      "name": "2026_08_20_000100_add_informe_to_d2_vacacion",
+      "sha256": "0c695bd44abe10ecf2dff8633ae8f4ac740bf123684012bac505c32c61036de2"
+    },
+    {
+      "name": "2026_08_08_000099_add_baja_fields_to_ti_equipo",
+      "sha256": "ad1d00097a48eb647b0dfcfd9c636c78f188fe1f881a48077348053f50da38e1"
+    },
+    {
+      "name": "2026_08_08_000098_fix_ti_mantenimiento_unique_preventivo",
+      "sha256": "7e512dd77537138dfd7c19ff59f07fcb8a72c7fc385e967b7cd8bb7864528155"
+    },
+    {
+      "name": "2026_08_07_000097_add_cantidad_to_trans_mantenimiento_actividad",
+      "sha256": "f2e6f7a5d84895af88c9ddac859a4cc9543a16c9a75b8eb0c119d1d03fece415"
+    },
+    {
+      "name": "2026_08_05_000097_add_especificacion_to_acc_accion_personal",
+      "sha256": "a1ca350a1379ad4c7a5c7f46490b199a7dbd49cf2d7d200f9080b0ef9d069211"
+    },
+    {
+      "name": "2026_08_05_000095_add_medio_to_acc_accion_personal",
+      "sha256": "babfa5bf4f27df40c9940ca4a17c395372bd11d21d023d4a9959eee3da84f3b4"
+    },
+    {
+      "name": "2026_07_31_000096_add_km_finalizacion_to_trans_mantenimiento",
+      "sha256": "b7e0d1b582cdf8fb7074600c63b5ff4afa2b908df2a98dff17f4de2af96bab07"
+    },
+    {
+      "name": "2026_07_30_000094_add_dias_descuento_efectivo_to_d2_permiso",
+      "sha256": "87d698e3fc857aa02caba81ee8d5396966451c6b00ee194c2caf55986c96a343"
+    },
+    {
+      "name": "2026_07_30_000093_add_extension_to_ad_empleado",
+      "sha256": "73cc41eef3f99f727605a6064ad73109b1ca2e32dc6846af79b2291b1fbf42fd"
+    },
+    {
+      "name": "2026_07_20_000092_create_ti_pieza_tables",
+      "sha256": "64fc71eb4f9fb4c60723dd23ad5040731b621069c78c4ef9650d1fb831a23772"
+    },
+    {
+      "name": "2026_07_20_000091_add_aprobado_en_to_d2_permiso",
+      "sha256": "24ab4dafc36fae41b450a19c00668bf881abacea0d81e7285e382e01511ccf84"
+    },
+    {
+      "name": "2026_07_10_000090_add_externo_to_ti_mantenimiento",
+      "sha256": "e524b0ee487cd86d00efc5d84dc7836880b1ae05d6cecaab3f3c81786015bd2e"
+    },
+    {
+      "name": "2026_07_09_000089_widen_ti_equipo_marca_modelo",
+      "sha256": "b00e2f148f82de92f92aabbdb70ad4db1139c238bded16dfebb684eec7ca08f3"
+    },
+    {
+      "name": "2026_07_08_000088_create_tecnologia_tables",
+      "sha256": "4708e0025433ea67609c711073b28145553cc52b467a5344662a8393e4cf8f11"
+    },
+    {
+      "name": "2026_07_07_000087_add_firmantes_to_accion_personal",
+      "sha256": "2b791a1a3ae727c76bac2fd44446263d69bdccc171432a622fbda4b1c442b1ca"
+    },
+    {
+      "name": "2026_07_07_000086_create_empleado_teletrabajo_and_biometrico",
+      "sha256": "c8d344600da78607dbc065417bb84d239ac8b2f742d481ebc36daf2674df2e98"
+    },
+    {
+      "name": "2026_07_06_000085_rename_razon_atraso_entrada",
+      "sha256": "d4e4464a04d8d1ce0d16bb2493c92f67bf8353e5aca054bde94f8fe485920333"
+    },
+    {
+      "name": "2026_06_25_000084_add_depto_beneficiario_to_solicitud_material",
+      "sha256": "a2900b7c5600a36038dcf7e31f22a7941756970e068398adf82532518e32ffff"
+    },
+    {
+      "name": "2026_06_19_000083_devolucion_comision",
+      "sha256": "90b200a5c57b0aa5f27f9d851b8ee4012110e260d7759726a189f64a052aa37d"
+    },
+    {
+      "name": "2026_06_18_000082_ajustes_comisiones_v2",
+      "sha256": "0c3c475c7e3afb2ab3bd1ac6c6db42cdbc1d88c2ebd13327b1deecf622fed902"
+    },
+    {
+      "name": "2026_06_16_000081_datos_bancarios_empleado_externo",
+      "sha256": "191e8747111bf3a5b5aae118e4a643eb18931fae520c037819720bbd103dbbaf"
+    },
+    {
+      "name": "2026_06_16_000080_datos_bancarios_por_servidor",
+      "sha256": "e74f147dee0226bf12e5df39a309c333b55a5554cd8dd2d742ff7542cdcdfb3b"
+    },
+    {
+      "name": "2026_06_16_000079_com_ajustes_postfinanciero",
+      "sha256": "5bd013feecf80f3384755c0b464a7b4b8e8aff7cb51253014282507849df8682"
+    },
+    {
+      "name": "2026_06_16_000078_alter_admin_rol_descripcion",
+      "sha256": "f8959a62e8e1b24b3650203655abd0381786be4cfaf816509d983f95f3f824af"
+    },
+    {
+      "name": "2026_06_16_000077_create_com_ficha_liquidacion_table",
+      "sha256": "670ee41a6b5bdf3cda76894fae2e84ed78897974a5b48e6f461d260bf5b50309"
+    },
+    {
+      "name": "2026_06_16_000076_create_com_informe_tables",
+      "sha256": "f9300a2bb72614be74698746f5e2247e096c6dca421e3ca0b8c4054ec409fefa"
+    },
+    {
+      "name": "2026_06_16_000075_create_com_anticipo_table",
+      "sha256": "4fbb5e2fb2133375f9c9f21d65a7730b46810ba2bd8feaab857e2353eadc59f7"
+    },
+    {
+      "name": "2026_06_16_000074_create_com_solicitud_tables",
+      "sha256": "4eefb179e7ac2b8eb7cdcc7a37f3f2d08ed0ad369af22fffd5af27b978147f77"
+    },
+    {
+      "name": "2026_06_10_000073_add_motivo_salida_to_empleado",
+      "sha256": "800c6b528f57ec4b5523dad9135fc6a3a48f86edfd1a00490e3f054795850957"
+    },
+    {
+      "name": "2026_06_09_000072_create_certificado_laboral_table",
+      "sha256": "a320bb662ee3ed11941b2f886159fa4faa530ef58c9e483c7607da3f366ddf46"
+    },
+    {
+      "name": "2026_05_29_000071_create_ad_empleado_hijo",
+      "sha256": "ec398ff8af5d37a1c9a51c16a1ce5975c63f59dbf43214728653af1a0e5c35df"
+    },
+    {
+      "name": "2026_05_29_000070_add_social_fields_to_ad_empleado",
+      "sha256": "5ed852462f16d7ab3fe91c67e0b9fb6d7053e50093dc093cd9804a58d7adae20"
+    },
+    {
+      "name": "2026_05_29_000069_create_catalogos_sociales",
+      "sha256": "f33e03f99c8a4b8828ab704c733f8779944750b04277af20ab42ec498a0b088c"
+    },
+    {
+      "name": "2026_05_29_000068_add_sanciones_to_rol_pago_det",
+      "sha256": "e0d3c87e0255538aa16f784240725c8a4cb013fe6683aa63a25b2202c331e25e"
+    },
+    {
+      "name": "2026_05_29_000067_add_otros_desc_obs_to_rol_pago_det",
+      "sha256": "bd194249bccb5ef885633a3f1c089941a3b60c0d3fc265f20edd658fc6637867"
+    },
+    {
+      "name": "2026_05_29_000066_add_devuelto_count_to_he_registro",
+      "sha256": "16be3e3d7e7da07a2e9c8711a96ec13a509a8590fb08f7466aae1b77fe472795"
+    },
+    {
+      "name": "2026_05_29_000065_add_sercop_to_ad_empleado",
+      "sha256": "ff805e5c8dc51872f8a007d1756a52969390ca72153be68cb000892a573a89b3"
+    },
+    {
+      "name": "2026_05_29_000064_rename_remoto_to_temporal",
+      "sha256": "502be605ab3bb15aafeb8678eeabf22e0f0acd4fff41dd65267925cc27c0cb14"
+    },
+    {
+      "name": "2026_05_28_000063_add_sexo_tipo_sangre_to_ad_empleado",
+      "sha256": "dc366db1cd6815a0d3083d7ea2fc02e269fb66400796395de3eb3641168d4b07"
+    },
+    {
+      "name": "2026_05_27_000062_add_auditoria_to_aportes_iess",
+      "sha256": "21a547ffa49806b317790c726acfa47e57c3bf48424e1a4fb821bc243ae6bb26"
+    },
+    {
+      "name": "2026_05_27_000061_iece_secap_columns_in_aportes_iess",
+      "sha256": "3103b3d8ad95d34afaa2e1aa54e5ea5cb6ea643aa33c80a774aa996eff6c3259"
+    },
+    {
+      "name": "2026_05_27_000060_iece_secap_rol_pago",
+      "sha256": "f39d97e6039c071bff162262900cafdc63d1bd6c225c3cc142325b058ba44e39"
+    },
+    {
+      "name": "2026_05_27_000059_create_zkteco_dispositivo_table",
+      "sha256": "30685cd99764365551b4de4a9be5fe4a79ffc0080c1cc853da89bb7f475df2ad"
+    },
+    {
+      "name": "2026_05_27_000058_create_permiso_documento_table",
+      "sha256": "3ce8861cbe09087954399e06b4813ff6072db04e8c44a3279f92ef30e79a4b78"
+    },
+    {
+      "name": "2026_05_27_000057_nullable_numero_accion_acc_accion_personal",
+      "sha256": "42e9088af38fadd54164bd35a78cfdc81059e10370114ea325d34ce4df7ec475"
+    },
+    {
+      "name": "2026_05_26_000056_rename_autorizado_to_procesado_in_he",
+      "sha256": "39148dcbf7fd4046783c6b40bcab5e7914ec6bac6b266f507c9909ed3c5ed3f4"
+    },
+    {
+      "name": "2026_05_26_000055_add_backup_to_d2_vacacion",
+      "sha256": "ca359a2b8814b429a475306fd4691ed38c7f2e739a83a9eefef552ef7a91a97a"
+    },
+    {
+      "name": "2026_05_22_000054_add_programa_actividad_to_ad_empleado",
+      "sha256": "bc3e95b9d6a56dcac0da704f04a144fe2989bbff61cf33d5c5a7275851c3c521"
+    },
+    {
+      "name": "2026_05_21_000053_empleado_foto_fix_type",
+      "sha256": "dce5e2075e64b961e9130311922f8857ffdcb814405f1303841751a08bb2adb9"
+    },
+    {
+      "name": "2026_05_21_000052_empleado_add_foto",
+      "sha256": "c6fc6a577d2411bab232ccc6caa6f1ffaa6bce71b6f535e66dcdc5180194c257"
+    },
+    {
+      "name": "2026_05_19_000051_vac_auditoria_aprobacion",
+      "sha256": "fdc83404f0237d5cdb5d80cccbb031965322b09f97958022d5295752f68c9457"
+    },
+    {
+      "name": "2026_05_18_000050_trans_solicitud_mov_campos",
+      "sha256": "11df0007b9c279ded16cbf7cfdcaf5ad563d0d56503b5882fed9f365d849321e"
+    },
+    {
+      "name": "2026_05_15_000047_create_aviso_ticker",
+      "sha256": "d2aed83d55b89e68d2782222458997b07e87116cdddb6234c0ef00455bc72214"
+    },
+    {
+      "name": "2026_05_15_000046_fix_avisos_add_id",
+      "sha256": "d35e010004fe6b7dd3c901e2cdd0cbec6df2b4a1eec7160d4690d1ce4d084208"
+    },
+    {
+      "name": "2026_05_15_000045_fix_avisos_columns",
+      "sha256": "87b63e00918187c327dec298740dd338b7574c8bcdc7daf2582215d6f60594db"
+    },
+    {
+      "name": "2026_05_15_000044_create_avisos",
+      "sha256": "27b06a754c8b0bd5a4c646371da8cd97b53924b1f56395910ac917e9cd91a34f"
+    },
+    {
+      "name": "2026_05_15_000043_fix_tipo_length_trans_mantenimiento",
+      "sha256": "90c219d5ea403f2f8ec4a4559f51b536113dca9ca84bc59bbc3d980e11c910df"
+    },
+    {
+      "name": "2026_05_15_000042_add_tipo_actividad_to_mantenimiento_actividad",
+      "sha256": "5807f55e899c93f3d25ddb43d0bcfa82783810c608f2816a2836babdc19e0215"
+    },
+    {
+      "name": "2026_05_15_000041_add_fecha_comprobante_to_vale_combustible",
+      "sha256": "87559be07fbc2fbf73569dc24b5066f3727c6be0b93e1957f47e4e348df23563"
+    },
+    {
+      "name": "2026_05_15_000040_unify_talleres_proveedores",
+      "sha256": "394bf77a4d0162e6fe13955514e4b1b7cc76c586689e4b4f2ebdacf3c683630e"
+    },
+    {
+      "name": "2026_05_14_000039_add_estado_auditoria_to_d2_razon",
+      "sha256": "a03997ec291bf3e74b82a0effe8380e49eb86eed26fec934e8101db61000b994"
+    },
+    {
+      "name": "2026_05_14_000038_add_auditoria_to_d2_modalidad_laboral",
+      "sha256": "536124042665df5bc2a20390b05d2a38e4613a1b00eb9bbee56ce8a307599cb9"
+    },
+    {
+      "name": "2026_05_14_000037_create_d2_modalidad_laboral",
+      "sha256": "486c949b5587f11db3f7c0dc0e5f5901e268fa73dad5d37ea357acf471b90883"
+    },
+    {
+      "name": "2026_05_13_000036_trans_vale_combustible",
+      "sha256": "3b686f53f6834e10c38b0ee5c7fd69edc8de81deaaf7ee0c1ca5842816f0c91e"
+    },
+    {
+      "name": "2026_05_13_000035_add_tipo_cantidad_to_plan_preventivo_det",
+      "sha256": "d6bf48bbb04759825f6bb01f497615076f3ea7d4e419ffdcc7b64c509176ded2"
+    },
+    {
+      "name": "2026_05_13_000034_drop_categoria_from_tipo_mantenimiento",
+      "sha256": "ebca31c48015f5ad28a119420ae8b3282dd7f739295a3bfe2873d95b4b3e4a7a"
+    },
+    {
+      "name": "2026_05_13_000033_trans_talleres_tipos_plan",
+      "sha256": "cf0a4bb22e45eb9326580e1f92e97d7158e8652241266479bca5fe1106f265cd"
+    },
+    {
+      "name": "2026_05_12_000032_add_auditoria_to_departamento_empleado",
+      "sha256": "8946b1409ec1eaf2bc7439d1c9c1cfd231bb76992d8b89a1916395fdd00339e5"
+    },
+    {
+      "name": "2026_05_12_000031_add_auditoria_to_configuracion",
+      "sha256": "20089e84e58cac8fc5a250a39ae5ef46859505976f33c2d0c08f67790f2a15bd"
+    },
+    {
+      "name": "2026_05_12_000030_add_descripcion_to_configuracion",
+      "sha256": "79d284990de55521c149728a908973ea77e599d9584a39ee336c2a33bd013069"
+    },
+    {
+      "name": "2026_05_11_000029_trans_mejoras",
+      "sha256": "fb879f4b4767a47f30f60f86e35b8246c13ee4863b0784e57fa671a2e4b0c275"
+    },
+    {
+      "name": "2026_05_08_000028_trans_vehiculos",
+      "sha256": "8e6b9151160ab4799e12a54101a24eff879d5a1216fcdce374385b98c94486bd"
+    },
+    {
+      "name": "2026_05_06_000027_nom_rol_pago",
+      "sha256": "9ce6b9177319230d9db432594ef448b18d5da4961f87e31ebf6297e40d7baed9"
+    },
+    {
+      "name": "2026_05_05_000026_nom_fondos_reserva",
+      "sha256": "2062a506eda5167b428852d6a197a76755097dc274684408a79a39186b5ee168"
+    },
+    {
+      "name": "2026_05_05_000025_nom_sbu_y_decimo_cuarto",
+      "sha256": "7e36dcbdf8c4ada59d7adcfe8ca5b3af42f8fb1ae6474d3cf5d4c446ee9cc09d"
+    },
+    {
+      "name": "2026_05_05_000024_nom_decimo_tercero",
+      "sha256": "a6efe920cc01ab8a8e84f504e574304ff898156e0c447659fde35a6e9a1bfc42"
+    },
+    {
+      "name": "2026_05_05_000023_nom_auditoria_log",
+      "sha256": "8bf510794a0da8e52d2f4d3f07bada3fe25ff96d398b169c59138eafd513fa4e"
+    },
+    {
+      "name": "2026_05_04_000022_add_permite_marcacion_remota",
+      "sha256": "328e91197fa7a4c82ed602508078c9f37b067b6e8f8c0bcc1e10efba2ca9afa0"
+    },
+    {
+      "name": "2026_04_29_000021_adq_kardex_valor_saldo",
+      "sha256": "4003195558d276082325438a400ea056d1bf8c5f7ca9eb9cb0038be791b8d03e"
+    },
+    {
+      "name": "2026_04_29_000020_adq_descuento",
+      "sha256": "2680691063d017dd50e4eee86b92bd87912106d38188dff42544cecfb2ea1f5d"
+    },
+    {
+      "name": "2026_04_28_000019_adq_kardex",
+      "sha256": "db8bd8c63848e8d436f2442466671733c95b7b080585a71a0e063e2279747a00"
+    },
+    {
+      "name": "2026_04_24_000018_adq_amounts_2dec",
+      "sha256": "7bc4b797639867028f4e65792b1fe51d083690fb46a44c5556b317062dfab040"
+    },
+    {
+      "name": "2026_04_24_000017_adq_proceso_contratacion",
+      "sha256": "0ba8807a5a3e97aa64a3adb7b843a920a8dd0236f233a1b9bef5e099df895f21"
+    },
+    {
+      "name": "2026_04_23_000016_adq_5dec_completo",
+      "sha256": "0fafc8603f0463d1d42c3a1a7bdaf5c1ce680abce4779e424fecf3bcb82dfbf4"
+    },
+    {
+      "name": "2026_04_23_000015_adq_articulo_precio_4dec",
+      "sha256": "e06db1b214abc38ac99b374f6996f98e5df70c92460026c9f3b91fbe148ffaa3"
+    },
+    {
+      "name": "2026_04_23_000014_adq_decimales4",
+      "sha256": "a0b2bc79d320457921fa546a96da0ebec882c9e694daa1de4b176b3da8f3dd67"
+    },
+    {
+      "name": "2026_04_23_000013_adq_egreso",
+      "sha256": "84dbf104e44a57fde313a7d5503a9d620d6a108c36877f458530c4901ed4296d"
+    },
+    {
+      "name": "2026_04_23_000012_adq_imagen_articulo",
+      "sha256": "dbd52d802fbccab46fbab7d1ccdec62c269dba12de96a5b5a4bb0f5751fcc95c"
+    },
+    {
+      "name": "2026_04_23_000011_adq_motivo_reverso",
+      "sha256": "c058cbae472db72d02d2fd41b7cc03e887ae81fbce3bbfca42c7e880487ced66"
+    },
+    {
+      "name": "2026_04_23_000010_adq_precio_anterior_det",
+      "sha256": "68a1b216272a1dda00df20c7bfa1a518351e9f6476f6cf828a6668e438236a3d"
+    },
+    {
+      "name": "2026_04_23_000009_adq_secuencial_ingreso",
+      "sha256": "7dee0b1063b699b9b0c8170bc0690130f8ed679be07db6a20d874cdbc27028d5"
+    },
+    {
+      "name": "2026_04_22_000008_adq_estado_fisico_articulo",
+      "sha256": "3e7a22372013f54dc92526f7dae808eb58db6ca5caf407782fc44675b72bb12f"
+    },
+    {
+      "name": "2026_04_22_000007_adq_unidad_medida_iva_fecha",
+      "sha256": "e0af9372893a872f0061e54ba5b2e2c2533ca8f4a6f4623b86be460637fb5581"
+    },
+    {
+      "name": "2026_04_22_000006_adq_monetario",
+      "sha256": "38739fa26b6643e64af9e06ce1c784a6ecc701cdd8e4ae6bf0b0e12641945ed8"
+    },
+    {
+      "name": "2026_04_21_000005_create_adq_catalogo_nivel1",
+      "sha256": "4b26519b6adb0ea9aca5c245f41401d7166557f598e3e4a33af2564249cf3bc0"
+    },
+    {
+      "name": "2026_04_21_000004_create_adq_catalogo_inventario",
+      "sha256": "d0cf053b628ce1ddf145b49b912b30f7c0bcab34ba4c4ad57f3d6f316dbab0e5"
+    },
+    {
+      "name": "2026_04_21_000003_add_marca_to_adq_articulo",
+      "sha256": "8f02f60146e9b2a9c66b2a8d5d713b6fca9a05860c66122ccc9db6d4a593f770"
+    },
+    {
+      "name": "2026_04_21_000002_create_adq_tables",
+      "sha256": "13f15e9a4876117550a7d3460467753b31300aad269d2d0cf012b2260ead10cb"
+    },
+    {
+      "name": "2026_04_21_000001_create_adq_schema",
+      "sha256": "d1a26082dfc329f50514e2f088c9d61c4412d843e03c8446c53269fc04d98bd4"
+    },
+    {
+      "name": "2026_04_17_000006_add_horas_to_nom_he_registro",
+      "sha256": "efa0640f8a8aff5023010707a92db7d8b1aa28d83d1031ee019962317d86bfed"
+    },
+    {
+      "name": "2026_04_17_000005_add_autorizacion_to_nom_he_planificacion_cab",
+      "sha256": "23bfd580ff83f3ed78b432088614b9c6c144513d161aa342766f640fac98b336"
+    },
+    {
+      "name": "2026_04_17_000004_create_nom_he_registro",
+      "sha256": "97e0f19ab29a64df764fe34859c2dd070e475a57bcadefab3e0622c4c861a98e"
+    },
+    {
+      "name": "2026_04_17_000003_create_nom_he_planificacion_det",
+      "sha256": "53a2e00d5c090073b573a141f91508551cefb025279c052f43f83fb4dde66f7f"
+    },
+    {
+      "name": "2026_04_17_000002_create_nom_he_planificacion_cab",
+      "sha256": "827f9be9d218b72f9c1d8db62ca174d720519254fdc71f552c4180f4a7e56fb3"
+    },
+    {
+      "name": "2026_04_17_000001_add_porc_extras_to_d2_jornada",
+      "sha256": "6e2ef743b39515876d9ac8270abade3c0064f6e6ec37ccdffb631adde26c804f"
+    },
+    {
+      "name": "2026_04_16_000001_add_pdf_firmado_to_acc_accion_personal",
+      "sha256": "f7bd8e866e7d5af6fd4cb48e6b9624b4344794db021c579eb49a6206a5c2436a"
+    },
+    {
+      "name": "2026_04_15_000002_create_acc_accion_personal",
+      "sha256": "ba9edb1ae1fbb88ef47ad102c4ad51c321df51cfe1d773192c2dd739df0ef1b5"
+    },
+    {
+      "name": "2026_04_15_000001_add_distributivo_fields_to_ad_empleado",
+      "sha256": "47962cac9aa7e2f821342ba9a379a5020f5850bc9fd54cd626a6028d9600b3a7"
+    },
+    {
+      "name": "2026_04_09_000001_add_estado_to_ad_departamento",
+      "sha256": "e216e631bd741c6c0b6683001ddf1518404b68265137bbd10238aad8ba747c39"
+    },
+    {
+      "name": "2026_04_06_000002_create_vac_liquidacion_historico",
+      "sha256": "cc39849ba6f12b1ace5019ad9ee7cde5a4b63b3bf0a733c94afec23bbded9459"
+    },
+    {
+      "name": "2026_03_31_000002_seed_reporte_planificacion_config",
+      "sha256": "fb53ef5306837018289c3dcef8e4be191407a36c691167fea41b41245a0e2a89"
+    },
+    {
+      "name": "2026_03_31_000001_create_vac_reporte_planificacion_table",
+      "sha256": "623745202d9e86bc57c7b6efede48a9f0c68482345f3fb34ea4f0628f1785884"
+    },
+    {
+      "name": "2026_03_30_000003_create_vac_planificacion_det",
+      "sha256": "853f2cc3bfb4c27bcd535827b32c459eea8f4aa30b0d347fbdfe663487ad6ea3"
+    },
+    {
+      "name": "2026_03_30_000002_create_vac_planificacion_cab",
+      "sha256": "903989e8666063ec2ee5909c965ec7ae242c0ffd7a3070cfe768dee0a668a28d"
+    },
+    {
+      "name": "2026_03_30_000001_create_vac_periodo_planificacion",
+      "sha256": "c3b19a04403381fba2fc8ad7009bcfb3682a429381ab29b1098e3c7f1c3cfc94"
+    },
+    {
+      "name": "2026_03_26_000000_add_tipo_horario_to_d2_permiso",
+      "sha256": "80e7aa6a907d8fdd164c60328bda39dd84ad678a318cf36a6e2055f8ed2ab0c3"
+    },
+    {
+      "name": "2026_03_12_210824_create_personal_access_tokens_table",
+      "sha256": "c81ecde85ea5072188c468dcaf79776728b6eb8f684d63fc0d88a4908484ca75"
+    },
+    {
+      "name": "0001_01_01_000002_create_jobs_table",
+      "sha256": "9a03f01ec9fedcb6ab0bcde6858b793cc3fdd9f9ee9b3914a958a0a669ef829d"
+    },
+    {
+      "name": "0001_01_01_000001_create_cache_table",
+      "sha256": "2ca8398390ecef8eaf72aeac7fefce67f7de631b6f2ec7b7081c8db8953215dc"
+    },
+    {
+      "name": "0001_01_01_000000_create_users_table",
+      "sha256": "10d79883bc08ce46510f9ad8b1830b4d06d586dc56ae2c8bac3b3e491f69a90f"
+    },
+    {
+      "name": "2026_10_07_000113_fix_control_persona_origen_type",
+      "sha256": "54c07ec96eb6e5b257763e6f9c7053a8b81c03a3dd56a7e1fb5d9cf4568a516e",
+      "required_history": false,
+      "reason": "Incluida en esquema inicial VARCHAR. No exigir ejecución histórica para adopción: esta no convierte tipos en BD existentes."
+    },
+    {
+      "name": "2026_10_06_000112_allow_two_supervisors_per_root_area",
+      "sha256": "5934d3c40f2e0823493a52b19472df23ffdedcd99b3456d0272b3cb9cb4c8067",
+      "required_history": false,
+      "reason": "Constraint compuesto incorporado al esquema inicial. El comando de adopción ofrece su ajuste explícito para BD existentes."
+    }
+  ]
+}

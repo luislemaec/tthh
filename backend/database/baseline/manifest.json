@@ -1,0 +1,456 @@
+{
+    "schema_source_sha256": "67cf50483bf1435f08f3c79a453556032edb4b7a317bf8edc82dbb846641c732",
+    "data_source_sha256": "2a1be41a2d040c871e37c925451976b76046a1d3042c1b916a25351d02c26036",
+    "schema_sha256": "3904b5114f176b0713ce092549d1b8c1f6fd3be43c3fbb4c996d4e4d7d22538d",
+    "data_sha256": "cf784d73d905890780d7a69ec704ea0860fe8e23180ab1039e17675afc34788c",
+    "contract_sha256": "72f1d017eb6350b79f7f97ae60eff740a7a52149062a8707e0e45e916542ddd2",
+    "usage_sha256": "34726b59f0ee4e4ac8698683c83e4d8bc8eae466119a4f961364f49042553485",
+    "schema_tables": 105,
+    "rows": 877,
+    "counts": {
+        "adq.catalogo_nivel1": 67,
+        "adq.configuracion": 1,
+        "adq.iva": 2,
+        "adq.proceso_contratacion": 4,
+        "adq.unidad_medida": 23,
+        "dbo.ad_departamento": 25,
+        "dbo.ad_enfermedad_catastrofica": 16,
+        "dbo.ad_grupo_prioritario": 8,
+        "dbo.ad_grupo_vulnerable": 8,
+        "dbo.ad_tipo_discapacidad": 7,
+        "dbo.admin_opcion": 71,
+        "dbo.admin_rol": 20,
+        "dbo.admin_rol_opcion": 94,
+        "dbo.com_coeficiente_pais": 40,
+        "dbo.com_provincia": 24,
+        "dbo.com_tarifa_viatico": 2,
+        "dbo.d2_aportes_iess": 2,
+        "dbo.d2_cab_turno": 1,
+        "dbo.d2_configuracion": 35,
+        "dbo.d2_jornada": 2,
+        "dbo.d2_lista_fecha": 40,
+        "dbo.d2_modalidad_laboral": 5,
+        "dbo.d2_razon": 18,
+        "dbo.d2_turno": 4,
+        "dbo.nom_sbu_historico": 2,
+        "dbo.ti_actividad_mantenimiento": 11,
+        "dbo.ti_tipo_equipo": 8,
+        "dbo.trans_tipo_mantenimiento": 3,
+        "adq.catalogo_inventario": 245,
+        "dbo.com_ciudad": 89
+    },
+    "char_to_varchar": [
+        {
+            "table_schema": "dbo",
+            "table_name": "ad_departamento",
+            "column_name": "transmitio",
+            "character_maximum_length": 2
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "ad_empleado",
+            "column_name": "administrador",
+            "character_maximum_length": 2
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "ad_empleado",
+            "column_name": "valida_huella",
+            "character_maximum_length": 2
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "ad_empleado",
+            "column_name": "tipo_contrato",
+            "character_maximum_length": 20
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "ad_empleado",
+            "column_name": "transmitio",
+            "character_maximum_length": 2
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "ad_empleado",
+            "column_name": "gana_hora",
+            "character_maximum_length": 2
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "ad_empleado",
+            "column_name": "referencia",
+            "character_maximum_length": 5
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "ad_empleado",
+            "column_name": "origen",
+            "character_maximum_length": 120
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "ad_empleado",
+            "column_name": "autorizado",
+            "character_maximum_length": 2
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "ad_empleado",
+            "column_name": "campo_supervisor",
+            "character_maximum_length": 3
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "d2_auditoria",
+            "column_name": "ip",
+            "character_maximum_length": 30
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "d2_cab_turno",
+            "column_name": "transmitio",
+            "character_maximum_length": 2
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "d2_cab_turno",
+            "column_name": "origen",
+            "character_maximum_length": 120
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "d2_cuadre_marcacion",
+            "column_name": "falta",
+            "character_maximum_length": 2
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "d2_cuadre_marcacion",
+            "column_name": "motivo_entrada",
+            "character_maximum_length": 120
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "d2_cuadre_marcacion",
+            "column_name": "motivo_lunch",
+            "character_maximum_length": 120
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "d2_cuadre_marcacion",
+            "column_name": "motivo_salida",
+            "character_maximum_length": 120
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "d2_cuadre_marcacion",
+            "column_name": "mail",
+            "character_maximum_length": 2
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "d2_lista_fecha",
+            "column_name": "tipo",
+            "character_maximum_length": 10
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "d2_lista_fecha",
+            "column_name": "color",
+            "character_maximum_length": 10
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "d2_lista_fecha",
+            "column_name": "transmitio",
+            "character_maximum_length": 2
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "d2_permiso",
+            "column_name": "todo_dia",
+            "character_maximum_length": 2
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "d2_permiso",
+            "column_name": "concepto",
+            "character_maximum_length": 20
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "d2_permiso",
+            "column_name": "transmitio",
+            "character_maximum_length": 2
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "d2_permiso",
+            "column_name": "origen",
+            "character_maximum_length": 120
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "d2_programacion",
+            "column_name": "desayuno",
+            "character_maximum_length": 2
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "d2_programacion",
+            "column_name": "almuerzo",
+            "character_maximum_length": 2
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "d2_programacion",
+            "column_name": "merienda",
+            "character_maximum_length": 2
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "d2_programacion",
+            "column_name": "cena",
+            "character_maximum_length": 2
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "d2_programacion",
+            "column_name": "transmitio",
+            "character_maximum_length": 2
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "d2_programacion",
+            "column_name": "origen",
+            "character_maximum_length": 120
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "d2_razon",
+            "column_name": "descontable",
+            "character_maximum_length": 2
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "d2_razon",
+            "column_name": "tipo_razon",
+            "character_maximum_length": 20
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "d2_razon",
+            "column_name": "nomina",
+            "character_maximum_length": 2
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "d2_razon",
+            "column_name": "tipo_certificado",
+            "character_maximum_length": 2
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "d2_razon",
+            "column_name": "nomenclatura",
+            "character_maximum_length": 10
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "d2_turno",
+            "column_name": "transmitio",
+            "character_maximum_length": 2
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "d2_turno",
+            "column_name": "origen",
+            "character_maximum_length": 120
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "d2_vacacion",
+            "column_name": "todo_dia",
+            "character_maximum_length": 2
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "sg_control_persona",
+            "column_name": "transmitio",
+            "character_maximum_length": 2
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "sg_control_persona",
+            "column_name": "tipo_marcacion",
+            "character_maximum_length": 10
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "sg_control_persona",
+            "column_name": "funcion",
+            "character_maximum_length": 2
+        },
+        {
+            "table_schema": "dbo",
+            "table_name": "sg_control_persona",
+            "column_name": "procesado",
+            "character_maximum_length": 2
+        }
+    ],
+    "removed_columns": {
+        "dbo.ad_empleado": [
+            "s1",
+            "s2",
+            "s3",
+            "s4",
+            "s5",
+            "s6",
+            "s7",
+            "s8",
+            "s9",
+            "s10",
+            "s11",
+            "s12",
+            "s13",
+            "s14",
+            "s15",
+            "s16",
+            "s17",
+            "s18",
+            "s19",
+            "s20",
+            "s21",
+            "s22",
+            "s23",
+            "s24",
+            "s25",
+            "s26",
+            "s27",
+            "s28",
+            "s29",
+            "s30"
+        ]
+    },
+    "removed_tables": [
+        "dbo.ad_departamento_identif",
+        "dbo.ad_permisos_area",
+        "dbo.cord_atrasos",
+        "dbo.cord_permisos",
+        "dbo.cord_permisos_just",
+        "dbo.d2_alerta_marcacion",
+        "dbo.d2_auditoria_concepto",
+        "dbo.d2_aviso",
+        "dbo.d2_cab_prog_mt",
+        "dbo.d2_cajero",
+        "dbo.d2_cambio_turno",
+        "dbo.d2_ciudad",
+        "dbo.d2_clasificacion",
+        "dbo.d2_colores_web",
+        "dbo.d2_consumo_lugar",
+        "dbo.d2_consumo_temporal",
+        "dbo.d2_contratista",
+        "dbo.d2_correo",
+        "dbo.d2_costo_consumo",
+        "dbo.d2_cuadre_ronda",
+        "dbo.d2_direcciones_mail",
+        "dbo.d2_empresa",
+        "dbo.d2_entidad_contratante",
+        "dbo.d2_estadistica_cab",
+        "dbo.d2_estadistica_detalle",
+        "dbo.d2_fecha",
+        "dbo.d2_fecha_corte",
+        "dbo.d2_grupo_ronda",
+        "dbo.d2_historial_elim",
+        "dbo.d2_horas_extras",
+        "dbo.d2_horas_extras_peticion",
+        "dbo.d2_imagenes_asociadas",
+        "dbo.d2_integracion",
+        "dbo.d2_intentos_cajero",
+        "dbo.d2_lista_fecha_1",
+        "dbo.d2_lista_servicio",
+        "dbo.d2_log_correo",
+        "dbo.d2_lugar_consumo",
+        "dbo.d2_marcacion_temporal",
+        "dbo.d2_nac_d2express",
+        "dbo.d2_no_aplica",
+        "dbo.d2_no_programados",
+        "dbo.d2_nomina_cierre",
+        "dbo.d2_pantalla",
+        "dbo.d2_pantalla_empleado",
+        "dbo.d2_permiso_cajero",
+        "dbo.d2_peticion_cuadre",
+        "dbo.d2_peticion_empleado",
+        "dbo.d2_prioridad_web",
+        "dbo.d2_procedencia",
+        "dbo.d2_proceso",
+        "dbo.d2_programacion_mt",
+        "dbo.d2_programacion_ronda",
+        "dbo.d2_reingresos",
+        "dbo.d2_reingresos_empl",
+        "dbo.d2_reporte_prog",
+        "dbo.d2_reportecomparativo",
+        "dbo.d2_resultado",
+        "dbo.d2_ronda",
+        "dbo.d2_servicios",
+        "dbo.d2_simulacion",
+        "dbo.d2_supervisor",
+        "dbo.d2_tipo_correo",
+        "dbo.d2_tipo_marcacion",
+        "dbo.d2_tipo_obra",
+        "dbo.d2_transaccion_depto",
+        "dbo.d2_ubicacion",
+        "dbo.d2_vacacion_venta",
+        "dbo.grupo_empleados_temp",
+        "dbo.horas_extras_temp",
+        "dbo.horas_extras_temp_det",
+        "dbo.personal_access_tokens",
+        "dbo.reportefaltas",
+        "dbo.sg_huella_digital",
+        "dbo.sg_parametro",
+        "dbo.sg_secuencial",
+        "dbo.sg_transaccion",
+        "dbo.sg_transaccion_adicional",
+        "dbo.sms_mensaje",
+        "dbo.trans_taller",
+        "dbo.web_actividad",
+        "dbo.web_ad_empleado",
+        "dbo.web_autorizacion_teletrabajo",
+        "dbo.web_control_persona",
+        "dbo.web_empleado_teletrabajo",
+        "dbo.web_log_procesos",
+        "public.cache",
+        "public.cache_locks",
+        "public.failed_jobs",
+        "public.job_batches",
+        "public.jobs",
+        "public.password_reset_tokens",
+        "public.sessions",
+        "public.users"
+    ],
+    "removed_views": [
+        "dbo.view_areas",
+        "dbo.view_asistencia",
+        "dbo.view_atrasos",
+        "dbo.view_empleado",
+        "dbo.view_empleado_vacacion",
+        "dbo.view_faltas",
+        "dbo.view_horas_extras",
+        "dbo.view_marcaciones",
+        "dbo.view_marcaciones_diarias",
+        "dbo.view_permisos_justificaciones",
+        "dbo.view_teletrabajo",
+        "dbo.view_usuario_opciones",
+        "dbo.view_vacaciones_solicitadas"
+    ],
+    "transformations": [
+        "Excluidos dbo.migrations y public.migrations: Laravel crea su historial propio.",
+        "Sin órdenes de psql ni transaction_timeout específico de PG17.",
+        "created_by y updated_by de d2_configuracion son NULL en la semilla independiente de empleados.",
+        "Todas las columnas CHAR(n) se crean como VARCHAR(n); también se ajustan casts bpchar de las vistas.",
+        "Se elimina solo el relleno ASCII final en los datos base de las columnas originalmente CHAR.",
+        "supervisor_area usa UNIQUE(id_depto,id_supervisor), sin el UNIQUE(id_depto) antiguo.",
+        "Eliminadas s1..s30 exclusivamente de ad_empleado; d2_programacion conserva sus columnas diarias."
+    ]
+}

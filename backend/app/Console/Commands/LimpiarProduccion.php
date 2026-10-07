@@ -1,12 +1,15 @@
 <?php
+
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class LimpiarProduccion extends Command
 {
-    protected $signature   = 'bootstrap:limpiar-produccion {--force : Omite la confirmación interactiva}';
+    protected $signature = 'bootstrap:limpiar-produccion {--force : Omite la confirmación interactiva}';
+
     protected $description = 'BORRA (TRUNCATE) todo lo transaccional — uso único al arrancar producción desde un dump de pruebas. Ver Fase 4 del artifact "Despliegue a Producción".';
 
     // A propósito NO es una migración — una migración corre solo con `php artisan migrate` en
@@ -19,7 +22,7 @@ class LimpiarProduccion extends Command
     // Tecnología (ti_*) — son datos reales, no transaccionales de prueba.
     private const TABLAS = [
         // Talento Humano
-        'dbo.sg_control_persona', 'dbo.web_control_persona',
+        'dbo.sg_control_persona',
         'dbo.d2_cuadre_marcacion',
         'dbo.d2_permiso', 'dbo.d2_permiso_documento',
         'dbo.d2_vacacion',
@@ -67,9 +70,16 @@ class LimpiarProduccion extends Command
 
     public function handle(): int
     {
-        $this->warn('Esto va a hacer TRUNCATE (borrado total e irreversible) de ' . count(self::TABLAS) . ' tablas transaccionales:');
+        // El esquema consolidado excluye tablas heredadas presentes en dumps antiguos.
+        $tablas = array_values(array_filter(self::TABLAS, fn ($tabla) => Schema::hasTable($tabla)));
+        if (! $tablas) {
+            $this->info('No existen tablas de la lista de limpieza. Sin cambios.');
+
+            return Command::SUCCESS;
+        }
+        $this->warn('Esto va a hacer TRUNCATE (borrado total e irreversible) de '.count($tablas).' tablas transaccionales:');
         $this->newLine();
-        foreach (self::TABLAS as $t) {
+        foreach ($tablas as $t) {
             $this->line("  - {$t}");
         }
         $this->newLine();
@@ -77,21 +87,23 @@ class LimpiarProduccion extends Command
         $this->warn('Incluye sessions y personal_access_tokens — esto va a desloguear cualquier sesión activa en el navegador (esperado).');
         $this->newLine();
 
-        if (!$this->option('force')) {
+        if (! $this->option('force')) {
             $this->error('¿YA HICISTE UN BACKUP ADICIONAL justo antes de correr esto? (ver Fase 4 del artifact)');
-            if (!$this->confirm('¿Confirmás el TRUNCATE de las tablas de arriba? Esto NO se puede deshacer.', false)) {
+            if (! $this->confirm('¿Confirmás el TRUNCATE de las tablas de arriba? Esto NO se puede deshacer.', false)) {
                 $this->info('Cancelado — no se tocó nada.');
+
                 return Command::SUCCESS;
             }
         }
 
-        $lista = implode(', ', self::TABLAS);
+        $lista = implode(', ', $tablas);
 
         DB::transaction(function () use ($lista) {
             DB::statement("TRUNCATE TABLE {$lista} CASCADE");
         });
 
-        $this->info('Listo — ' . count(self::TABLAS) . ' tablas truncadas.');
+        $this->info('Listo — '.count($tablas).' tablas truncadas.');
+
         return Command::SUCCESS;
     }
 }
