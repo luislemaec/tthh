@@ -53,13 +53,19 @@ rrhh/
 
 Instalar antes de comenzar:
 
-- **PHP:** `composer.json` declara `^8.2`; el entorno local fue validado con PHP 8.4. Composer verifica los requisitos efectivos de las dependencias instaladas.
+- **PHP:** Composer declara PHP `^8.2`, pero el lockfile instalado requiere **PHP 8.4**. El entorno nativo fue validado con 8.4.25 y Docker utiliza PHP-FPM 8.4.
 - **Composer 2** y las extensiones PHP necesarias. Revisar especialmente `pdo_pgsql`, `pgsql`, `mbstring`, `curl`, `fileinfo`, `gd`, `zip`, XML/DOM y `ldap` cuando se use AD. Para las pruebas actuales se requiere `pdo_sqlite`.
 - **Node.js y npm:** `frontend/package.json` declara `^20.19.0 || >=22.12.0`. Acordar una versión compatible entre el equipo y el servidor de compilación.
 - **PostgreSQL**, acceso a una copia autorizada de la BD y Git.
 - Acceso de red al AD y Alfresco cuando se prueben esas integraciones.
 
 El desarrollo local y la producción actual utilizan instalación nativa. No se requiere Docker para este flujo.
+
+## Docker para desarrollo y pruebas
+
+El [entorno Docker](docs/DOCKER_DESARROLLO.md) utiliza Nginx, PHP-FPM 8.4 con OPcache y Vite/HMR; PostgreSQL permanece externo. Sus puertos predeterminados son `8001` y `5174`, conservando el arranque nativo en `8000` y `5173`. Descargar los archivos Docker mediante `git pull` no cambia el despliegue nativo.
+
+`DatabaseSeeder` carga primero los catálogos y después la cuenta inicial Admin Admin, cédula `0123467890`, departamento 62 y rol 1 ADMINISTRADOR. Configurar `BOOTSTRAP_ADMIN_PASSWORD` en el archivo privado del ambiente antes de crearla. Repetir el seeder conserva la contraseña existente. Para cargar únicamente catálogos, usar `db:seed --class=DatosBaseInicialesSeeder`.
 
 ## Preparar el entorno local
 

@@ -7,3 +7,6 @@
 .env.local
 .env.*.local
 .env.backup
+**/.env*
+!**/.env.example
+!.env.docker.example

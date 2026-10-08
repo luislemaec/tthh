@@ -60,7 +60,7 @@ php tools/verificar-transicion-baseline.php
 
 También comprueba bloqueo de historial incompleto y columnas incompatibles, modo de verificación sin escrituras, adopción repetible, conservación de las 877 filas y de los registros históricos, ajuste explícito de supervisores y `migrate` habitual posterior sin recrear tablas.
 
-Resultado de la suite general del backend en esta entrega: 12 de 14 pruebas pasan. Las dos fallas de `MarcacionSitTest` esperan rechazo de una lectura de 31 segundos, mientras `config/marcacion.php` actualmente define `app_antiguedad_s=200`. No se modificó esa configuración ni esas pruebas al preparar la instalación inicial. La verificación específica de la base inicial sí terminó correctamente.
+Verificación actual de la suite general (2026-10-08): 20 pruebas aprobadas, 91 aserciones en Docker. Las antiguas fallas GPS se resolvieron aislando los parámetros del escenario de pruebas y verificando los límites configurables, sin cambiar la configuración operativa. La verificación específica de la base inicial también terminó correctamente.
 
 Para regenerar las fuentes desde una exportación revisada:
 
@@ -129,3 +129,9 @@ La adopción **no convierte** las columnas CHAR de la BD existente a VARCHAR ni 
 No se modificó el `.env` ni se ejecutó la adopción con escritura en `BDD_RRHH`. La producción no se consultó. El comando inicial bloquea el despliegue si faltan cambios históricos o condiciones estructurales; no ejecutar un `migrate` general sobre la BD existente antes de adoptar.
 
 Estas migraciones rechazan `down()` deliberadamente: no eliminan el esquema ni datos potencialmente referenciados mediante rollback. La recuperación de una instalación fallida sigue su respaldo y el plan revisado. Los comandos de producción los ejecuta el equipo manualmente.
+
+## Cuenta inicial de desarrollo/pruebas
+
+Después de las dos migraciones, el seeder principal ahora ejecuta los catálogos y `SuperAdminInicialSeeder`, en ese orden. Configurar `BOOTSTRAP_ADMIN_PASSWORD` en el archivo privado del ambiente y ejecutar `php artisan db:seed`. Para cargar únicamente catálogos, continuar usando `php artisan db:seed --class=DatosBaseInicialesSeeder`.
+
+La cuenta inicial es Admin Admin, cédula string `0123467890`, departamento existente 62 y rol existente 1 ADMINISTRADOR. El seeder utiliza bcrypt y no cambia contraseñas existentes. No ejecutarlo automáticamente sobre producción. Los comandos Docker y las verificaciones están en [Entorno Docker](../../../docs/DOCKER_DESARROLLO.md).

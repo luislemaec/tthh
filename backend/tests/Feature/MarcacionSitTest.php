@@ -13,6 +13,15 @@ class MarcacionSitTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        // Escenario GPS determinista: independiente de los valores del ambiente.
+        // Las pruebas de parametrización verifican los cambios desde la BD.
+        config(['marcacion' => [
+            'app_latitud' => -0.1805373,
+            'app_longitud' => -78.4892070,
+            'app_radio_m' => 50,
+            'app_precision_m' => 25,
+            'app_antiguedad_s' => 30,
+        ]]);
         // Fixtures aislados: nunca conectar ni migrar la BD institucional.
         config(['database.default' => 'pgsql', 'database.connections.pgsql' => [
             'driver' => 'sqlite', 'database' => ':memory:', 'prefix' => '', 'foreign_key_constraints' => true,
@@ -180,6 +189,29 @@ class MarcacionSitTest extends TestCase
         $this->marcar($token, $datos)->assertCreated();
         $datos['concepto'] = 'SALIDA AL LUNCH';
         $this->marcar($token, $datos)->assertUnprocessable();
+    }
+
+    public function test_limites_gps_configurados_en_bd_prevalecen_y_se_respetan(): void
+    {
+        DB::table('dbo.d2_configuracion')->insert([
+            ['concepto' => 'app_radio_m', 'valor' => '1000'],
+            ['concepto' => 'app_precision_m', 'valor' => '100'],
+            ['concepto' => 'app_antiguedad_s', 'valor' => '200'],
+        ]);
+        $token = $this->sesion($this->empleado());
+        foreach ([['precision' => 101], ['latitud' => -0.2005373],
+            ['capturada_en' => now()->subSeconds(201)->toIso8601String()]] as $cambio) {
+            $this->marcar($token, $this->gps($token, $cambio))->assertUnprocessable();
+        }
+        $this->assertSame(0, DB::table('dbo.sg_control_persona')->count());
+
+        // Fuera de los límites del escenario base, pero dentro de los de la BD.
+        $this->marcar($token, $this->gps($token, [
+            'latitud' => -0.1815373,
+            'precision' => 50,
+            'capturada_en' => now()->subSeconds(200)->toIso8601String(),
+        ]))->assertCreated();
+        $this->assertSame(1, DB::table('dbo.sg_control_persona')->count());
     }
 
     public function test_equipos_compartidos_y_secuencia_web_app(): void

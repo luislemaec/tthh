@@ -7,6 +7,6 @@ return [
     'allowed_origins_patterns' => [],
     'allowed_headers'          => ['*'],
     'exposed_headers'          => [],
-    'max_age'                  => 0,
+    'max_age'                  => (int) env('CORS_MAX_AGE', 0),
     'supports_credentials'     => false,
 ];

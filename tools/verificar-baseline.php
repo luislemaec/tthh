@@ -130,6 +130,7 @@ try {
     if (Artisan::call('rrhh:adoptar-baseline') !== 0) {
         throw new RuntimeException('Una instalación nueva no se reconoce como consolidada: '.str_replace("\n", ' | ', Artisan::output()));
     }
+    config(['bootstrap_admin.password' => 'Baseline-Prueba-Temporal-123!', 'services.ad.host' => null]);
     if (Artisan::call('db:seed', ['--class' => 'DatabaseSeeder', '--force' => true]) !== 0 || $connection->table('dbo.admin_rol')->count() !== $manifest['counts']['dbo.admin_rol']) {
         throw new RuntimeException('El seeder principal no es repetible.');
     }
@@ -140,7 +141,18 @@ try {
     if (Artisan::call('migrate', ['--database' => 'pgsql', '--force' => true]) !== 0 || count(app('migration.repository')->getRan()) !== 2) {
         throw new RuntimeException('Una instalación nueva requiere migraciones adicionales o no es repetible.');
     }
-    echo json_encode(['result' => 'OK', 'tables_checked' => count($manifest['counts']), 'rows_checked' => $manifest['rows'],
+    $admin = Empleado::where('identificacion', '0123467890')->firstOrFail();
+    if ((int) $admin->id_depto !== 62 || password_get_info($admin->password)['algoName'] !== 'bcrypt'
+        || app(App\Services\AutenticacionService::class)->autenticar('0123467890', 'Baseline-Prueba-Temporal-123!')?->id_emp !== $admin->id_emp) {
+        throw new RuntimeException('La cuenta inicial no autentica o sus datos son incorrectos.');
+    }
+    $hashInicial = $admin->password;
+    Artisan::call('db:seed', ['--class' => 'SuperAdminInicialSeeder', '--force' => true]);
+    if (Empleado::where('identificacion', '0123467890')->count() !== 1 || $admin->fresh()->password !== $hashInicial
+        || $admin->roles()->where('id_rol', 1)->count() !== 1) {
+        throw new RuntimeException('La segunda carga modifica la contraseña o duplica la cuenta o rol inicial.');
+    }
+    echo json_encode(['superadmin_bcrypt_login_department_role_idempotence' => 'OK', 'result' => 'OK', 'tables_checked' => count($manifest['counts']), 'rows_checked' => $manifest['rows'],
         'char_columns_remaining' => 0, 'varchar_columns_converted' => count($manifest['char_to_varchar']),
         'repeated_load' => $repeat, 'preserves_parameters' => true, 'sequence_allows_new_role' => true,
         'existing_database_blocked' => true, 'supervisor_constraint_in_initial_schema' => true, 'active_migrations' => 2,
