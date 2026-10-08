@@ -1,0 +1,122 @@
+[
+  {
+    "concepto": "Primario",
+    "a": "#034ea2",
+    "b": "#ffffff",
+    "ratio": 8.029504292949845,
+    "textoAA": true,
+    "noTextual3": true
+  },
+  {
+    "concepto": "Hover primario",
+    "a": "#03458f",
+    "b": "#ffffff",
+    "ratio": 9.326060748883735,
+    "textoAA": true,
+    "noTextual3": true
+  },
+  {
+    "concepto": "Active primario",
+    "a": "#023b7b",
+    "b": "#ffffff",
+    "ratio": 10.970759976428557,
+    "textoAA": true,
+    "noTextual3": true
+  },
+  {
+    "concepto": "Texto",
+    "a": "#495057",
+    "b": "#ffffff",
+    "ratio": 8.17635452073249,
+    "textoAA": true,
+    "noTextual3": true
+  },
+  {
+    "concepto": "Texto secundario",
+    "a": "#5f6870",
+    "b": "#f8f9fa",
+    "ratio": 5.383338856255385,
+    "textoAA": true,
+    "noTextual3": true
+  },
+  {
+    "concepto": "Danger",
+    "a": "#d32f2f",
+    "b": "#fef4f4",
+    "ratio": 4.614367068263225,
+    "textoAA": true,
+    "noTextual3": true
+  },
+  {
+    "concepto": "Success",
+    "a": "#517c2c",
+    "b": "#ffffff",
+    "ratio": 4.918843128514716,
+    "textoAA": true,
+    "noTextual3": true
+  },
+  {
+    "concepto": "Info",
+    "a": "#0276b6",
+    "b": "#ffffff",
+    "ratio": 4.918684374560579,
+    "textoAA": true,
+    "noTextual3": true
+  },
+  {
+    "concepto": "Warning texto",
+    "a": "#8d6c19",
+    "b": "#fffcf5",
+    "ratio": 4.775525628546142,
+    "textoAA": true,
+    "noTextual3": true
+  },
+  {
+    "concepto": "Blanco sobre warning",
+    "a": "#ffffff",
+    "b": "#fbc02d",
+    "ratio": 1.6562045789501225,
+    "textoAA": false,
+    "noTextual3": false
+  },
+  {
+    "concepto": "Foco actual de plantilla",
+    "a": "#a9c3df",
+    "b": "#ffffff",
+    "ratio": 1.8168308248643243,
+    "textoAA": false,
+    "noTextual3": false
+  },
+  {
+    "concepto": "Foco heredado",
+    "a": "#579186",
+    "b": "#ffffff",
+    "ratio": 3.6209062678924395,
+    "textoAA": false,
+    "noTextual3": true
+  },
+  {
+    "concepto": "Gris 400 / blanco",
+    "a": "#99a1af",
+    "b": "#ffffff",
+    "ratio": 2.601766988456806,
+    "textoAA": false,
+    "noTextual3": false
+  },
+  {
+    "concepto": "Acción TH",
+    "a": "#0b5447",
+    "b": "#ffffff",
+    "ratio": 8.848269463948332,
+    "textoAA": true,
+    "noTextual3": true
+  },
+  {
+    "concepto": "Marcación pendiente",
+    "a": "#068174",
+    "b": "#ffffff",
+    "ratio": 4.77268693027804,
+    "textoAA": true,
+    "noTextual3": true
+  }
+]

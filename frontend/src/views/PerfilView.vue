@@ -40,7 +40,6 @@
       </div>
 
       <div v-if="error" class="text-red-600 text-sm bg-red-50 rounded p-2">{{ error }}</div>
-      <div v-if="exito" class="text-green-600 text-sm bg-green-50 rounded p-2">{{ exito }}</div>
 
       <button @click="cambiarPassword" :disabled="guardando"
         class="w-full bg-[#0b5447] text-white py-2 rounded-lg text-sm font-medium hover:bg-[#00372e] disabled:opacity-50">
@@ -54,11 +53,11 @@
 import { ref, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/services/api'
+import { notificar } from '@/services/ui'
 
 const auth     = useAuthStore()
 const guardando = ref(false)
 const error     = ref('')
-const exito     = ref('')
 const form      = ref({ password_actual: '', password_nuevo: '', password_confirmar: '' })
 
 const iniciales = computed(() => {
@@ -69,7 +68,6 @@ const iniciales = computed(() => {
 
 const cambiarPassword = async () => {
   error.value = ''
-  exito.value = ''
 
   if (!form.value.password_actual || !form.value.password_nuevo || !form.value.password_confirmar) {
     error.value = 'Todos los campos son requeridos.'
@@ -87,9 +85,8 @@ const cambiarPassword = async () => {
   guardando.value = true
   try {
     const { data } = await api.post('/cambiar-password', form.value)
-    exito.value = data.message
+    notificar(data.message || 'Contraseña actualizada.', 'success')
     form.value = { password_actual: '', password_nuevo: '', password_confirmar: '' }
-    setTimeout(() => { exito.value = '' }, 4000)
   } catch (e) {
     error.value = e.response?.data?.message || 'Error al cambiar contraseña.'
   } finally {

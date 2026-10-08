@@ -1,13 +1,13 @@
 <template>
-  <div class="space-y-6">
+  <div class="space-y-6 text-sit-text">
 
     <!-- Tarjeta de timbrada del empleado -->
-    <div class="bg-white rounded-xl shadow p-6">
+    <div class="bg-sit-surface rounded-xl shadow-sit-card p-6">
       <div class="mb-6">
-        <h1 class="text-2xl font-bold text-gray-800 text-center">Control de Asistencia</h1>
+        <h1 class="text-2xl font-bold text-sit-strong text-center">Control de Asistencia</h1>
         <div class="text-center mt-3">
-          <p class="text-sm font-medium text-gray-500 uppercase tracking-wide">{{ fechaHoy }}</p>
-          <p class="text-5xl font-bold text-gray-800 mt-1 tabular-nums">{{ horaActual }}</p>
+          <p class="text-sm font-medium text-sit-muted uppercase tracking-wide">{{ fechaHoy }}</p>
+          <p class="text-5xl font-bold text-sit-strong mt-1 tabular-nums">{{ horaActual }}</p>
         </div>
       </div>
 
@@ -17,12 +17,14 @@
           v-for="btn in botones" :key="btn.concepto"
           @click="marcar(btn.concepto)"
           :disabled="!btn.disponible || marcando"
-          :style="btnStyle(btn.estadoBtn)"
           :class="[
+            btnClase(btn.estadoBtn),
             btn.disponible ? 'cursor-pointer hover:opacity-90' : 'cursor-not-allowed opacity-80',
-            'w-full py-2 rounded-xl text-sm font-semibold transition flex flex-col items-center gap-1'
+            'w-full py-5 rounded-xl text-sm font-semibold transition flex flex-col items-center gap-2'
           ]">
-          <img :src="btn.icono" class="w-28 h-28 md:w-44 md:h-44 object-contain" decoding="async" />
+          <svg class="w-10 h-10 md:w-12 md:h-12 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path v-for="(trazo, index) in btn.icono" :key="index" :d="trazo" />
+          </svg>
           <span>{{ btn.label }}</span>
           <span v-if="getMarcacion(btn.concepto)" class="text-xs font-normal opacity-70">
             {{ formatHora(getMarcacion(btn.concepto)?.fecha_hora) }}
@@ -35,7 +37,7 @@
 
       <!-- Banner de bloqueo por modalidad BIOMETRICO o TELETRABAJO vencido -->
       <div v-if="estado.puede_marcar === false"
-        class="flex items-center gap-3 bg-amber-100 border-2 border-amber-400 text-amber-900 px-5 py-4 rounded-xl text-base font-bold mb-4 text-center justify-center">
+        class="flex items-center gap-3 bg-sit-warn-soft border-2 border-sit-warn text-sit-warn-text px-5 py-4 rounded-xl text-base font-bold mb-4 text-center justify-center">
         <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
             d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
@@ -49,8 +51,8 @@
     <Teleport to="body">
       <div v-if="mensajeExito || mensajeError"
         class="fixed top-4 inset-x-0 z-[9985] flex justify-center px-4 pointer-events-none">
-        <div :class="mensajeError ? 'bg-red-600' : 'bg-green-600'"
-          class="pointer-events-auto max-w-md w-full sm:w-auto flex items-center gap-3 text-white px-5 py-3 rounded-xl shadow-lg text-sm font-medium">
+        <div :class="mensajeError ? 'bg-sit-danger' : 'bg-sit-success'"
+          class="pointer-events-auto max-w-md w-full sm:w-auto flex items-center gap-3 text-sit-on-color px-5 py-3 rounded-xl shadow-sit-float text-sm font-medium">
           <svg v-if="mensajeError" class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
@@ -60,22 +62,21 @@
           </svg>
           <span class="flex-1">{{ mensajeError || mensajeExito }}</span>
           <button @click="mensajeExito = ''; mensajeError = ''"
-            class="text-white/80 hover:text-white text-lg leading-none flex-shrink-0">×</button>
+            class="text-sit-on-color/80 hover:text-sit-on-color text-lg leading-none flex-shrink-0">×</button>
         </div>
       </div>
     </Teleport>
 
     <!-- Modal confirmar salida antes de las 16:30 -->
-    <div v-if="modalSalidaTemprana" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md space-y-4">
-        <h2 class="text-lg font-semibold text-gray-700">Marcar Salida</h2>
-        <p class="text-sm text-gray-600">La hora de salida es antes de las 16:30. ¿Está seguro de realizar esta marcación?</p>
+    <div v-if="modalSalidaTemprana" class="fixed inset-0 bg-sit-overlay flex items-center justify-center z-50 p-4">
+      <div class="bg-sit-surface rounded-xl shadow-sit-float p-6 w-full max-w-md space-y-4">
+        <h2 class="text-lg font-semibold text-sit-text">Marcar Salida</h2>
+        <p class="text-sm text-sit-text">La hora de salida es antes de las 16:30. ¿Está seguro de realizar esta marcación?</p>
         <div class="flex justify-end gap-3">
           <button @click="modalSalidaTemprana = false"
-            class="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
+            class="px-4 py-2 rounded-lg border border-sit-border text-sm text-sit-text hover:bg-sit-ground">Cancelar</button>
           <button @click="confirmarSalidaTemprana" :disabled="marcando"
-            class="px-4 py-2 rounded-lg text-white text-sm disabled:opacity-50"
-            style="background-color:#0b5447;">
+            class="sit-primary-action text-sm disabled:opacity-50">
             {{ marcando ? "Registrando..." : "Confirmar" }}
           </button>
         </div>
@@ -83,21 +84,20 @@
     </div>
 
     <!-- Historial personal de marcaciones -->
-    <div class="bg-white rounded-xl shadow p-6">
+    <div class="bg-sit-surface rounded-xl shadow-sit-card p-6">
       <div class="mb-4 space-y-3">
-        <h2 class="text-lg font-bold text-gray-800">Mis Marcaciones</h2>
+        <h2 class="text-lg font-bold text-sit-strong">Mis Marcaciones</h2>
         <p v-if="estado.articulo_atrasos"
-          class="text-sm font-medium text-white px-4 py-2 rounded-lg"
-          style="background-color:#0b5447;">
+          class="text-sm font-medium text-sit-on-color bg-sit-primary px-4 py-2 rounded-lg">
           {{ estado.articulo_atrasos }}
         </p>
         <div class="flex flex-wrap gap-2 items-center">
           <input v-model="histFechaDesde" type="date" @change="cargarHistorial"
-            class="w-full sm:w-auto border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+            class="w-full sm:w-auto border border-sit-border rounded-lg px-3 py-2 text-sm bg-sit-surface text-sit-text focus:outline-none focus:ring-2 focus:ring-sit-primary" />
           <input v-model="histFechaHasta" type="date" @change="cargarHistorial"
-            class="w-full sm:w-auto border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+            class="w-full sm:w-auto border border-sit-border rounded-lg px-3 py-2 text-sm bg-sit-surface text-sit-text focus:outline-none focus:ring-2 focus:ring-sit-primary" />
           <select v-model="histTipo" @change="cargarHistorial"
-            class="w-full sm:w-auto border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]">
+            class="w-full sm:w-auto border border-sit-border rounded-lg px-3 py-2 text-sm bg-sit-surface text-sit-text focus:outline-none focus:ring-2 focus:ring-sit-primary">
             <option value="todos">Todos</option>
             <option value="justificados">Atrasos justificados</option>
             <option value="injustificados">Atrasos injustificados</option>
@@ -107,24 +107,24 @@
 
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
-          <thead class="bg-gray-50 border-b">
+          <thead class="bg-sit-ground border-b border-sit-border">
             <tr>
-              <th class="text-left px-3 py-3 text-gray-600 font-medium">Fecha</th>
-              <th class="text-left px-3 py-3 text-gray-600 font-medium">Concepto</th>
-              <th class="text-center px-3 py-3 text-gray-600 font-medium">Hora</th>
-              <th class="text-center px-3 py-3 text-gray-600 font-medium">Atraso</th>
-              <th class="text-center px-3 py-3 text-gray-600 font-medium">Justificación</th>
+              <th class="text-left px-3 py-3 text-sit-text font-medium">Fecha</th>
+              <th class="text-left px-3 py-3 text-sit-text font-medium">Concepto</th>
+              <th class="text-center px-3 py-3 text-sit-text font-medium">Hora</th>
+              <th class="text-center px-3 py-3 text-sit-text font-medium">Atraso</th>
+              <th class="text-center px-3 py-3 text-sit-text font-medium">Justificación</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="cargandoHistorial">
-              <td colspan="4" class="text-center py-8 text-gray-400">Cargando...</td>
+              <td colspan="4" class="text-center py-8 text-sit-muted">Cargando...</td>
             </tr>
             <tr v-else-if="historial.length === 0">
-              <td colspan="4" class="text-center py-8 text-gray-400">No hay registros en este período</td>
+              <td colspan="4" class="text-center py-8 text-sit-muted">No hay registros en este período</td>
             </tr>
             <tr v-for="(r, i) in historial" :key="i"
-              class="border-b hover:bg-gray-50">
+              class="border-b border-sit-border hover:bg-sit-ground">
               <td class="px-3 py-2 font-medium whitespace-nowrap">{{ r.fecha }}</td>
               <td class="px-3 py-2">
                 <span :class="colorConcepto(r.concepto)"
@@ -132,22 +132,22 @@
                   {{ r.concepto }}
                 </span>
               </td>
-              <td class="px-3 py-2 text-center font-mono text-gray-700">{{ r.hora }}</td>
+              <td class="px-3 py-2 text-center font-mono text-sit-text">{{ r.hora }}</td>
               <td class="px-3 py-2 text-center">
                 <template v-if="r.atraso > 0">
-                  <span class="text-red-700 font-medium">{{ minATexto(r.atraso) }}</span>
+                  <span class="text-sit-danger font-medium">{{ minATexto(r.atraso) }}</span>
                   <div v-if="r.concepto === 'ENTRADA DEL LUNCH' && horaDebiRegresarLunch(r.fecha)"
-                       class="text-xs text-amber-600 mt-0.5">
+                       class="text-xs text-sit-warn-text mt-0.5">
                     Debió: {{ horaDebiRegresarLunch(r.fecha) }}
                   </div>
                 </template>
-                <span v-else class="text-gray-300">—</span>
+                <span v-else class="text-sit-muted">—</span>
               </td>
               <td class="px-3 py-2 text-center">
-                <span v-if="r.justificado === 'TOTAL'" class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs">Justificado</span>
-                <span v-else-if="r.justificado === 'PARCIAL'" class="bg-orange-100 text-orange-700 px-2 py-0.5 rounded text-xs">Parcial</span>
-                <span v-else-if="r.justificado === 'NO'" class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs">Sin justificar</span>
-                <span v-else class="text-gray-300">—</span>
+                <span v-if="r.justificado === 'TOTAL'" class="bg-sit-success-soft text-sit-success px-2 py-0.5 rounded text-xs">Justificado</span>
+                <span v-else-if="r.justificado === 'PARCIAL'" class="bg-sit-warn-soft text-sit-warn-text px-2 py-0.5 rounded text-xs">Parcial</span>
+                <span v-else-if="r.justificado === 'NO'" class="bg-sit-danger-soft text-sit-danger px-2 py-0.5 rounded text-xs">Sin justificar</span>
+                <span v-else class="text-sit-muted">—</span>
               </td>
             </tr>
           </tbody>
@@ -156,43 +156,43 @@
     </div>
 
     <!-- Panel administrador: listado del dia -->
-    <div v-if="esAdmin" class="bg-white rounded-xl shadow p-6">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-lg font-bold text-gray-800">Marcaciones del Dia</h2>
-        <div class="flex gap-2">
+    <div v-if="esAdmin" class="bg-sit-surface rounded-xl shadow-sit-card p-6">
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <h2 class="text-lg font-bold text-sit-strong">Marcaciones del Dia</h2>
+        <div class="flex flex-wrap gap-2 w-full sm:w-auto">
           <input v-model="filtroFecha" type="date"
             @change="cargarListado"
-            class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+            class="w-full sm:w-auto border border-sit-border rounded-lg px-3 py-2 text-sm bg-sit-surface text-sit-text focus:outline-none focus:ring-2 focus:ring-sit-primary" />
           <input v-model="filtroBuscar" type="text" placeholder="Buscar empleado..."
             @input="cargarListado"
-            class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#579186]" />
+            class="w-full sm:w-auto border border-sit-border rounded-lg px-3 py-2 text-sm bg-sit-surface text-sit-text focus:outline-none focus:ring-2 focus:ring-sit-primary" />
         </div>
       </div>
 
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
-          <thead class="bg-gray-50 border-b">
+          <thead class="bg-sit-ground border-b border-sit-border">
             <tr>
-              <th class="text-left px-4 py-3 text-gray-600 font-medium">Empleado</th>
-              <th class="text-left px-4 py-3 text-gray-600 font-medium">Departamento</th>
-              <th class="text-left px-4 py-3 text-gray-600 font-medium">Concepto</th>
-              <th class="text-left px-4 py-3 text-gray-600 font-medium">Hora</th>
-              <th class="text-left px-4 py-3 text-gray-600 font-medium">Tipo</th>
-              <th class="text-left px-4 py-3 text-gray-600 font-medium">IP</th>
+              <th class="text-left px-4 py-3 text-sit-text font-medium">Empleado</th>
+              <th class="text-left px-4 py-3 text-sit-text font-medium">Departamento</th>
+              <th class="text-left px-4 py-3 text-sit-text font-medium">Concepto</th>
+              <th class="text-left px-4 py-3 text-sit-text font-medium">Hora</th>
+              <th class="text-left px-4 py-3 text-sit-text font-medium">Tipo</th>
+              <th class="text-left px-4 py-3 text-sit-text font-medium">IP</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="cargandoListado">
-              <td colspan="6" class="text-center py-8 text-gray-400">Cargando...</td>
+              <td colspan="6" class="text-center py-8 text-sit-muted">Cargando...</td>
             </tr>
             <tr v-else-if="listado.length === 0">
-              <td colspan="6" class="text-center py-8 text-gray-400">No hay marcaciones para esta fecha</td>
+              <td colspan="6" class="text-center py-8 text-sit-muted">No hay marcaciones para esta fecha</td>
             </tr>
-            <tr v-for="m in listado" :key="m.secuencial" class="border-b hover:bg-gray-50">
+            <tr v-for="m in listado" :key="m.secuencial" class="border-b border-sit-border hover:bg-sit-ground">
               <td class="px-4 py-3 font-medium">
                 {{ m.empleado?.apellido_emp }} {{ m.empleado?.nombre_emp }}
               </td>
-              <td class="px-4 py-3 text-gray-500">{{ m.empleado?.departamento?.nombre_depto }}</td>
+              <td class="px-4 py-3 text-sit-muted">{{ m.empleado?.departamento?.nombre_depto }}</td>
               <td class="px-4 py-3">
                 <span :class="colorConcepto(m.concepto)"
                   class="px-2 py-1 rounded-full text-xs font-medium">
@@ -201,12 +201,12 @@
               </td>
               <td class="px-4 py-3 font-mono text-xs">{{ formatHora(m.fecha_hora) }}</td>
               <td class="px-4 py-3">
-                <span :class="m.tipo_marcacion === 'WEB' ? 'bg-blue-100 text-[#0b5447]' : 'bg-purple-100 text-purple-700'"
+                <span :class="m.tipo_marcacion === 'WEB' ? 'bg-sit-primary-soft text-sit-primary' : 'bg-sit-primary-soft text-sit-primary'"
                   class="px-2 py-1 rounded-full text-xs font-medium">
                   {{ m.tipo_marcacion || "BIO" }}
                 </span>
               </td>
-              <td class="px-4 py-3 text-gray-400 text-xs">{{ m.ip }}</td>
+              <td class="px-4 py-3 text-sit-muted text-xs">{{ m.ip }}</td>
             </tr>
           </tbody>
         </table>
@@ -286,10 +286,10 @@ const cargarHistorial = async () => {
 let intervalo = null
 
 const ICONOS = {
-  'ENTRADA':           '/marcacion/marcacion_entrada.png',
-  'SALIDA AL LUNCH':   '/marcacion/marcacion_salida_almuerzo.png',
-  'ENTRADA DEL LUNCH': '/marcacion/marcacion_entrada_almuerzo.png',
-  'SALIDA':            '/marcacion/marcacion_salida.png',
+  'ENTRADA':           ['M15 3h5v18h-5', 'M3 12h12', 'm9 6 6 6-6 6'],
+  'SALIDA AL LUNCH':   ['M3 2v7a4 4 0 0 0 8 0V2', 'M7 2v20', 'M21 15V2c-4 2-4 8-4 13h4v7'],
+  'ENTRADA DEL LUNCH': ['M3 10a9 9 0 1 1 2.8 8.5', 'M3 4v6h6', 'M12 7v5l3 2'],
+  'SALIDA':            ['M9 3H4v18h5', 'M9 12h12', 'm15 6 6 6-6 6'],
 }
 
 const LABELS = {
@@ -299,11 +299,10 @@ const LABELS = {
   'SALIDA':            'Marcar Salida',
 }
 
-const btnStyle = (estadoBtn) => {
-  if (estadoBtn === 'apagado')       return 'background-color:#c3dbd7; color:#3a6b63;'
-  if (estadoBtn === 'activo')        return 'background-color:#0b5547; color:#ffffff;'
-  if (estadoBtn === 'por_activarse') return 'background-color:#068174; color:#ffffff;'
-  return ''
+const btnClase = (estadoBtn) => {
+  if (estadoBtn === 'apagado') return 'bg-sit-neutral-soft text-sit-muted border border-sit-border'
+  if (estadoBtn === 'activo') return 'bg-sit-primary text-sit-on-color hover:bg-sit-primary-hover'
+  return 'bg-sit-primary-soft text-sit-primary border border-sit-border'
 }
 
 const botones = computed(() => {
@@ -334,12 +333,12 @@ const formatHora = (fechaHora) => {
 
 const colorConcepto = (concepto) => {
   const colores = {
-    "ENTRADA":           "bg-green-100 text-green-700",
-    "SALIDA AL LUNCH":   "bg-yellow-100 text-yellow-700",
-    "ENTRADA DEL LUNCH": "bg-blue-100 text-[#0b5447]",
-    "SALIDA":            "bg-red-100 text-red-700",
+    "ENTRADA":           "bg-sit-success-soft text-sit-success",
+    "SALIDA AL LUNCH":   "bg-sit-warn-soft text-sit-warn-text",
+    "ENTRADA DEL LUNCH": "bg-sit-primary-soft text-sit-primary",
+    "SALIDA":            "bg-sit-danger-soft text-sit-danger",
   }
-  return colores[concepto] || "bg-gray-100 text-gray-700"
+  return colores[concepto] || "bg-sit-neutral-soft text-sit-text"
 }
 
 const actualizarHora = () => {
@@ -412,9 +411,6 @@ const ejecutarMarcar = async (concepto) => {
 }
 
 onMounted(async () => {
-  // Precarga las imágenes para evitar el blank al primer clic
-  Object.values(ICONOS).forEach(src => { const i = new Image(); i.src = src })
-
   actualizarHora()
   intervalo = setInterval(actualizarHora, 1000)
   await cargarEstado()

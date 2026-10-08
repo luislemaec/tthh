@@ -117,6 +117,7 @@
 <script setup>
 import { ref, onMounted } from "vue"
 import api from "@/services/api"
+import { confirmarAccion, notificar } from "@/services/ui"
 
 const configuraciones = ref([])
 const cargando        = ref(false)
@@ -131,7 +132,7 @@ async function cargar() {
     const { data } = await api.get("/admin/configuracion")
     configuraciones.value = data
   } catch (e) {
-    console.error(e)
+    notificar(e.response?.data?.message || 'No se pudieron cargar los parámetros.', 'danger')
   } finally {
     cargando.value = false
   }
@@ -162,6 +163,7 @@ async function guardar() {
       await api.post("/admin/configuracion", form.value)
     }
     modal.value = false
+    notificar('Parámetro guardado.', 'success')
     cargar()
   } catch (e) {
     error.value = e.response?.data?.message || "Error al guardar."
@@ -171,23 +173,24 @@ async function guardar() {
 }
 
 async function eliminar(concepto) {
-  if (!confirm("Seguro que deseas eliminar el parametro: " + concepto + "?")) return
+  if (!await confirmarAccion({ titulo: 'Eliminar parámetro', mensaje: '¿Eliminar el parámetro ' + concepto + '?', aceptar: 'Eliminar', peligrosa: true })) return
   try {
     await api.delete("/admin/configuracion/" + concepto)
+    notificar('Parámetro eliminado.', 'success')
     cargar()
   } catch (e) {
-    alert(e.response?.data?.message || "Error al eliminar.")
+    notificar(e.response?.data?.message || "Error al eliminar.", 'danger')
   }
 }
 
 async function cargarParametrosBase() {
-  if (!confirm("Cargar parametros base del sistema?")) return
+  if (!await confirmarAccion({ titulo: 'Cargar parámetros base', mensaje: '¿Cargar los parámetros base del sistema?', aceptar: 'Cargar' })) return
   try {
     const { data } = await api.post("/admin/configuracion/parametros-base")
-    alert(data.message)
+    notificar(data.message || 'Parámetros base cargados.', 'success')
     cargar()
   } catch (e) {
-    alert("Error al cargar parametros base.")
+    notificar("Error al cargar parametros base.", 'danger')
   }
 }
 

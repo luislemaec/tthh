@@ -1,0 +1,434 @@
+{
+  "--color-gray-600": {
+    "css": "oklch(44.6% 0.03 256.802)",
+    "sRGB": "#4a5565"
+  },
+  "--color-white": {
+    "css": "#fff",
+    "sRGB": "#ffffff"
+  },
+  "--color-gray-500": {
+    "css": "oklch(55.1% 0.027 264.364)",
+    "sRGB": "#6a7282"
+  },
+  "--color-gray-400": {
+    "css": "oklch(70.7% 0.022 261.325)",
+    "sRGB": "#99a1af"
+  },
+  "--color-gray-700": {
+    "css": "oklch(37.3% 0.034 259.733)",
+    "sRGB": "#364153"
+  },
+  "--color-gray-800": {
+    "css": "oklch(27.8% 0.033 256.848)",
+    "sRGB": "#1e2939"
+  },
+  "--color-gray-50": {
+    "css": "oklch(98.5% 0.002 247.839)",
+    "sRGB": "#f9fafb"
+  },
+  "--color-red-600": {
+    "css": "oklch(57.7% 0.245 27.325)",
+    "sRGB": "#e7000b"
+  },
+  "--color-green-700": {
+    "css": "oklch(52.7% 0.154 150.069)",
+    "sRGB": "#008236"
+  },
+  "--color-gray-300": {
+    "css": "oklch(87.2% 0.01 258.338)",
+    "sRGB": "#d1d5dc"
+  },
+  "--color-red-700": {
+    "css": "oklch(50.5% 0.213 27.518)",
+    "sRGB": "#c10007"
+  },
+  "--color-gray-200": {
+    "css": "oklch(92.8% 0.006 264.531)",
+    "sRGB": "#e5e7eb"
+  },
+  "--color-green-100": {
+    "css": "oklch(96.2% 0.044 156.743)",
+    "sRGB": "#dbfce7"
+  },
+  "--color-red-50": {
+    "css": "oklch(97.1% 0.013 17.38)",
+    "sRGB": "#fef2f2"
+  },
+  "--color-black": {
+    "css": "#000",
+    "sRGB": "#000000"
+  },
+  "--color-blue-700": {
+    "css": "oklch(48.8% 0.243 264.376)",
+    "sRGB": "#1447e6"
+  },
+  "--color-gray-100": {
+    "css": "oklch(96.7% 0.003 264.542)",
+    "sRGB": "#f3f4f6"
+  },
+  "--color-red-100": {
+    "css": "oklch(93.6% 0.032 17.717)",
+    "sRGB": "#ffe2e2"
+  },
+  "--color-red-200": {
+    "css": "oklch(88.5% 0.062 18.334)",
+    "sRGB": "#ffc9c9"
+  },
+  "--color-blue-100": {
+    "css": "oklch(93.2% 0.032 255.585)",
+    "sRGB": "#dbeafe"
+  },
+  "--color-green-600": {
+    "css": "oklch(62.7% 0.194 149.214)",
+    "sRGB": "#00a63e"
+  },
+  "--color-amber-700": {
+    "css": "oklch(55.5% 0.163 48.998)",
+    "sRGB": "#bb4d00"
+  },
+  "--color-green-50": {
+    "css": "oklch(98.2% 0.018 155.826)",
+    "sRGB": "#f0fdf4"
+  },
+  "--color-blue-50": {
+    "css": "oklch(97% 0.014 254.604)",
+    "sRGB": "#eff6ff"
+  },
+  "--color-red-500": {
+    "css": "oklch(63.7% 0.237 25.331)",
+    "sRGB": "#fb2c36"
+  },
+  "--color-amber-300": {
+    "css": "oklch(87.9% 0.169 91.605)",
+    "sRGB": "#ffd230"
+  },
+  "--color-blue-600": {
+    "css": "oklch(54.6% 0.245 262.881)",
+    "sRGB": "#155dfc"
+  },
+  "--color-orange-700": {
+    "css": "oklch(55.3% 0.195 38.402)",
+    "sRGB": "#ca3500"
+  },
+  "--color-green-200": {
+    "css": "oklch(92.5% 0.084 155.995)",
+    "sRGB": "#b9f8cf"
+  },
+  "--color-green-800": {
+    "css": "oklch(44.8% 0.119 151.328)",
+    "sRGB": "#016630"
+  },
+  "--color-green-300": {
+    "css": "oklch(87.1% 0.15 154.449)",
+    "sRGB": "#7bf1a8"
+  },
+  "--color-blue-200": {
+    "css": "oklch(88.2% 0.059 254.128)",
+    "sRGB": "#bedbff"
+  },
+  "--color-yellow-100": {
+    "css": "oklch(97.3% 0.071 103.193)",
+    "sRGB": "#fef9c2"
+  },
+  "--color-yellow-700": {
+    "css": "oklch(55.4% 0.135 66.442)",
+    "sRGB": "#a65f00"
+  },
+  "--color-orange-50": {
+    "css": "oklch(98% 0.016 73.684)",
+    "sRGB": "#fff7ed"
+  },
+  "--color-orange-100": {
+    "css": "oklch(95.4% 0.038 75.164)",
+    "sRGB": "#ffedd4"
+  },
+  "--color-amber-600": {
+    "css": "oklch(66.6% 0.179 58.318)",
+    "sRGB": "#e17100"
+  },
+  "--color-amber-50": {
+    "css": "oklch(98.7% 0.022 95.277)",
+    "sRGB": "#fffbeb"
+  },
+  "--color-blue-800": {
+    "css": "oklch(42.4% 0.199 265.638)",
+    "sRGB": "#193cb8"
+  },
+  "--color-gray-900": {
+    "css": "oklch(21% 0.034 264.665)",
+    "sRGB": "#101828"
+  },
+  "--color-red-400": {
+    "css": "oklch(70.4% 0.191 22.216)",
+    "sRGB": "#ff6467"
+  },
+  "--color-amber-200": {
+    "css": "oklch(92.4% 0.12 95.746)",
+    "sRGB": "#fee685"
+  },
+  "--color-purple-100": {
+    "css": "oklch(94.6% 0.033 307.174)",
+    "sRGB": "#f3e8ff"
+  },
+  "--color-blue-300": {
+    "css": "oklch(80.9% 0.105 251.813)",
+    "sRGB": "#8ec5ff"
+  },
+  "--color-purple-700": {
+    "css": "oklch(49.6% 0.265 301.924)",
+    "sRGB": "#8200db"
+  },
+  "--color-red-300": {
+    "css": "oklch(80.8% 0.114 19.571)",
+    "sRGB": "#ffa2a2"
+  },
+  "--color-yellow-800": {
+    "css": "oklch(47.6% 0.114 61.907)",
+    "sRGB": "#894b00"
+  },
+  "--color-orange-600": {
+    "css": "oklch(64.6% 0.222 41.116)",
+    "sRGB": "#f54a00"
+  },
+  "--color-emerald-100": {
+    "css": "oklch(95% 0.052 163.051)",
+    "sRGB": "#d0fae5"
+  },
+  "--color-yellow-50": {
+    "css": "oklch(98.7% 0.026 102.212)",
+    "sRGB": "#fefce8"
+  },
+  "--color-amber-100": {
+    "css": "oklch(96.2% 0.059 95.617)",
+    "sRGB": "#fef3c6"
+  },
+  "--color-red-800": {
+    "css": "oklch(44.4% 0.177 26.899)",
+    "sRGB": "#9f0712"
+  },
+  "--color-purple-50": {
+    "css": "oklch(97.7% 0.014 308.299)",
+    "sRGB": "#faf5ff"
+  },
+  "--color-emerald-700": {
+    "css": "oklch(50.8% 0.118 165.612)",
+    "sRGB": "#007a55"
+  },
+  "--color-teal-700": {
+    "css": "oklch(51.1% 0.096 186.391)",
+    "sRGB": "#00786f"
+  },
+  "--color-orange-500": {
+    "css": "oklch(70.5% 0.213 47.604)",
+    "sRGB": "#ff6900"
+  },
+  "--color-indigo-700": {
+    "css": "oklch(45.7% 0.24 277.023)",
+    "sRGB": "#432dd7"
+  },
+  "--color-yellow-600": {
+    "css": "oklch(68.1% 0.162 75.834)",
+    "sRGB": "#d08700"
+  },
+  "--color-purple-800": {
+    "css": "oklch(43.8% 0.218 303.724)",
+    "sRGB": "#6e11b0"
+  },
+  "--color-amber-800": {
+    "css": "oklch(47.3% 0.137 46.201)",
+    "sRGB": "#973c00"
+  },
+  "--color-indigo-100": {
+    "css": "oklch(93% 0.034 272.788)",
+    "sRGB": "#e0e7ff"
+  },
+  "--color-teal-100": {
+    "css": "oklch(95.3% 0.051 180.801)",
+    "sRGB": "#cbfbf1"
+  },
+  "--color-indigo-600": {
+    "css": "oklch(51.1% 0.262 276.966)",
+    "sRGB": "#4f39f6"
+  },
+  "--color-orange-200": {
+    "css": "oklch(90.1% 0.076 70.697)",
+    "sRGB": "#ffd6a8"
+  },
+  "--color-emerald-800": {
+    "css": "oklch(43.2% 0.095 166.913)",
+    "sRGB": "#006045"
+  },
+  "--color-green-900": {
+    "css": "oklch(39.3% 0.095 152.535)",
+    "sRGB": "#0d542b"
+  },
+  "--color-blue-900": {
+    "css": "oklch(37.9% 0.146 265.522)",
+    "sRGB": "#1c398e"
+  },
+  "--color-purple-200": {
+    "css": "oklch(90.2% 0.063 306.703)",
+    "sRGB": "#e9d4ff"
+  },
+  "--color-orange-800": {
+    "css": "oklch(47% 0.157 37.304)",
+    "sRGB": "#9f2d00"
+  },
+  "--color-blue-500": {
+    "css": "oklch(62.3% 0.214 259.815)",
+    "sRGB": "#2b7fff"
+  },
+  "--color-amber-900": {
+    "css": "oklch(41.4% 0.112 45.904)",
+    "sRGB": "#7b3306"
+  },
+  "--color-green-500": {
+    "css": "oklch(72.3% 0.219 149.579)",
+    "sRGB": "#00c950"
+  },
+  "--color-orange-300": {
+    "css": "oklch(83.7% 0.128 66.29)",
+    "sRGB": "#ffb86a"
+  },
+  "--color-yellow-200": {
+    "css": "oklch(94.5% 0.129 101.54)",
+    "sRGB": "#fff085"
+  },
+  "--color-teal-500": {
+    "css": "oklch(70.4% 0.14 182.503)",
+    "sRGB": "#00bba7"
+  },
+  "--color-amber-500": {
+    "css": "oklch(76.9% 0.188 70.08)",
+    "sRGB": "#fe9a00"
+  },
+  "--color-pink-700": {
+    "css": "oklch(52.5% 0.223 3.958)",
+    "sRGB": "#c6005c"
+  },
+  "--color-emerald-200": {
+    "css": "oklch(90.5% 0.093 164.15)",
+    "sRGB": "#a4f4cf"
+  },
+  "--color-sky-100": {
+    "css": "oklch(95.1% 0.026 236.824)",
+    "sRGB": "#dff2fe"
+  },
+  "--color-purple-600": {
+    "css": "oklch(55.8% 0.288 302.321)",
+    "sRGB": "#9810fa"
+  },
+  "--color-blue-400": {
+    "css": "oklch(70.7% 0.165 254.624)",
+    "sRGB": "#50a2ff"
+  },
+  "--color-cyan-100": {
+    "css": "oklch(95.6% 0.045 203.388)",
+    "sRGB": "#cefafe"
+  },
+  "--color-cyan-700": {
+    "css": "oklch(52% 0.105 223.128)",
+    "sRGB": "#007595"
+  },
+  "--color-orange-400": {
+    "css": "oklch(75% 0.183 55.934)",
+    "sRGB": "#ff8904"
+  },
+  "--color-yellow-400": {
+    "css": "oklch(85.2% 0.199 91.936)",
+    "sRGB": "#fdc700"
+  },
+  "--color-teal-50": {
+    "css": "oklch(98.4% 0.014 180.72)",
+    "sRGB": "#f0fdfa"
+  },
+  "--color-yellow-300": {
+    "css": "oklch(90.5% 0.182 98.111)",
+    "sRGB": "#ffdf20"
+  },
+  "--color-amber-400": {
+    "css": "oklch(82.8% 0.189 84.429)",
+    "sRGB": "#ffb900"
+  },
+  "--color-pink-100": {
+    "css": "oklch(94.8% 0.028 342.258)",
+    "sRGB": "#fce7f3"
+  },
+  "--color-indigo-200": {
+    "css": "oklch(87% 0.065 274.039)",
+    "sRGB": "#c6d2ff"
+  },
+  "--color-indigo-50": {
+    "css": "oklch(96.2% 0.018 272.314)",
+    "sRGB": "#eef2ff"
+  },
+  "--color-sky-700": {
+    "css": "oklch(50% 0.134 242.749)",
+    "sRGB": "#0069a8"
+  },
+  "--color-sky-200": {
+    "css": "oklch(90.1% 0.058 230.902)",
+    "sRGB": "#b8e6fe"
+  },
+  "--color-sky-800": {
+    "css": "oklch(44.3% 0.11 240.79)",
+    "sRGB": "#00598a"
+  },
+  "--color-slate-100": {
+    "css": "oklch(96.8% 0.007 247.896)",
+    "sRGB": "#f1f5f9"
+  },
+  "--color-slate-700": {
+    "css": "oklch(37.2% 0.044 257.287)",
+    "sRGB": "#314158"
+  },
+  "--color-indigo-800": {
+    "css": "oklch(39.8% 0.195 277.366)",
+    "sRGB": "#372aac"
+  },
+  "--color-teal-800": {
+    "css": "oklch(43.7% 0.078 188.216)",
+    "sRGB": "#005f5a"
+  },
+  "--color-green-400": {
+    "css": "oklch(79.2% 0.209 151.711)",
+    "sRGB": "#05df72"
+  },
+  "--color-teal-200": {
+    "css": "oklch(91% 0.096 180.426)",
+    "sRGB": "#96f7e4"
+  },
+  "--color-yellow-500": {
+    "css": "oklch(79.5% 0.184 86.047)",
+    "sRGB": "#f0b100"
+  },
+  "--color-purple-400": {
+    "css": "oklch(71.4% 0.203 305.504)",
+    "sRGB": "#c27aff"
+  },
+  "--color-teal-600": {
+    "css": "oklch(60% 0.118 184.704)",
+    "sRGB": "#009689"
+  },
+  "--color-purple-300": {
+    "css": "oklch(82.7% 0.119 306.383)",
+    "sRGB": "#dab2ff"
+  },
+  "--color-purple-900": {
+    "css": "oklch(38.1% 0.176 304.987)",
+    "sRGB": "#59168b"
+  },
+  "--color-yellow-900": {
+    "css": "oklch(42.1% 0.095 57.708)",
+    "sRGB": "#733e0a"
+  },
+  "--color-emerald-50": {
+    "css": "oklch(97.9% 0.021 166.113)",
+    "sRGB": "#ecfdf5"
+  },
+  "--color-orange-900": {
+    "css": "oklch(40.8% 0.123 38.172)",
+    "sRGB": "#7e2a0c"
+  }
+}

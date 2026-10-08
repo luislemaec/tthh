@@ -10,6 +10,7 @@ Esta guía está dirigida al equipo de desarrollo y operación. Los comandos loc
 - [Preparar el entorno local](#preparar-el-entorno-local)
 - [Ejecutar el aplicativo](#ejecutar-el-aplicativo)
 - [Autenticación y marcación](#autenticación-y-marcación)
+- [Navegación y menú compartido](#navegación-y-menú-compartido)
 - [Flujo de trabajo del equipo](#flujo-de-trabajo-del-equipo)
 - [Validación antes de entregar](#validación-antes-de-entregar)
 - [Base de datos y migraciones](#base-de-datos-y-migraciones)
@@ -46,7 +47,10 @@ rrhh/
 ├── frontend/
 │   ├── src/views/              Pantallas por módulo
 │   ├── src/stores/             Estado y autenticación
-│   └── src/services/           Cliente HTTP
+│   ├── src/layouts/            Layout único del sistema
+│   ├── src/composables/        Alertas compartidas
+│   ├── src/services/           Cliente HTTP y reglas de navegación
+│   └── tests/                  Pruebas de navegación con Node.js
 ├── docs/                       Guías operativas
 └── specs/                      Especificaciones funcionales
 ```
@@ -214,6 +218,44 @@ Permitir TCP 8000 en el firewall para la red de pruebas autorizada y comprobar `
 
 Recompilar/reinstalar la app en **debug** para pruebas HTTP. Su `.env` es un asset empaquetado; cambiarlo en la PC no modifica una APK ya instalada. En producción usar `https://sit.consejodecomunicacion.gob.ec/api`; la app release exige HTTPS.
 
+## Navegación y menú compartido
+
+Después del login se abre `/dashboard` directamente. `MainLayout.vue` permanece activo al navegar entre Talento Humano, Adquisiciones, Transporte, Tecnología y Comisiones; el menú muestra juntas las opciones autorizadas, agrupadas y ordenadas según la configuración de BD. `/launcher` redirige a `/dashboard` para conservar enlaces antiguos; ya no presenta tarjetas de módulos.
+
+Los roles y opciones siguen viniendo del backend mediante `admin_usuario_rol`, `admin_rol`, `admin_rol_opcion` y `admin_opcion`. Los permisos de navegación se evalúan en `src/services/navegacion.js`; los endpoints mantienen sus validaciones de autorización. El rol ADMINISTRADOR no recibe todas las opciones automáticamente.
+
+Se conserva el acceso individual a movilización mediante `puede_solicitar_vehiculo`. El menú móvil se abre como panel superpuesto. Desde el engranaje de la barra superior, «Preferencias de visualización» permite elegir menú vertical/horizontal, ajustar el texto al 100 %, 112,5 % o 125 % y restablecer menú vertical/tamaño normal. El botón anterior de cambio de orientación se retiró para evitar duplicidad.
+
+Las preferencias visuales se guardan localmente en `sit_preferences` (formato versión 1), con compatibilidad para `sit_menu_mode` y la clave anterior `th_menu_mode`. Se aplican antes de montar Vue y se sincronizan entre pestañas del mismo navegador. Si falla el almacenamiento, se mantienen en memoria. Restablecer preferencias conserva filtros, sesión y permisos; no modifica datos de BD. Consultar [configurador de SIT](docs/CONFIGURADOR_SIT.md).
+
+La cabecera centra la identidad y organiza navegación a la izquierda, preferencias/cuenta a la derecha. El menú vertical se oculta completamente. Por debajo de 992 px ambos modos utilizan un panel lateral, conservando la elección horizontal para escritorio. Ver [cabecera responsive](docs/TOPBAR_SIT.md).
+
+La interfaz comparte un indicador de actividad API, avisos, confirmaciones asíncronas, volver arriba sobre el contenido y aviso antes del vencimiento absoluto de sesión. Perfil y Parámetros ya utilizan los avisos/confirmaciones compartidos; los demás módulos mantienen sus validaciones y confirmaciones propias. Para incorporar nuevas acciones consultar [servicios globales de interfaz](docs/GLOBALS_SIT.md).
+
+`ContenidoSistema.vue` utiliza `meta.modulo` de la ruta para consultar el mantenimiento de cada sección y aplicar sus excepciones existentes. El bloqueo afecta al contenido; el menú y Mi Perfil permanecen accesibles. Los avisos y pendientes del antiguo selector se presentan en el inicio. Las alertas de stock se consultan si existe la opción Artículos; las notificaciones de Transporte se conservan para ese rol y sus opciones habilitadas, con un único temporizador de 30 segundos por layout.
+
+Validación desde `frontend`:
+
+```powershell
+npm.cmd test
+npm.cmd run build
+```
+
+En Docker, desde la raíz:
+
+```powershell
+docker compose exec frontend npm test
+docker compose exec frontend npm run build
+```
+
+Comprobar un usuario con un rol, otro con permisos de varias secciones y uno sin opciones. Revisar navegación directa, recarga, acceso denegado, menú móvil/horizontal, mantenimiento de una sola sección, habilitación individual de vehículos y cierre de sesión. Los cambios de asignaciones siguen requiriendo un nuevo login; la actualización automática de permisos durante la sesión es una mejora posterior.
+
+### Tema y plantilla compartida (primera etapa)
+
+La plantilla utiliza azul Tribunal como referencia visual, Montserrat local y componentes Vue propios para cabecera, menú, migas de pan y pie. Conserva el logo institucional, Vue y Tailwind. La orientación del menú no desmonta el contenido ni reinicia sus filtros. Los formularios, tablas y diálogos existentes se normalizarán gradualmente; por ello todavía pueden mostrar sus colores anteriores.
+
+Los tokens `--sit-*` y las reglas de la plantilla se encuentran en `frontend/src/styles/sit-theme.css`, importado por `frontend/src/style.css`. Los componentes están en `frontend/src/layouts/components`. Consultar la [guía del diseño de SIT](docs/DISENO_SIT.md) antes de añadir estilos globales. Esta etapa no requiere migraciones de BD ni cambios de configuración del backend.
+
 ## Autenticación y marcación
 
 El login busca por cédula un empleado `ACTIVO`. La autenticación compartida prueba AD y, si no autentica, verifica el hash local existente. La contraseña de PostgreSQL no es la contraseña de ingreso al sistema.
@@ -302,7 +344,7 @@ php vendor/laravel/pint/builds/pint --test <archivo.php>
 npm.cmd run build
 ```
 
-Actualmente no hay scripts de pruebas unitarias o lint del frontend en `package.json`. Completar la validación con navegación, permisos, formularios, errores de API y revisión responsive del módulo cambiado. `npm run preview` sirve el build para revisión local y no reemplaza al servidor de producción.
+`npm.cmd test` ejecuta las pruebas de navegación, permisos, mantenimiento y migas de pan. No hay un script de lint del frontend. Completar la validación con navegación, permisos, formularios, errores de API y revisión responsive del módulo cambiado. `npm run preview` sirve el build para revisión local y no reemplaza al servidor de producción.
 
 Para Tailwind CSS 4, si se utiliza `@apply` en un `<style scoped>`, añadir al inicio `@reference "tailwindcss";`.
 

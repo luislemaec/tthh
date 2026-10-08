@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { rutaAutorizada } from '@/services/navegacion'
 
 const routes = [
   {
@@ -11,17 +12,17 @@ const routes = [
   {
     path: '/launcher',
     name: 'Launcher',
-    component: () => import('@/views/LauncherView.vue'),
+    redirect: '/dashboard',
     meta: { requiresAuth: true },
   },
   {
     path: '/',
     component: () => import('@/layouts/MainLayout.vue'),
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, modulo: 'TH' },
     children: [
       { path: '', redirect: '/dashboard' },
       { path: 'dashboard', name: 'Dashboard', component: () => import('@/views/DashboardView.vue') },
-      { path: 'perfil', name: 'Perfil', component: () => import('@/views/PerfilView.vue') },
+      { path: 'perfil', name: 'Perfil', component: () => import('@/views/PerfilView.vue'), meta: { modulo: null } },
       { path: 'empleados', name: 'Empleados', component: () => import('@/views/empleados/EmpleadosIndex.vue') },
       { path: 'empleados/crear', name: 'EmpleadoCrear', component: () => import('@/views/empleados/EmpleadoForm.vue') },
       { path: 'empleados/reporte', name: 'ReporteEmpleados', component: () => import('@/views/empleados/ReporteEmpleadosView.vue') },
@@ -66,75 +67,71 @@ const routes = [
       { path: 'nomina/fondos-reserva', name: 'NominaFondosReserva', component: () => import('@/views/nomina/FondosReservaView.vue') },
       { path: 'nomina/rol-pago',       name: 'NominaRolPago',       component: () => import('@/views/nomina/RolPagoView.vue') },
       { path: 'certificados-laborales', name: 'CertificadosLaborales', component: () => import('@/views/certificados/CertificadosView.vue') },
-    ],
-  },
-  // ── Adquisiciones ──────────────────────────────────────────────────────────
-  {
-    path: '/adquisiciones',
-    component: () => import('@/layouts/AdqLayout.vue'),
-    meta: { requiresAuth: true },
-    children: [
-      { path: '', redirect: '/adquisiciones/dashboard' },
-      { path: 'dashboard',   name: 'AdqDashboard',   component: () => import('@/views/adquisiciones/AdqDashboardView.vue') },
-      { path: 'proveedores', name: 'AdqProveedores', component: () => import('@/views/adquisiciones/ProveedoresView.vue') },
-      { path: 'articulos',   name: 'AdqArticulos',   component: () => import('@/views/adquisiciones/ArticulosView.vue') },
-      { path: 'ingresos',    name: 'AdqIngresos',    component: () => import('@/views/adquisiciones/IngresosBienesView.vue') },
-      { path: 'solicitudes', name: 'AdqSolicitudes', component: () => import('@/views/adquisiciones/SolicitudesView.vue') },
-      { path: 'catalogo',    name: 'AdqCatalogo',    component: () => import('@/views/adquisiciones/CatalogoInventarioView.vue') },
-      { path: 'iva',                  name: 'AdqIva',      component: () => import('@/views/adquisiciones/IvaView.vue') },
-      { path: 'procesos-contratacion', name: 'AdqProcesos', component: () => import('@/views/adquisiciones/ProcesoContratacionView.vue') },
-      { path: 'unidades-medida', name: 'AdqUnidadesMedida', component: () => import('@/views/adquisiciones/UnidadesMedidaView.vue') },
-      { path: 'egresos',        name: 'AdqEgresos',        component: () => import('@/views/adquisiciones/EgresosBienesView.vue') },
-      { path: 'ajustes',        name: 'AdqAjustes',        component: () => import('@/views/adquisiciones/AjusteInventarioView.vue') },
-      { path: 'reportes/kardex',         name: 'AdqReporteKardex',      component: () => import('@/views/adquisiciones/ReporteKardexView.vue') },
-      { path: 'reportes/libro-compras',  name: 'AdqReporteLibroCompras', component: () => import('@/views/adquisiciones/ReporteLibroComprasView.vue') },
-      { path: 'reportes/egresos',           name: 'AdqReporteEgresos',          component: () => import('@/views/adquisiciones/ReporteEgresosView.vue') },
-      { path: 'reportes/inventario-mensual',    name: 'AdqReporteInventarioMensual',    component: () => import('@/views/adquisiciones/ReporteInventarioMensualView.vue') },
-      { path: 'reportes/inventario-valorizado', name: 'AdqReporteInventarioValorizado', component: () => import('@/views/adquisiciones/ReporteInventarioValorizadoView.vue') },
-    ],
-  },
-  // ── Transportes ────────────────────────────────────────────────────────────
-  {
-    path: '/transporte',
-    component: () => import('@/layouts/TransporteLayout.vue'),
-    meta: { requiresAuth: true },
-    children: [
-      { path: '', redirect: '/transporte/movilizacion' },
-      { path: 'vehiculos',          name: 'TransVehiculos',          component: () => import('@/views/transporte/VehiculosView.vue') },
-      { path: 'mantenimiento',      name: 'TransMantenimiento',      component: () => import('@/views/transporte/MantenimientoView.vue') },
-      { path: 'movilizacion',       name: 'TransMovilizacion',       component: () => import('@/views/transporte/MovilizacionView.vue') },
-      { path: 'talleres',            name: 'TransTalleres',           component: () => import('@/views/transporte/TalleresView.vue') },
-      { path: 'tipos-mantenimiento', name: 'TransTiposMantenimiento', component: () => import('@/views/transporte/TiposMantenimientoView.vue') },
-      { path: 'plan-preventivo',    name: 'TransPlanPreventivo',     component: () => import('@/views/transporte/PlanPreventivoView.vue') },
-      { path: 'vales-combustible',  name: 'TransValesCombustible',   component: () => import('@/views/transporte/ValesCombustibleView.vue') },
-      { path: 'reportes',           name: 'TransReportes',           component: () => import('@/views/transporte/ReportesView.vue') },
-    ],
-  },
-  // ── Inventario Tecnológico ─────────────────────────────────────────────────
-  {
-    path: '/tecnologia',
-    component: () => import('@/layouts/TecnologiaLayout.vue'),
-    meta: { requiresAuth: true },
-    children: [
-      { path: '', redirect: '/tecnologia/equipos' },
-      { path: 'equipos',                   name: 'TecEquipos',          component: () => import('@/views/tecnologia/EquiposView.vue') },
-      { path: 'piezas',                    name: 'TecPiezas',           component: () => import('@/views/tecnologia/PiezasView.vue') },
-      { path: 'mantenimiento',             name: 'TecMantenimiento',    component: () => import('@/views/tecnologia/MantenimientoView.vue') },
-      { path: 'reportes',                  name: 'TecReportes',         component: () => import('@/views/tecnologia/ReporteEquiposView.vue') },
-      { path: 'tipos-equipo',              name: 'TecTiposEquipo',      component: () => import('@/views/tecnologia/TiposEquipoView.vue') },
-      { path: 'actividades-mantenimiento', name: 'TecActividadesMtto',  component: () => import('@/views/tecnologia/ActividadesMantenimientoView.vue') },
-    ],
-  },
-  {
-    path: '/comisiones',
-    component: () => import('@/layouts/ComisionesLayout.vue'),
-    meta: { requiresAuth: true },
-    children: [
-      { path: '',               redirect: '/comisiones/solicitudes' },
-      { path: 'solicitudes',           name: 'ComSolicitudes',          component: () => import('@/views/comisiones/ComisionesView.vue') },
-      { path: 'liquidaciones',         name: 'ComLiquidaciones',        component: () => import('@/views/comisiones/LiquidacionesView.vue') },
-      { path: 'tarifas',               name: 'ComTarifas',              component: () => import('@/views/admin/TarifasViaticosView.vue') },
-      { path: 'funcionarios-externos', name: 'ComFuncionariosExternos', component: () => import('@/views/comisiones/FuncionariosExternosView.vue') },
+      // ── Adquisiciones ──────────────────────────────────────────────────────────
+      {
+        path: '/adquisiciones',
+        meta: { requiresAuth: true, modulo: 'ADQ' },
+        children: [
+          { path: '', redirect: '/adquisiciones/dashboard' },
+          { path: 'dashboard',   name: 'AdqDashboard',   component: () => import('@/views/adquisiciones/AdqDashboardView.vue') },
+          { path: 'proveedores', name: 'AdqProveedores', component: () => import('@/views/adquisiciones/ProveedoresView.vue') },
+          { path: 'articulos',   name: 'AdqArticulos',   component: () => import('@/views/adquisiciones/ArticulosView.vue') },
+          { path: 'ingresos',    name: 'AdqIngresos',    component: () => import('@/views/adquisiciones/IngresosBienesView.vue') },
+          { path: 'solicitudes', name: 'AdqSolicitudes', component: () => import('@/views/adquisiciones/SolicitudesView.vue') },
+          { path: 'catalogo',    name: 'AdqCatalogo',    component: () => import('@/views/adquisiciones/CatalogoInventarioView.vue') },
+          { path: 'iva',                  name: 'AdqIva',      component: () => import('@/views/adquisiciones/IvaView.vue') },
+          { path: 'procesos-contratacion', name: 'AdqProcesos', component: () => import('@/views/adquisiciones/ProcesoContratacionView.vue') },
+          { path: 'unidades-medida', name: 'AdqUnidadesMedida', component: () => import('@/views/adquisiciones/UnidadesMedidaView.vue') },
+          { path: 'egresos',        name: 'AdqEgresos',        component: () => import('@/views/adquisiciones/EgresosBienesView.vue') },
+          { path: 'ajustes',        name: 'AdqAjustes',        component: () => import('@/views/adquisiciones/AjusteInventarioView.vue') },
+          { path: 'reportes/kardex',         name: 'AdqReporteKardex',      component: () => import('@/views/adquisiciones/ReporteKardexView.vue') },
+          { path: 'reportes/libro-compras',  name: 'AdqReporteLibroCompras', component: () => import('@/views/adquisiciones/ReporteLibroComprasView.vue') },
+          { path: 'reportes/egresos',           name: 'AdqReporteEgresos',          component: () => import('@/views/adquisiciones/ReporteEgresosView.vue') },
+          { path: 'reportes/inventario-mensual',    name: 'AdqReporteInventarioMensual',    component: () => import('@/views/adquisiciones/ReporteInventarioMensualView.vue') },
+          { path: 'reportes/inventario-valorizado', name: 'AdqReporteInventarioValorizado', component: () => import('@/views/adquisiciones/ReporteInventarioValorizadoView.vue') },
+        ],
+      },
+      // ── Transportes ────────────────────────────────────────────────────────────
+      {
+        path: '/transporte',
+        meta: { requiresAuth: true, modulo: 'TRANS' },
+        children: [
+          { path: '', redirect: '/transporte/movilizacion' },
+          { path: 'vehiculos',          name: 'TransVehiculos',          component: () => import('@/views/transporte/VehiculosView.vue') },
+          { path: 'mantenimiento',      name: 'TransMantenimiento',      component: () => import('@/views/transporte/MantenimientoView.vue') },
+          { path: 'movilizacion',       name: 'TransMovilizacion',       component: () => import('@/views/transporte/MovilizacionView.vue') },
+          { path: 'talleres',            name: 'TransTalleres',           component: () => import('@/views/transporte/TalleresView.vue') },
+          { path: 'tipos-mantenimiento', name: 'TransTiposMantenimiento', component: () => import('@/views/transporte/TiposMantenimientoView.vue') },
+          { path: 'plan-preventivo',    name: 'TransPlanPreventivo',     component: () => import('@/views/transporte/PlanPreventivoView.vue') },
+          { path: 'vales-combustible',  name: 'TransValesCombustible',   component: () => import('@/views/transporte/ValesCombustibleView.vue') },
+          { path: 'reportes',           name: 'TransReportes',           component: () => import('@/views/transporte/ReportesView.vue') },
+        ],
+      },
+      // ── Inventario Tecnológico ─────────────────────────────────────────────────
+      {
+        path: '/tecnologia',
+        meta: { requiresAuth: true, modulo: 'TEC' },
+        children: [
+          { path: '', redirect: '/tecnologia/equipos' },
+          { path: 'equipos',                   name: 'TecEquipos',          component: () => import('@/views/tecnologia/EquiposView.vue') },
+          { path: 'piezas',                    name: 'TecPiezas',           component: () => import('@/views/tecnologia/PiezasView.vue') },
+          { path: 'mantenimiento',             name: 'TecMantenimiento',    component: () => import('@/views/tecnologia/MantenimientoView.vue') },
+          { path: 'reportes',                  name: 'TecReportes',         component: () => import('@/views/tecnologia/ReporteEquiposView.vue') },
+          { path: 'tipos-equipo',              name: 'TecTiposEquipo',      component: () => import('@/views/tecnologia/TiposEquipoView.vue') },
+          { path: 'actividades-mantenimiento', name: 'TecActividadesMtto',  component: () => import('@/views/tecnologia/ActividadesMantenimientoView.vue') },
+        ],
+      },
+      {
+        path: '/comisiones',
+        meta: { requiresAuth: true, modulo: 'COM' },
+        children: [
+          { path: '',               redirect: '/comisiones/solicitudes' },
+          { path: 'solicitudes',           name: 'ComSolicitudes',          component: () => import('@/views/comisiones/ComisionesView.vue') },
+          { path: 'liquidaciones',         name: 'ComLiquidaciones',        component: () => import('@/views/comisiones/LiquidacionesView.vue') },
+          { path: 'tarifas',               name: 'ComTarifas',              component: () => import('@/views/admin/TarifasViaticosView.vue') },
+          { path: 'funcionarios-externos', name: 'ComFuncionariosExternos', component: () => import('@/views/comisiones/FuncionariosExternosView.vue') },
+        ],
+      },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: '/' },
@@ -145,27 +142,20 @@ const router = createRouter({
   routes,
 })
 
-// Rutas accesibles para cualquier usuario autenticado, sin importar su rol o menú asignado.
-const RUTAS_SIEMPRE_PERMITIDAS = ['/dashboard', '/perfil', '/launcher']
-
 // Las URLs de admin_opcion (auth.menu) ya vienen filtradas por rol desde el backend
 // (AuthController::login) — son la fuente de verdad de qué puede ver cada usuario.
 // `puede_solicitar_vehiculo` es la única excepción real: es un booleano en ad_empleado,
-// no un rol, así que nunca aparece en admin_opcion/menu (ver LauncherView.vue).
+// no un rol, así que nunca aparece en admin_opcion/menu.
 function rutaPermitida(path, auth) {
-  if (RUTAS_SIEMPRE_PERMITIDAS.includes(path)) return true
-  if (path === '/transporte/movilizacion' && auth.empleado?.puede_solicitar_vehiculo) return true
-
-  const segmento = path.replace(/^\//, '')
-  return auth.menu.some(item => segmento === item.url || segmento.startsWith(item.url + '/'))
+  return rutaAutorizada(path, auth.menu, auth.empleado)
 }
 
 router.beforeEach((to, _from, next) => {
   const auth = useAuthStore()
   if (to.meta.requiresAuth && !auth.isAuthenticated) return next('/login')
-  if (to.meta.guest && auth.isAuthenticated) return next('/launcher')
+  if (to.meta.guest && auth.isAuthenticated) return next('/dashboard')
   if (to.meta.requiresAuth && auth.isAuthenticated && !rutaPermitida(to.path, auth)) {
-    return next('/launcher')
+    return next('/dashboard')
   }
   next()
 })

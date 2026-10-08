@@ -4,21 +4,25 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '@/services/api'
+import { menuSistema, agruparMenu } from '@/services/navegacion'
 
 export const useAuthStore = defineStore('auth', () => {
   const token    = ref(sessionStorage.getItem('token') || null)
   const empleado = ref(JSON.parse(sessionStorage.getItem('empleado') || 'null'))
   const roles    = ref(JSON.parse(sessionStorage.getItem('roles')    || '[]'))
   const menu     = ref(JSON.parse(sessionStorage.getItem('menu')     || '[]'))
+  const expiresAt = ref(sessionStorage.getItem('expires_at'))
   let expiryTimer
 
   function programarExpiracion(fecha) {
+    expiresAt.value = fecha
     clearTimeout(expiryTimer)
     const restante = Date.parse(fecha) - Date.now()
     if (!Number.isFinite(restante)) return
     expiryTimer = setTimeout(() => {
       token.value = null; empleado.value = null; roles.value = []; menu.value = []
       sessionStorage.clear()
+      expiresAt.value = null
       window.location.assign('/login')
     }, Math.max(0, restante))
   }
@@ -32,17 +36,8 @@ export const useAuthStore = defineStore('auth', () => {
     roles.value.includes('ADQUISICIONES') || roles.value.includes('BIENES') || esSupervisor.value
   )
 
-  // Menú agrupado por categoría
-  const menuAgrupado = computed(() => {
-    const vistas = new Set()
-    return menu.value.reduce((acc, item) => {
-      if (vistas.has(item.url)) return acc
-      vistas.add(item.url)
-      if (!acc[item.categoria]) acc[item.categoria] = []
-      acc[item.categoria].push(item)
-      return acc
-    }, {})
-  })
+  const opcionesMenu = computed(() => menuSistema(menu.value, empleado.value))
+  const menuAgrupado = computed(() => agruparMenu(opcionesMenu.value))
 
   async function login(identificacion, password) {
     const { data } = await api.post('/login', { identificacion, password })
@@ -66,6 +61,7 @@ export const useAuthStore = defineStore('auth', () => {
     clearTimeout(expiryTimer)
     try { await api.post('/logout') } catch {}
     token.value = null; empleado.value = null
+    expiresAt.value = null
     roles.value = [];   menu.value = []
     sessionStorage.clear()
   }
@@ -74,6 +70,6 @@ export const useAuthStore = defineStore('auth', () => {
     return roles.value.includes(rol.toUpperCase())
   }
 
-  return { token, empleado, roles, menu, isAuthenticated, isAdmin,
-           esSupervisor, tieneAdquisiciones, menuAgrupado, login, logout, tieneRol }
+  return { token, empleado, roles, menu, expiresAt, isAuthenticated, isAdmin,
+           esSupervisor, tieneAdquisiciones, opcionesMenu, menuAgrupado, login, logout, tieneRol }
 })

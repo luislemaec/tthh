@@ -1,0 +1,937 @@
+{
+  "fecha": "2026-10-08",
+  "versions": {
+    "tailwindcss": "4.2.1",
+    "@tailwindcss/vite": "4.2.1",
+    "vite": "7.3.1",
+    "vue": "3.5.30",
+    "vue-router": "5.0.3",
+    "pinia": "3.0.4",
+    "@tiptap/vue-3": "3.27.3",
+    "chart.js": "4.5.1"
+  },
+  "groups": {
+    "Frontend activo": {
+      "archivos": 104,
+      "visuales": 96,
+      "hex": 1071,
+      "rgb": 10,
+      "hsl": 0,
+      "oklch": 0,
+      "nombres": 118,
+      "tailwindFisico": 7030,
+      "tailwindArbitrario": 606,
+      "variables": 105,
+      "inline": 401,
+      "tables": 91,
+      "forms": 6,
+      "overlays": 145
+    },
+    "Frontend sin importación detectada": {
+      "archivos": 12,
+      "visuales": 12,
+      "hex": 17,
+      "rgb": 6,
+      "hsl": 2,
+      "oklch": 0,
+      "nombres": 5,
+      "tailwindFisico": 69,
+      "tailwindArbitrario": 1,
+      "variables": 25,
+      "inline": 9,
+      "tables": 3,
+      "forms": 0,
+      "overlays": 2
+    },
+    "Recurso SVG": {
+      "archivos": 1,
+      "visuales": 1,
+      "hex": 2,
+      "rgb": 0,
+      "hsl": 0,
+      "oklch": 0,
+      "nombres": 0,
+      "tailwindFisico": 0,
+      "tailwindArbitrario": 0,
+      "variables": 0,
+      "inline": 0,
+      "tables": 0,
+      "forms": 0,
+      "overlays": 0
+    },
+    "Recursos backend": {
+      "archivos": 3,
+      "visuales": 1,
+      "hex": 0,
+      "rgb": 0,
+      "hsl": 0,
+      "oklch": 0,
+      "nombres": 0,
+      "tailwindFisico": 0,
+      "tailwindArbitrario": 0,
+      "variables": 0,
+      "inline": 0,
+      "tables": 0,
+      "forms": 0,
+      "overlays": 0
+    },
+    "Documento/PDF": {
+      "archivos": 43,
+      "visuales": 43,
+      "hex": 732,
+      "rgb": 1,
+      "hsl": 0,
+      "oklch": 0,
+      "nombres": 2,
+      "tailwindFisico": 0,
+      "tailwindArbitrario": 0,
+      "variables": 0,
+      "inline": 1087,
+      "tables": 162,
+      "forms": 0,
+      "overlays": 0
+    },
+    "Página Laravel inicial": {
+      "archivos": 1,
+      "visuales": 1,
+      "hex": 246,
+      "rgb": 6,
+      "hsl": 0,
+      "oklch": 242,
+      "nombres": 19,
+      "tailwindFisico": 16,
+      "tailwindArbitrario": 53,
+      "variables": 139,
+      "inline": 7,
+      "tables": 0,
+      "forms": 0,
+      "overlays": 0
+    },
+    "Código backend": {
+      "archivos": 166,
+      "visuales": 1,
+      "hex": 1,
+      "rgb": 0,
+      "hsl": 0,
+      "oklch": 0,
+      "nombres": 0,
+      "tailwindFisico": 0,
+      "tailwindArbitrario": 0,
+      "variables": 0,
+      "inline": 0,
+      "tables": 0,
+      "forms": 0,
+      "overlays": 0
+    }
+  },
+  "totalFiles": 330,
+  "visualFiles": 155,
+  "activeFiles": 104,
+  "activeVue": 93,
+  "views": 82,
+  "customVariables": [
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 6,
+      "ambito": "Frontend activo",
+      "nombre": "--sit-font-ui",
+      "valor": "'Montserrat', system-ui, 'Segoe UI', sans-serif",
+      "referenciasDirectas": 2
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 7,
+      "ambito": "Frontend activo",
+      "nombre": "--sit-primary",
+      "valor": "#034ea2",
+      "referenciasDirectas": 14
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 7,
+      "ambito": "Frontend activo",
+      "nombre": "--sit-primary-hover",
+      "valor": "#03458f",
+      "referenciasDirectas": 3
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 7,
+      "ambito": "Frontend activo",
+      "nombre": "--sit-primary-active",
+      "valor": "#023b7b",
+      "referenciasDirectas": 0
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 7,
+      "ambito": "Frontend activo",
+      "nombre": "--sit-primary-focus",
+      "valor": "#a9c3df",
+      "referenciasDirectas": 2
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 8,
+      "ambito": "Frontend activo",
+      "nombre": "--sit-topbar-end",
+      "valor": "#0b2e6b",
+      "referenciasDirectas": 2
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 8,
+      "ambito": "Frontend activo",
+      "nombre": "--sit-on-color",
+      "valor": "#ffffff",
+      "referenciasDirectas": 5
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 8,
+      "ambito": "Frontend activo",
+      "nombre": "--sit-surface",
+      "valor": "var(--sit-on-color)",
+      "referenciasDirectas": 8
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 8,
+      "ambito": "Frontend activo",
+      "nombre": "--sit-ground",
+      "valor": "#f8f9fa",
+      "referenciasDirectas": 5
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 9,
+      "ambito": "Frontend activo",
+      "nombre": "--sit-border",
+      "valor": "#dee2e6",
+      "referenciasDirectas": 9
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 9,
+      "ambito": "Frontend activo",
+      "nombre": "--sit-text",
+      "valor": "#495057",
+      "referenciasDirectas": 4
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 9,
+      "ambito": "Frontend activo",
+      "nombre": "--sit-text-muted",
+      "valor": "#5f6870",
+      "referenciasDirectas": 5
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 9,
+      "ambito": "Frontend activo",
+      "nombre": "--sit-text-strong",
+      "valor": "#212529",
+      "referenciasDirectas": 3
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 10,
+      "ambito": "Frontend activo",
+      "nombre": "--sit-neutral",
+      "valor": "#597481",
+      "referenciasDirectas": 0
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 10,
+      "ambito": "Frontend activo",
+      "nombre": "--sit-success",
+      "valor": "#517c2c",
+      "referenciasDirectas": 0
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 10,
+      "ambito": "Frontend activo",
+      "nombre": "--sit-info",
+      "valor": "#0276b6",
+      "referenciasDirectas": 0
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 10,
+      "ambito": "Frontend activo",
+      "nombre": "--sit-warn",
+      "valor": "#fbc02d",
+      "referenciasDirectas": 2
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 10,
+      "ambito": "Frontend activo",
+      "nombre": "--sit-warn-text",
+      "valor": "#8d6c19",
+      "referenciasDirectas": 2
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 10,
+      "ambito": "Frontend activo",
+      "nombre": "--sit-danger",
+      "valor": "#d32f2f",
+      "referenciasDirectas": 5
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 11,
+      "ambito": "Frontend activo",
+      "nombre": "--sit-primary-soft",
+      "valor": "#f0f4f9",
+      "referenciasDirectas": 3
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 11,
+      "ambito": "Frontend activo",
+      "nombre": "--sit-success-soft",
+      "valor": "#f6fbf6",
+      "referenciasDirectas": 0
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 11,
+      "ambito": "Frontend activo",
+      "nombre": "--sit-info-soft",
+      "valor": "#f4fafe",
+      "referenciasDirectas": 0
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 11,
+      "ambito": "Frontend activo",
+      "nombre": "--sit-warn-soft",
+      "valor": "#fffcf5",
+      "referenciasDirectas": 2
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 11,
+      "ambito": "Frontend activo",
+      "nombre": "--sit-danger-soft",
+      "valor": "#fef4f4",
+      "referenciasDirectas": 2
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 11,
+      "ambito": "Frontend activo",
+      "nombre": "--sit-neutral-soft",
+      "valor": "var(--sit-ground)",
+      "referenciasDirectas": 0
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 12,
+      "ambito": "Frontend activo",
+      "nombre": "--sit-radius",
+      "valor": ".5rem",
+      "referenciasDirectas": 10
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 12,
+      "ambito": "Frontend activo",
+      "nombre": "--sit-shadow-card",
+      "valor": "0 1px 4px rgb(0 0 0 / .08)",
+      "referenciasDirectas": 0
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 12,
+      "ambito": "Frontend activo",
+      "nombre": "--sit-shadow-float",
+      "valor": "0 4px 16px rgb(0 0 0 / .15)",
+      "referenciasDirectas": 3
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 12,
+      "ambito": "Frontend activo",
+      "nombre": "--sit-overlay",
+      "valor": "rgb(15 23 42 / .45)",
+      "referenciasDirectas": 1
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 13,
+      "ambito": "Frontend activo",
+      "nombre": "--sit-header-height",
+      "valor": "4rem",
+      "referenciasDirectas": 3
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 13,
+      "ambito": "Frontend activo",
+      "nombre": "--sit-menu-top",
+      "valor": "var(--sit-header-height)",
+      "referenciasDirectas": 2
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 13,
+      "ambito": "Frontend activo",
+      "nombre": "--sit-sidebar-width",
+      "valor": "16rem",
+      "referenciasDirectas": 2
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 13,
+      "ambito": "Frontend activo",
+      "nombre": "--sit-sidebar-collapsed",
+      "valor": "4rem",
+      "referenciasDirectas": 1
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 14,
+      "ambito": "Frontend activo",
+      "nombre": "--sit-z-topbar",
+      "valor": "30",
+      "referenciasDirectas": 1
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 14,
+      "ambito": "Frontend activo",
+      "nombre": "--sit-z-overlay",
+      "valor": "40",
+      "referenciasDirectas": 1
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 14,
+      "ambito": "Frontend activo",
+      "nombre": "--sit-z-menu",
+      "valor": "45",
+      "referenciasDirectas": 3
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 17,
+      "ambito": "Frontend activo",
+      "nombre": "--font-sans",
+      "valor": "var(--sit-font-ui)",
+      "referenciasDirectas": 0
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 18,
+      "ambito": "Frontend activo",
+      "nombre": "--color-sit-primary",
+      "valor": "var(--sit-primary)",
+      "referenciasDirectas": 0
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 18,
+      "ambito": "Frontend activo",
+      "nombre": "--color-sit-primary-hover",
+      "valor": "var(--sit-primary-hover)",
+      "referenciasDirectas": 0
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 19,
+      "ambito": "Frontend activo",
+      "nombre": "--color-sit-text",
+      "valor": "var(--sit-text)",
+      "referenciasDirectas": 0
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 19,
+      "ambito": "Frontend activo",
+      "nombre": "--color-sit-muted",
+      "valor": "var(--sit-text-muted)",
+      "referenciasDirectas": 0
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 19,
+      "ambito": "Frontend activo",
+      "nombre": "--color-sit-border",
+      "valor": "var(--sit-border)",
+      "referenciasDirectas": 0
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 19,
+      "ambito": "Frontend activo",
+      "nombre": "--color-sit-surface",
+      "valor": "var(--sit-surface)",
+      "referenciasDirectas": 0
+    },
+    {
+      "archivo": "frontend/src/styles/sit-theme.css",
+      "linea": 27,
+      "ambito": "Frontend activo",
+      "nombre": "--sit-menu-top",
+      "valor": "calc(var(--sit-header-height) + 1.5rem)",
+      "referenciasDirectas": 2
+    },
+    {
+      "archivo": "frontend/src/views/tecnologia/EquiposView.vue",
+      "linea": 34,
+      "ambito": "Frontend activo",
+      "nombre": "--tw-ring-color",
+      "valor": "#4d7c8a55",
+      "referenciasDirectas": 0
+    },
+    {
+      "archivo": "frontend/src/views/tecnologia/MantenimientoView.vue",
+      "linea": 19,
+      "ambito": "Frontend activo",
+      "nombre": "--tw-ring-color",
+      "valor": "#4d7c8a55",
+      "referenciasDirectas": 0
+    },
+    {
+      "archivo": "frontend/src/views/tecnologia/PiezasView.vue",
+      "linea": 17,
+      "ambito": "Frontend activo",
+      "nombre": "--tw-ring-color",
+      "valor": "#4d7c8a55",
+      "referenciasDirectas": 0
+    },
+    {
+      "archivo": "frontend/src/views/transporte/VehiculosView.vue",
+      "linea": 16,
+      "ambito": "Frontend activo",
+      "nombre": "--tw-ring-color",
+      "valor": "#1e3a5f",
+      "referenciasDirectas": 0
+    }
+  ],
+  "coverage": {
+    "normalized": 105,
+    "fixed": 8089,
+    "percentage": 1.28
+  },
+  "topActive": [
+    {
+      "archivo": "frontend/src/views/comisiones/ComisionesView.vue",
+      "ambito": "Frontend activo",
+      "hex": 49,
+      "rgb": 0,
+      "hsl": 0,
+      "oklch": 0,
+      "nombres": 14,
+      "tailwindFisico": 286,
+      "tailwindArbitrario": 28,
+      "variables": 0,
+      "inline": 31,
+      "styleBlocks": 0,
+      "tables": 1,
+      "forms": 0,
+      "overlays": 4,
+      "literalColorDistinct": 63,
+      "visual": true
+    },
+    {
+      "archivo": "frontend/src/views/horasextras/HorasExtrasView.vue",
+      "ambito": "Frontend activo",
+      "hex": 28,
+      "rgb": 0,
+      "hsl": 0,
+      "oklch": 0,
+      "nombres": 0,
+      "tailwindFisico": 294,
+      "tailwindArbitrario": 20,
+      "variables": 0,
+      "inline": 8,
+      "styleBlocks": 0,
+      "tables": 4,
+      "forms": 0,
+      "overlays": 8,
+      "literalColorDistinct": 28,
+      "visual": true
+    },
+    {
+      "archivo": "frontend/src/views/comisiones/LiquidacionesView.vue",
+      "ambito": "Frontend activo",
+      "hex": 27,
+      "rgb": 0,
+      "hsl": 0,
+      "oklch": 0,
+      "nombres": 4,
+      "tailwindFisico": 256,
+      "tailwindArbitrario": 13,
+      "variables": 0,
+      "inline": 17,
+      "styleBlocks": 0,
+      "tables": 3,
+      "forms": 0,
+      "overlays": 10,
+      "literalColorDistinct": 31,
+      "visual": true
+    },
+    {
+      "archivo": "frontend/src/views/PermisosView.vue",
+      "ambito": "Frontend activo",
+      "hex": 37,
+      "rgb": 0,
+      "hsl": 0,
+      "oklch": 0,
+      "nombres": 2,
+      "tailwindFisico": 228,
+      "tailwindArbitrario": 33,
+      "variables": 0,
+      "inline": 4,
+      "styleBlocks": 0,
+      "tables": 2,
+      "forms": 0,
+      "overlays": 7,
+      "literalColorDistinct": 39,
+      "visual": true
+    },
+    {
+      "archivo": "frontend/src/views/adquisiciones/IngresosBienesView.vue",
+      "ambito": "Frontend activo",
+      "hex": 31,
+      "rgb": 0,
+      "hsl": 0,
+      "oklch": 0,
+      "nombres": 6,
+      "tailwindFisico": 190,
+      "tailwindArbitrario": 7,
+      "variables": 0,
+      "inline": 21,
+      "styleBlocks": 0,
+      "tables": 3,
+      "forms": 0,
+      "overlays": 4,
+      "literalColorDistinct": 37,
+      "visual": true
+    },
+    {
+      "archivo": "frontend/src/views/empleados/ReporteEmpleadosView.vue",
+      "ambito": "Frontend activo",
+      "hex": 33,
+      "rgb": 0,
+      "hsl": 0,
+      "oklch": 0,
+      "nombres": 6,
+      "tailwindFisico": 183,
+      "tailwindArbitrario": 22,
+      "variables": 0,
+      "inline": 2,
+      "styleBlocks": 0,
+      "tables": 1,
+      "forms": 0,
+      "overlays": 0,
+      "literalColorDistinct": 39,
+      "visual": true
+    },
+    {
+      "archivo": "frontend/src/views/planificacion/PlanificacionesView.vue",
+      "ambito": "Frontend activo",
+      "hex": 50,
+      "rgb": 0,
+      "hsl": 0,
+      "oklch": 0,
+      "nombres": 0,
+      "tailwindFisico": 162,
+      "tailwindArbitrario": 46,
+      "variables": 0,
+      "inline": 4,
+      "styleBlocks": 0,
+      "tables": 2,
+      "forms": 0,
+      "overlays": 4,
+      "literalColorDistinct": 50,
+      "visual": true
+    },
+    {
+      "archivo": "frontend/src/views/adquisiciones/ArticulosView.vue",
+      "ambito": "Frontend activo",
+      "hex": 29,
+      "rgb": 0,
+      "hsl": 0,
+      "oklch": 0,
+      "nombres": 9,
+      "tailwindFisico": 182,
+      "tailwindArbitrario": 21,
+      "variables": 0,
+      "inline": 8,
+      "styleBlocks": 0,
+      "tables": 1,
+      "forms": 0,
+      "overlays": 3,
+      "literalColorDistinct": 38,
+      "visual": true
+    },
+    {
+      "archivo": "frontend/src/views/nomina/RolPagoView.vue",
+      "ambito": "Frontend activo",
+      "hex": 12,
+      "rgb": 0,
+      "hsl": 0,
+      "oklch": 0,
+      "nombres": 0,
+      "tailwindFisico": 193,
+      "tailwindArbitrario": 9,
+      "variables": 0,
+      "inline": 3,
+      "styleBlocks": 0,
+      "tables": 3,
+      "forms": 0,
+      "overlays": 2,
+      "literalColorDistinct": 12,
+      "visual": true
+    },
+    {
+      "archivo": "frontend/src/views/tecnologia/EquiposView.vue",
+      "ambito": "Frontend activo",
+      "hex": 32,
+      "rgb": 0,
+      "hsl": 0,
+      "oklch": 0,
+      "nombres": 0,
+      "tailwindFisico": 173,
+      "tailwindArbitrario": 2,
+      "variables": 0,
+      "inline": 22,
+      "styleBlocks": 0,
+      "tables": 1,
+      "forms": 0,
+      "overlays": 7,
+      "literalColorDistinct": 32,
+      "visual": true
+    },
+    {
+      "archivo": "frontend/src/views/VacacionesView.vue",
+      "ambito": "Frontend activo",
+      "hex": 31,
+      "rgb": 0,
+      "hsl": 0,
+      "oklch": 0,
+      "nombres": 0,
+      "tailwindFisico": 172,
+      "tailwindArbitrario": 25,
+      "variables": 0,
+      "inline": 6,
+      "styleBlocks": 0,
+      "tables": 1,
+      "forms": 0,
+      "overlays": 6,
+      "literalColorDistinct": 31,
+      "visual": true
+    },
+    {
+      "archivo": "frontend/src/views/reportes/ReportesView.vue",
+      "ambito": "Frontend activo",
+      "hex": 18,
+      "rgb": 0,
+      "hsl": 0,
+      "oklch": 0,
+      "nombres": 2,
+      "tailwindFisico": 174,
+      "tailwindArbitrario": 18,
+      "variables": 0,
+      "inline": 0,
+      "styleBlocks": 0,
+      "tables": 5,
+      "forms": 0,
+      "overlays": 0,
+      "literalColorDistinct": 20,
+      "visual": true
+    },
+    {
+      "archivo": "frontend/src/views/empleados/EmpleadoForm.vue",
+      "ambito": "Frontend activo",
+      "hex": 41,
+      "rgb": 0,
+      "hsl": 0,
+      "oklch": 0,
+      "nombres": 5,
+      "tailwindFisico": 131,
+      "tailwindArbitrario": 26,
+      "variables": 0,
+      "inline": 10,
+      "styleBlocks": 1,
+      "tables": 2,
+      "forms": 1,
+      "overlays": 2,
+      "literalColorDistinct": 46,
+      "visual": true
+    },
+    {
+      "archivo": "frontend/src/views/transporte/ReportesView.vue",
+      "ambito": "Frontend activo",
+      "hex": 18,
+      "rgb": 0,
+      "hsl": 0,
+      "oklch": 0,
+      "nombres": 0,
+      "tailwindFisico": 144,
+      "tailwindArbitrario": 13,
+      "variables": 0,
+      "inline": 5,
+      "styleBlocks": 0,
+      "tables": 3,
+      "forms": 0,
+      "overlays": 0,
+      "literalColorDistinct": 18,
+      "visual": true
+    },
+    {
+      "archivo": "frontend/src/views/adquisiciones/EgresosBienesView.vue",
+      "ambito": "Frontend activo",
+      "hex": 22,
+      "rgb": 0,
+      "hsl": 0,
+      "oklch": 0,
+      "nombres": 7,
+      "tailwindFisico": 133,
+      "tailwindArbitrario": 5,
+      "variables": 0,
+      "inline": 14,
+      "styleBlocks": 0,
+      "tables": 3,
+      "forms": 0,
+      "overlays": 3,
+      "literalColorDistinct": 29,
+      "visual": true
+    }
+  ],
+  "topColors": [
+    {
+      "valor": "text-gray-600",
+      "usos": 969,
+      "archivos": 82
+    },
+    {
+      "valor": "text-white",
+      "usos": 620,
+      "archivos": 81
+    },
+    {
+      "valor": "text-gray-500",
+      "usos": 560,
+      "archivos": 78
+    },
+    {
+      "valor": "bg-white",
+      "usos": 439,
+      "archivos": 86
+    },
+    {
+      "valor": "text-gray-400",
+      "usos": 357,
+      "archivos": 80
+    },
+    {
+      "valor": "#0b5447",
+      "usos": 248,
+      "archivos": 47
+    },
+    {
+      "valor": "text-gray-700",
+      "usos": 221,
+      "archivos": 67
+    },
+    {
+      "valor": "#579186",
+      "usos": 212,
+      "archivos": 36
+    },
+    {
+      "valor": "text-gray-800",
+      "usos": 197,
+      "archivos": 82
+    },
+    {
+      "valor": "hover:bg-gray-50",
+      "usos": 197,
+      "archivos": 59
+    },
+    {
+      "valor": "focus:ring-[#579186]",
+      "usos": 194,
+      "archivos": 34
+    },
+    {
+      "valor": "text-red-600",
+      "usos": 182,
+      "archivos": 71
+    },
+    {
+      "valor": "text-green-700",
+      "usos": 150,
+      "archivos": 63
+    },
+    {
+      "valor": "bg-gray-50",
+      "usos": 143,
+      "archivos": 54
+    },
+    {
+      "valor": "border-gray-300",
+      "usos": 140,
+      "archivos": 34
+    },
+    {
+      "valor": "text-red-700",
+      "usos": 106,
+      "archivos": 49
+    },
+    {
+      "valor": "#5c4a6e",
+      "usos": 106,
+      "archivos": 5
+    },
+    {
+      "valor": "#4a5e3a",
+      "usos": 104,
+      "archivos": 15
+    },
+    {
+      "valor": "stroke=\"currentcolor",
+      "usos": 101,
+      "archivos": 23
+    },
+    {
+      "valor": "hover:text-gray-200",
+      "usos": 97,
+      "archivos": 46
+    },
+    {
+      "valor": "bg-green-100",
+      "usos": 92,
+      "archivos": 62
+    },
+    {
+      "valor": "text-white/80",
+      "usos": 81,
+      "archivos": 12
+    },
+    {
+      "valor": "bg-red-50",
+      "usos": 79,
+      "archivos": 43
+    },
+    {
+      "valor": "bg-black/50",
+      "usos": 78,
+      "archivos": 36
+    },
+    {
+      "valor": "text-blue-700",
+      "usos": 77,
+      "archivos": 41
+    }
+  ]
+}

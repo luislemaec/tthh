@@ -2,14 +2,12 @@
 <!-- src/views/LoginView.vue -->
 <!-- ============================================================ -->
 <template>
-  <div class="min-h-screen flex items-center justify-center p-4"
-       style="background: linear-gradient(135deg, #00372e 0%, #0b5447 50%, #579186 100%);">
+  <div class="sit-login min-h-screen flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
 
       <!-- Logo / Institución -->
       <div class="text-center mb-8">
-        <div class="inline-flex items-center justify-center w-24 h-24 rounded-full mb-4"
-             style="background-color: #0b5447;">
+        <div class="sit-login__logo inline-flex items-center justify-center w-24 h-24 rounded-full mb-4">
           <img src="@/assets/LOGOS-CONSEJOBLANCOH.png" alt="CONSEJO"
                class="w-20 h-20 object-contain" />
         </div>
@@ -20,33 +18,37 @@
       <!-- Formulario -->
       <form @submit.prevent="handleLogin" class="space-y-5">
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">
+          <label for="login-identificacion" class="block text-sm font-medium text-gray-700 mb-1">
             Cédula / Identificación
           </label>
           <input
             v-model="form.identificacion"
+            id="login-identificacion"
+            autocomplete="username"
             type="text"
             placeholder="Ingrese su cédula"
-            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2
-                   focus:ring-[#579186] focus:border-transparent outline-none transition"
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg outline-none transition text-base"
             :disabled="loading"
             required
           />
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
+          <label for="login-password" class="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
           <div class="relative">
             <input
               v-model="form.password"
+              id="login-password"
+              autocomplete="current-password"
               :type="showPass ? 'text' : 'password'"
               placeholder="Ingrese su contraseña"
-              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2
-                     focus:ring-[#579186] focus:border-transparent outline-none transition pr-12"
+              class="w-full px-4 py-3 border border-gray-300 rounded-lg outline-none transition pr-12 text-base"
               :disabled="loading"
               required
             />
             <button type="button" @click="showPass = !showPass"
+              :aria-label="showPass ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+              :aria-pressed="showPass"
               class="absolute right-3 top-3.5 text-gray-400 hover:text-gray-600">
               <svg v-if="!showPass" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -68,17 +70,15 @@
         </div>
 
         <!-- Error -->
-        <div v-if="error"
-          class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+        <div v-if="error" role="alert" class="sit-message sit-message--danger">
           {{ error }}
         </div>
 
         <button
           type="submit"
           :disabled="loading"
-          class="w-full text-white font-semibold py-3 rounded-lg transition duration-200
-                 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2
-                 bg-[#0b5447] hover:bg-[#00372e]">
+          class="sit-login__submit w-full text-base font-semibold py-3 rounded-lg transition duration-200
+                 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
           <svg v-if="loading" class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
             <path class="opacity-75" fill="currentColor"
@@ -96,7 +96,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
@@ -106,6 +106,7 @@ const loading = ref(false)
 const error   = ref('')
 const showPass = ref(false)
 const form    = ref({ identificacion: '', password: '' })
+onMounted(() => { document.title = 'Ingresar · SIT' })
 
 async function handleLogin() {
   loading.value = true
@@ -113,7 +114,7 @@ async function handleLogin() {
   try {
     await auth.login(form.value.identificacion, form.value.password)
     sessionStorage.setItem('show_pendientes', '1')
-    router.push('/launcher')
+    router.replace('/dashboard')
   } catch (e) {
     error.value = e.response?.data?.message || 'Error al iniciar sesión'
   } finally {
