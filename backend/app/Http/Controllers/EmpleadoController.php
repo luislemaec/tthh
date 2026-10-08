@@ -9,7 +9,6 @@ use App\Models\CabeceraVacacion;
 use App\Services\AuditoriaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
@@ -460,7 +459,7 @@ class EmpleadoController extends Controller
 
         $emp = $request->user();
 
-        if (!Hash::check($request->password_actual, $emp->password)) {
+        if (!app(\App\Services\AutenticacionService::class)->validarPasswordLocal($request->password_actual, $emp->password)) {
             return response()->json(['message' => 'La contraseña actual es incorrecta.'], 422);
         }
 

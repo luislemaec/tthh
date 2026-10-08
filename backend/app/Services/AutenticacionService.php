@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Empleado;
-use Illuminate\Support\Facades\Hash;
 
 class AutenticacionService
 {
@@ -15,6 +14,18 @@ class AutenticacionService
         }
 
         return ActiveDirectoryService::autenticar($identificacion, $password)
-            || Hash::check($password, $empleado->password ?? '') ? $empleado : null;
+            || $this->validarPasswordLocal($password, $empleado->password) ? $empleado : null;
+    }
+
+    public function validarPasswordLocal(string $password, ?string $hash): bool
+    {
+        // PHP reconoce como "bcrypt" solamente el prefijo 2y en password_get_info.
+        // PostgreSQL pgcrypto y otros sistemas también generan Bcrypt 2a/2b.
+        // Aceptar esas variantes verificables, sin admitir texto plano u otros hashes.
+        if (preg_match('/^\$2[aby]\$(?:0[4-9]|[12][0-9]|3[01])\$[.\/A-Za-z0-9]{53}$/D', $hash ?? '') !== 1) {
+            return false;
+        }
+
+        return password_verify($password, $hash);
     }
 }
